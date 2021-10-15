@@ -1,6 +1,8 @@
 [workspace]
 members = [
   "item/",
+  "player/",
+  "game/"
 ]
 exclude = [
 ]
