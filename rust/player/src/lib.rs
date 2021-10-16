@@ -58,13 +58,20 @@ pub const MAX_NAMESPACES=10;
 pub const PLAYER_CLASS_INDEX_SIZE:usize = 8 + MAX_NAMESPACES*32;
 
 
-/// To create in a namespace you must have namespace signer and hold
-/// the NFT
+/// To create in a namespaced player you must have namespace signer and hold
+/// the NFT OR have your namespace whitelisted in the index.
 /// seed ['player', player program, mint]
 #[account]
 pub struct PlayerClassIndex {
     namespaces: Vec<Pubkey>,
 }
+
+/// Seed ['player', player program, mint, namespace, 'whitelist']
+#[account]
+pub struct PlayerClassNamespaceWhitelist {
+    namespace: Pubkey
+}
+
 /// seed ['player', player program, mint, namespace]
 #[account]
 pub struct PlayerClass {

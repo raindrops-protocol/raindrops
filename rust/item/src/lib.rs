@@ -221,6 +221,12 @@ pub struct ItemClassIndex {
     namespaces: Vec<Pubkey>,
 }
 
+/// Seed ['item', item program, mint, namespace, 'whitelist']
+#[account]
+pub struct ItemClassNamespaceWhitelist {
+    namespace: Pubkey
+}
+
 /// seed ['item', item program, mint, namespace]
 #[account]
 pub struct ItemClass {

@@ -37,11 +37,29 @@ pub enum Permissiveness {
     All,
     Whitelist,
     Blacklist,
+    Namespace
 }
 
+pub const MAX_NAMESPACES=10;
+pub const GAME_INDEX_SIZE:usize = 8 + MAX_NAMESPACES*32;
+#[account]
+pub struct GameIndex {
+    namespaces: Vec<Pubkey>,
+}
+
+/// Seed ['game', game program, mint, namespace, 'whitelist']
+#[account]
+pub struct GameNamespaceWhitelist {
+    namespace: Pubkey
+}
+
+/// seed ['game', game program, mint, namespace]
 #[account]
 pub struct Game {
-    authority: Pubkey,
+    mint: Pubkey,
+    metadata: Pubkey,
+    edition: Pubkey,
+    namespace: Pubkey,
     namespace_permissiveness: Permissiveness,
     item_permissiveness: Permissiveness,
     player_permissiveness: Permissiveness,
@@ -66,9 +84,9 @@ pub enum TokenType {
 }
 
 pub enum Filter {
-    None { padding: [u8; 32] },
-    Class { class: String, padding: [u8; 7] },
-    Key { key: Pubkey }
+    None { padding: [u8; 64] },
+    Class { namespace: Pubkey, class: String, padding: [u8; 7] },
+    Key { key: Pubkey, padding: [u8; 32] }
 }
 
 #[account]
@@ -77,7 +95,7 @@ pub struct TokenWhitelist {
     token_type: TokenType,
     mint: Pubkey,
     metadata: Pubkey,
-    master_edition: Pubkey,
+    edition: Pubkey,
 }
 
 #[account]
@@ -86,7 +104,7 @@ pub struct TokenBlacklist {
     token_type: TokenType,
     mint: Pubkey,
     metadata: Pubkey,
-    master_edition: Pubkey,
+    edition: Pubkey,
 }
 
 
