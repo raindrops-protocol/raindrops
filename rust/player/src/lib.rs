@@ -49,9 +49,9 @@ pub struct EquippedItem {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum UpdatePermissiveness {
-    TokenHolderCanUpdate { inherited: bool },
-    PlayerClassHolderCanUpdate { inherited: bool },
-    AnybodyCanUpdate { inherited: bool },
+    TokenHolderCanUpdate { inherited: InheritanceState },
+    PlayerClassHolderCanUpdate { inherited: InheritanceState },
+    AnybodyCanUpdate { inherited: InheritanceState },
 }
 
 pub const MAX_NAMESPACES: usize = 10;
@@ -73,17 +73,31 @@ pub struct PlayerClassNamespaceWhitelist {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ChildUpdatePropagationPermissiveness {
-    Class,
-    Usages,
-    Components,
-    UpdatePermissiveness,
-    Uri,
+    Class { overridable: bool },
+    Usages { overridable: bool },
+    Components { overridable: bool },
+    UpdatePermissiveness { overridable: bool },
+    ChildUpdatePropagationPermissiveness { overridable: bool },
+    Uri { overridable: bool },
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct DefaultClass {
-    default_class: String,
-    inherited: bool,
+pub enum InheritanceState {
+    NotInherited,
+    Inherited,
+    Overriden,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct PlayerCategory {
+    category: String,
+    inherited: InheritanceState,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct StatsUri {
+    stats_uri: String,
+    inherited: InheritanceState,
 }
 
 /// seed ['player', player program, mint, namespace]
@@ -92,8 +106,8 @@ pub struct PlayerClass {
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
-    starting_stats_uri: String,
-    default_class: DefaultClass,
+    starting_stats_uri: StatsUri,
+    default_category: PlayerCategory,
     namespace: Pubkey,
     indexed: bool,
     default_update_permissiveness: UpdatePermissiveness,
@@ -108,14 +122,43 @@ pub struct Player {
     metadata: Pubkey,
     edition: Pubkey,
     parent: Pubkey,
-    stats_uri: String,
+    stats_uri: StatsUri,
     indexed: bool,
-    class: Option<String>,
+    category: Option<PlayerCategory>,
     update_permissiveness: Option<UpdatePermissiveness>,
     equipped_items: Vec<EquippedItem>,
+    basic_stats: Vec<BasicStat>,
 }
 
-pub struct BasicStat {}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BasicStat {
+    stat_type: BasicStatType,
+    inherited: InheritanceState,
+}
+
+pub const BASIC_STAT_TYPE_SIZE: usize = 64;
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum BasicStatType {
+    Enum {
+        initial: u8,
+        values: Vec<String>,
+    },
+    Integer {
+        min: Option<i64>,
+        max: Option<i64>,
+        initial: i64,
+        padding: [u8; 32],
+        padding2: [u8; 8],
+    },
+    Bool {
+        initial: bool,
+        padding: [u8; 32],
+        padding2: [u8; 31],
+    },
+    String {
+        initial: String,
+    },
+}
 
 #[error]
 pub enum ErrorCode {

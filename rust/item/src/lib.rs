@@ -42,7 +42,7 @@ pub const ITEM_USAGE_SIZE: usize =
 pub enum ItemUsage {
     Wearable {
         body_part: Vec<String>,                           // limit 25 bytes
-        class: Vec<String>,                               // limit 25 bytes
+        category: Vec<String>,                            // limit 25 bytes
         limit_per_part: Option<u64>,                      // 9
         wearable_callback: Option<Callback>,              // 41
         basic_item_effects: Option<Vec<BasicItemEffect>>, // BASIC_ITEM_EFFECT_SIZE
@@ -50,7 +50,7 @@ pub enum ItemUsage {
         padding2: [u8; 19],
     },
     Consumable {
-        class: Vec<String>,                               // limit 25 bytes
+        category: Vec<String>,                            // limit 25 bytes
         uses: u64,                                        // 8
         item_usage_type: ItemUsageType,                   //  ITEM_USAGE_TYPE_SIZE
         consumption_callback: Option<Callback>,           // 41
@@ -65,14 +65,14 @@ pub const ITEM_USAGE_STATE_SIZE: usize =
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ItemUsageState {
     Wearable {
-        inherited: bool,
+        inherited: InheritanceState,
         item_usage_type: ItemUsageTypeState, //  ITEM_USAGE_TYPE_STATE_SIZE
         basic_item_effect_states: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_STATE_SIZE
         padding: [u8; 32],
         padding2: [u8; 12],
     },
     Consumable {
-        inherited: bool,
+        inherited: InheritanceState,
         uses_remaining: u64,                                  // 8
         item_usage_type: ItemUsageTypeState,                  //  ITEM_USAGE_TYPE_SIZE
         basic_item_effect: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_SIZE
@@ -110,31 +110,19 @@ pub enum ItemUsageTypeState {
 
 pub const BASIC_ITEM_EFFECT_STATE_SIZE: usize = 9 + 32;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum BasicItemEffectState {
-    Increment {
-        activated_at: Option<i64>,
-        padding: [u8; 32],
-    },
-    Decrement {
-        activated_at: Option<i64>,
-        padding: [u8; 32],
-    },
-    IncrementPercent {
-        activated_at: Option<i64>,
-        padding: [u8; 32],
-    },
-    DecrementPercent {
-        activated_at: Option<i64>,
-        padding: [u8; 32],
-    },
-    IncrementPercentFromBase {
-        activated_at: Option<i64>,
-        padding: [u8; 32],
-    },
-    DecrementPercentFromBase {
-        activated_at: Option<i64>,
-        padding: [u8; 32],
-    },
+pub struct BasicItemEffectState {
+    activated_at: Option<i64>,
+    specific_state: BasicItemEffectSpecificState,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum BasicItemEffectSpecificState {
+    Increment,
+    Decrement,
+    IncrementPercent,
+    DecrementPercent,
+    IncrementPercentFromBase,
+    DecrementPercentFromBase,
 }
 
 pub const BASIC_ITEM_EFFECT_SIZE: usize = 8 + 9 + 25 + 32;
@@ -201,7 +189,7 @@ pub struct Component {
     amount: u64,
     non_cooldown_required: bool,
     condition: ComponentCondition,
-    inherited: bool,
+    inherited: InheritanceState,
     padding: [u8; 32],
 }
 
@@ -213,8 +201,8 @@ pub const ITEM_CLASS_SIZE: usize = 8 + // key
 32 + // metadata
 32 + // edition
 1 + //indexed
-26 + // default class
-2 + // update permissiveness
+26 + // default cat
+3 + // update permissiveness
 4 + 4 + // child propagation vec
 33 + // parent
 33 +// namespace
@@ -224,9 +212,9 @@ COMPONENT_SIZE*MAX_COMPONENTS +
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum UpdatePermissiveness {
-    TokenHolderCanUpdate { inherited: bool },
-    PlayerClassHolderCanUpdate { inherited: bool },
-    AnybodyCanUpdate { inherited: bool },
+    TokenHolderCanUpdate { inherited: InheritanceState },
+    PlayerClassHolderCanUpdate { inherited: InheritanceState },
+    AnybodyCanUpdate { inherited: InheritanceState },
 }
 
 pub const MAX_NAMESPACES: usize = 10;
@@ -245,16 +233,24 @@ pub struct ItemClassNamespaceWhitelist {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ChildUpdatePropagationPermissiveness {
-    Class,
-    Usages,
-    Components,
-    UpdatePermissiveness,
+    Class { overridable: bool },
+    Usages { overridable: bool },
+    Components { overridable: bool },
+    UpdatePermissiveness { overridable: bool },
+    ChildUpdatePropagationPermissiveness { overridable: bool },
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct DefaultClass {
-    default_class: String,
-    inherited: bool,
+pub enum InheritanceState {
+    NotInherited,
+    Inherited,
+    Overriden,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DefaultItemCategory {
+    category: String,
+    inherited: InheritanceState,
 }
 
 /// seed ['item', item program, mint, namespace]
@@ -264,7 +260,7 @@ pub struct ItemClass {
     metadata: Pubkey,
     edition: Pubkey,
     indexed: bool,
-    default_class: DefaultClass,
+    default_category: DefaultItemCategory,
     default_update_permissiveness: UpdatePermissiveness,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,

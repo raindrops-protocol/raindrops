@@ -32,15 +32,13 @@ pub mod namespace {
     use super::*;
 }
 
-
-
 /// seed ['namespace', namespace program, mint]
 #[account]
 pub struct Namespace {
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
-    pretty_name: String
+    pretty_name: String,
 }
 
 /// seed ['namespace', namespace program, mint, page number]

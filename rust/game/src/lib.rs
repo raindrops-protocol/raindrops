@@ -91,7 +91,7 @@ pub enum Filter {
     },
     Class {
         namespace: Pubkey,
-        class: String,
+        category: String,
         padding: [u8; 7],
     },
     Key {
@@ -111,7 +111,7 @@ pub struct TokenWhitelist {
 
 #[account]
 pub struct TokenBlacklist {
-    key: Pubkey,
+    filter: Filter,
     token_type: TokenType,
     mint: Pubkey,
     metadata: Pubkey,
