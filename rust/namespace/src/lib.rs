@@ -39,7 +39,7 @@ pub mod namespace {
 pub struct Namespace {
     mint: Pubkey,
     metadata: Pubkey,
-    edition: Pubkey
+    edition: Pubkey,
     pretty_name: String
 }
 

@@ -37,11 +37,11 @@ pub enum Permissiveness {
     All,
     Whitelist,
     Blacklist,
-    Namespace
+    Namespace,
 }
 
-pub const MAX_NAMESPACES=10;
-pub const GAME_INDEX_SIZE:usize = 8 + MAX_NAMESPACES*32;
+pub const MAX_NAMESPACES: usize = 10;
+pub const GAME_INDEX_SIZE: usize = 8 + MAX_NAMESPACES * 32;
 #[account]
 pub struct GameIndex {
     namespaces: Vec<Pubkey>,
@@ -50,7 +50,7 @@ pub struct GameIndex {
 /// Seed ['game', game program, mint, namespace, 'whitelist']
 #[account]
 pub struct GameNamespaceWhitelist {
-    namespace: Pubkey
+    namespace: Pubkey,
 }
 
 /// seed ['game', game program, mint, namespace]
@@ -63,30 +63,41 @@ pub struct Game {
     namespace_permissiveness: Permissiveness,
     item_permissiveness: Permissiveness,
     player_permissiveness: Permissiveness,
-    mission_permissiveness: Permissiveness
-    match_permissiveness: Permissiveness
+    mission_permissiveness: Permissiveness,
+    match_permissiveness: Permissiveness,
 }
 
 #[account]
 pub struct NamespaceWhitelist {
-    namespace: Pubkey
+    namespace: Pubkey,
 }
 
 #[account]
 pub struct NamespaceBlacklist {
-    namespace: Pubkey
+    namespace: Pubkey,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum TokenType {
     Player,
     Item,
-    Mission
+    Mission,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum Filter {
-    None { padding: [u8; 64] },
-    Class { namespace: Pubkey, class: String, padding: [u8; 7] },
-    Key { key: Pubkey, padding: [u8; 32] }
+    None {
+        padding: [u8; 64],
+    },
+    Class {
+        namespace: Pubkey,
+        class: String,
+        padding: [u8; 7],
+    },
+    Key {
+        key: Pubkey,
+        padding: [u8; 32],
+    },
 }
 
 #[account]
@@ -106,7 +117,6 @@ pub struct TokenBlacklist {
     metadata: Pubkey,
     edition: Pubkey,
 }
-
 
 #[error]
 pub enum ErrorCode {

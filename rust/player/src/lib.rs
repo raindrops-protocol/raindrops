@@ -54,9 +54,8 @@ pub enum UpdatePermissiveness {
     AnybodyCanUpdate { inherited: bool },
 }
 
-pub const MAX_NAMESPACES=10;
-pub const PLAYER_CLASS_INDEX_SIZE:usize = 8 + MAX_NAMESPACES*32;
-
+pub const MAX_NAMESPACES: usize = 10;
+pub const PLAYER_CLASS_INDEX_SIZE: usize = 8 + MAX_NAMESPACES * 32;
 
 /// To create in a namespaced player you must have namespace signer and hold
 /// the NFT OR have your namespace whitelisted in the index.
@@ -69,23 +68,22 @@ pub struct PlayerClassIndex {
 /// Seed ['player', player program, mint, namespace, 'whitelist']
 #[account]
 pub struct PlayerClassNamespaceWhitelist {
-    namespace: Pubkey
+    namespace: Pubkey,
 }
 
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ChildUpdatePropagationPermissiveness{
+pub enum ChildUpdatePropagationPermissiveness {
     Class,
     Usages,
     Components,
     UpdatePermissiveness,
-    Uri
+    Uri,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DefaultClass {
     default_class: String,
-    inherited: bool
+    inherited: bool,
 }
 
 /// seed ['player', player program, mint, namespace]
@@ -97,6 +95,7 @@ pub struct PlayerClass {
     starting_stats_uri: String,
     default_class: DefaultClass,
     namespace: Pubkey,
+    indexed: bool,
     default_update_permissiveness: UpdatePermissiveness,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,
@@ -110,6 +109,7 @@ pub struct Player {
     edition: Pubkey,
     parent: Pubkey,
     stats_uri: String,
+    indexed: bool,
     class: Option<String>,
     update_permissiveness: Option<UpdatePermissiveness>,
     equipped_items: Vec<EquippedItem>,

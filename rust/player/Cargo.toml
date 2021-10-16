@@ -6,7 +6,7 @@ edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "raindrops-player"
+name = "raindrops_player"
 
 [features]
 no-entrypoint = []

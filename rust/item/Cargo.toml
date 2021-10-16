@@ -6,7 +6,7 @@ edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "raindrops-item"
+name = "raindrops_item"
 
 [features]
 no-entrypoint = []

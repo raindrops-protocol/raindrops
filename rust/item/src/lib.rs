@@ -33,7 +33,7 @@ pub mod item {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum Callback(pubkey, u64)
+pub struct Callback(pub Pubkey, pub u64);
 
 pub const MAX_BASIC_ITEM_EFFECTS: usize = 5;
 pub const ITEM_USAGE_SIZE: usize =
@@ -41,19 +41,19 @@ pub const ITEM_USAGE_SIZE: usize =
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ItemUsage {
     Wearable {
-        body_part: Vec<String>,                          // limit 25 bytes
-        class: Vec<String>,                              // limit 25 bytes
-        limit_per_part: Option<u64>,                     // 9
-        wearable_callback: Option<Callback>,               // 41
+        body_part: Vec<String>,                           // limit 25 bytes
+        class: Vec<String>,                               // limit 25 bytes
+        limit_per_part: Option<u64>,                      // 9
+        wearable_callback: Option<Callback>,              // 41
         basic_item_effects: Option<Vec<BasicItemEffect>>, // BASIC_ITEM_EFFECT_SIZE
         padding: [u8; 31],
         padding2: [u8; 19],
     },
     Consumable {
-        class: Vec<String>,                              // limit 25 bytes
-        uses: u64,                                       // 8
-        item_usage_type: ItemUsageType,                  //  ITEM_USAGE_TYPE_SIZE
-        consumption_callback: Option<Callback>,            // 41
+        class: Vec<String>,                               // limit 25 bytes
+        uses: u64,                                        // 8
+        item_usage_type: ItemUsageType,                   //  ITEM_USAGE_TYPE_SIZE
+        consumption_callback: Option<Callback>,           // 41
         basic_item_effects: Option<Vec<BasicItemEffect>>, // BASIC_ITEM_EFFECT_SIZE
         padding: [u8; 32],
         padding2: [u8; 12],
@@ -66,14 +66,14 @@ pub const ITEM_USAGE_STATE_SIZE: usize =
 pub enum ItemUsageState {
     Wearable {
         inherited: bool,
-        item_usage_type: ItemUsageTypeState,                  //  ITEM_USAGE_TYPE_STATE_SIZE
+        item_usage_type: ItemUsageTypeState, //  ITEM_USAGE_TYPE_STATE_SIZE
         basic_item_effect_states: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_STATE_SIZE
         padding: [u8; 32],
         padding2: [u8; 12],
     },
     Consumable {
         inherited: bool,
-        uses_remaining: u64,                              // 8
+        uses_remaining: u64,                                  // 8
         item_usage_type: ItemUsageTypeState,                  //  ITEM_USAGE_TYPE_SIZE
         basic_item_effect: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_SIZE
         padding: [u8; 32],
@@ -93,14 +93,23 @@ pub enum ItemUsageType {
 pub const ITEM_USAGE_TYPE_STATE_SIZE: usize = 32;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ItemUsageTypeState {
-    Cooldown { activated_at: i64, padding: [u8; 24] },
-    Exhaustion { padding: [u8; 32] },
-    Destruction { padding: [u8; 32] },
-    Infinite { padding: [u8; 32] },
+    Cooldown {
+        activated_at: i64,
+        padding: [u8; 24],
+    },
+    Exhaustion {
+        padding: [u8; 32],
+    },
+    Destruction {
+        padding: [u8; 32],
+    },
+    Infinite {
+        padding: [u8; 32],
+    },
 }
 
-
-pub const BASIC_ITEM_EFFECT_STATE_SIZE: usize = 9+32;
+pub const BASIC_ITEM_EFFECT_STATE_SIZE: usize = 9 + 32;
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicItemEffectState {
     Increment {
         activated_at: Option<i64>,
@@ -122,13 +131,14 @@ pub enum BasicItemEffectState {
         activated_at: Option<i64>,
         padding: [u8; 32],
     },
-    IncrementPercentFromBase {
+    DecrementPercentFromBase {
         activated_at: Option<i64>,
         padding: [u8; 32],
     },
 }
 
 pub const BASIC_ITEM_EFFECT_SIZE: usize = 8 + 9 + 25 + 32;
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicItemEffect {
     Increment {
         amount: u64,
@@ -147,28 +157,28 @@ pub enum BasicItemEffect {
         stat: String,
         active_duration: Option<i64>,
         padding: [u8; 32],
-        padding: [u8; 7],
+        padding2: [u8; 7],
     },
     DecrementPercent {
         amount: u8,
         stat: String,
         active_duration: Option<i64>,
         padding: [u8; 32],
-        padding: [u8; 7],
+        padding2: [u8; 7],
     },
     IncrementPercentFromBase {
         amount: u8,
         stat: String,
         active_duration: Option<i64>,
         padding: [u8; 32],
-        padding: [u8; 7],
+        padding2: [u8; 7],
     },
-    IncrementPercentFromBase {
+    DecrementPercentFromBase {
         amount: u8,
         stat: String,
         active_duration: Option<i64>,
         padding: [u8; 32],
-        padding: [u8; 7],
+        padding2: [u8; 7],
     },
 }
 
@@ -195,16 +205,17 @@ pub struct Component {
     padding: [u8; 32],
 }
 
-pub const MAX_COMPONENTS:usize =10;
-pub const MAX_ITEM_USAGES:usize = 10;
+pub const MAX_COMPONENTS: usize = 10;
+pub const MAX_ITEM_USAGES: usize = 10;
 
-pub const ITEM_CLASS_SIZE:usize = 8 + // key
+pub const ITEM_CLASS_SIZE: usize = 8 + // key
 32 + // mint
 32 + // metadata
 32 + // edition
+1 + //indexed
 26 + // default class
 2 + // update permissiveness
-4 + 4 // child propagation vec
+4 + 4 + // child propagation vec
 33 + // parent
 33 +// namespace
 MAX_ITEM_USAGES*ITEM_USAGE_SIZE + // item usages
@@ -218,8 +229,8 @@ pub enum UpdatePermissiveness {
     AnybodyCanUpdate { inherited: bool },
 }
 
-pub const MAX_NAMESPACES=10;
-pub const ITEM_CLASS_INDEX_SIZE:usize = 8 + MAX_NAMESPACES*32;
+pub const MAX_NAMESPACES: usize = 10;
+pub const ITEM_CLASS_INDEX_SIZE: usize = 8 + MAX_NAMESPACES * 32;
 /// seed ['item', item program, mint]
 #[account]
 pub struct ItemClassIndex {
@@ -229,11 +240,11 @@ pub struct ItemClassIndex {
 /// Seed ['item', item program, mint, namespace, 'whitelist']
 #[account]
 pub struct ItemClassNamespaceWhitelist {
-    namespace: Pubkey
+    namespace: Pubkey,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ChildUpdatePropagationPermissiveness{
+pub enum ChildUpdatePropagationPermissiveness {
     Class,
     Usages,
     Components,
@@ -243,7 +254,7 @@ pub enum ChildUpdatePropagationPermissiveness{
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DefaultClass {
     default_class: String,
-    inherited: bool
+    inherited: bool,
 }
 
 /// seed ['item', item program, mint, namespace]
@@ -252,6 +263,7 @@ pub struct ItemClass {
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
+    indexed: bool,
     default_class: DefaultClass,
     default_update_permissiveness: UpdatePermissiveness,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
@@ -265,9 +277,11 @@ pub const ITEM_SIZE: usize = 8 + // key
 32 + // mint
 32 + // metadata
 32 + // parent
+1 + //indexed
 2 + // authority level
 33 + // edition
 MAX_ITEM_USAGES*ITEM_USAGE_STATE_SIZE + // item usages
+200; // padding
 
 /// seed ['item', item program, mint, namespace]
 #[account]
@@ -275,6 +289,7 @@ pub struct Item {
     mint: Pubkey,
     metadata: Pubkey,
     parent: Pubkey,
+    indexed: bool,
     update_permissiveness: Option<UpdatePermissiveness>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
