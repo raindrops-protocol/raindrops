@@ -61,16 +61,18 @@ pub enum ItemUsage {
 }
 
 pub const ITEM_USAGE_STATE_SIZE: usize =
-    8 + ITEM_USAGE_TYPE_STATE_SIZE + 1 + MAX_BASIC_ITEM_EFFECTS * BASIC_ITEM_EFFECT_STATE_SIZE; // needs to include basic item effect max size
+    1 + 8 + ITEM_USAGE_TYPE_STATE_SIZE + 1 + MAX_BASIC_ITEM_EFFECTS * BASIC_ITEM_EFFECT_STATE_SIZE; // needs to include basic item effect max size
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ItemUsageState {
     Wearable {
+        inherited: bool,
         item_usage_type: ItemUsageTypeState,                  //  ITEM_USAGE_TYPE_STATE_SIZE
         basic_item_effect_states: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_STATE_SIZE
         padding: [u8; 32],
         padding2: [u8; 12],
     },
     Consumable {
+        inherited: bool,
         uses_remaining: u64,                              // 8
         item_usage_type: ItemUsageTypeState,                  //  ITEM_USAGE_TYPE_SIZE
         basic_item_effect: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_SIZE
@@ -181,6 +183,7 @@ pub const COMPONENT_SIZE: usize = 32 + // mint
 8 + //amount
 1 + // non cooldown required
 1 + // condition
+1 + //inherited
 32; //padding
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Component {
@@ -188,6 +191,7 @@ pub struct Component {
     amount: u64,
     non_cooldown_required: bool,
     condition: ComponentCondition,
+    inherited: bool,
     padding: [u8; 32],
 }
 
@@ -198,8 +202,9 @@ pub const ITEM_CLASS_SIZE:usize = 8 + // key
 32 + // mint
 32 + // metadata
 32 + // edition
-25 + // default class
-1 + // update permissiveness
+26 + // default class
+2 + // update permissiveness
+4 + 4 // child propagation vec
 33 + // parent
 33 +// namespace
 MAX_ITEM_USAGES*ITEM_USAGE_SIZE + // item usages
@@ -208,9 +213,9 @@ COMPONENT_SIZE*MAX_COMPONENTS +
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum UpdatePermissiveness {
-    TokenHolderCanUpdate,
-    PlayerClassHolderCanUpdate,
-    AnybodyCanUpdate,
+    TokenHolderCanUpdate { inherited: bool },
+    PlayerClassHolderCanUpdate { inherited: bool },
+    AnybodyCanUpdate { inherited: bool },
 }
 
 pub const MAX_NAMESPACES=10;
@@ -227,15 +232,29 @@ pub struct ItemClassNamespaceWhitelist {
     namespace: Pubkey
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ChildUpdatePropagationPermissiveness{
+    Class,
+    Usages,
+    Components,
+    UpdatePermissiveness,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DefaultClass {
+    default_class: String,
+    inherited: bool
+}
+
 /// seed ['item', item program, mint, namespace]
 #[account]
 pub struct ItemClass {
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
-    default_class: String,
+    default_class: DefaultClass,
     default_update_permissiveness: UpdatePermissiveness,
-    /// Inheritance is not enforced, this is just a pointer
+    child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,
     namespace: Pubkey,
     usages: Vec<ItemUsage>,

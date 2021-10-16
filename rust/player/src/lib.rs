@@ -49,9 +49,9 @@ pub struct EquippedItem {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum UpdatePermissiveness {
-    TokenHolderCanUpdate,
-    PlayerClassHolderCanUpdate,
-    AnybodyCanUpdate,
+    TokenHolderCanUpdate { inherited: bool },
+    PlayerClassHolderCanUpdate { inherited: bool },
+    AnybodyCanUpdate { inherited: bool },
 }
 
 pub const MAX_NAMESPACES=10;
@@ -72,6 +72,22 @@ pub struct PlayerClassNamespaceWhitelist {
     namespace: Pubkey
 }
 
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ChildUpdatePropagationPermissiveness{
+    Class,
+    Usages,
+    Components,
+    UpdatePermissiveness,
+    Uri
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DefaultClass {
+    default_class: String,
+    inherited: bool
+}
+
 /// seed ['player', player program, mint, namespace]
 #[account]
 pub struct PlayerClass {
@@ -79,11 +95,11 @@ pub struct PlayerClass {
     metadata: Pubkey,
     edition: Pubkey,
     starting_stats_uri: String,
-    default_class: String,
-    /// Inheritance is not enforced, this is just a pointer
-    parent: Option<Pubkey>,
+    default_class: DefaultClass,
     namespace: Pubkey,
     default_update_permissiveness: UpdatePermissiveness,
+    child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
+    parent: Option<Pubkey>,
 }
 
 /// seed ['player', player program, mint, namespace] also
