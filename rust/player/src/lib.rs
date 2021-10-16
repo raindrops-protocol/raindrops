@@ -47,17 +47,52 @@ pub struct EquippedItem {
     padding: [u8; 32],
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum UpdatePermissiveness {
+    TokenHolderCanUpdate,
+    PlayerClassHolderCanUpdate,
+    AnybodyCanUpdate,
+}
+
+pub const MAX_NAMESPACES=10;
+pub const PLAYER_CLASS_INDEX_SIZE:usize = 8 + MAX_NAMESPACES*32;
+
+
+/// To create in a namespace you must have namespace signer and hold
+/// the NFT
+/// seed ['player', player program, mint]
 #[account]
-pub struct Player {
-    authority: Pubkey,
-    parent: Option<Pubkey>,
-    scopes: Option<Vec<Pubkey>>,
+pub struct PlayerClassIndex {
+    namespaces: Vec<Pubkey>,
+}
+/// seed ['player', player program, mint, namespace]
+#[account]
+pub struct PlayerClass {
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
+    starting_stats_uri: String,
+    default_class: String,
+    /// Inheritance is not enforced, this is just a pointer
+    parent: Option<Pubkey>,
+    namespace: Pubkey,
+    default_update_permissiveness: UpdatePermissiveness,
+}
+
+/// seed ['player', player program, mint, namespace] also
+#[account]
+pub struct Player {
+    mint: Pubkey,
+    metadata: Pubkey,
+    edition: Pubkey,
+    parent: Pubkey,
     stats_uri: String,
+    class: Option<String>,
+    update_permissiveness: Option<UpdatePermissiveness>,
     equipped_items: Vec<EquippedItem>,
 }
+
+pub struct BasicStat {}
 
 #[error]
 pub enum ErrorCode {

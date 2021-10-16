@@ -42,6 +42,7 @@ pub enum Permissiveness {
 #[account]
 pub struct Game {
     authority: Pubkey,
+    namespace_permissiveness: Permissiveness,
     item_permissiveness: Permissiveness,
     player_permissiveness: Permissiveness,
     mission_permissiveness: Permissiveness
@@ -49,16 +50,40 @@ pub struct Game {
 }
 
 #[account]
-pub struct GameWhitelist {
-    player: Pubkey,
+pub struct NamespaceWhitelist {
+    namespace: Pubkey
+}
+
+#[account]
+pub struct NamespaceBlacklist {
+    namespace: Pubkey
+}
+
+pub enum TokenType {
+    Player,
+    Item,
+    Mission
+}
+
+pub enum Filter {
+    None { padding: [u8; 32] },
+    Class { class: String, padding: [u8; 7] },
+    Key { key: Pubkey }
+}
+
+#[account]
+pub struct TokenWhitelist {
+    filter: Filter,
+    token_type: TokenType,
     mint: Pubkey,
     metadata: Pubkey,
     master_edition: Pubkey,
 }
 
 #[account]
-pub struct GameBlacklist {
-    player: Pubkey,
+pub struct TokenBlacklist {
+    key: Pubkey,
+    token_type: TokenType,
     mint: Pubkey,
     metadata: Pubkey,
     master_edition: Pubkey,
