@@ -29,8 +29,17 @@ use {
 anchor_lang::solana_program::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 #[program]
-pub mod game {
+pub mod matches {
     use super::*;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum MatchState {
+    Draft,
+    Initialized,
+    Started,
+    Finalized,
+    PaidOut,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -41,31 +50,53 @@ pub enum Permissiveness {
     Namespace,
 }
 
-pub const MAX_NAMESPACES: usize = 10;
-pub const GAME_INDEX_SIZE: usize = 8 + MAX_NAMESPACES * 32;
-#[account]
-pub struct GameIndex {
-    namespaces: Vec<Pubkey>,
-}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OracleCallback(pub Pubkey, pub u8);
 
-/// Seed ['game', game program, mint, namespace, 'whitelist']
 #[account]
-pub struct GameNamespaceWhitelist {
+pub struct Match {
+    /// No way to do multiple namespaces for a match, no point.
+    /// Mostly we put namespace on a match for completeness.
     namespace: Pubkey,
+    indexed: bool,
+    // Win oracle must always present some rewards struct
+    // for redistributing items
+    win_oracle: Pubkey,
+    win_oracle_cooldown: i64,
+    authority: Pubkey,
+    state: MatchState,
+    players: u64,
+    /// Increased by 1 every time the next token transfer
+    /// in the win oracle is completed.
+    current_token_transfer_index: u64,
+    entry_permissiveness: Permissiveness,
+    // Can do fancy stuff here, and/or blow up (validation)
+    entry_oracle_callback: Option<OracleCallback>,
 }
 
-/// seed ['game', game program, mint, namespace]
 #[account]
-pub struct Game {
+pub struct PlayerWinCallbackBitmap {
+    match_key: Pubkey,
+    /// Series of 1s and 0s to keep track of which players have hit the oracle's
+    /// callback.
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct TokenTransfer {
+    from_player: Pubkey,
+    to_player: Pubkey,
+    token_account: Pubkey,
     mint: Pubkey,
-    metadata: Pubkey,
-    edition: Pubkey,
-    namespace: Pubkey,
-    namespace_permissiveness: Permissiveness,
-    item_permissiveness: Permissiveness,
-    player_permissiveness: Permissiveness,
-    mission_permissiveness: Permissiveness,
-    match_permissiveness: Permissiveness,
+    amount: u64,
+}
+
+// Oracles must match this serde
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct WinOracle {
+    token_transfers: Vec<TokenTransfer>,
+    /// If for each player you want to do a callback where some program
+    /// edits the user in some way.
+    player_callback: Option<OracleCallback>,
 }
 
 #[account]
@@ -82,7 +113,7 @@ pub struct NamespaceBlacklist {
 pub enum TokenType {
     Player,
     Item,
-    Mission,
+    /// No missions explicitly.
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

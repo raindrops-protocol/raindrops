@@ -26,6 +26,7 @@ use {
         state::Account,
     },
 };
+anchor_lang::solana_program::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 #[program]
 pub mod item {
@@ -187,6 +188,7 @@ pub const COMPONENT_SIZE: usize = 32 + // mint
 pub struct Component {
     mint: Pubkey,
     amount: u64,
+    // if we cant count this component if its incooldown
     non_cooldown_required: bool,
     condition: ComponentCondition,
     inherited: InheritanceState,

@@ -26,6 +26,7 @@ use {
         state::Account,
     },
 };
+anchor_lang::solana_program::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 #[program]
 pub mod namespace {

@@ -27,6 +27,8 @@ use {
     },
 };
 
+anchor_lang::solana_program::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+
 #[program]
 pub mod player {
     use super::*;
@@ -41,9 +43,9 @@ pub const EQUIPPED_ITEM_SIZE: usize = 32 + //item
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EquippedItem {
     item: Pubkey,
-    item_program: Pubkey,
+    item_class: Pubkey,
     body_part: String,
-    class: String,
+    category: String,
     padding: [u8; 32],
 }
 
@@ -132,6 +134,7 @@ pub struct Player {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BasicStat {
+    name: String,
     stat_type: BasicStatType,
     inherited: InheritanceState,
 }
