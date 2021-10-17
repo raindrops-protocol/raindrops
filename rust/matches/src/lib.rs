@@ -26,7 +26,7 @@ use {
         state::Account,
     },
 };
-anchor_lang::solana_program::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 #[program]
 pub mod matches {
@@ -77,14 +77,15 @@ pub struct Match {
 #[account]
 pub struct PlayerWinCallbackBitmap {
     match_key: Pubkey,
-    /// Series of 1s and 0s to keep track of which players have hit the oracle's
-    /// callback.
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct TokenTransfer {
+pub struct TokenDelta {
     from_player: Pubkey,
-    to_player: Pubkey,
+    /// if no to, token is burned
+    to_player: Option<Pubkey>,
+    /// can be the player itself - player becomes item
+    /// in inventory
     token_account: Pubkey,
     mint: Pubkey,
     amount: u64,
@@ -93,7 +94,7 @@ pub struct TokenTransfer {
 // Oracles must match this serde
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct WinOracle {
-    token_transfers: Vec<TokenTransfer>,
+    token_transfers: Vec<TokenDelta>,
     /// If for each player you want to do a callback where some program
     /// edits the user in some way.
     player_callback: Option<OracleCallback>,
@@ -111,9 +112,9 @@ pub struct NamespaceBlacklist {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum TokenType {
+    /// No missions explicitly.
     Player,
     Item,
-    /// No missions explicitly.
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
