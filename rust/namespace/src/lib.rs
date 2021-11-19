@@ -40,6 +40,7 @@ pub struct Namespace {
     metadata: Pubkey,
     edition: Pubkey,
     pretty_name: String,
+    whitelisted_staking_mints: Vec<Pubkey>,
 }
 
 /// seed ['namespace', namespace program, mint, page number]

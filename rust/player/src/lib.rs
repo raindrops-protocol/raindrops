@@ -102,6 +102,12 @@ pub struct StatsUri {
     inherited: InheritanceState,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BodyPart {
+    body_part: String,
+    inherited: InheritanceState,
+}
+
 /// seed ['player', player program, mint, namespace]
 #[account]
 pub struct PlayerClass {
@@ -115,6 +121,7 @@ pub struct PlayerClass {
     default_update_permissiveness: UpdatePermissiveness,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,
+    body_parts: Vec<BodyPart>,
 }
 
 /// seed ['player', player program, mint, namespace] also
@@ -130,6 +137,7 @@ pub struct Player {
     update_permissiveness: Option<UpdatePermissiveness>,
     equipped_items: Vec<EquippedItem>,
     basic_stats: Vec<BasicStat>,
+    body_parts: Vec<BodyPart>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -139,24 +147,31 @@ pub struct BasicStat {
     inherited: InheritanceState,
 }
 
-pub const BASIC_STAT_TYPE_SIZE: usize = 64;
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Threshold(pub String, pub u64);
+
+pub const BASIC_STAT_TYPE_SIZE: usize = 82;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicStatType {
     Enum {
         initial: u8,
-        values: Vec<String>,
+        values: Vec<Threshold>,
     },
     Integer {
         min: Option<i64>,
         max: Option<i64>,
         initial: i64,
+        staking_amount_scaler: Option<u64>,
+        staking_duration_scaler: Option<u64>,
         padding: [u8; 32],
         padding2: [u8; 8],
     },
     Bool {
         initial: bool,
+        staking_flip: Option<u64>,
         padding: [u8; 32],
-        padding2: [u8; 31],
+        padding2: [u8; 32],
+        padding3: [u8; 8],
     },
     String {
         initial: String,

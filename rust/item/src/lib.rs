@@ -126,49 +126,25 @@ pub enum BasicItemEffectSpecificState {
     DecrementPercentFromBase,
 }
 
-pub const BASIC_ITEM_EFFECT_SIZE: usize = 8 + 9 + 25 + 32;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum BasicItemEffect {
-    Increment {
-        amount: u64,
-        stat: String,
-        active_duration: Option<i64>,
-        padding: [u8; 32],
-    },
-    Decrement {
-        amount: u64,
-        stat: String,
-        active_duration: Option<i64>,
-        padding: [u8; 32],
-    },
-    IncrementPercent {
-        amount: u8,
-        stat: String,
-        active_duration: Option<i64>,
-        padding: [u8; 32],
-        padding2: [u8; 7],
-    },
-    DecrementPercent {
-        amount: u8,
-        stat: String,
-        active_duration: Option<i64>,
-        padding: [u8; 32],
-        padding2: [u8; 7],
-    },
-    IncrementPercentFromBase {
-        amount: u8,
-        stat: String,
-        active_duration: Option<i64>,
-        padding: [u8; 32],
-        padding2: [u8; 7],
-    },
-    DecrementPercentFromBase {
-        amount: u8,
-        stat: String,
-        active_duration: Option<i64>,
-        padding: [u8; 32],
-        padding2: [u8; 7],
-    },
+pub enum BasicItemEffectType {
+    Increment { padding: [u8; 32] },
+    Decrement { padding: [u8; 32] },
+    IncrementPercent { padding: [u8; 32] },
+    DecrementPercent { padding: [u8; 32] },
+    IncrementPercentFromBase { padding: [u8; 32] },
+    DecrementPercentFromBase { padding: [u8; 32] },
+}
+
+pub const BASIC_ITEM_EFFECT_SIZE: usize = 8 + 25 + 33 + 9 + 9 + 9 + 50;
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BasicItemEffect {
+    amount: u64,
+    stat: String,
+    item_effect_type: BasicItemEffectType,
+    active_duration: Option<i64>,
+    staking_amount_scaler: Option<u64>,
+    staking_duration_scaler: Option<u64>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

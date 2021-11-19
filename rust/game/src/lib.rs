@@ -64,8 +64,8 @@ pub struct Game {
     namespace_permissiveness: Permissiveness,
     item_permissiveness: Permissiveness,
     player_permissiveness: Permissiveness,
-    mission_permissiveness: Permissiveness,
     match_permissiveness: Permissiveness,
+    mission_permissiveness: Permissiveness,
 }
 
 #[account]

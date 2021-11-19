@@ -55,8 +55,7 @@ pub struct OracleCallback(pub Pubkey, pub u8);
 
 #[account]
 pub struct Match {
-    /// No way to do multiple namespaces for a match, no point.
-    /// Mostly we put namespace on a match for completeness.
+    game: Pubkey,
     namespace: Pubkey,
     indexed: bool,
     // Win oracle must always present some rewards struct
