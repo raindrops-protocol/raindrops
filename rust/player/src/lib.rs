@@ -111,13 +111,13 @@ pub struct BodyPart {
 /// seed ['player', player program, mint, namespace]
 #[account]
 pub struct PlayerClass {
+    indexed: bool,
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
     starting_stats_uri: StatsUri,
     default_category: PlayerCategory,
     namespace: Pubkey,
-    indexed: bool,
     default_update_permissiveness: UpdatePermissiveness,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,
@@ -127,12 +127,12 @@ pub struct PlayerClass {
 /// seed ['player', player program, mint, namespace] also
 #[account]
 pub struct Player {
+    indexed: bool,
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
     parent: Pubkey,
     stats_uri: StatsUri,
-    indexed: bool,
     category: Option<PlayerCategory>,
     update_permissiveness: Option<UpdatePermissiveness>,
     equipped_items: Vec<EquippedItem>,

@@ -2,14 +2,15 @@ use {
     crate::ErrorCode,
     anchor_lang::{
         prelude::{
-            msg, AccountInfo, ProgramAccount, ProgramError, ProgramResult, Pubkey, Rent,
-            SolanaSysvar,
+            msg, Account, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
+            UncheckedAccount,
         },
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
+        ToAccountInfo,
     },
     std::convert::TryInto,
 };
@@ -220,4 +221,41 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         seeds.as_slice(),
     );
     result.map_err(|_| ErrorCode::TokenBurnFailed.into())
+}
+
+pub fn assert_metadata_valid<'a>(
+    metadata: &UncheckedAccount,
+    edition: Option<&UncheckedAccount>,
+    mint: &Pubkey,
+) -> ProgramResult {
+    assert_derivation(
+        &metaplex_token_metadata::id(),
+        &metadata.to_account_info(),
+        &[
+            metaplex_token_metadata::state::PREFIX.as_bytes(),
+            metaplex_token_metadata::id().as_ref(),
+            mint.as_ref(),
+        ],
+    )?;
+    if metadata.data_is_empty() {
+        return Err(ErrorCode::MetadataDoesntExist.into());
+    }
+
+    if let Some(ed) = edition {
+        assert_derivation(
+            &metaplex_token_metadata::id(),
+            &ed.to_account_info(),
+            &[
+                metaplex_token_metadata::state::PREFIX.as_bytes(),
+                metaplex_token_metadata::id().as_ref(),
+                mint.as_ref(),
+                metaplex_token_metadata::state::EDITION.as_bytes(),
+            ],
+        )?;
+        if ed.data_is_empty() {
+            return Err(ErrorCode::EditionDoesntExist.into());
+        }
+    }
+
+    Ok(())
 }

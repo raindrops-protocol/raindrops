@@ -55,9 +55,9 @@ pub struct OracleCallback(pub Pubkey, pub u8);
 
 #[account]
 pub struct Match {
+    indexed: bool,
     game: Pubkey,
     namespace: Pubkey,
-    indexed: bool,
     // Win oracle must always present some rewards struct
     // for redistributing items
     win_oracle: Pubkey,

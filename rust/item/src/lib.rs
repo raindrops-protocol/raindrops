@@ -234,10 +234,10 @@ pub struct DefaultItemCategory {
 /// seed ['item', item program, mint, namespace]
 #[account]
 pub struct ItemClass {
+    indexed: bool,
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
-    indexed: bool,
     default_category: DefaultItemCategory,
     default_update_permissiveness: UpdatePermissiveness,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
@@ -260,10 +260,10 @@ MAX_ITEM_USAGES*ITEM_USAGE_STATE_SIZE + // item usages
 /// seed ['item', item program, mint, namespace]
 #[account]
 pub struct Item {
+    indexed: bool,
     mint: Pubkey,
     metadata: Pubkey,
     parent: Pubkey,
-    indexed: bool,
     update_permissiveness: Option<UpdatePermissiveness>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
