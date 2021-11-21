@@ -888,6 +888,9 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
+ "raindrops-item",
+ "raindrops-matches",
+ "raindrops-player",
  "spl-associated-token-account",
  "spl-token",
 ]

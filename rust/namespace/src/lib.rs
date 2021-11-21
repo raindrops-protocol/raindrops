@@ -27,6 +27,7 @@ anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 const PREFIX: &str = "namespace";
 const MAX_WHITELIST: usize = 5;
+const MAX_CACHED_ITEMS: usize = 100;
 #[program]
 pub mod namespace {
     use super::*;
@@ -75,6 +76,104 @@ pub mod namespace {
 
         Ok(())
     }
+
+    pub fn update_namespace<'info>(
+        ctx: Context<'_, '_, '_, 'info, UpdateNamespace<'info>>,
+        pretty_name: String,
+        join_permissiveness: NamespaceJoinPermissiveness,
+        whitelisted_staking_mints: Vec<Pubkey>,
+    ) -> ProgramResult {
+        if pretty_name.len() > 32 {
+            return Err(ErrorCode::PrettyNameTooLong.into());
+        }
+
+        if whitelisted_staking_mints.len() > MAX_WHITELIST {
+            return Err(ErrorCode::WhitelistStakeListTooLong.into());
+        }
+
+        for n in 0..whitelisted_staking_mints.len() {
+            let mint_account = &ctx.remaining_accounts[n];
+            // Assert they are all real mints.
+            let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
+        }
+
+        let namespace = &mut ctx.accounts.namespace;
+
+        namespace.whitelisted_staking_mints = whitelisted_staking_mints;
+        namespace.pretty_name = namespace.pretty_name.to_string();
+        namespace.join_permissiveness = join_permissiveness;
+        Ok(())
+    }
+
+    pub fn cache_artifact<'info>(
+        ctx: Context<'_, '_, '_, 'info, CacheArtifact<'info>>,
+        index_bump: u8,
+        page: u64,
+    ) -> ProgramResult {
+        let namespace = &mut ctx.accounts.namespace;
+        let index = &mut ctx.accounts.index;
+        let prior_index = &ctx.accounts.prior_index;
+        let artifact = &mut ctx.accounts.artifact;
+        let index_info = index.to_account_info();
+        let prior_index_info = prior_index.to_account_info();
+        let artifact_info = artifact.to_account_info();
+
+        if artifact.owner != &raindrops_player::id()
+            && artifact.owner != &raindrops_matches::id()
+            && artifact.owner != &raindrops_item::id()
+        {
+            return Err(ErrorCode::CanOnlyCacheValidRaindropsObjects.into());
+        }
+
+        if index_info.data_is_empty() {
+            if prior_index_info.data_is_empty() {
+                return Err(ErrorCode::PreviousIndexNeedsToExistBeforeCreatingThisOne.into());
+            } else if prior_index.caches.len() < MAX_CACHED_ITEMS {
+                return Err(ErrorCode::PreviousIndexNotFull.into());
+            }
+            let namespace_key = namespace.key();
+            let page_str = page.to_string();
+            let signer_seeds = [
+                PREFIX.as_bytes(),
+                namespace_key.as_ref(),
+                page_str.as_bytes(),
+                &[index_bump],
+            ];
+            create_or_allocate_account_raw(
+                *ctx.program_id,
+                &index_info,
+                &ctx.accounts.rent.to_account_info(),
+                &ctx.accounts.system_program,
+                &ctx.accounts.payer,
+                INDEX_SIZE,
+                &signer_seeds,
+            )?;
+        } else if index.caches.len() >= MAX_CACHED_ITEMS {
+            return Err(ErrorCode::IndexFull.into());
+        }
+
+        namespace.items_cached = namespace
+            .items_cached
+            .checked_add(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+        if page > namespace.highest_page {
+            namespace.highest_page = page
+        }
+        index.page = page;
+        index.namespace = namespace.key();
+        index.caches.push(artifact.key());
+
+        // The 9th byte is customarily the cached byte, and we check that you are owned
+        // by one of our whitelisted programs
+
+        let mut data = artifact_info.data.borrow_mut();
+        if data[8] == 1 {
+            return Err(ErrorCode::AlreadyCached.into());
+        }
+        data[8] = 1;
+
+        Ok(())
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -119,6 +218,13 @@ pub const NAMESPACE_SIZE: usize = 8 + // key
 5 + // whitelist staking mints
 200; // padding
 
+pub const INDEX_SIZE: usize = 8 + // key
+32 + // namespace
+8 + // page
+4 + // amount in vec
+32*MAX_CACHED_ITEMS + // array space
+100; //padding
+
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct InitializeNamespace<'info> {
@@ -134,7 +240,6 @@ pub struct InitializeNamespace<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(bump: u8)]
 pub struct UpdateNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
@@ -152,6 +257,8 @@ pub struct CacheArtifact<'info> {
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.to_string().as_bytes()], bump=index_bump)]
     index: Account<'info, NamespaceIndex>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.checked_sub(1).ok_or(0)?.to_string().as_bytes()], bump=index_bump)]
+    prior_index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     token_holder: Signer<'info>,
@@ -188,4 +295,14 @@ pub enum ErrorCode {
     MetadataDoesntExist,
     #[msg("Edition doesnt exist")]
     EditionDoesntExist,
+    #[msg("Previous index needs to exist before creating this one")]
+    PreviousIndexNeedsToExistBeforeCreatingThisOne,
+    #[msg("The previous index is not full yet, so you cannot make a new one")]
+    PreviousIndexNotFull,
+    #[msg("Index is full")]
+    IndexFull,
+    #[msg("Can only cache valid raindrops objects (players, items, matches)")]
+    CanOnlyCacheValidRaindropsObjects,
+    #[msg("This object has already been cached")]
+    AlreadyCached,
 }
