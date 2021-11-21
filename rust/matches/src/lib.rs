@@ -52,12 +52,18 @@ pub enum Permissiveness {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct OracleCallback(pub Pubkey, pub u8);
-
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct NamespaceAndIndex {
+    namespace: Pubkey,
+    indexed: bool,
+}
+#[account]
+pub struct ArtifactNamespaceSetting {
+    namespaces: Vec<NamespaceAndIndex>,
+}
 #[account]
 pub struct Match {
-    indexed: bool,
-    game: Pubkey,
-    namespace: Pubkey,
+    namespaces: ArtifactNamespaceSetting,
     // Win oracle must always present some rewards struct
     // for redistributing items
     win_oracle: Pubkey,

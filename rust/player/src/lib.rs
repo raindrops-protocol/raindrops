@@ -54,24 +54,10 @@ pub enum UpdatePermissiveness {
     TokenHolderCanUpdate { inherited: InheritanceState },
     PlayerClassHolderCanUpdate { inherited: InheritanceState },
     AnybodyCanUpdate { inherited: InheritanceState },
+    NamespaceOwnerCanUpdate { inherited: InheritanceState },
 }
 
 pub const MAX_NAMESPACES: usize = 10;
-pub const PLAYER_CLASS_INDEX_SIZE: usize = 8 + MAX_NAMESPACES * 32;
-
-/// To create in a namespaced player you must have namespace signer and hold
-/// the NFT OR have your namespace whitelisted in the index.
-/// seed ['player', player program, mint]
-#[account]
-pub struct PlayerClassIndex {
-    namespaces: Vec<Pubkey>,
-}
-
-/// Seed ['player', player program, mint, namespace, 'whitelist']
-#[account]
-pub struct PlayerClassNamespaceWhitelist {
-    namespace: Pubkey,
-}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ChildUpdatePropagationPermissiveness {
@@ -108,17 +94,26 @@ pub struct BodyPart {
     inherited: InheritanceState,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct NamespaceAndIndex {
+    namespace: Pubkey,
+    indexed: bool,
+}
+#[account]
+pub struct ArtifactNamespaceSetting {
+    namespaces: Vec<NamespaceAndIndex>,
+}
+
 /// seed ['player', player program, mint, namespace]
 #[account]
 pub struct PlayerClass {
-    indexed: bool,
+    namespaces: ArtifactNamespaceSetting,
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
     starting_stats_uri: StatsUri,
     default_category: PlayerCategory,
-    namespace: Pubkey,
-    default_update_permissiveness: UpdatePermissiveness,
+    default_update_permissiveness: Vec<UpdatePermissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,
     body_parts: Vec<BodyPart>,
@@ -127,14 +122,14 @@ pub struct PlayerClass {
 /// seed ['player', player program, mint, namespace] also
 #[account]
 pub struct Player {
-    indexed: bool,
+    namespaces: ArtifactNamespaceSetting,
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
     parent: Pubkey,
     stats_uri: StatsUri,
     category: Option<PlayerCategory>,
-    update_permissiveness: Option<UpdatePermissiveness>,
+    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
     equipped_items: Vec<EquippedItem>,
     basic_stats: Vec<BasicStat>,
     body_parts: Vec<BodyPart>,

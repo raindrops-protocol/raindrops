@@ -193,6 +193,7 @@ pub enum UpdatePermissiveness {
     TokenHolderCanUpdate { inherited: InheritanceState },
     PlayerClassHolderCanUpdate { inherited: InheritanceState },
     AnybodyCanUpdate { inherited: InheritanceState },
+    NamespaceOwnerCanUpdate { inherited: InheritanceState },
 }
 
 pub const MAX_NAMESPACES: usize = 10;
@@ -231,18 +232,27 @@ pub struct DefaultItemCategory {
     inherited: InheritanceState,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct NamespaceAndIndex {
+    namespace: Pubkey,
+    indexed: bool,
+}
+#[account]
+pub struct ArtifactNamespaceSetting {
+    namespaces: Vec<NamespaceAndIndex>,
+}
+
 /// seed ['item', item program, mint, namespace]
 #[account]
 pub struct ItemClass {
-    indexed: bool,
+    namespaces: ArtifactNamespaceSetting,
     mint: Pubkey,
     metadata: Pubkey,
     edition: Pubkey,
     default_category: DefaultItemCategory,
-    default_update_permissiveness: UpdatePermissiveness,
+    default_update_permissiveness: Vec<UpdatePermissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,
-    namespace: Pubkey,
     usages: Vec<ItemUsage>,
     components: Vec<Component>,
 }
@@ -260,11 +270,11 @@ MAX_ITEM_USAGES*ITEM_USAGE_STATE_SIZE + // item usages
 /// seed ['item', item program, mint, namespace]
 #[account]
 pub struct Item {
-    indexed: bool,
+    namespaces: ArtifactNamespaceSetting,
     mint: Pubkey,
     metadata: Pubkey,
     parent: Pubkey,
-    update_permissiveness: Option<UpdatePermissiveness>,
+    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
     /// on a mint with more than 1 coin.

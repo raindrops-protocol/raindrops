@@ -1,5 +1,5 @@
 use {
-    crate::ErrorCode,
+    crate::{ErrorCode, Namespace, Permissiveness},
     anchor_lang::{
         prelude::{
             msg, Account, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
@@ -10,8 +10,9 @@ use {
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
-        ToAccountInfo,
+        Key, ToAccountInfo,
     },
+    arrayref::array_ref,
     std::convert::TryInto,
 };
 
@@ -223,6 +224,88 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
     result.map_err(|_| ErrorCode::TokenBurnFailed.into())
 }
 
+pub fn assert_signer(account: &UncheckedAccount) -> ProgramResult {
+    if !account.is_signer {
+        Err(ProgramError::MissingRequiredSignature)
+    } else {
+        Ok(())
+    }
+}
+
+pub fn assert_part_of_namespace<'a>(
+    artifact: &UncheckedAccount<'a>,
+    namespace: &Account<'a, Namespace>,
+) -> ProgramResult {
+    let data = artifact.data.borrow_mut();
+    if data[9] == 1 {
+        let artifact_bytes = array_ref![data, 10, 32];
+        let key = Pubkey::new_from_array(*artifact_bytes);
+        if key != namespace.key() {
+            return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
+        }
+    } else {
+        return Err(ErrorCode::ArtifactLacksNamespace.into());
+    }
+    Ok(())
+}
+
+pub fn inverse_indexed_bool_for_namespace(
+    artifact: &mut UncheckedAccount,
+    namespace: Pubkey,
+) -> Result<u8, ProgramError> {
+    let data = artifact.data.borrow_mut();
+    let start: usize = 12;
+    let found = false;
+    while found == false && start < data.len() {
+        let bytes = array_ref![data, start, 32];
+        let key = Pubkey::new_from_array(bytes);
+        if key == namespace {
+            let old_val = data[start + 33];
+            data[start + 33] = if data[start + 33] == 1 { 0 } else { 1 };
+            return Ok(old_val);
+        }
+        start += 33;
+    }
+    return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
+}
+
+pub fn check_permissiveness_against_holder<'a>(
+    artifact: &UncheckedAccount<'a>,
+    token_holder: &UncheckedAccount<'a>,
+    permissiveness: &Permissiveness,
+) -> ProgramResult {
+    return match permissiveness {
+        Permissiveness::All => Ok(()),
+        Permissiveness::Whitelist => Ok(()),
+        Permissiveness::Blacklist => todo!(),
+        Permissiveness::Namespace => assert_signer(token_holder),
+    };
+}
+
+pub fn assert_can_add_to_namespace<'a>(
+    artifact: &UncheckedAccount<'a>,
+    token_holder: &UncheckedAccount<'a>,
+    namespace: &Account<'a, Namespace>,
+) -> ProgramResult {
+    if artifact.owner == &crate::PLAYER_ID {
+        check_permissiveness_against_holder(artifact, &namespace.player_permissiveness)?
+    } else if artifact.owner == &crate::ITEM_ID {
+        check_permissiveness_against_holder(artifact, token_holder, &namespace.item_permissiveness)?
+    } else if artifact.owner == &crate::MATCH_ID {
+        check_permissiveness_against_holder(
+            artifact,
+            token_holder,
+            &namespace.match_permissiveness,
+        )?
+    } else if artifact.owner == &crate::id() {
+        check_permissiveness_against_holder(
+            artifact,
+            token_holder,
+            &namespace.namespace_permissiveness,
+        )?
+    }
+    Ok(())
+}
 pub fn assert_metadata_valid<'a>(
     metadata: &UncheckedAccount,
     edition: Option<&UncheckedAccount>,

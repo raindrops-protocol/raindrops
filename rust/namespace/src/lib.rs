@@ -1,10 +1,13 @@
+use std::str::FromStr;
+
 pub mod utils;
 
 use {
     crate::utils::{
         assert_derivation, assert_initialized, assert_metadata_valid, assert_owned_by,
-        create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
-        spl_token_mint_to, spl_token_transfer, TokenBurnParams, TokenTransferParams,
+        assert_part_of_namespace, create_or_allocate_account_raw, get_mask_and_index_for_seq,
+        inverse_indexed_bool_for_namespace, spl_token_burn, spl_token_mint_to, spl_token_transfer,
+        TokenBurnParams, TokenTransferParams,
     },
     anchor_lang::{
         prelude::*,
@@ -24,6 +27,10 @@ use {
     spl_token::instruction::{initialize_account2, mint_to},
 };
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+pub const PLAYER_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+pub const MATCH_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+pub const ITEM_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+pub const MAX_NAMESPACES: usize = 5;
 
 const PREFIX: &str = "namespace";
 const MAX_WHITELIST: usize = 5;
@@ -36,7 +43,12 @@ pub mod namespace {
         bump: u8,
         uuid: String,
         pretty_name: String,
-        join_permissiveness: NamespaceJoinPermissiveness,
+        namespace_permissiveness: Permissiveness,
+        item_permissiveness: Permissiveness,
+        player_permissiveness: Permissiveness,
+        match_permissiveness: Permissiveness,
+        mission_permissiveness: Permissiveness,
+        cache_permissiveness: Permissiveness,
         whitelisted_staking_mints: Vec<Pubkey>,
     ) -> ProgramResult {
         if uuid.len() > 6 {
@@ -68,46 +80,82 @@ pub mod namespace {
         namespace.uuid = uuid;
         namespace.whitelisted_staking_mints = whitelisted_staking_mints;
         namespace.pretty_name = namespace.pretty_name.to_string();
-        namespace.join_permissiveness = join_permissiveness;
+        namespace.namespace_permissiveness = namespace_permissiveness;
+        namespace.item_permissiveness = item_permissiveness;
+        namespace.player_permissiveness = player_permissiveness;
+        namespace.match_permissiveness = match_permissiveness;
+        namespace.mission_permissiveness = mission_permissiveness;
+        namespace.cache_permissiveness = cache_permissiveness;
         namespace.metadata = metadata.key();
         namespace.master_edition = master_edition.key();
         namespace.highest_page = 0;
-        namespace.items_cached = 0;
+        namespace.artifacts_cached = 0;
+        namespace.artifacts_added = 0;
 
         Ok(())
     }
 
     pub fn update_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, UpdateNamespace<'info>>,
-        pretty_name: String,
-        join_permissiveness: NamespaceJoinPermissiveness,
-        whitelisted_staking_mints: Vec<Pubkey>,
+        pretty_name: Option<String>,
+        namespace_permissiveness: Option<Permissiveness>,
+        item_permissiveness: Option<Permissiveness>,
+        player_permissiveness: Option<Permissiveness>,
+        match_permissiveness: Option<Permissiveness>,
+        mission_permissiveness: Option<Permissiveness>,
+        cache_permissiveness: Option<Permissiveness>,
+        whitelisted_staking_mints: Option<Vec<Pubkey>>,
     ) -> ProgramResult {
-        if pretty_name.len() > 32 {
-            return Err(ErrorCode::PrettyNameTooLong.into());
-        }
-
-        if whitelisted_staking_mints.len() > MAX_WHITELIST {
-            return Err(ErrorCode::WhitelistStakeListTooLong.into());
-        }
-
-        for n in 0..whitelisted_staking_mints.len() {
-            let mint_account = &ctx.remaining_accounts[n];
-            // Assert they are all real mints.
-            let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
-        }
-
         let namespace = &mut ctx.accounts.namespace;
 
-        namespace.whitelisted_staking_mints = whitelisted_staking_mints;
-        namespace.pretty_name = namespace.pretty_name.to_string();
-        namespace.join_permissiveness = join_permissiveness;
+        if let Some(ws_mints) = whitelisted_staking_mints {
+            if ws_mints.len() > MAX_WHITELIST {
+                return Err(ErrorCode::WhitelistStakeListTooLong.into());
+            }
+            for n in 0..ws_mints.len() {
+                let mint_account = &ctx.remaining_accounts[n];
+                // Assert they are all real mints.
+                let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
+            }
+            namespace.whitelisted_staking_mints = ws_mints;
+        }
+        if let Some(pn) = pretty_name {
+            if pn.len() > 32 {
+                return Err(ErrorCode::PrettyNameTooLong.into());
+            }
+            namespace.pretty_name = pn.to_string();
+        }
+
+        if let Some(permissiveness) = namespace_permissiveness {
+            namespace.namespace_permissiveness = permissiveness;
+        }
+
+        if let Some(permissiveness) = item_permissiveness {
+            namespace.item_permissiveness = permissiveness;
+        }
+
+        if let Some(permissiveness) = player_permissiveness {
+            namespace.player_permissiveness = permissiveness;
+        }
+
+        if let Some(permissiveness) = match_permissiveness {
+            namespace.match_permissiveness = permissiveness;
+        }
+
+        if let Some(permissiveness) = mission_permissiveness {
+            namespace.mission_permissiveness = permissiveness;
+        }
+
+        if let Some(permissiveness) = cache_permissiveness {
+            namespace.cache_permissiveness = permissiveness;
+        }
         Ok(())
     }
 
     pub fn cache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, CacheArtifact<'info>>,
         index_bump: u8,
+        prior_index_bump: u8,
         page: u64,
     ) -> ProgramResult {
         let namespace = &mut ctx.accounts.namespace;
@@ -118,9 +166,12 @@ pub mod namespace {
         let prior_index_info = prior_index.to_account_info();
         let artifact_info = artifact.to_account_info();
 
+        assert_part_of_namespace(artifact, namespace)?;
+
         if artifact.owner != &raindrops_player::id()
             && artifact.owner != &raindrops_matches::id()
             && artifact.owner != &raindrops_item::id()
+            && artifact.owner != &id()
         {
             return Err(ErrorCode::CanOnlyCacheValidRaindropsObjects.into());
         }
@@ -152,8 +203,8 @@ pub mod namespace {
             return Err(ErrorCode::IndexFull.into());
         }
 
-        namespace.items_cached = namespace
-            .items_cached
+        namespace.artifacts_cached = namespace
+            .artifacts_cached
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
         if page > namespace.highest_page {
@@ -166,33 +217,131 @@ pub mod namespace {
         // The 9th byte is customarily the cached byte, and we check that you are owned
         // by one of our whitelisted programs
 
-        let mut data = artifact_info.data.borrow_mut();
-        if data[8] == 1 {
+        let old_val = inverse_indexed_bool_for_namespace(artifact, namespace.key())?;
+        if old_val == 1 {
             return Err(ErrorCode::AlreadyCached.into());
         }
-        data[8] = 1;
+        Ok(())
+    }
+
+    pub fn uncache_artifact<'info>(
+        ctx: Context<'_, '_, '_, 'info, UncacheArtifact<'info>>,
+        page: u64,
+    ) -> ProgramResult {
+        let namespace = &mut ctx.accounts.namespace;
+        let index = &mut ctx.accounts.index;
+        let artifact = &mut ctx.accounts.artifact;
+        let receiver = &mut ctx.accounts.receiver;
+        let artifact_info = artifact.to_account_info();
+
+        let mut found = false;
+        let mut new_arr = vec![];
+        for obj in &index.caches {
+            if obj != &artifact.key() {
+                new_arr.push(obj);
+            } else {
+                found = true;
+            }
+        }
+
+        if found {
+            inverse_indexed_bool_for_namespace(artifact, namespace.key())?;
+            namespace.artifacts_cached = namespace
+                .artifacts_cached
+                .checked_sub(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        if page == namespace.highest_page && index.caches.len() == 0 {
+            namespace.highest_page = page
+                .checked_sub(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+            let curr_lamp = index.to_account_info().lamports();
+            **index.to_account_info().lamports.borrow_mut() = 0;
+
+            **receiver.lamports.borrow_mut() = receiver
+                .lamports()
+                .checked_add(curr_lamp)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
 
         Ok(())
     }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum NamespaceJoinPermissiveness {
-    AnybodyCanJoin,
-    TokenHolderMustCosign,
+pub enum Permissiveness {
+    All,
+    Whitelist,
+    Blacklist,
+    Namespace,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ArtifactType {
+    Player,
+    Item,
+    Mission,
+    Namespace,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum Filter {
+    None {
+        padding: [u8; FILTER_SIZE],
+    },
+    Category {
+        namespace: Pubkey,
+        category: Option<String>,
+        padding: [u8; FILTER_SIZE - 26 - 32],
+    },
+    Key {
+        key: Pubkey,
+        mint: Pubkey,
+        metadata: Pubkey,
+        edition: Option<Pubkey>,
+        padding: [u8; 32],
+    },
+}
+
+pub const FILTER_SIZE: usize = 32 + // key
+32 + // mint
+32 + // metadata
+33 + // edition
+32; //padding
+
+#[account]
+pub struct ArtifactFilter {
+    // namespace will always be set, just following the caching convention in case
+    // user decides to cache these, too
+    indexed: bool,
+    namespace: Option<Pubkey>,
+    is_blacklist: bool,
+    filter: Filter,
+    token_type: ArtifactType,
+    filter_index: u64,
+    bump: u8,
 }
 
 /// seed ['namespace', namespace program, mint]
 #[account]
 pub struct Namespace {
+    indexed: bool,
+    namespace: Option<Pubkey>,
     mint: Pubkey,
     metadata: Pubkey,
     master_edition: Pubkey,
     uuid: String,
     pretty_name: String,
+    artifacts_added: u64,
     highest_page: u64,
-    items_cached: u64,
-    join_permissiveness: NamespaceJoinPermissiveness,
+    artifacts_cached: u64,
+    namespace_permissiveness: Permissiveness,
+    item_permissiveness: Permissiveness,
+    player_permissiveness: Permissiveness,
+    match_permissiveness: Permissiveness,
+    mission_permissiveness: Permissiveness,
+    cache_permissiveness: Permissiveness,
     bump: u8,
     whitelisted_staking_mints: Vec<Pubkey>,
 }
@@ -201,28 +350,54 @@ pub struct Namespace {
 #[account]
 pub struct NamespaceIndex {
     pub namespace: Pubkey,
+    pub bump: u8,
     pub page: u64,
     pub caches: Vec<Pubkey>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct NamespaceAndIndex {
+    namespace: Pubkey,
+    indexed: bool,
+}
+#[account]
+pub struct ArtifactNamespaceSetting {
+    namespaces: Vec<NamespaceAndIndex>,
+}
+
 pub const NAMESPACE_SIZE: usize = 8 + // key
+1 + // indexed
+33 + // namespace
 32 + // mint
 32 + // metadata
 32 + // edition
 6 + // uuid
 32 + // pretty name
+8 + // artifacts_added
 8 + // highest page
-8 + // items cached
-1 + // join permissiveness
+8 + // artifacts cached
+6 + // permissivenesses
 1 + // bump
 5 + // whitelist staking mints
 200; // padding
 
 pub const INDEX_SIZE: usize = 8 + // key
 32 + // namespace
+1 + // bump
 8 + // page
 4 + // amount in vec
 32*MAX_CACHED_ITEMS + // array space
+100; //padding
+
+pub const ARTIFACT_FILTER_SIZE: usize = 8 + // key
+1 + // indexed
+33 + // namespace
+1 + // is blacklist
+FILTER_SIZE + //
+1 + // artifact type
+32 + // artifact
+8 + // filter index
+1 + // bump
 100; //padding
 
 #[derive(Accounts)]
@@ -249,7 +424,7 @@ pub struct UpdateNamespace<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(bump: u8, index_bump: u8, page: u64)]
+#[instruction(index_bump: u8, prior_index_bump: u8, page: u64)]
 pub struct CacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
@@ -257,12 +432,48 @@ pub struct CacheArtifact<'info> {
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.to_string().as_bytes()], bump=index_bump)]
     index: Account<'info, NamespaceIndex>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.checked_sub(1).ok_or(0)?.to_string().as_bytes()], bump=index_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.checked_sub(1).ok_or(0)?.to_string().as_bytes()], bump=prior_index_bump)]
     prior_index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    token_holder: Signer<'info>,
+    token_holder: UncheckedAccount<'info>,
     payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(index_bump: u8, prior_index_bump: u8, page: u64)]
+pub struct JoinArtifact<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    namespace: Account<'info, Namespace>,
+    #[account(constraint=namespace_token.owner == token_holder.key())]
+    namespace_token: Account<'info, TokenAccount>,
+    #[account(mut)]
+    artifact: UncheckedAccount<'info>,
+
+    token_holder: UncheckedAccount<'info>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction( page: u64)]
+pub struct UncacheArtifact<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    namespace: Account<'info, Namespace>,
+    #[account(constraint=namespace_token.owner == token_holder.key())]
+    namespace_token: Account<'info, TokenAccount>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.to_string().as_bytes()], bump=index.bump)]
+    index: Account<'info, NamespaceIndex>,
+    #[account(mut)]
+    artifact: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), artifact_filter.filter_index.to_string().as_bytes()], bump=filter_index.bump)]
+    artifact_filter: Account<'info, ArtifactFilter>,
+    token_holder: UncheckedAccount<'info>,
+    // Received of funds
+    receiver: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
 }
@@ -301,8 +512,16 @@ pub enum ErrorCode {
     PreviousIndexNotFull,
     #[msg("Index is full")]
     IndexFull,
-    #[msg("Can only cache valid raindrops objects (players, items, matches)")]
+    #[msg("Can only cache valid raindrops artifacts (players, items, matches)")]
     CanOnlyCacheValidRaindropsObjects,
-    #[msg("This object has already been cached")]
+    #[msg("This artifact has already been cached")]
     AlreadyCached,
+    #[msg("This artifact is not cached!")]
+    NotCached,
+    #[msg("This artifact is cached but not on this page")]
+    NotCachedHere,
+    #[msg("Artifact lacks namespace!")]
+    ArtifactLacksNamespace,
+    #[msg("Artifact not part of namespace!")]
+    ArtifactNotPartOfNamespace,
 }

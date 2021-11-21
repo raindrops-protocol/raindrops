@@ -864,6 +864,7 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
+ "raindrops-namespace",
  "spl-associated-token-account",
  "spl-token",
 ]
@@ -876,6 +877,7 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
+ "raindrops-namespace",
  "spl-associated-token-account",
  "spl-token",
 ]
@@ -888,9 +890,6 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
- "raindrops-item",
- "raindrops-matches",
- "raindrops-player",
  "spl-associated-token-account",
  "spl-token",
 ]
@@ -903,6 +902,7 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
+ "raindrops-namespace",
  "spl-associated-token-account",
  "spl-token",
 ]
