@@ -1,6 +1,7 @@
 use {
     crate::{
-        borsh::BorshDeserialize, ErrorCode, Filter, Namespace, NamespaceGatekeeper, Permissiveness, NamespaceAndIndex,
+        ArtifactNamespaceSetting, ErrorCode, Filter, Namespace, NamespaceAndIndex,
+        NamespaceGatekeeper, Permissiveness, NAMESPACE_AND_INDEX_SIZE,
     },
     anchor_lang::{
         prelude::{
@@ -272,28 +273,33 @@ pub fn inverse_indexed_bool_for_namespace(
     return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
 }
 
-pub fn pull_namespaces(artifact: &UncheckedAccount) ->NamespaceAndIndex {
-
-    let amount =  u32::from_le_bytes(*array_ref![artifact.data.borrow_mut(), 8, 4]);
+pub fn pull_namespaces(
+    artifact: &UncheckedAccount,
+) -> Result<ArtifactNamespaceSetting, ProgramError> {
+    let data = artifact.data.borrow_mut();
+    let amount = u32::from_le_bytes(*array_ref![data, 8, 4]);
 
     let cursor: usize = 12;
 
     let mut arr: Vec<NamespaceAndIndex> = vec![];
     for n in 0..amount {
-
+        let bytes = array_ref![data, cursor, NAMESPACE_AND_INDEX_SIZE];
+        let serialized: NamespaceAndIndex = try_from_slice_unchecked(bytes)?;
+        arr.push(serialized)
     }
 
+    return Ok(ArtifactNamespaceSetting { namespaces: arr });
 }
 
-pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
+pub fn check_permissiveness_against_holder<'a>(
     artifact: &UncheckedAccount<'a>,
     token_holder: &UncheckedAccount<'a>,
     namespace_gatekeeper: &UncheckedAccount<'a>,
     permissiveness: &Permissiveness,
-) -> ProgramResult {
-    let ar
+) -> Result<ArtifactNamespaceSetting, ProgramError> {
+    let art_namespaces = pull_namespaces(artifact)?;
     return match permissiveness {
-        Permissiveness::All => Ok(()),
+        Permissiveness::All => Ok(art_namespaces),
         Permissiveness::Whitelist => {
             if namespace_gatekeeper.data_is_empty() {
                 return Err(ErrorCode::CannotJoinNamespace.into());
@@ -307,8 +313,11 @@ pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
                             padding,
                         } => {
                             for n in namespaces {
-                                if current_namespace.key() == n {
-                                    return Ok(());
+                                for other_n in art_namespaces.namespaces {
+                                    if other_n.namespace == n {
+                                        msg!("Whitelisted!");
+                                        return Ok(art_namespaces);
+                                    }
                                 }
                             }
                             return Err(ErrorCode::CannotJoinNamespace.into());
@@ -319,8 +328,11 @@ pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
                             padding,
                             padding2,
                         } => {
-                            if namespace == current_namespace.key() {
-                                return Ok(());
+                            for n in art_namespaces.namespaces {
+                                if n.namespace == namespace {
+                                    msg!("Whitelisted!");
+                                    return Ok(art_namespaces);
+                                }
                             }
                             return Err(ErrorCode::CannotJoinNamespace.into());
                         }
@@ -336,7 +348,8 @@ pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
                                 assert_initialized(&artifact.to_account_info())?;
 
                             if as_token.mint == mint {
-                                return Ok(());
+                                msg!("Whitelisted!");
+                                return Ok(art_namespaces);
                             }
                             return Err(ErrorCode::CannotJoinNamespace.into());
                         }
@@ -358,11 +371,14 @@ pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
                             padding,
                         } => {
                             for n in namespaces {
-                                if current_namespace.key() == n {
-                                    return Err(ErrorCode::CannotJoinNamespace.into());
+                                for other_n in art_namespaces.namespaces {
+                                    if other_n.namespace == n {
+                                        msg!("Blacklisted!");
+                                        return Err(ErrorCode::CannotJoinNamespace.into());
+                                    }
                                 }
                             }
-                            return Ok(());
+                            return Ok(art_namespaces);
                         }
                         Filter::Category {
                             namespace,
@@ -370,10 +386,13 @@ pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
                             padding,
                             padding2,
                         } => {
-                            if namespace == current_namespace.key() {
-                                return Err(ErrorCode::CannotJoinNamespace.into());
+                            for n in art_namespaces.namespaces {
+                                if n.namespace == namespace {
+                                    msg!("Blacklisted!");
+                                    return Err(ErrorCode::CannotJoinNamespace.into());
+                                }
                             }
-                            return Ok(());
+                            return Ok(art_namespaces);
                         }
                         Filter::Key {
                             key,
@@ -387,16 +406,20 @@ pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
                                 assert_initialized(&artifact.to_account_info())?;
 
                             if as_token.mint == mint {
+                                msg!("Blacklisted!");
                                 return Err(ErrorCode::CannotJoinNamespace.into());
                             }
-                            return Ok(());
+                            return Ok(art_namespaces);
                         }
                     }
                 }
                 return Err(ErrorCode::CannotJoinNamespace.into());
             }
         }
-        Permissiveness::Namespace => assert_signer(token_holder),
+        Permissiveness::Namespace => {
+            assert_signer(token_holder)?;
+            return Ok(art_namespaces);
+        }
     };
 }
 
@@ -405,12 +428,11 @@ pub fn assert_can_add_to_namespace<'a>(
     token_holder: &UncheckedAccount<'a>,
     namespace: &Account<'a, Namespace>,
     namespace_gatekeeper: &UncheckedAccount<'a>,
-) -> ProgramResult {
-    if artifact.owner == &crate::PLAYER_ID {
-        check_permissiveness_against_holder::<crate::raindrops_player::Player>(
+) -> Result<ArtifactNamespaceSetting, ProgramError> {
+    let art_namespaces = if artifact.owner == &crate::PLAYER_ID {
+        check_permissiveness_against_holder(
             artifact,
             token_holder,
-            namespace,
             namespace_gatekeeper,
             &namespace.permissiveness_settings.player_permissiveness,
         )?
@@ -418,7 +440,6 @@ pub fn assert_can_add_to_namespace<'a>(
         check_permissiveness_against_holder(
             artifact,
             token_holder,
-            namespace,
             namespace_gatekeeper,
             &namespace.permissiveness_settings.item_permissiveness,
         )?
@@ -426,7 +447,6 @@ pub fn assert_can_add_to_namespace<'a>(
         check_permissiveness_against_holder(
             artifact,
             token_holder,
-            namespace,
             namespace_gatekeeper,
             &namespace.permissiveness_settings.match_permissiveness,
         )?
@@ -434,12 +454,13 @@ pub fn assert_can_add_to_namespace<'a>(
         check_permissiveness_against_holder(
             artifact,
             token_holder,
-            namespace,
             namespace_gatekeeper,
             &namespace.permissiveness_settings.namespace_permissiveness,
         )?
-    }
-    Ok(())
+    } else {
+        return Err(ErrorCode::CannotJoinNamespace.into());
+    };
+    return Ok(art_namespaces);
 }
 pub fn assert_metadata_valid<'a>(
     metadata: &UncheckedAccount,

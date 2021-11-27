@@ -1,13 +1,12 @@
-use std::str::FromStr;
-
 pub mod utils;
 
 use {
     crate::utils::{
-        assert_derivation, assert_initialized, assert_metadata_valid, assert_owned_by,
-        assert_part_of_namespace, create_or_allocate_account_raw, get_mask_and_index_for_seq,
-        inverse_indexed_bool_for_namespace, spl_token_burn, spl_token_mint_to, spl_token_transfer,
-        TokenBurnParams, TokenTransferParams,
+        assert_can_add_to_namespace, assert_derivation, assert_initialized, assert_metadata_valid,
+        assert_owned_by, assert_part_of_namespace, create_or_allocate_account_raw,
+        get_mask_and_index_for_seq, inverse_indexed_bool_for_namespace, pull_namespaces,
+        spl_token_burn, spl_token_mint_to, spl_token_transfer, TokenBurnParams,
+        TokenTransferParams,
     },
     anchor_lang::{
         prelude::*,
@@ -20,11 +19,13 @@ use {
         AnchorDeserialize, AnchorSerialize,
     },
     anchor_spl::token::{Mint, Token, TokenAccount},
+    arrayref::{array_mut_ref, array_ref},
     metaplex_token_metadata::instruction::{
         create_master_edition, create_metadata_accounts,
         mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
     },
     spl_token::instruction::{initialize_account2, mint_to},
+    std::str::FromStr,
 };
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 pub const PLAYER_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
@@ -38,6 +39,9 @@ const MAX_WHITELIST: usize = 5;
 const MAX_CACHED_ITEMS: usize = 100;
 #[program]
 pub mod namespace {
+
+    use utils::pull_namespaces;
+
     use super::*;
     pub fn initialize_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, InitializeNamespace<'info>>,
@@ -72,6 +76,17 @@ pub mod namespace {
 
         assert_metadata_valid(metadata, Some(master_edition), &mint.key())?;
 
+        let mut namespace_arr = vec![];
+        for _n in 0..MAX_NAMESPACES {
+            namespace_arr.push(NamespaceAndIndex {
+                namespace: anchor_lang::solana_program::system_program::id(),
+                indexed: false,
+            });
+        }
+
+        namespace.namespaces = ArtifactNamespaceSetting {
+            namespaces: namespace_arr,
+        };
         namespace.bump = bump;
         namespace.uuid = uuid;
         namespace.whitelisted_staking_mints = whitelisted_staking_mints;
@@ -181,9 +196,6 @@ pub mod namespace {
         index.namespace = namespace.key();
         index.caches.push(artifact.key());
 
-        // The 9th byte is customarily the cached byte, and we check that you are owned
-        // by one of our whitelisted programs
-
         let old_val = inverse_indexed_bool_for_namespace(artifact, namespace.key())?;
         if old_val == 1 {
             return Err(ErrorCode::AlreadyCached.into());
@@ -269,6 +281,94 @@ pub mod namespace {
             }
         }
         namespace_gatekeeper.artifact_filters = new_arr;
+        Ok(())
+    }
+
+    pub fn leave_namespace<'info>(
+        ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
+        _namespace_gatekeeper_bump: u8,
+    ) -> ProgramResult {
+        let namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+        let artifact = &mut ctx.accounts.artifact;
+        let token_holder = &ctx.accounts.token_holder;
+        let namespace = &mut ctx.accounts.namespace;
+
+        let mut art_namespaces = pull_namespaces(artifact)?;
+
+        for n in art_namespaces.namespaces {
+            if n.namespace == namespace.key() {
+                if n.indexed {
+                    return Err(ErrorCode::ArtifactStillCached.into());
+                } else {
+                    let mut new_vec = vec![];
+                    for j in art_namespaces.namespaces {
+                        if j.namespace != namespace.key() {
+                            new_vec.push(j)
+                        }
+                    }
+                    new_vec.push(NamespaceAndIndex {
+                        namespace: anchor_lang::solana_program::system_program::id(),
+                        indexed: false,
+                    });
+                    let mut data = artifact.data.borrow_mut();
+                    let arr =
+                        array_mut_ref![data, 8, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
+
+                    arr.copy_from_slice(&art_namespaces.try_to_vec()?);
+                    namespace.artifacts_added = namespace
+                        .artifacts_added
+                        .checked_sub(1)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+                    return Ok(());
+                }
+            }
+        }
+
+        return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
+    }
+
+    pub fn join_namespace<'info>(
+        ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
+        _namespace_gatekeeper_bump: u8,
+    ) -> ProgramResult {
+        let namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+        let artifact = &mut ctx.accounts.artifact;
+        let token_holder = &ctx.accounts.token_holder;
+        let namespace = &mut ctx.accounts.namespace;
+
+        let mut art_namespaces =
+            assert_can_add_to_namespace(artifact, token_holder, namespace, namespace_gatekeeper)?;
+
+        let found = false;
+        for n in art_namespaces.namespaces {
+            if n.namespace == namespace.key() {
+                found = true;
+            }
+        }
+        if !found {
+            let mut most_recent_zero = None;
+            for n in art_namespaces.namespaces {
+                if n.namespace == anchor_lang::solana_program::system_program::id() {
+                    most_recent_zero = Some(n);
+                    break;
+                }
+            }
+            if let Some(mrz) = most_recent_zero {
+                mrz.namespace = namespace.key();
+                mrz.indexed = false;
+                let mut data = artifact.data.borrow_mut();
+                let arr = array_mut_ref![data, 8, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
+
+                arr.copy_from_slice(&art_namespaces.try_to_vec()?);
+                namespace.artifacts_added = namespace
+                    .artifacts_added
+                    .checked_add(1)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+            } else {
+                msg!("Out of space!");
+                return Err(ErrorCode::CannotJoinNamespace.into());
+            }
+        }
         Ok(())
     }
 }
@@ -368,6 +468,8 @@ pub struct NamespaceAndIndex {
     namespace: Pubkey,
     indexed: bool,
 }
+
+pub const NAMESPACE_AND_INDEX_SIZE: usize = 33;
 #[account]
 pub struct ArtifactNamespaceSetting {
     namespaces: Vec<NamespaceAndIndex>,
@@ -470,19 +572,30 @@ pub struct RemoveFromNamespaceGatekeeper<'info> {
 
 #[derive(Accounts)]
 #[instruction(namespace_gatekeeper_bump: u8)]
-pub struct JoinArtifact<'info> {
+pub struct JoinNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), PREFIX.as_bytes()], bump=namespace_gatekeeper_bump)]
-    namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
+    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), PREFIX.as_bytes()], bump=namespace_gatekeeper_bump)]
+    namespace_gatekeeper: UncheckedAccount<'info>,
     token_holder: UncheckedAccount<'info>,
-    payer: Signer<'info>,
-    system_program: Program<'info, System>,
-    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(namespace_gatekeeper_bump: u8)]
+pub struct LeaveNamespace<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    namespace: Account<'info, Namespace>,
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    namespace_token: Account<'info, TokenAccount>,
+    #[account(mut)]
+    artifact: UncheckedAccount<'info>,
+    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), PREFIX.as_bytes()], bump=namespace_gatekeeper_bump)]
+    namespace_gatekeeper: UncheckedAccount<'info>,
+    token_holder: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -569,4 +682,6 @@ pub enum ErrorCode {
     ArtifactNotPartOfNamespace,
     #[msg("You do not have permissions to join this namespace")]
     CannotJoinNamespace,
+    #[msg("You cannot remove an artifact from a namespace while it is still cached there. Uncache it first.")]
+    ArtifactStillCached,
 }
