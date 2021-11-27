@@ -1,11 +1,14 @@
 use {
-    crate::{ErrorCode, Namespace, Permissiveness},
+    crate::{
+        borsh::BorshDeserialize, ErrorCode, Filter, Namespace, NamespaceGatekeeper, Permissiveness, NamespaceAndIndex,
+    },
     anchor_lang::{
         prelude::{
             msg, Account, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
             UncheckedAccount,
         },
         solana_program::{
+            borsh::try_from_slice_unchecked,
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
             system_instruction,
@@ -258,7 +261,7 @@ pub fn inverse_indexed_bool_for_namespace(
     let found = false;
     while found == false && start < data.len() {
         let bytes = array_ref![data, start, 32];
-        let key = Pubkey::new_from_array(bytes);
+        let key = Pubkey::new_from_array(*bytes);
         if key == namespace {
             let old_val = data[start + 33];
             data[start + 33] = if data[start + 33] == 1 { 0 } else { 1 };
@@ -269,15 +272,130 @@ pub fn inverse_indexed_bool_for_namespace(
     return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
 }
 
-pub fn check_permissiveness_against_holder<'a>(
+pub fn pull_namespaces(artifact: &UncheckedAccount) ->NamespaceAndIndex {
+
+    let amount =  u32::from_le_bytes(*array_ref![artifact.data.borrow_mut(), 8, 4]);
+
+    let cursor: usize = 12;
+
+    let mut arr: Vec<NamespaceAndIndex> = vec![];
+    for n in 0..amount {
+
+    }
+
+}
+
+pub fn check_permissiveness_against_holder<'a, T: BorshDeserialize>(
     artifact: &UncheckedAccount<'a>,
     token_holder: &UncheckedAccount<'a>,
+    namespace_gatekeeper: &UncheckedAccount<'a>,
     permissiveness: &Permissiveness,
 ) -> ProgramResult {
+    let ar
     return match permissiveness {
         Permissiveness::All => Ok(()),
-        Permissiveness::Whitelist => Ok(()),
-        Permissiveness::Blacklist => todo!(),
+        Permissiveness::Whitelist => {
+            if namespace_gatekeeper.data_is_empty() {
+                return Err(ErrorCode::CannotJoinNamespace.into());
+            } else {
+                let deserialized: anchor_lang::Account<'_, NamespaceGatekeeper> =
+                    Account::try_from(&namespace_gatekeeper.to_account_info())?;
+                for filter in deserialized.artifact_filters {
+                    match filter.filter {
+                        Filter::Namespace {
+                            namespaces,
+                            padding,
+                        } => {
+                            for n in namespaces {
+                                if current_namespace.key() == n {
+                                    return Ok(());
+                                }
+                            }
+                            return Err(ErrorCode::CannotJoinNamespace.into());
+                        }
+                        Filter::Category {
+                            namespace,
+                            category,
+                            padding,
+                            padding2,
+                        } => {
+                            if namespace == current_namespace.key() {
+                                return Ok(());
+                            }
+                            return Err(ErrorCode::CannotJoinNamespace.into());
+                        }
+                        Filter::Key {
+                            key,
+                            mint,
+                            metadata,
+                            edition,
+                            padding,
+                            padding2,
+                        } => {
+                            let as_token: spl_token::state::Account =
+                                assert_initialized(&artifact.to_account_info())?;
+
+                            if as_token.mint == mint {
+                                return Ok(());
+                            }
+                            return Err(ErrorCode::CannotJoinNamespace.into());
+                        }
+                    }
+                }
+                return Err(ErrorCode::CannotJoinNamespace.into());
+            }
+        }
+        Permissiveness::Blacklist => {
+            if namespace_gatekeeper.data_is_empty() {
+                return Err(ErrorCode::CannotJoinNamespace.into());
+            } else {
+                let deserialized: anchor_lang::Account<'_, NamespaceGatekeeper> =
+                    Account::try_from(&namespace_gatekeeper.to_account_info())?;
+                for filter in deserialized.artifact_filters {
+                    match filter.filter {
+                        Filter::Namespace {
+                            namespaces,
+                            padding,
+                        } => {
+                            for n in namespaces {
+                                if current_namespace.key() == n {
+                                    return Err(ErrorCode::CannotJoinNamespace.into());
+                                }
+                            }
+                            return Ok(());
+                        }
+                        Filter::Category {
+                            namespace,
+                            category,
+                            padding,
+                            padding2,
+                        } => {
+                            if namespace == current_namespace.key() {
+                                return Err(ErrorCode::CannotJoinNamespace.into());
+                            }
+                            return Ok(());
+                        }
+                        Filter::Key {
+                            key,
+                            mint,
+                            metadata,
+                            edition,
+                            padding,
+                            padding2,
+                        } => {
+                            let as_token: spl_token::state::Account =
+                                assert_initialized(&artifact.to_account_info())?;
+
+                            if as_token.mint == mint {
+                                return Err(ErrorCode::CannotJoinNamespace.into());
+                            }
+                            return Ok(());
+                        }
+                    }
+                }
+                return Err(ErrorCode::CannotJoinNamespace.into());
+            }
+        }
         Permissiveness::Namespace => assert_signer(token_holder),
     };
 }
@@ -286,22 +404,39 @@ pub fn assert_can_add_to_namespace<'a>(
     artifact: &UncheckedAccount<'a>,
     token_holder: &UncheckedAccount<'a>,
     namespace: &Account<'a, Namespace>,
+    namespace_gatekeeper: &UncheckedAccount<'a>,
 ) -> ProgramResult {
     if artifact.owner == &crate::PLAYER_ID {
-        check_permissiveness_against_holder(artifact, &namespace.player_permissiveness)?
+        check_permissiveness_against_holder::<crate::raindrops_player::Player>(
+            artifact,
+            token_holder,
+            namespace,
+            namespace_gatekeeper,
+            &namespace.permissiveness_settings.player_permissiveness,
+        )?
     } else if artifact.owner == &crate::ITEM_ID {
-        check_permissiveness_against_holder(artifact, token_holder, &namespace.item_permissiveness)?
+        check_permissiveness_against_holder(
+            artifact,
+            token_holder,
+            namespace,
+            namespace_gatekeeper,
+            &namespace.permissiveness_settings.item_permissiveness,
+        )?
     } else if artifact.owner == &crate::MATCH_ID {
         check_permissiveness_against_holder(
             artifact,
             token_holder,
-            &namespace.match_permissiveness,
+            namespace,
+            namespace_gatekeeper,
+            &namespace.permissiveness_settings.match_permissiveness,
         )?
     } else if artifact.owner == &crate::id() {
         check_permissiveness_against_holder(
             artifact,
             token_holder,
-            &namespace.namespace_permissiveness,
+            namespace,
+            namespace_gatekeeper,
+            &namespace.permissiveness_settings.namespace_permissiveness,
         )?
     }
     Ok(())

@@ -33,6 +33,7 @@ pub const ITEM_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9
 pub const MAX_NAMESPACES: usize = 5;
 
 const PREFIX: &str = "namespace";
+const GATEKEEPER: &str = "gatekeeper";
 const MAX_WHITELIST: usize = 5;
 const MAX_CACHED_ITEMS: usize = 100;
 #[program]
@@ -43,12 +44,7 @@ pub mod namespace {
         bump: u8,
         uuid: String,
         pretty_name: String,
-        namespace_permissiveness: Permissiveness,
-        item_permissiveness: Permissiveness,
-        player_permissiveness: Permissiveness,
-        match_permissiveness: Permissiveness,
-        mission_permissiveness: Permissiveness,
-        cache_permissiveness: Permissiveness,
+        permissiveness_settings: PermissivenessSettings,
         whitelisted_staking_mints: Vec<Pubkey>,
     ) -> ProgramResult {
         if uuid.len() > 6 {
@@ -80,12 +76,7 @@ pub mod namespace {
         namespace.uuid = uuid;
         namespace.whitelisted_staking_mints = whitelisted_staking_mints;
         namespace.pretty_name = namespace.pretty_name.to_string();
-        namespace.namespace_permissiveness = namespace_permissiveness;
-        namespace.item_permissiveness = item_permissiveness;
-        namespace.player_permissiveness = player_permissiveness;
-        namespace.match_permissiveness = match_permissiveness;
-        namespace.mission_permissiveness = mission_permissiveness;
-        namespace.cache_permissiveness = cache_permissiveness;
+        namespace.permissiveness_settings = permissiveness_settings;
         namespace.metadata = metadata.key();
         namespace.master_edition = master_edition.key();
         namespace.highest_page = 0;
@@ -98,12 +89,7 @@ pub mod namespace {
     pub fn update_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, UpdateNamespace<'info>>,
         pretty_name: Option<String>,
-        namespace_permissiveness: Option<Permissiveness>,
-        item_permissiveness: Option<Permissiveness>,
-        player_permissiveness: Option<Permissiveness>,
-        match_permissiveness: Option<Permissiveness>,
-        mission_permissiveness: Option<Permissiveness>,
-        cache_permissiveness: Option<Permissiveness>,
+        permissiveness_settings: Option<PermissivenessSettings>,
         whitelisted_staking_mints: Option<Vec<Pubkey>>,
     ) -> ProgramResult {
         let namespace = &mut ctx.accounts.namespace;
@@ -126,29 +112,10 @@ pub mod namespace {
             namespace.pretty_name = pn.to_string();
         }
 
-        if let Some(permissiveness) = namespace_permissiveness {
-            namespace.namespace_permissiveness = permissiveness;
+        if let Some(permissiveness) = permissiveness_settings {
+            namespace.permissiveness_settings = permissiveness;
         }
 
-        if let Some(permissiveness) = item_permissiveness {
-            namespace.item_permissiveness = permissiveness;
-        }
-
-        if let Some(permissiveness) = player_permissiveness {
-            namespace.player_permissiveness = permissiveness;
-        }
-
-        if let Some(permissiveness) = match_permissiveness {
-            namespace.match_permissiveness = permissiveness;
-        }
-
-        if let Some(permissiveness) = mission_permissiveness {
-            namespace.mission_permissiveness = permissiveness;
-        }
-
-        if let Some(permissiveness) = cache_permissiveness {
-            namespace.cache_permissiveness = permissiveness;
-        }
         Ok(())
     }
 
@@ -168,9 +135,9 @@ pub mod namespace {
 
         assert_part_of_namespace(artifact, namespace)?;
 
-        if artifact.owner != &raindrops_player::id()
-            && artifact.owner != &raindrops_matches::id()
-            && artifact.owner != &raindrops_item::id()
+        if artifact.owner != &PLAYER_ID
+            && artifact.owner != &MATCH_ID
+            && artifact.owner != &ITEM_ID
             && artifact.owner != &id()
         {
             return Err(ErrorCode::CanOnlyCacheValidRaindropsObjects.into());
@@ -227,12 +194,15 @@ pub mod namespace {
     pub fn uncache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, UncacheArtifact<'info>>,
         page: u64,
+        _namespace_gatekeeper_bump: u8,
     ) -> ProgramResult {
         let namespace = &mut ctx.accounts.namespace;
         let index = &mut ctx.accounts.index;
         let artifact = &mut ctx.accounts.artifact;
         let receiver = &mut ctx.accounts.receiver;
         let artifact_info = artifact.to_account_info();
+
+        assert_part_of_namespace(artifact, namespace)?;
 
         let mut found = false;
         let mut new_arr = vec![];
@@ -267,6 +237,40 @@ pub mod namespace {
 
         Ok(())
     }
+
+    pub fn create_namespace_gatekeeper<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateNamespaceGatekeeper<'info>>,
+        bump: u8,
+    ) -> ProgramResult {
+        let mut namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+        namespace_gatekeeper.bump = bump;
+        Ok(())
+    }
+
+    pub fn add_to_namespace_gatekeeper<'info>(
+        ctx: Context<'_, '_, '_, 'info, AddToNamespaceGatekeeper<'info>>,
+        artifact_filter: ArtifactFilter,
+    ) -> ProgramResult {
+        let mut namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+        namespace_gatekeeper.artifact_filters.push(artifact_filter);
+        Ok(())
+    }
+
+    pub fn remove_from_namespace_gatekeeper<'info>(
+        ctx: Context<'_, '_, '_, 'info, RemoveFromNamespaceGatekeeper<'info>>,
+        idx: usize,
+    ) -> ProgramResult {
+        let mut namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+
+        let new_arr = vec![];
+        for i in 0..namespace_gatekeeper.artifact_filters.len() {
+            if i != idx {
+                new_arr.push(namespace_gatekeeper.artifact_filters[i])
+            }
+        }
+        namespace_gatekeeper.artifact_filters = new_arr;
+        Ok(())
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -285,15 +289,19 @@ pub enum ArtifactType {
     Namespace,
 }
 
+pub const MAX_FILTER_SLOTS: usize = 5;
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum Filter {
-    None {
-        padding: [u8; FILTER_SIZE],
+    Namespace {
+        namespaces: Vec<Pubkey>, //
+        padding: [u8; FILTER_SIZE - MAX_FILTER_SLOTS * 32],
     },
     Category {
         namespace: Pubkey,
-        category: Option<String>,
-        padding: [u8; FILTER_SIZE - 26 - 32],
+        category: Option<Vec<String>>,
+        padding: [u8; 32],
+        padding2: [u8; FILTER_SIZE - 1 - (25 * MAX_FILTER_SLOTS) - 32 - 32],
     },
     Key {
         key: Pubkey,
@@ -301,33 +309,38 @@ pub enum Filter {
         metadata: Pubkey,
         edition: Option<Pubkey>,
         padding: [u8; 32],
+        padding2: [u8; FILTER_SIZE - 32 - 32 - 32 - 33 - 32],
     },
 }
 
-pub const FILTER_SIZE: usize = 32 + // key
-32 + // mint
-32 + // metadata
-33 + // edition
-32; //padding
+pub const FILTER_SIZE: usize = (MAX_FILTER_SLOTS + 1) * 32;
 
-#[account]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ArtifactFilter {
-    // namespace will always be set, just following the caching convention in case
-    // user decides to cache these, too
-    indexed: bool,
-    namespace: Option<Pubkey>,
-    is_blacklist: bool,
     filter: Filter,
     token_type: ArtifactType,
-    filter_index: u64,
+}
+
+#[account]
+pub struct NamespaceGatekeeper {
     bump: u8,
+    artifact_filters: Vec<ArtifactFilter>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct PermissivenessSettings {
+    namespace_permissiveness: Permissiveness,
+    item_permissiveness: Permissiveness,
+    player_permissiveness: Permissiveness,
+    match_permissiveness: Permissiveness,
+    mission_permissiveness: Permissiveness,
+    cache_permissiveness: Permissiveness,
 }
 
 /// seed ['namespace', namespace program, mint]
 #[account]
 pub struct Namespace {
-    indexed: bool,
-    namespace: Option<Pubkey>,
+    namespaces: ArtifactNamespaceSetting,
     mint: Pubkey,
     metadata: Pubkey,
     master_edition: Pubkey,
@@ -336,12 +349,7 @@ pub struct Namespace {
     artifacts_added: u64,
     highest_page: u64,
     artifacts_cached: u64,
-    namespace_permissiveness: Permissiveness,
-    item_permissiveness: Permissiveness,
-    player_permissiveness: Permissiveness,
-    match_permissiveness: Permissiveness,
-    mission_permissiveness: Permissiveness,
-    cache_permissiveness: Permissiveness,
+    permissiveness_settings: PermissivenessSettings,
     bump: u8,
     whitelisted_staking_mints: Vec<Pubkey>,
 }
@@ -418,9 +426,63 @@ pub struct InitializeNamespace<'info> {
 pub struct UpdateNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key())]
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     token_holder: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(bump: u8, space: usize)]
+pub struct CreateNamespaceGatekeeper<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    namespace: Account<'info, Namespace>,
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    namespace_token: Account<'info, TokenAccount>,
+    #[account(init, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=bump, payer=payer, space=space)]
+    namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
+    token_holder: Signer<'info>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct AddToNamespaceGatekeeper<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    namespace: Account<'info, Namespace>,
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    namespace_token: Account<'info, TokenAccount>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump)]
+    namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
+    token_holder: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct RemoveFromNamespaceGatekeeper<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    namespace: Account<'info, Namespace>,
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    namespace_token: Account<'info, TokenAccount>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump)]
+    namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
+    token_holder: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(namespace_gatekeeper_bump: u8)]
+pub struct JoinArtifact<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    namespace: Account<'info, Namespace>,
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    namespace_token: Account<'info, TokenAccount>,
+    #[account(mut)]
+    artifact: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), PREFIX.as_bytes()], bump=namespace_gatekeeper_bump)]
+    namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
+    token_holder: UncheckedAccount<'info>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -428,7 +490,7 @@ pub struct UpdateNamespace<'info> {
 pub struct CacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key())]
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.to_string().as_bytes()], bump=index_bump)]
     index: Account<'info, NamespaceIndex>,
@@ -441,36 +503,17 @@ pub struct CacheArtifact<'info> {
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
 }
-
-#[derive(Accounts)]
-#[instruction(index_bump: u8, prior_index_bump: u8, page: u64)]
-pub struct JoinArtifact<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
-    namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key())]
-    namespace_token: Account<'info, TokenAccount>,
-    #[account(mut)]
-    artifact: UncheckedAccount<'info>,
-
-    token_holder: UncheckedAccount<'info>,
-    payer: Signer<'info>,
-    system_program: Program<'info, System>,
-    rent: Sysvar<'info, Rent>,
-}
-
 #[derive(Accounts)]
 #[instruction( page: u64)]
 pub struct UncacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key())]
+    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.to_string().as_bytes()], bump=index.bump)]
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), artifact_filter.filter_index.to_string().as_bytes()], bump=filter_index.bump)]
-    artifact_filter: Account<'info, ArtifactFilter>,
     token_holder: UncheckedAccount<'info>,
     // Received of funds
     receiver: UncheckedAccount<'info>,
@@ -524,4 +567,6 @@ pub enum ErrorCode {
     ArtifactLacksNamespace,
     #[msg("Artifact not part of namespace!")]
     ArtifactNotPartOfNamespace,
+    #[msg("You do not have permissions to join this namespace")]
+    CannotJoinNamespace,
 }

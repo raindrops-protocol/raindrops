@@ -57,7 +57,7 @@ pub struct NamespaceAndIndex {
     namespace: Pubkey,
     indexed: bool,
 }
-#[account]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ArtifactNamespaceSetting {
     namespaces: Vec<NamespaceAndIndex>,
 }
