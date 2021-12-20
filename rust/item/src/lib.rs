@@ -58,7 +58,7 @@ pub mod item {
 pub struct CreateItemClass<'info> {
     // parent determines who can create this (if present) so need to add all classes and check who is the signer...
     // perhaps do this via optional additional accounts to save space.
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class_bump, space=space, payer=payer, constraint=space > MIN_ITEM_CLASS_SIZE)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class_bump, space=space, payer=payer, constraint=space >= MIN_ITEM_CLASS_SIZE)]
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
@@ -91,40 +91,124 @@ pub struct CreateItemClass<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction( item_class_bump: u8, space: usize)]
+#[instruction(craft_bump: u8)]
 pub struct CreateCraftItemEscrow<'info> {
     // parent determines who can create this (if present) so need to add all classes and check who is the signer...
     // perhaps do this via optional additional accounts to save space.
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class_bump, space=space, payer=payer, constraint=space > MIN_ITEM_CLASS_SIZE)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    item_mint: Account<'info, Mint>,
-    metadata: UncheckedAccount<'info>,
-    edition: UncheckedAccount<'info>,
-    // is the parent item class (if there is one.)
-    parent: UncheckedAccount<'info>,
+    item_class_mint: Account<'info, Mint>,
+    new_item_mint: Account<'info, Mint>,
+    new_item_metadata: UncheckedAccount<'info>,
+    new_item_edition: UncheckedAccount<'info>,
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref()], bump=craft_bump, space=8+1+8+1, payer=payer)]
+    item_escrow: Account<'info, ItemEscrow>,
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    new_item_token: Account<'info, TokenAccount>,
+    // may be required signer if builder must be holder in item class is true
+    new_item_token_holder: UncheckedAccount<'info>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
-    // If parent is unset, need to provide:
-    // metadata_update_authority [signer]
-    // If parent is set, and update permissiveness is token holder can update:
-    // parent token_account [readable]
-    // parent token_holder [signer]
-    // parent mint [readable]
-    // If parent is set, and update permissiveness is class holder can update
-    // parent's class token_account [readable]
-    // parent's class token_holder [signer]
-    // parent's class [readable]
-    // parent's class's mint [readable]
-    // If parent is set, and update permissiveness is namespace holder can update
-    // namespace token_account [readable]
-    // namespace token_holder [signer]
-    // namespace [readable]
-    // If parent is set and update permissiveness is update authority can update
-    // parent's metadata_update_authority [signer]
-    // parent's metadata [readable]
-    // parent's mint [readable]
-    // If parent is set and update permissiveness is anybody can update, nothing further is required.
+}
+
+#[derive(Accounts)]
+#[instruction(token_bump: u8)]
+pub struct AddToCraftItemEscrow<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    item_class_mint: Account<'info, Mint>,
+    new_item_mint: Account<'info, Mint>,
+    // payer is in seed so that draining funds can only be done by original payer
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref()], bump=item_escrow.bump)]
+    item_escrow: Account<'info, ItemEscrow>,
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    new_item_token: Account<'info, TokenAccount>,
+    // may be required signer if builder must be holder in item class is true
+    new_item_token_holder: UncheckedAccount<'info>,
+    // cant be stolen to a different craft item token account due to seed by token key
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), new_item_mint.key().as_ref(),payer.key().as_ref(), ccraft_item_token_account.key().as_ref(),craft_item_token_account.mint.as_ref()], bump=token_bump,token::mint = craft_item_token_account.mint, token::authority = item_class.key(), payer=payer)]
+    craft_item_token_account_escrow: Account<'info, TokenAccount>,
+    #[account(mut)]
+    craft_item_token_account: Account<'info, TokenAccount>,
+    craft_item_transfer_authority: Signer<'info>,
+    payer: Signer<'info>,
+    originator: UncheckedAccount<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(token_bump: u8)]
+pub struct RemoveCraftItemFromEscrow<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    item_class_mint: Account<'info, Mint>,
+    new_item_mint: Account<'info, Mint>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref()], bump=item_escrow.bump)]
+    item_escrow: Account<'info, ItemEscrow>,
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    new_item_token: Account<'info, TokenAccount>,
+    // may be required signer if builder must be holder in item class is true
+    new_item_token_holder: UncheckedAccount<'info>,
+    // cant be stolen to a different craft item token account due to seed by token key
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), new_item_mint.key().as_ref(),receiver.key().as_ref(), craft_item_token_account.key().as_ref(), craft_item_token_account.mint.as_ref()], bump=token_bump)]
+    craft_item_token_account_escrow: Account<'info, TokenAccount>,
+    #[account(mut)]
+    craft_item_token_account: Account<'info, TokenAccount>,
+    // account funds will be drained here from craft_item_token_account_escrow
+    receiver: Signer<'info>,
+    originator: UncheckedAccount<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct DeactivateItemEscrow<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    item_class_mint: Account<'info, Mint>,
+    new_item_mint: Account<'info, Mint>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref()], bump=item_escrow.bump)]
+    item_escrow: Account<'info, ItemEscrow>,
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    new_item_token: Account<'info, TokenAccount>,
+    // may be required signer if builder must be holder in item class is true
+    new_item_token_holder: UncheckedAccount<'info>,
+    originator: Signer<'info>,
+}
+
+pub struct DrainItemEscrow<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    item_class_mint: Account<'info, Mint>,
+    new_item_mint: Account<'info, Mint>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref()], bump=item_escrow.bump)]
+    item_escrow: Account<'info, ItemEscrow>,
+    originator: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(new_item_bump: u8, space: usize)]
+pub struct CompleteItemEscrow<'info> {
+    // parent determines who can create this (if present) so need to add all classes and check who is the signer...
+    // perhaps do this via optional additional accounts to save space.
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    item_class_mint: Account<'info, Mint>,
+    #[account(init, seeds=[PREFIX.as_bytes(), new_item_mint.key().as_ref()], bump=new_item_bump, payer=payer, space=space, constraint= space >= MIN_ITEM_SIZE)]
+    new_item: Account<'info, ItemClass>,
+    new_item_mint: Account<'info, Mint>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref()], bump=item_escrow.bump)]
+    item_escrow: Account<'info, ItemEscrow>,
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    new_item_token: Account<'info, TokenAccount>,
+    // may be required signer if builder must be holder in item class is true
+    new_item_token_holder: UncheckedAccount<'info>,
+    payer: Signer<'info>,
+    originator: UncheckedAccount<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -307,6 +391,8 @@ pub enum ChildUpdatePropagationPermissiveness {
     Components { overridable: bool },
     UpdatePermissiveness { overridable: bool },
     ChildUpdatePropagationPermissiveness { overridable: bool },
+    ChildrenMustBeEditionsPermissiveness { overridable: bool },
+    BuilderMustBeHolderPermissiveness { overridable: bool },
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -337,6 +423,7 @@ pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 1 + // metadata
 1 + // edition
 4 + // number of namespaces
+1 + // children must be editions
 4 + // number of default update permissivenesses
 2 + // minimum 1 default update
 4+// number of child update propagations
@@ -357,6 +444,8 @@ pub struct ItemClass {
     edition: Option<Pubkey>,
     parent: Option<Pubkey>,
     bump: u8,
+    children_must_be_editions: bool,
+    builder_must_be_holder: bool,
     default_category: DefaultItemCategory,
     default_update_permissiveness: Vec<UpdatePermissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
@@ -369,6 +458,14 @@ pub struct ItemClass {
     // cached values, and root is source of truth. Up to you to keep them up to date.
     usages: Vec<ItemUsage>,
     components: Vec<Component>,
+}
+
+#[account]
+pub struct ItemEscrow {
+    namespaces: ArtifactNamespaceSetting,
+    bump: u8,
+    deactivated: bool,
+    step: u64,
 }
 
 // can make this super cheap

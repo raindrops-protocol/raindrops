@@ -67,6 +67,8 @@ pub enum ChildUpdatePropagationPermissiveness {
     Components { overridable: bool },
     UpdatePermissiveness { overridable: bool },
     ChildUpdatePropagationPermissiveness { overridable: bool },
+    ChildrenMustBeEditionsPermissiveness { overridable: bool },
+    BuilderMustBeHolderPermissiveness { overridable: bool },
     Uri { overridable: bool },
 }
 
@@ -114,6 +116,8 @@ pub struct PlayerClass {
     edition: Pubkey,
     starting_stats_uri: StatsUri,
     default_category: PlayerCategory,
+    children_must_be_editions: bool,
+    builder_must_be_holder: bool,
     default_update_permissiveness: Vec<UpdatePermissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     parent: Option<Pubkey>,
