@@ -53,6 +53,7 @@ pub struct EquippedItem {
 pub enum UpdatePermissiveness {
     TokenHolderCanUpdate { inherited: InheritanceState },
     PlayerClassHolderCanUpdate { inherited: InheritanceState },
+    UpdateAuthorityCanUpdate { inherited: InheritanceState },
     AnybodyCanUpdate { inherited: InheritanceState },
     NamespaceOwnerCanUpdate { inherited: InheritanceState },
 }

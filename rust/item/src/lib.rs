@@ -33,6 +33,126 @@ pub mod item {
     use super::*;
 }
 
+// [COMMON REMAINING ACCOUNTS]
+// Most actions require certain remainingAccounts based on their permissioned setup
+// if you see common remaining accounts label, use the following as your rubric:
+// If update permissiveness is token holder can update:
+// token_account [readable]
+// token_holder [signer]
+// If update permissiveness is class holder can update
+// class token_account [readable]
+// class token_holder [signer]
+// class [readable]
+// class mint [readable]
+// If update permissiveness is namespace holder can update
+// namespace token_account [readable]
+// namespace token_holder [signer]
+// namespace [readable]
+// If update permissiveness is update authority can update
+// metadata_update_authority [signer]
+// metadata [readable]
+// If update permissiveness is anybody can update, nothing further is required.
+
+#[derive(Accounts)]
+#[instruction( item_class_bump: u8, space: usize)]
+pub struct CreateItemClass<'info> {
+    // parent determines who can create this (if present) so need to add all classes and check who is the signer...
+    // perhaps do this via optional additional accounts to save space.
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class_bump, space=space, payer=payer, constraint=space > MIN_ITEM_CLASS_SIZE)]
+    item_class: Account<'info, ItemClass>,
+    item_mint: Account<'info, Mint>,
+    metadata: UncheckedAccount<'info>,
+    edition: UncheckedAccount<'info>,
+    // is the parent item class (if there is one.)
+    parent: UncheckedAccount<'info>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+    // If parent is unset, need to provide:
+    // metadata_update_authority [signer]
+    // If parent is set, and update permissiveness is token holder can update:
+    // parent token_account [readable]
+    // parent token_holder [signer]
+    // parent mint [readable]
+    // If parent is set, and update permissiveness is class holder can update
+    // parent's class token_account [readable]
+    // parent's class token_holder [signer]
+    // parent's class [readable]
+    // parent's class's mint [readable]
+    // If parent is set, and update permissiveness is namespace holder can update
+    // namespace token_account [readable]
+    // namespace token_holder [signer]
+    // namespace [readable]
+    // If parent is set and update permissiveness is update authority can update
+    // parent's metadata_update_authority [signer]
+    // parent's metadata [readable]
+    // parent's mint [readable]
+    // If parent is set and update permissiveness is anybody can update, nothing further is required.
+}
+
+#[derive(Accounts)]
+#[instruction( item_class_bump: u8, space: usize)]
+pub struct CreateCraftItemEscrow<'info> {
+    // parent determines who can create this (if present) so need to add all classes and check who is the signer...
+    // perhaps do this via optional additional accounts to save space.
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class_bump, space=space, payer=payer, constraint=space > MIN_ITEM_CLASS_SIZE)]
+    item_class: Account<'info, ItemClass>,
+    item_mint: Account<'info, Mint>,
+    metadata: UncheckedAccount<'info>,
+    edition: UncheckedAccount<'info>,
+    // is the parent item class (if there is one.)
+    parent: UncheckedAccount<'info>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+    // If parent is unset, need to provide:
+    // metadata_update_authority [signer]
+    // If parent is set, and update permissiveness is token holder can update:
+    // parent token_account [readable]
+    // parent token_holder [signer]
+    // parent mint [readable]
+    // If parent is set, and update permissiveness is class holder can update
+    // parent's class token_account [readable]
+    // parent's class token_holder [signer]
+    // parent's class [readable]
+    // parent's class's mint [readable]
+    // If parent is set, and update permissiveness is namespace holder can update
+    // namespace token_account [readable]
+    // namespace token_holder [signer]
+    // namespace [readable]
+    // If parent is set and update permissiveness is update authority can update
+    // parent's metadata_update_authority [signer]
+    // parent's metadata [readable]
+    // parent's mint [readable]
+    // If parent is set and update permissiveness is anybody can update, nothing further is required.
+}
+
+#[derive(Accounts)]
+pub struct UpdateItemClass<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    item_mint: Account<'info, Mint>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
+}
+
+#[derive(Accounts)]
+pub struct DrainItemClass<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    item_mint: Account<'info, Mint>,
+    receiver: Signer<'info>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
+}
+
+#[derive(Accounts)]
+pub struct DrainItem<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref()], bump=item.bump)]
+    item: Account<'info, Item>,
+    item_mint: Account<'info, Mint>,
+    receiver: Signer<'info>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Callback(pub Pubkey, pub u64);
 
@@ -171,43 +291,13 @@ pub struct Component {
     padding: [u8; 32],
 }
 
-pub const MAX_COMPONENTS: usize = 10;
-pub const MAX_ITEM_USAGES: usize = 10;
-
-pub const ITEM_CLASS_SIZE: usize = 8 + // key
-32 + // mint
-32 + // metadata
-32 + // edition
-1 + //indexed
-26 + // default cat
-3 + // update permissiveness
-4 + 4 + // child propagation vec
-33 + // parent
-33 +// namespace
-MAX_ITEM_USAGES*ITEM_USAGE_SIZE + // item usages
-COMPONENT_SIZE*MAX_COMPONENTS +
-200; //padding
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum UpdatePermissiveness {
     TokenHolderCanUpdate { inherited: InheritanceState },
-    PlayerClassHolderCanUpdate { inherited: InheritanceState },
+    ClassHolderCanUpdate { inherited: InheritanceState },
+    UpdateAuthorityCanUpdate { inherited: InheritanceState },
     AnybodyCanUpdate { inherited: InheritanceState },
     NamespaceOwnerCanUpdate { inherited: InheritanceState },
-}
-
-pub const MAX_NAMESPACES: usize = 10;
-pub const ITEM_CLASS_INDEX_SIZE: usize = 8 + MAX_NAMESPACES * 32;
-/// seed ['item', item program, mint]
-#[account]
-pub struct ItemClassIndex {
-    namespaces: Vec<Pubkey>,
-}
-
-/// Seed ['item', item program, mint, namespace, 'whitelist']
-#[account]
-pub struct ItemClassNamespaceWhitelist {
-    namespace: Pubkey,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -242,43 +332,74 @@ pub struct ArtifactNamespaceSetting {
     namespaces: Vec<NamespaceAndIndex>,
 }
 
-/// seed ['item', item program, mint, namespace]
+pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
+1 + // mint
+1 + // metadata
+1 + // edition
+4 + // number of namespaces
+4 + // number of default update permissivenesses
+2 + // minimum 1 default update
+4+// number of child update propagations
+1 + // parent
+4 + // number of usages
+4 +  // number of components
+3 + // roots
+1; //bump
+
 #[account]
 pub struct ItemClass {
     namespaces: ArtifactNamespaceSetting,
-    mint: Pubkey,
-    metadata: Pubkey,
-    edition: Pubkey,
+    mint: Option<Pubkey>,
+    metadata: Option<Pubkey>,
+    /// If not present, only Destruction/Infinite consumption types are allowed,
+    /// And no cooldowns because we can't easily track a cooldown
+    /// on a mint with more than 1 coin.
+    edition: Option<Pubkey>,
+    parent: Option<Pubkey>,
+    bump: u8,
     default_category: DefaultItemCategory,
     default_update_permissiveness: Vec<UpdatePermissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
-    parent: Option<Pubkey>,
+    // The roots are merkle roots, used to keep things cheap on chain (optional)
+    usage_root: Option<[u8; 32]>,
+    // Used to seed the root for new items
+    usage_state_root: Option<[u8; 32]>,
+    component_root: Option<[u8; 32]>,
+    // Note that both usages and components are mutually exclusive with usage_root and component_root - if those are set, these are considered
+    // cached values, and root is source of truth. Up to you to keep them up to date.
     usages: Vec<ItemUsage>,
     components: Vec<Component>,
 }
 
-pub const ITEM_SIZE: usize = 8 + // key
-32 + // mint
-32 + // metadata
-32 + // parent
+// can make this super cheap
+pub const MIN_ITEM_SIZE: usize = 8 + // key
+1 + // mint
+1 + // metadata
+1 + // parent
 1 + //indexed
 2 + // authority level
-33 + // edition
-MAX_ITEM_USAGES*ITEM_USAGE_STATE_SIZE + // item usages
-200; // padding
+1 + // edition
+4 + // number of item usages
+4 + // number of namespaces
+4 + // number of update permissivenesses;
+1 + // root
+1; //bump
 
 /// seed ['item', item program, mint, namespace]
 #[account]
 pub struct Item {
     namespaces: ArtifactNamespaceSetting,
-    mint: Pubkey,
-    metadata: Pubkey,
-    parent: Pubkey,
-    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
+    mint: Option<Pubkey>,
+    metadata: Option<Pubkey>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
     /// on a mint with more than 1 coin.
     edition: Option<Pubkey>,
+    parent: Option<Pubkey>,
+    bump: u8,
+    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
+    usage_state_root: Option<[u8; 32]>,
+    // if state root is set, usage states is considered a cache, not source of truth
     usage_states: Vec<ItemUsageState>,
 }
 
