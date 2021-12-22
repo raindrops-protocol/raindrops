@@ -28,9 +28,12 @@ use {
     std::str::FromStr,
 };
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
-pub const PLAYER_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
-pub const MATCH_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
-pub const ITEM_ID: Pubkey = Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+pub const PLAYER_ID: Pubkey =
+    Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98").unwrap();
+pub const MATCH_ID: Pubkey =
+    Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98").unwrap();
+pub const ITEM_ID: Pubkey =
+    Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98").unwrap();
 pub const MAX_NAMESPACES: usize = 5;
 
 const PREFIX: &str = "namespace";

@@ -55,7 +55,6 @@ pub enum UpdatePermissiveness {
     PlayerClassHolderCanUpdate { inherited: InheritanceState },
     UpdateAuthorityCanUpdate { inherited: InheritanceState },
     AnybodyCanUpdate { inherited: InheritanceState },
-    NamespaceOwnerCanUpdate { inherited: InheritanceState },
 }
 
 pub const MAX_NAMESPACES: usize = 10;
@@ -111,16 +110,16 @@ pub struct ArtifactNamespaceSetting {
 #[account]
 pub struct PlayerClass {
     namespaces: ArtifactNamespaceSetting,
-    mint: Pubkey,
-    metadata: Pubkey,
-    edition: Pubkey,
-    starting_stats_uri: StatsUri,
-    default_category: PlayerCategory,
+    parent: Option<Pubkey>,
+    mint: Option<Pubkey>,
+    metadata: Option<Pubkey>,
+    edition: Option<Pubkey>,
+    starting_stats_uri: Option<StatsUri>,
+    default_category: Option<PlayerCategory>,
     children_must_be_editions: bool,
     builder_must_be_holder: bool,
     default_update_permissiveness: Vec<UpdatePermissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
-    parent: Option<Pubkey>,
     body_parts: Vec<BodyPart>,
 }
 
@@ -128,11 +127,11 @@ pub struct PlayerClass {
 #[account]
 pub struct Player {
     namespaces: ArtifactNamespaceSetting,
-    mint: Pubkey,
-    metadata: Pubkey,
-    edition: Pubkey,
     parent: Pubkey,
-    stats_uri: StatsUri,
+    mint: Option<Pubkey>,
+    metadata: Option<Pubkey>,
+    edition: Option<Pubkey>,
+    stats_uri: Option<StatsUri>,
     category: Option<PlayerCategory>,
     update_permissiveness: Option<Vec<UpdatePermissiveness>>,
     equipped_items: Vec<EquippedItem>,
