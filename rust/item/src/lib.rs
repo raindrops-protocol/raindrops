@@ -50,17 +50,23 @@ pub mod item {
         update_permissiveness_to_use: Option<UpdatePermissiveness>,
     ) -> ProgramResult {
         let item_class = &ctx.accounts.item_class;
+        let item_class_info = item_class.to_account_info();
         let item_mint = &ctx.accounts.item_mint;
         let metadata = &ctx.accounts.metadata;
         let edition = &ctx.accounts.edition;
         let parent = &ctx.accounts.parent;
+        let ed = edition.to_account_info();
 
-        let editionOption = if edition.data_len() > 0 {
-            Some(edition)
+        let edition_option = if edition.data_len() > 0 {
+            Some(&ed)
         } else {
             None
         };
-        assert_metadata_valid(metadata, editionOption, &item_mint.key())?;
+        assert_metadata_valid(
+            &metadata.to_account_info(),
+            edition_option,
+            &item_mint.key(),
+        )?;
 
         if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
             let parent_deserialized: anchor_lang::Account<'_, ItemClass> =
@@ -81,14 +87,19 @@ pub mod item {
                 None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
             }
         } else {
-            let md_deserialized: Metadata =
-                Metadata::from_account_info(&metadata.to_account_info())?;
-            let update_authority = &ctx.remaining_accounts[0];
-            if update_authority.key() != md_deserialized.update_authority
-                || !update_authority.is_signer
-            {
-                return Err(ErrorCode::UpdateAuthoritySignerExpected.into());
-            }
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: &item_class_info,
+                remaining_accounts: ctx.remaining_accounts,
+                update_permissiveness_to_use: &UpdatePermissiveness::UpdateAuthorityCanUpdate {
+                    inherited: InheritanceState::NotInherited,
+                },
+                update_permissiveness_array: &[UpdatePermissiveness::UpdateAuthorityCanUpdate {
+                    inherited: InheritanceState::NotInherited,
+                }],
+                index: class_index,
+                account_mint: Some(&item_mint.to_account_info()),
+            })?;
         }
 
         Ok(())
@@ -215,7 +226,7 @@ pub struct RemoveCraftItemFromEscrow<'info> {
     // if craft item is burned and mint supply -> 0, lamports are returned from this account as well to kill the item off completely in the gamespace
     #[account(mut, seeds=[PREFIX.as_bytes(), craft_item_mint.key().as_ref()], bump=craft_item.bump)]
     craft_item: Account<'info, Item>,
-    #[account(constraint=craft_item.parent == craft_item_class.key())]
+    #[account(constraint=craft_item.parent.unwrap() == craft_item_class.key())]
     craft_item_class: Account<'info, ItemClass>,
     craft_item_mint: Account<'info, Mint>,
     // account funds will be drained here from craft_item_token_account_escrow
@@ -574,7 +585,7 @@ pub struct ItemData {
 #[account]
 pub struct Item {
     namespaces: ArtifactNamespaceSetting,
-    parent: Pubkey,
+    parent: Option<Pubkey>,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
@@ -604,8 +615,6 @@ pub enum ErrorCode {
     #[msg("Derived key is invalid")]
     DerivedKeyInvalid,
     #[msg("Update authority for metadata expected as signer")]
-    UpdateAuthoritySignerExpected,
-    #[msg("To do inheritance, you must specify the update permissiveness entry you want to use.")]
     MustSpecifyUpdatePermissivenessType,
     #[msg("Permissiveness not found in array")]
     PermissivenessNotFound,
@@ -617,4 +626,6 @@ pub enum ErrorCode {
     MetadataDoesntExist,
     #[msg("Edition doesn't exist")]
     EditionDoesntExist,
+    #[msg("No parent present")]
+    NoParentPresent,
 }

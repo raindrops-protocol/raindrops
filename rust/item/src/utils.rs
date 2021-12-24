@@ -12,6 +12,7 @@ use {
         },
         ToAccountInfo,
     },
+    arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
     std::convert::TryInto,
 };
@@ -258,9 +259,9 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
 
     match update_permissiveness_to_use {
         UpdatePermissiveness::TokenHolderCanUpdate { inherited: _ } => {
-            // parent token_account [readable]
-            // parent token_holder [signer]
-            // parent mint [readable]
+            //  token_account [readable]
+            //  token_holder [signer]
+            // parent mint [readable] OR none (depending if this is a create item class call or not and we are running off the parent's settings)
             let token_account = &remaining_accounts[0];
             let token_holder = &remaining_accounts[1];
             let mint = if let Some(m) = account_mint {
@@ -283,12 +284,81 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 &[PREFIX.as_bytes(), mint.key.as_ref(), &index.to_le_bytes()],
             )?;
         }
-        UpdatePermissiveness::ClassHolderCanUpdate { inherited: _ } => {}
-        UpdatePermissiveness::UpdateAuthorityCanUpdate { inherited: _ } => todo!(),
-        UpdatePermissiveness::AnybodyCanUpdate { inherited: _ } => todo!(),
+        UpdatePermissiveness::ClassHolderCanUpdate { inherited: _ } => {
+            // class token_account [readable]
+            // class token_holder [signer]
+            // class [readable]
+            // class mint [readable]
+
+            let class_token_account = &remaining_accounts[0];
+            let class_token_holder = &remaining_accounts[1];
+            let class = &remaining_accounts[2];
+            let class_mint = &remaining_accounts[3];
+
+            assert_signer(class_token_holder)?;
+
+            let acct = assert_is_ata(class_token_account, class_token_holder.key, class_mint.key)?;
+
+            if acct.amount == 0 {
+                return Err(ErrorCode::InsufficientBalance.into());
+            }
+
+            assert_derivation(
+                program_id,
+                class,
+                &[
+                    PREFIX.as_bytes(),
+                    class_mint.key.as_ref(),
+                    &index.to_le_bytes(),
+                ],
+            )?;
+
+            assert_keys_equal(grab_parent(given_account)?, *class.key)?;
+        }
+        UpdatePermissiveness::UpdateAuthorityCanUpdate { inherited: _ } => {
+            // metadata_update_authority [signer]
+            // metadata [readable]
+            // mint [readable] OR none (depending if this is a create item class call or not and we are running off the parent's settings)
+
+            let metadata_update_authority = &remaining_accounts[0];
+            let metadata = &remaining_accounts[1];
+            let mint = &remaining_accounts[2];
+
+            assert_signer(metadata_update_authority)?;
+
+            assert_metadata_valid(metadata, None, mint.key)?;
+
+            let update_authority = grab_update_authority(metadata)?;
+
+            assert_keys_equal(update_authority, *metadata_update_authority.key)?;
+        }
+        UpdatePermissiveness::AnybodyCanUpdate { inherited: _ } => {
+            // nothing
+        }
     }
 
     Ok(())
+}
+
+pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+    let data = artifact.data.borrow();
+    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
+    let offset = 12 as usize + number * 32;
+
+    if data[offset] == 1 {
+        let key_bytes = array_ref![data, offset + 1, 32];
+        let key = Pubkey::new_from_array(*key_bytes);
+        return Ok(key);
+    } else {
+        return Err(ErrorCode::NoParentPresent.into());
+    }
+}
+
+pub fn grab_update_authority<'a>(metadata: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+    let data = metadata.data.borrow();
+    let key_bytes = array_ref![data, 1, 32];
+    let key = Pubkey::new_from_array(*key_bytes);
+    Ok(key)
 }
 
 pub fn assert_is_ata(
@@ -320,13 +390,13 @@ pub fn assert_signer(account: &AccountInfo) -> ProgramResult {
 }
 
 pub fn assert_metadata_valid<'a>(
-    metadata: &UncheckedAccount,
-    edition: Option<&UncheckedAccount>,
+    metadata: &AccountInfo,
+    edition: Option<&AccountInfo>,
     mint: &Pubkey,
 ) -> ProgramResult {
     assert_derivation(
         &metaplex_token_metadata::id(),
-        &metadata.to_account_info(),
+        &metadata,
         &[
             metaplex_token_metadata::state::PREFIX.as_bytes(),
             metaplex_token_metadata::id().as_ref(),
@@ -340,7 +410,7 @@ pub fn assert_metadata_valid<'a>(
     if let Some(ed) = edition {
         assert_derivation(
             &metaplex_token_metadata::id(),
-            &ed.to_account_info(),
+            &ed,
             &[
                 metaplex_token_metadata::state::PREFIX.as_bytes(),
                 metaplex_token_metadata::id().as_ref(),

@@ -241,16 +241,17 @@ pub fn assert_part_of_namespace<'a>(
     namespace: &Account<'a, Namespace>,
 ) -> ProgramResult {
     let data = artifact.data.borrow_mut();
-    if data[9] == 1 {
-        let artifact_bytes = array_ref![data, 10, 32];
-        let key = Pubkey::new_from_array(*artifact_bytes);
-        if key != namespace.key() {
-            return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
+    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
+    let offset = 12 as usize;
+    for i in 0..number {
+        let key_bytes = array_ref![data, offset + i * 33, 32];
+        let key = Pubkey::new_from_array(*key_bytes);
+        if key == namespace.key() {
+            return Ok(());
         }
-    } else {
-        return Err(ErrorCode::ArtifactLacksNamespace.into());
     }
-    Ok(())
+
+    return Err(ErrorCode::ArtifactLacksNamespace.into());
 }
 
 pub fn inverse_indexed_bool_for_namespace(
