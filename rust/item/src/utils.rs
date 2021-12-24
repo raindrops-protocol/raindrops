@@ -1,16 +1,18 @@
 use {
-    crate::ErrorCode,
+    crate::{ErrorCode, UpdatePermissiveness, PREFIX},
     anchor_lang::{
         prelude::{
-            msg, AccountInfo, ProgramAccount, ProgramError, ProgramResult, Pubkey, Rent,
-            SolanaSysvar,
+            msg, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
+            UncheckedAccount,
         },
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
+        ToAccountInfo,
     },
+    spl_associated_token_account::get_associated_token_address,
     std::convert::TryInto,
 };
 
@@ -222,8 +224,95 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
     result.map_err(|_| ErrorCode::TokenBurnFailed.into())
 }
 
-pub fn assert_signer(account: &UncheckedAccount) -> ProgramResult {
-    if !account.is_signer() {
+pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
+    pub program_id: &'a Pubkey,
+    pub given_account: &'b AccountInfo<'info>,
+    pub remaining_accounts: &'c [AccountInfo<'info>],
+    pub update_permissiveness_to_use: &'a UpdatePermissiveness,
+    pub update_permissiveness_array: &'a [UpdatePermissiveness],
+    pub index: u64,
+    pub account_mint: Option<&'b AccountInfo<'info>>,
+}
+
+pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> ProgramResult {
+    let AssertPermissivenessAccessArgs {
+        program_id,
+        given_account,
+        remaining_accounts,
+        update_permissiveness_to_use,
+        update_permissiveness_array,
+        index,
+        account_mint,
+    } = args;
+    let mut found = false;
+    for entry in update_permissiveness_array {
+        if entry == update_permissiveness_to_use {
+            found = true;
+            break;
+        }
+    }
+
+    if !found {
+        return Err(ErrorCode::PermissivenessNotFound.into());
+    }
+
+    match update_permissiveness_to_use {
+        UpdatePermissiveness::TokenHolderCanUpdate { inherited: _ } => {
+            // parent token_account [readable]
+            // parent token_holder [signer]
+            // parent mint [readable]
+            let token_account = &remaining_accounts[0];
+            let token_holder = &remaining_accounts[1];
+            let mint = if let Some(m) = account_mint {
+                m
+            } else {
+                &remaining_accounts[2]
+            };
+
+            assert_signer(token_holder)?;
+
+            let acct = assert_is_ata(token_account, token_holder.key, mint.key)?;
+
+            if acct.amount == 0 {
+                return Err(ErrorCode::InsufficientBalance.into());
+            }
+
+            assert_derivation(
+                program_id,
+                given_account,
+                &[PREFIX.as_bytes(), mint.key.as_ref(), &index.to_le_bytes()],
+            )?;
+        }
+        UpdatePermissiveness::ClassHolderCanUpdate { inherited: _ } => {}
+        UpdatePermissiveness::UpdateAuthorityCanUpdate { inherited: _ } => todo!(),
+        UpdatePermissiveness::AnybodyCanUpdate { inherited: _ } => todo!(),
+    }
+
+    Ok(())
+}
+
+pub fn assert_is_ata(
+    ata: &AccountInfo,
+    wallet: &Pubkey,
+    mint: &Pubkey,
+) -> Result<spl_token::state::Account, ProgramError> {
+    assert_owned_by(ata, &spl_token::id())?;
+    let ata_account: spl_token::state::Account = assert_initialized(ata)?;
+    assert_keys_equal(ata_account.owner, *wallet)?;
+    assert_keys_equal(get_associated_token_address(wallet, mint), *ata.key)?;
+    Ok(ata_account)
+}
+
+pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {
+    if key1 != key2 {
+        Err(ErrorCode::PublicKeyMismatch.into())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn assert_signer(account: &AccountInfo) -> ProgramResult {
+    if !account.is_signer {
         Err(ProgramError::MissingRequiredSignature)
     } else {
         Ok(())

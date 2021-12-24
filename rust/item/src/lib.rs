@@ -2,9 +2,11 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_derivation, assert_initialized, assert_metadata_valid, assert_owned_by,
-        assert_signer, create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
-        spl_token_mint_to, spl_token_transfer, TokenBurnParams, TokenTransferParams,
+        assert_derivation, assert_initialized, assert_is_ata, assert_metadata_valid,
+        assert_owned_by, assert_permissiveness_access, assert_signer,
+        create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
+        spl_token_mint_to, spl_token_transfer, AssertPermissivenessAccessArgs, TokenBurnParams,
+        TokenTransferParams,
     },
     anchor_lang::{
         prelude::*,
@@ -38,10 +40,11 @@ pub mod item {
 
     use super::*;
 
-    pub fn create_item_class<'info>(
-        ctx: Context<'_, '_, '_, 'info, CreateItemClass<'info>>,
+    pub fn create_item_class<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CreateItemClass<'info>>,
         item_class_bump: u8,
         class_index: u64,
+        parent_class_index: Option<u64>,
         space: usize,
         item_class_data: ItemClassData,
         update_permissiveness_to_use: Option<UpdatePermissiveness>,
@@ -64,41 +67,23 @@ pub mod item {
                 Account::try_from(&parent.to_account_info())?;
 
             match update_permissiveness_to_use {
-                Some(val) => {
-                    let mut found = false;
-                    for entry in &parent_deserialized.data.default_update_permissiveness {
-                        if *entry == val {
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if !found {
-                        return Err(ErrorCode::PermissivenessNotFound.into());
-                    }
-
-                    match val {
-                        UpdatePermissiveness::TokenHolderCanUpdate { inherited: _ } => {
-                            // parent token_account [readable]
-                            // parent token_holder [signer]
-                            // parent mint [readable]
-                            let parent_token_account = &ctx.remaining_accounts[0];
-                            let parent_token_holder = &ctx.remaining_accounts[1];
-                            let parent_mint = &ctx.remaining_accounts[2];
-
-                            assert_signer(parent_token_holder)?;
-                        }
-                        UpdatePermissiveness::ClassHolderCanUpdate { inherited: _ } => todo!(),
-                        UpdatePermissiveness::UpdateAuthorityCanUpdate { inherited: _ } => todo!(),
-                        UpdatePermissiveness::AnybodyCanUpdate { inherited: _ } => todo!(),
-                    }
-                }
+                Some(val) => assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                    program_id: ctx.program_id,
+                    given_account: parent,
+                    remaining_accounts: ctx.remaining_accounts,
+                    update_permissiveness_to_use: &val,
+                    update_permissiveness_array: &parent_deserialized
+                        .data
+                        .default_update_permissiveness,
+                    index: parent_class_index.unwrap(),
+                    account_mint: None,
+                })?,
                 None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
             }
         } else {
             let md_deserialized: Metadata =
                 Metadata::from_account_info(&metadata.to_account_info())?;
-            let update_authority = ctx.remaining_accounts[0];
+            let update_authority = &ctx.remaining_accounts[0];
             if update_authority.key() != md_deserialized.update_authority
                 || !update_authority.is_signer
             {
@@ -127,7 +112,7 @@ pub mod item {
 // If update permissiveness is anybody can update, nothing further is required.
 
 #[derive(Accounts)]
-#[instruction( item_class_bump: u8, class_index: u64, space: usize)]
+#[instruction( item_class_bump: u8, class_index: u64, parent_class_index: Option<u64>, space: usize)]
 pub struct CreateItemClass<'info> {
     // parent determines who can create this (if present) so need to add all classes and check who is the signer...
     // perhaps do this via optional additional accounts to save space.
@@ -624,4 +609,12 @@ pub enum ErrorCode {
     MustSpecifyUpdatePermissivenessType,
     #[msg("Permissiveness not found in array")]
     PermissivenessNotFound,
+    #[msg("Public key mismatch")]
+    PublicKeyMismatch,
+    #[msg("Insufficient Balance")]
+    InsufficientBalance,
+    #[msg("Metadata doesn't exist")]
+    MetadataDoesntExist,
+    #[msg("Edition doesn't exist")]
+    EditionDoesntExist,
 }
