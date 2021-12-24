@@ -2,38 +2,19 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_can_add_to_namespace, assert_derivation, assert_initialized, assert_metadata_valid,
-        assert_owned_by, assert_part_of_namespace, create_or_allocate_account_raw,
-        get_mask_and_index_for_seq, inverse_indexed_bool_for_namespace, pull_namespaces,
-        spl_token_burn, spl_token_mint_to, spl_token_transfer, TokenBurnParams,
-        TokenTransferParams,
+        assert_can_add_to_namespace, assert_initialized, assert_metadata_valid,
+        assert_part_of_namespace, create_or_allocate_account_raw,
+        inverse_indexed_bool_for_namespace,
     },
-    anchor_lang::{
-        prelude::*,
-        solana_program::{
-            program::{invoke, invoke_signed},
-            program_option::COption,
-            program_pack::Pack,
-            system_instruction, system_program,
-        },
-        AnchorDeserialize, AnchorSerialize,
-    },
+    anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{Mint, Token, TokenAccount},
-    arrayref::{array_mut_ref, array_ref},
-    metaplex_token_metadata::instruction::{
-        create_master_edition, create_metadata_accounts,
-        mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
-    },
-    spl_token::instruction::{initialize_account2, mint_to},
+    arrayref::array_mut_ref,
     std::str::FromStr,
 };
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
-pub const PLAYER_ID: Pubkey =
-    Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98").unwrap();
-pub const MATCH_ID: Pubkey =
-    Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98").unwrap();
-pub const ITEM_ID: Pubkey =
-    Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98").unwrap();
+pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
+pub const MATCH_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
+pub const ITEM_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const MAX_NAMESPACES: usize = 5;
 
 const PREFIX: &str = "namespace";
@@ -140,7 +121,7 @@ pub mod namespace {
     pub fn cache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, CacheArtifact<'info>>,
         index_bump: u8,
-        prior_index_bump: u8,
+        _prior_index_bump: u8,
         page: u64,
     ) -> ProgramResult {
         let namespace = &mut ctx.accounts.namespace;
@@ -149,13 +130,12 @@ pub mod namespace {
         let artifact = &mut ctx.accounts.artifact;
         let index_info = index.to_account_info();
         let prior_index_info = prior_index.to_account_info();
-        let artifact_info = artifact.to_account_info();
 
         assert_part_of_namespace(artifact, namespace)?;
 
-        if artifact.owner != &PLAYER_ID
-            && artifact.owner != &MATCH_ID
-            && artifact.owner != &ITEM_ID
+        if artifact.owner != &Pubkey::from_str(PLAYER_ID).unwrap()
+            && artifact.owner != &Pubkey::from_str(MATCH_ID).unwrap()
+            && artifact.owner != &Pubkey::from_str(ITEM_ID).unwrap()
             && artifact.owner != &id()
         {
             return Err(ErrorCode::CanOnlyCacheValidRaindropsObjects.into());
@@ -215,7 +195,6 @@ pub mod namespace {
         let index = &mut ctx.accounts.index;
         let artifact = &mut ctx.accounts.artifact;
         let receiver = &mut ctx.accounts.receiver;
-        let artifact_info = artifact.to_account_info();
 
         assert_part_of_namespace(artifact, namespace)?;
 
@@ -257,7 +236,7 @@ pub mod namespace {
         ctx: Context<'_, '_, '_, 'info, CreateNamespaceGatekeeper<'info>>,
         bump: u8,
     ) -> ProgramResult {
-        let mut namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+        let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
         namespace_gatekeeper.bump = bump;
         Ok(())
     }
@@ -266,7 +245,7 @@ pub mod namespace {
         ctx: Context<'_, '_, '_, 'info, AddToNamespaceGatekeeper<'info>>,
         artifact_filter: ArtifactFilter,
     ) -> ProgramResult {
-        let mut namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+        let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
         namespace_gatekeeper.artifact_filters.push(artifact_filter);
         Ok(())
     }
@@ -275,12 +254,12 @@ pub mod namespace {
         ctx: Context<'_, '_, '_, 'info, RemoveFromNamespaceGatekeeper<'info>>,
         idx: usize,
     ) -> ProgramResult {
-        let mut namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
+        let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
 
-        let new_arr = vec![];
+        let mut new_arr = vec![];
         for i in 0..namespace_gatekeeper.artifact_filters.len() {
             if i != idx {
-                new_arr.push(namespace_gatekeeper.artifact_filters[i])
+                new_arr.push(namespace_gatekeeper.artifact_filters[i].clone())
             }
         }
         namespace_gatekeeper.artifact_filters = new_arr;
@@ -291,25 +270,23 @@ pub mod namespace {
         ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
         _namespace_gatekeeper_bump: u8,
     ) -> ProgramResult {
-        let namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
         let artifact = &mut ctx.accounts.artifact;
-        let token_holder = &ctx.accounts.token_holder;
         let namespace = &mut ctx.accounts.namespace;
 
-        let mut art_namespaces = pull_namespaces(artifact)?;
+        let art_namespaces = pull_namespaces(artifact)?;
 
-        for n in art_namespaces.namespaces {
+        for n in &art_namespaces.namespaces {
             if n.namespace == namespace.key() {
                 if n.indexed {
                     return Err(ErrorCode::ArtifactStillCached.into());
                 } else {
                     let mut new_vec = vec![];
-                    for j in art_namespaces.namespaces {
+                    for j in &art_namespaces.namespaces {
                         if j.namespace != namespace.key() {
                             new_vec.push(j)
                         }
                     }
-                    new_vec.push(NamespaceAndIndex {
+                    new_vec.push(&NamespaceAndIndex {
                         namespace: anchor_lang::solana_program::system_program::id(),
                         indexed: false,
                     });
@@ -342,32 +319,32 @@ pub mod namespace {
         let mut art_namespaces =
             assert_can_add_to_namespace(artifact, token_holder, namespace, namespace_gatekeeper)?;
 
-        let found = false;
-        for n in art_namespaces.namespaces {
+        let mut found = false;
+        for n in &art_namespaces.namespaces {
             if n.namespace == namespace.key() {
                 found = true;
             }
         }
         if !found {
-            let mut most_recent_zero = None;
-            for n in art_namespaces.namespaces {
+            let mut most_recent_zero = false;
+            for n in &mut art_namespaces.namespaces {
                 if n.namespace == anchor_lang::solana_program::system_program::id() {
-                    most_recent_zero = Some(n);
+                    most_recent_zero = true;
+                    n.namespace = namespace.key();
+                    n.indexed = false;
+                    let mut data = artifact.data.borrow_mut();
+                    let arr =
+                        array_mut_ref![data, 8, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
+
+                    arr.copy_from_slice(&art_namespaces.try_to_vec()?);
+                    namespace.artifacts_added = namespace
+                        .artifacts_added
+                        .checked_add(1)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
                     break;
                 }
             }
-            if let Some(mrz) = most_recent_zero {
-                mrz.namespace = namespace.key();
-                mrz.indexed = false;
-                let mut data = artifact.data.borrow_mut();
-                let arr = array_mut_ref![data, 8, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
-
-                arr.copy_from_slice(&art_namespaces.try_to_vec()?);
-                namespace.artifacts_added = namespace
-                    .artifacts_added
-                    .checked_add(1)
-                    .ok_or(ErrorCode::NumericalOverflowError)?;
-            } else {
+            if !most_recent_zero {
                 msg!("Out of space!");
                 return Err(ErrorCode::CannotJoinNamespace.into());
             }

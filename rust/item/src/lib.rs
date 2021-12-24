@@ -2,9 +2,9 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
-        get_mask_and_index_for_seq, spl_token_burn, spl_token_mint_to, spl_token_transfer,
-        TokenBurnParams, TokenTransferParams,
+        assert_derivation, assert_initialized, assert_metadata_valid, assert_owned_by,
+        assert_signer, create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
+        spl_token_mint_to, spl_token_transfer, TokenBurnParams, TokenTransferParams,
     },
     anchor_lang::{
         prelude::*,
@@ -16,23 +16,98 @@ use {
         },
         AnchorDeserialize, AnchorSerialize,
     },
-    anchor_spl::token::{Mint, TokenAccount},
-    metaplex_token_metadata::instruction::{
-        create_master_edition, create_metadata_accounts,
-        mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
+    anchor_spl::token::{Mint, Token, TokenAccount},
+    arrayref::array_ref,
+    metaplex_token_metadata::{
+        instruction::{
+            create_master_edition, create_metadata_accounts,
+            mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
+        },
+        state::Metadata,
     },
-    spl_token::{
-        instruction::{initialize_account2, mint_to},
-        state::Account,
-    },
+    spl_token::instruction::{initialize_account2, mint_to},
+    std::str::FromStr,
 };
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
-pub const PLAYER_ID: Pubkey =
-    Pubkey::from_str("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98").unwrap();
+pub const PREFIX: &str = "item";
+pub const MARKER: &str = "marker";
+pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 
 #[program]
 pub mod item {
+
     use super::*;
+
+    pub fn create_item_class<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateItemClass<'info>>,
+        item_class_bump: u8,
+        class_index: u64,
+        space: usize,
+        item_class_data: ItemClassData,
+        update_permissiveness_to_use: Option<UpdatePermissiveness>,
+    ) -> ProgramResult {
+        let item_class = &ctx.accounts.item_class;
+        let item_mint = &ctx.accounts.item_mint;
+        let metadata = &ctx.accounts.metadata;
+        let edition = &ctx.accounts.edition;
+        let parent = &ctx.accounts.parent;
+
+        let editionOption = if edition.data_len() > 0 {
+            Some(edition)
+        } else {
+            None
+        };
+        assert_metadata_valid(metadata, editionOption, &item_mint.key())?;
+
+        if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
+            let parent_deserialized: anchor_lang::Account<'_, ItemClass> =
+                Account::try_from(&parent.to_account_info())?;
+
+            match update_permissiveness_to_use {
+                Some(val) => {
+                    let mut found = false;
+                    for entry in &parent_deserialized.data.default_update_permissiveness {
+                        if *entry == val {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if !found {
+                        return Err(ErrorCode::PermissivenessNotFound.into());
+                    }
+
+                    match val {
+                        UpdatePermissiveness::TokenHolderCanUpdate { inherited: _ } => {
+                            // parent token_account [readable]
+                            // parent token_holder [signer]
+                            // parent mint [readable]
+                            let parent_token_account = &ctx.remaining_accounts[0];
+                            let parent_token_holder = &ctx.remaining_accounts[1];
+                            let parent_mint = &ctx.remaining_accounts[2];
+
+                            assert_signer(parent_token_holder)?;
+                        }
+                        UpdatePermissiveness::ClassHolderCanUpdate { inherited: _ } => todo!(),
+                        UpdatePermissiveness::UpdateAuthorityCanUpdate { inherited: _ } => todo!(),
+                        UpdatePermissiveness::AnybodyCanUpdate { inherited: _ } => todo!(),
+                    }
+                }
+                None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
+            }
+        } else {
+            let md_deserialized: Metadata =
+                Metadata::from_account_info(&metadata.to_account_info())?;
+            let update_authority = ctx.remaining_accounts[0];
+            if update_authority.key() != md_deserialized.update_authority
+                || !update_authority.is_signer
+            {
+                return Err(ErrorCode::UpdateAuthoritySignerExpected.into());
+            }
+        }
+
+        Ok(())
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
@@ -77,10 +152,6 @@ pub struct CreateItemClass<'info> {
     // parent's class token_holder [signer]
     // parent's class [readable]
     // parent's class's mint [readable]
-    // If parent is set, and update permissiveness is namespace holder can update
-    // namespace token_account [readable]
-    // namespace token_holder [signer]
-    // namespace [readable]
     // If parent is set and update permissiveness is update authority can update
     // parent's metadata_update_authority [signer]
     // parent's metadata [readable]
@@ -93,13 +164,13 @@ pub struct CreateItemClass<'info> {
 pub struct CreateItemEscrow<'info> {
     // parent determines who can create this (if present) so need to add all classes and check who is the signer...
     // perhaps do this via optional additional accounts to save space.
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=craft_bump, space=8+1+8+1, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=craft_bump, space=8+1+8+1, payer=payer)]
     item_escrow: Account<'info, ItemEscrow>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
     new_item_token: Account<'info, TokenAccount>,
@@ -113,44 +184,46 @@ pub struct CreateItemEscrow<'info> {
 #[derive(Accounts)]
 #[instruction(token_bump: u8, class_index: u64, index: u64)]
 pub struct AddCraftItemToEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
     // payer is in seed so that draining funds can only be done by original payer
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),&index.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),&index.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), new_item_mint.key().as_ref(),payer.key().as_ref(), ccraft_item_token_account.key().as_ref(),&index.to_le_bytes(),craft_item_token_account.mint.as_ref()], bump=token_bump,token::mint = craft_item_token_account.mint, token::authority = item_class.key(), payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), new_item_mint.key().as_ref(),payer.key().as_ref(), craft_item_token_account.key().as_ref(),&index.to_le_bytes(),craft_item_token_account.mint.as_ref()], bump=token_bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
     craft_item_token_account_escrow: Account<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut, constraint=craft_item_token_account.mint == craft_item_token_mint.key())]
     craft_item_token_account: Account<'info, TokenAccount>,
+    craft_item_token_mint: Account<'info, Mint>,
     craft_item_transfer_authority: Signer<'info>,
     payer: Signer<'info>,
     originator: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
 #[instruction(token_bump: u8, class_index: u64, index: u64)]
 pub struct RemoveCraftItemFromEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), new_item_mint.key().as_ref(),receiver.key().as_ref(), craft_item_token_account.key().as_ref(), &index.to_le_bytes(), craft_item_token_account.mint.as_ref()], bump=token_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), new_item_mint.key().as_ref(),receiver.key().as_ref(), craft_item_token_account.key().as_ref(), &index.to_le_bytes()], bump=token_bump)]
     craft_item_token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     craft_item_token_account: Account<'info, TokenAccount>,
@@ -170,11 +243,11 @@ pub struct RemoveCraftItemFromEscrow<'info> {
 #[derive(Accounts)]
 #[instruction(class_index: u64, index: u64)]
 pub struct DeactivateItemEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
     new_item_token: Account<'info, TokenAccount>,
@@ -185,11 +258,11 @@ pub struct DeactivateItemEscrow<'info> {
 #[derive(Accounts)]
 #[instruction(class_index: u64, index: u64)]
 pub struct DrainItemEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     originator: Signer<'info>,
 }
@@ -199,13 +272,13 @@ pub struct DrainItemEscrow<'info> {
 pub struct CompleteItemEscrow<'info> {
     // parent determines who can create this (if present) so need to add all classes and check who is the signer...
     // perhaps do this via optional additional accounts to save space.
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     #[account(init, seeds=[PREFIX.as_bytes(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=new_item_bump, payer=payer, space=space, constraint= space >= MIN_ITEM_SIZE)]
     new_item: Account<'info, ItemClass>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
     new_item_token: Account<'info, TokenAccount>,
@@ -257,8 +330,9 @@ pub struct BeginItemActivation<'info> {
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
     payer: Signer<'info>,
-    #[account(constraint = player_program.key() == PLAYER_ID)]
+    #[account(constraint = player_program.key() == Pubkey::from_str(PLAYER_ID).unwrap())]
     player_program: UncheckedAccount<'info>,
+    system_program: Program<'info, System>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -394,7 +468,7 @@ pub struct Component {
     inherited: InheritanceState,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum UpdatePermissiveness {
     TokenHolderCanUpdate { inherited: InheritanceState },
     ClassHolderCanUpdate { inherited: InheritanceState },
@@ -413,7 +487,7 @@ pub enum ChildUpdatePropagationPermissiveness {
     BuilderMustBeHolderPermissiveness { overridable: bool },
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,
@@ -451,17 +525,8 @@ pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 3 + // roots
 1; //bump
 
-#[account]
-pub struct ItemClass {
-    namespaces: ArtifactNamespaceSetting,
-    mint: Option<Pubkey>,
-    metadata: Option<Pubkey>,
-    /// If not present, only Destruction/Infinite consumption types are allowed,
-    /// And no cooldowns because we can't easily track a cooldown
-    /// on a mint with more than 1 coin.
-    edition: Option<Pubkey>,
-    parent: Option<Pubkey>,
-    bump: u8,
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ItemClassData {
     children_must_be_editions: bool,
     builder_must_be_holder: bool,
     default_category: DefaultItemCategory,
@@ -476,6 +541,20 @@ pub struct ItemClass {
     // cached values, and root is source of truth. Up to you to keep them up to date.
     usages: Vec<ItemUsage>,
     components: Vec<Component>,
+}
+
+#[account]
+pub struct ItemClass {
+    namespaces: ArtifactNamespaceSetting,
+    parent: Option<Pubkey>,
+    mint: Option<Pubkey>,
+    metadata: Option<Pubkey>,
+    /// If not present, only Destruction/Infinite consumption types are allowed,
+    /// And no cooldowns because we can't easily track a cooldown
+    /// on a mint with more than 1 coin.
+    edition: Option<Pubkey>,
+    bump: u8,
+    data: ItemClassData,
 }
 
 #[account]
@@ -500,6 +579,13 @@ pub const MIN_ITEM_SIZE: usize = 8 + // key
 1 + // root
 1; //bump
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ItemData {
+    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
+    usage_state_root: Option<[u8; 32]>,
+    // if state root is set, usage states is considered a cache, not source of truth
+    usage_states: Vec<ItemUsageState>,
+}
 #[account]
 pub struct Item {
     namespaces: ArtifactNamespaceSetting,
@@ -511,10 +597,7 @@ pub struct Item {
     /// on a mint with more than 1 coin.
     edition: Option<Pubkey>,
     bump: u8,
-    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
-    usage_state_root: Option<[u8; 32]>,
-    // if state root is set, usage states is considered a cache, not source of truth
-    usage_states: Vec<ItemUsageState>,
+    data: ItemData,
 }
 
 #[error]
@@ -535,4 +618,10 @@ pub enum ErrorCode {
     TokenBurnFailed,
     #[msg("Derived key is invalid")]
     DerivedKeyInvalid,
+    #[msg("Update authority for metadata expected as signer")]
+    UpdateAuthoritySignerExpected,
+    #[msg("To do inheritance, you must specify the update permissiveness entry you want to use.")]
+    MustSpecifyUpdatePermissivenessType,
+    #[msg("Permissiveness not found in array")]
+    PermissivenessNotFound,
 }
