@@ -1,10 +1,8 @@
-use crate::ItemClassData;
-
 use {
     crate::{
         ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
-        DefaultItemCategory, ErrorCode, InheritanceState, Inherited, ItemUsage, Root,
-        UpdatePermissiveness, UpdatePermissivenessType, PREFIX,
+        DefaultItemCategory, ErrorCode, InheritanceState, Inherited, ItemClass, ItemClassData,
+        ItemUsage, Root, UpdatePermissiveness, UpdatePermissivenessType, PREFIX,
     },
     anchor_lang::{
         prelude::{
@@ -440,10 +438,9 @@ pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T>
     }
 }
 
-pub fn update_item_class_with_inherited_information(
-    item_data: &mut ItemClassData,
-    parent_item_data: &ItemClassData,
-) {
+pub fn update_item_class_with_inherited_information(item: &mut ItemClass, parent_item: &ItemClass) {
+    let item_data = &mut item.data;
+    let parent_item_data = &parent_item.data;
     match &parent_item_data.child_update_propagation_permissiveness {
         Some(cupp) => {
             for update_perm in cupp {
@@ -514,6 +511,11 @@ pub fn update_item_class_with_inherited_information(
                             child: &item_data.builder_must_be_holder,
                             overridable: update_perm.overridable,
                         });
+                    },
+                    ChildUpdatePropagationPermissivenessType::Namespaces => {
+                        if update_perm.overridable {
+                            //item.namespaces;
+                        }
                     },
                 }
             }

@@ -51,7 +51,7 @@ pub mod item {
         store_metadata_fields: bool,
         item_class_data: ItemClassData,
     ) -> ProgramResult {
-        let item_class = &mut ctx.accounts.item_class;
+        let mut item_class = &mut ctx.accounts.item_class;
         let item_class_info = item_class.to_account_info();
         let item_mint = &ctx.accounts.item_mint;
         let metadata = &ctx.accounts.metadata;
@@ -88,10 +88,8 @@ pub mod item {
                     None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
                 }
             }
-            update_item_class_with_inherited_information(
-                &mut item_class.data,
-                &parent_deserialized.data,
-            );
+            item_class.data = item_class_data;
+            update_item_class_with_inherited_information(&mut item_class, &parent_deserialized);
         } else {
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
@@ -519,6 +517,7 @@ pub enum ChildUpdatePropagationPermissivenessType {
     ChildUpdatePropagationPermissiveness,
     ChildrenMustBeEditionsPermissiveness,
     BuilderMustBeHolderPermissiveness,
+    Namespaces,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
@@ -538,10 +537,7 @@ pub struct DefaultItemCategory {
 pub struct NamespaceAndIndex {
     namespace: Pubkey,
     indexed: bool,
-}
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ArtifactNamespaceSetting {
-    namespaces: Vec<NamespaceAndIndex>,
+    inherited: InheritanceState,
 }
 
 pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
@@ -606,6 +602,12 @@ impl Inherited for Boolean {
     }
 }
 
+impl Inherited for NamespaceAndIndex {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Root {
     inherited: InheritanceState,
@@ -638,7 +640,7 @@ pub struct ItemClassData {
 
 #[account]
 pub struct ItemClass {
-    namespaces: ArtifactNamespaceSetting,
+    namespaces: Option<Vec<NamespaceAndIndex>>,
     parent: Option<Pubkey>,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,
@@ -652,7 +654,7 @@ pub struct ItemClass {
 
 #[account]
 pub struct ItemEscrow {
-    namespaces: ArtifactNamespaceSetting,
+    namespaces: Option<NamespaceAndIndex>,
     bump: u8,
     deactivated: bool,
     step: u64,
@@ -666,9 +668,9 @@ pub const MIN_ITEM_SIZE: usize = 8 + // key
 1 + //indexed
 2 + // authority level
 1 + // edition
-4 + // number of item usages
-4 + // number of namespaces
-4 + // number of update permissivenesses;
+1 + // number of item usages
+1 + // number of namespaces
+1 + // number of update permissivenesses;
 1 + // root
 1; //bump
 
@@ -677,11 +679,11 @@ pub struct ItemData {
     update_permissiveness: Option<Vec<UpdatePermissiveness>>,
     usage_state_root: Option<[u8; 32]>,
     // if state root is set, usage states is considered a cache, not source of truth
-    usage_states: Vec<ItemUsageState>,
+    usage_states: Option<Vec<ItemUsageState>>,
 }
 #[account]
 pub struct Item {
-    namespaces: ArtifactNamespaceSetting,
+    namespaces: Option<Vec<NamespaceAndIndex>>,
     parent: Option<Pubkey>,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,

@@ -50,20 +50,25 @@ pub enum Permissiveness {
     Namespace,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+pub enum InheritanceState {
+    NotInherited,
+    Inherited,
+    Overridden,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct OracleCallback(pub Pubkey, pub u8);
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
     namespace: Pubkey,
     indexed: bool,
-}
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ArtifactNamespaceSetting {
-    namespaces: Vec<NamespaceAndIndex>,
+    inherited: InheritanceState,
 }
 #[account]
 pub struct Match {
-    namespaces: ArtifactNamespaceSetting,
+    namespaces: Option<Vec<NamespaceAndIndex>>,
+
     // Win oracle must always present some rewards struct
     // for redistributing items
     win_oracle: Pubkey,

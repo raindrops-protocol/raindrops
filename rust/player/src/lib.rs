@@ -100,16 +100,13 @@ pub struct BodyPart {
 pub struct NamespaceAndIndex {
     namespace: Pubkey,
     indexed: bool,
-}
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ArtifactNamespaceSetting {
-    namespaces: Vec<NamespaceAndIndex>,
+    inherited: InheritanceState,
 }
 
 /// seed ['player', player program, mint, namespace]
 #[account]
 pub struct PlayerClass {
-    namespaces: ArtifactNamespaceSetting,
+    namespaces: Option<Vec<NamespaceAndIndex>>,
     parent: Option<Pubkey>,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,
@@ -126,7 +123,7 @@ pub struct PlayerClass {
 /// seed ['player', player program, mint, namespace] also
 #[account]
 pub struct Player {
-    namespaces: ArtifactNamespaceSetting,
+    namespaces: Option<Vec<NamespaceAndIndex>>,
     parent: Pubkey,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,

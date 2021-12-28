@@ -30,6 +30,7 @@ pub mod namespace {
     pub fn initialize_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, InitializeNamespace<'info>>,
         bump: u8,
+        desired_namespace_array_size: usize,
         uuid: String,
         pretty_name: String,
         permissiveness_settings: PermissivenessSettings,
@@ -61,16 +62,16 @@ pub mod namespace {
         assert_metadata_valid(metadata, Some(master_edition), &mint.key())?;
 
         let mut namespace_arr = vec![];
-        for _n in 0..MAX_NAMESPACES {
+        for _n in 0..desired_namespace_array_size {
             namespace_arr.push(NamespaceAndIndex {
                 namespace: anchor_lang::solana_program::system_program::id(),
                 indexed: false,
+                inherited: InheritanceState::NotInherited,
             });
         }
 
-        namespace.namespaces = ArtifactNamespaceSetting {
-            namespaces: namespace_arr,
-        };
+        namespace.namespaces = Some(namespace_arr);
+
         namespace.bump = bump;
         namespace.uuid = uuid;
         namespace.whitelisted_staking_mints = whitelisted_staking_mints;
@@ -275,31 +276,36 @@ pub mod namespace {
 
         let art_namespaces = pull_namespaces(artifact)?;
 
-        for n in &art_namespaces.namespaces {
-            if n.namespace == namespace.key() {
-                if n.indexed {
-                    return Err(ErrorCode::ArtifactStillCached.into());
-                } else {
-                    let mut new_vec = vec![];
-                    for j in &art_namespaces.namespaces {
-                        if j.namespace != namespace.key() {
-                            new_vec.push(j)
+        if let Some(art_names) = art_namespaces {
+            for n in &art_names {
+                if n.namespace == namespace.key() {
+                    if n.indexed {
+                        return Err(ErrorCode::ArtifactStillCached.into());
+                    } else {
+                        let mut new_vec = vec![];
+                        for j in &art_names {
+                            if j.namespace != namespace.key() {
+                                new_vec.push(j)
+                            }
                         }
-                    }
-                    new_vec.push(&NamespaceAndIndex {
-                        namespace: anchor_lang::solana_program::system_program::id(),
-                        indexed: false,
-                    });
-                    let mut data = artifact.data.borrow_mut();
-                    let arr =
-                        array_mut_ref![data, 8, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
+                        let new_name = NamespaceAndIndex {
+                            namespace: anchor_lang::solana_program::system_program::id(),
+                            indexed: false,
+                            inherited: InheritanceState::NotInherited,
+                        };
+                        new_vec.push(&new_name);
+                        let mut data = artifact.data.borrow_mut();
+                        data[8] = 1; // Option yes.
+                        let arr =
+                            array_mut_ref![data, 9, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
 
-                    arr.copy_from_slice(&art_namespaces.try_to_vec()?);
-                    namespace.artifacts_added = namespace
-                        .artifacts_added
-                        .checked_sub(1)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-                    return Ok(());
+                        arr.copy_from_slice(&new_vec.try_to_vec()?);
+                        namespace.artifacts_added = namespace
+                            .artifacts_added
+                            .checked_sub(1)
+                            .ok_or(ErrorCode::NumericalOverflowError)?;
+                        return Ok(());
+                    }
                 }
             }
         }
@@ -319,34 +325,37 @@ pub mod namespace {
         let mut art_namespaces =
             assert_can_add_to_namespace(artifact, token_holder, namespace, namespace_gatekeeper)?;
 
-        let mut found = false;
-        for n in &art_namespaces.namespaces {
-            if n.namespace == namespace.key() {
-                found = true;
-            }
-        }
-        if !found {
-            let mut most_recent_zero = false;
-            for n in &mut art_namespaces.namespaces {
-                if n.namespace == anchor_lang::solana_program::system_program::id() {
-                    most_recent_zero = true;
-                    n.namespace = namespace.key();
-                    n.indexed = false;
-                    let mut data = artifact.data.borrow_mut();
-                    let arr =
-                        array_mut_ref![data, 8, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
-
-                    arr.copy_from_slice(&art_namespaces.try_to_vec()?);
-                    namespace.artifacts_added = namespace
-                        .artifacts_added
-                        .checked_add(1)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-                    break;
+        if let Some(art_names) = &mut art_namespaces {
+            let mut found = false;
+            for n in 0..art_names.len() {
+                if art_names[n].namespace == namespace.key() {
+                    found = true;
                 }
             }
-            if !most_recent_zero {
-                msg!("Out of space!");
-                return Err(ErrorCode::CannotJoinNamespace.into());
+            if !found {
+                let mut most_recent_zero = false;
+                for mut n in art_names {
+                    if n.namespace == anchor_lang::solana_program::system_program::id() {
+                        most_recent_zero = true;
+                        n.namespace = namespace.key();
+                        n.indexed = false;
+                        let mut data = artifact.data.borrow_mut();
+                        data[8] = 1; // option yes
+                        let arr =
+                            array_mut_ref![data, 9, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
+
+                        arr.copy_from_slice(&art_namespaces.try_to_vec()?);
+                        namespace.artifacts_added = namespace
+                            .artifacts_added
+                            .checked_add(1)
+                            .ok_or(ErrorCode::NumericalOverflowError)?;
+                        break;
+                    }
+                }
+                if !most_recent_zero {
+                    msg!("Out of space!");
+                    return Err(ErrorCode::CannotJoinNamespace.into());
+                }
             }
         }
         Ok(())
@@ -420,7 +429,7 @@ pub struct PermissivenessSettings {
 /// seed ['namespace', namespace program, mint]
 #[account]
 pub struct Namespace {
-    namespaces: ArtifactNamespaceSetting,
+    namespaces: Option<Vec<NamespaceAndIndex>>,
     mint: Pubkey,
     metadata: Pubkey,
     master_edition: Pubkey,
@@ -447,17 +456,21 @@ pub struct NamespaceIndex {
 pub struct NamespaceAndIndex {
     namespace: Pubkey,
     indexed: bool,
+    inherited: InheritanceState,
 }
 
-pub const NAMESPACE_AND_INDEX_SIZE: usize = 33;
-#[account]
-pub struct ArtifactNamespaceSetting {
-    namespaces: Vec<NamespaceAndIndex>,
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+pub enum InheritanceState {
+    NotInherited,
+    Inherited,
+    Overridden,
 }
 
-pub const NAMESPACE_SIZE: usize = 8 + // key
+pub const NAMESPACE_AND_INDEX_SIZE: usize = 34;
+
+pub const MIN_NAMESPACE_SIZE: usize = 8 + // key
 1 + // indexed
-33 + // namespace
+1 + // namespace array
 32 + // mint
 32 + // metadata
 32 + // edition
@@ -491,9 +504,9 @@ FILTER_SIZE + //
 100; //padding
 
 #[derive(Accounts)]
-#[instruction(bump: u8)]
+#[instruction(bump: u8, desired_namespace_array_size: usize)]
 pub struct InitializeNamespace<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), mint.key().as_ref()], payer=payer, bump=bump, space=NAMESPACE_SIZE)]
+    #[account(init, seeds=[PREFIX.as_bytes(), mint.key().as_ref()], payer=payer, bump=bump, space=desired_namespace_array_size*NAMESPACE_AND_INDEX_SIZE + MIN_NAMESPACE_SIZE + 4)]
     namespace: Account<'info, Namespace>,
     mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
