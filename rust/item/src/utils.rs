@@ -1,5 +1,11 @@
+use crate::ItemClassData;
+
 use {
-    crate::{ErrorCode, UpdatePermissiveness, PREFIX},
+    crate::{
+        ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
+        DefaultItemCategory, ErrorCode, InheritanceState, Inherited, ItemUsage, Root,
+        UpdatePermissiveness, UpdatePermissivenessType, PREFIX,
+    },
     anchor_lang::{
         prelude::{
             msg, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
@@ -257,8 +263,8 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
         return Err(ErrorCode::PermissivenessNotFound.into());
     }
 
-    match update_permissiveness_to_use {
-        UpdatePermissiveness::TokenHolderCanUpdate { inherited: _ } => {
+    match update_permissiveness_to_use.permissiveness_type {
+        UpdatePermissivenessType::TokenHolderCanUpdate => {
             //  token_account [readable]
             //  token_holder [signer]
             // parent mint [readable] OR none (depending if this is a create item class call or not and we are running off the parent's settings)
@@ -284,7 +290,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 &[PREFIX.as_bytes(), mint.key.as_ref(), &index.to_le_bytes()],
             )?;
         }
-        UpdatePermissiveness::ClassHolderCanUpdate { inherited: _ } => {
+        UpdatePermissivenessType::ClassHolderCanUpdate => {
             // class token_account [readable]
             // class token_holder [signer]
             // class [readable]
@@ -315,7 +321,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
 
             assert_keys_equal(grab_parent(given_account)?, *class.key)?;
         }
-        UpdatePermissiveness::UpdateAuthorityCanUpdate { inherited: _ } => {
+        UpdatePermissivenessType::UpdateAuthorityCanUpdate => {
             // metadata_update_authority [signer]
             // metadata [readable]
             // mint [readable] OR none (depending if this is a create item class call or not and we are running off the parent's settings)
@@ -332,12 +338,190 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
 
             assert_keys_equal(update_authority, *metadata_update_authority.key)?;
         }
-        UpdatePermissiveness::AnybodyCanUpdate { inherited: _ } => {
+        UpdatePermissivenessType::AnybodyCanUpdate => {
             // nothing
         }
     }
 
     Ok(())
+}
+
+pub fn add_to_new_array_from_parent<T: Inherited>(
+    inheritance: InheritanceState,
+    parent_items: &Vec<T>,
+    new_items: &mut Vec<T>,
+) {
+    for item in parent_items {
+        let mut new_copy = item.clone();
+        new_copy.set_inherited(inheritance.clone());
+        new_items.push(new_copy);
+    }
+}
+
+pub struct PropagateParentArrayArgs<'a, T: Inherited> {
+    pub parent_items: &'a Option<Vec<T>>,
+    pub child_items: &'a Option<Vec<T>>,
+    pub overridable: bool,
+}
+
+pub fn propagate_parent_array<T: Inherited>(args: PropagateParentArrayArgs<T>) -> Option<Vec<T>> {
+    let PropagateParentArrayArgs {
+        parent_items,
+        child_items,
+        overridable,
+    } = args;
+
+    if let Some(p_items) = &parent_items {
+        if overridable {
+            let mut new_items: Vec<T> = vec![];
+            add_to_new_array_from_parent(InheritanceState::Overridden, p_items, &mut new_items);
+            return Some(new_items);
+        } else {
+            match &child_items {
+                Some(c_items) => {
+                    let mut new_items: Vec<T> = c_items.to_vec();
+                    add_to_new_array_from_parent(
+                        InheritanceState::Inherited,
+                        p_items,
+                        &mut new_items,
+                    );
+                    return Some(new_items);
+                }
+                None => {
+                    let mut new_items: Vec<T> = vec![];
+                    add_to_new_array_from_parent(
+                        InheritanceState::Inherited,
+                        p_items,
+                        &mut new_items,
+                    );
+                    return Some(new_items);
+                }
+            }
+        }
+    } else if overridable {
+        return None;
+    }
+
+    match child_items {
+        Some(v) => Some(v.to_vec()),
+        None => None,
+    }
+}
+
+pub struct PropagateParentArgs<'a, T: Inherited> {
+    pub parent: &'a Option<T>,
+    pub child: &'a Option<T>,
+    pub overridable: bool,
+}
+
+pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T> {
+    let PropagateParentArgs {
+        parent,
+        child,
+        overridable,
+    } = args;
+    if let Some(parent_val) = &parent {
+        if overridable {
+            let mut new_vers = parent_val.clone();
+            new_vers.set_inherited(InheritanceState::Overridden);
+            return Some(new_vers);
+        } else if child.is_none() {
+            let mut new_vers = parent_val.clone();
+            new_vers.set_inherited(InheritanceState::Inherited);
+            return Some(new_vers);
+        }
+    } else if overridable {
+        return None;
+    }
+
+    match child {
+        Some(v) => Some(v.clone()),
+        None => None,
+    }
+}
+
+pub fn update_item_class_with_inherited_information(
+    item_data: &mut ItemClassData,
+    parent_item_data: &ItemClassData,
+) {
+    match &parent_item_data.child_update_propagation_permissiveness {
+        Some(cupp) => {
+            for update_perm in cupp {
+                match update_perm.child_update_propagation_permissiveness_type {
+                    ChildUpdatePropagationPermissivenessType::DefaultItemCategory => {
+                        item_data.default_category = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.default_category,
+                            child: &item_data.default_category,
+                            overridable: update_perm.overridable,
+                        })
+                    }
+                    ChildUpdatePropagationPermissivenessType::Usages => {
+                        item_data.usages = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.usages,
+                            child_items: &item_data.usages,
+                            overridable: update_perm.overridable,
+                        });
+                        item_data.usage_root = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.usage_root,
+                            child: &item_data.usage_root,
+                            overridable: update_perm.overridable,
+                        });
+
+                        item_data.usage_state_root = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.usage_state_root,
+                            child: &item_data.usage_state_root,
+                            overridable: update_perm.overridable,
+                        });
+                    }
+                    ChildUpdatePropagationPermissivenessType::Components => {
+                        item_data.components = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.components,
+                            child_items: &item_data.components,
+                            overridable: update_perm.overridable,
+                        });
+                        item_data.component_root = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.component_root,
+                            child: &item_data.component_root,
+                            overridable: update_perm.overridable,
+                        });
+                    }
+                    ChildUpdatePropagationPermissivenessType::UpdatePermissiveness => {
+                        item_data.default_update_permissiveness =
+                            propagate_parent_array(PropagateParentArrayArgs {
+                                parent_items: &parent_item_data.default_update_permissiveness,
+                                child_items: &item_data.default_update_permissiveness,
+                                overridable: update_perm.overridable,
+                            });
+                    }
+                    ChildUpdatePropagationPermissivenessType::ChildUpdatePropagationPermissiveness => {
+                        item_data.child_update_propagation_permissiveness =
+                            propagate_parent_array(PropagateParentArrayArgs {
+                                parent_items: &parent_item_data.child_update_propagation_permissiveness,
+                                child_items: &item_data.child_update_propagation_permissiveness,
+                                overridable: update_perm.overridable,
+                            });
+                    }
+                    ChildUpdatePropagationPermissivenessType::ChildrenMustBeEditionsPermissiveness => {
+                        item_data.children_must_be_editions = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.children_must_be_editions,
+                            child: &item_data.children_must_be_editions,
+                            overridable: update_perm.overridable,
+                        });
+                    }
+                    ChildUpdatePropagationPermissivenessType::BuilderMustBeHolderPermissiveness => {
+                        item_data.builder_must_be_holder = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.builder_must_be_holder,
+                            child: &item_data.builder_must_be_holder,
+                            overridable: update_perm.overridable,
+                        });
+                    },
+                }
+            }
+        }
+        None => {
+            // do nothing
+        }
+    }
 }
 
 pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {

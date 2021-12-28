@@ -5,8 +5,8 @@ use {
         assert_derivation, assert_initialized, assert_is_ata, assert_metadata_valid,
         assert_owned_by, assert_permissiveness_access, assert_signer,
         create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
-        spl_token_mint_to, spl_token_transfer, AssertPermissivenessAccessArgs, TokenBurnParams,
-        TokenTransferParams,
+        spl_token_mint_to, spl_token_transfer, update_item_class_with_inherited_information,
+        AssertPermissivenessAccessArgs, TokenBurnParams, TokenTransferParams,
     },
     anchor_lang::{
         prelude::*,
@@ -45,11 +45,13 @@ pub mod item {
         item_class_bump: u8,
         class_index: u64,
         parent_class_index: Option<u64>,
-        space: usize,
-        item_class_data: ItemClassData,
+        _space: usize,
         update_permissiveness_to_use: Option<UpdatePermissiveness>,
+        store_mint: bool,
+        store_metadata_fields: bool,
+        item_class_data: ItemClassData,
     ) -> ProgramResult {
-        let item_class = &ctx.accounts.item_class;
+        let item_class = &mut ctx.accounts.item_class;
         let item_class_info = item_class.to_account_info();
         let item_mint = &ctx.accounts.item_mint;
         let metadata = &ctx.accounts.metadata;
@@ -62,6 +64,7 @@ pub mod item {
         } else {
             None
         };
+
         assert_metadata_valid(
             &metadata.to_account_info(),
             edition_option,
@@ -71,35 +74,54 @@ pub mod item {
         if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
             let parent_deserialized: anchor_lang::Account<'_, ItemClass> =
                 Account::try_from(&parent.to_account_info())?;
-
-            match update_permissiveness_to_use {
-                Some(val) => assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                    program_id: ctx.program_id,
-                    given_account: parent,
-                    remaining_accounts: ctx.remaining_accounts,
-                    update_permissiveness_to_use: &val,
-                    update_permissiveness_array: &parent_deserialized
-                        .data
-                        .default_update_permissiveness,
-                    index: parent_class_index.unwrap(),
-                    account_mint: None,
-                })?,
-                None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
+            if let Some(dc) = &parent_deserialized.data.default_update_permissiveness {
+                match update_permissiveness_to_use {
+                    Some(val) => assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                        program_id: ctx.program_id,
+                        given_account: parent,
+                        remaining_accounts: ctx.remaining_accounts,
+                        update_permissiveness_to_use: &val,
+                        update_permissiveness_array: &dc,
+                        index: parent_class_index.unwrap(),
+                        account_mint: None,
+                    })?,
+                    None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
+                }
             }
+            update_item_class_with_inherited_information(
+                &mut item_class.data,
+                &parent_deserialized.data,
+            );
         } else {
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: &item_class_info,
                 remaining_accounts: ctx.remaining_accounts,
-                update_permissiveness_to_use: &UpdatePermissiveness::UpdateAuthorityCanUpdate {
+                update_permissiveness_to_use: &UpdatePermissiveness {
+                    permissiveness_type: UpdatePermissivenessType::UpdateAuthorityCanUpdate,
                     inherited: InheritanceState::NotInherited,
                 },
-                update_permissiveness_array: &[UpdatePermissiveness::UpdateAuthorityCanUpdate {
+                update_permissiveness_array: &[UpdatePermissiveness {
+                    permissiveness_type: UpdatePermissivenessType::UpdateAuthorityCanUpdate,
                     inherited: InheritanceState::NotInherited,
                 }],
                 index: class_index,
                 account_mint: Some(&item_mint.to_account_info()),
             })?;
+        }
+
+        item_class.bump = item_class_bump;
+        if store_metadata_fields {
+            item_class.metadata = Some(metadata.key());
+            item_class.edition = if edition.data_is_empty() {
+                Some(edition.key())
+            } else {
+                None
+            }
+        }
+
+        if store_mint {
+            item_class.mint = Some(item_mint.key());
         }
 
         Ok(())
@@ -348,24 +370,27 @@ pub struct EndItemActivation<'info> {
 pub struct Callback(pub Pubkey, pub u64);
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ItemUsage {
+pub struct ItemUsage {
+    category: Vec<String>,
+    basic_item_effects: Option<Vec<BasicItemEffect>>,
+    usage_permissiveness: Vec<UsagePermissiveness>,
+    inherited: InheritanceState,
+    specifics: ItemUsageSpecifics,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ItemUsageSpecifics {
     Wearable {
         body_part: Vec<String>,
-        category: Vec<String>,
         limit_per_part: Option<u64>,
         wearable_callback: Option<Callback>,
-        basic_item_effects: Option<Vec<BasicItemEffect>>,
-        usage_permissiveness: Vec<UsagePermissiveness>,
     },
     Consumable {
-        category: Vec<String>,
         uses: u64,
         // If none, is assumed to be 1 (to save space)
         max_players_per_use: Option<u64>,
         item_usage_type: ItemUsageType,
         consumption_callback: Option<Callback>,
-        basic_item_effects: Option<Vec<BasicItemEffect>>,
-        usage_permissiveness: Vec<UsagePermissiveness>,
     },
 }
 
@@ -465,29 +490,42 @@ pub struct Component {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum UpdatePermissiveness {
-    TokenHolderCanUpdate { inherited: InheritanceState },
-    ClassHolderCanUpdate { inherited: InheritanceState },
-    UpdateAuthorityCanUpdate { inherited: InheritanceState },
-    AnybodyCanUpdate { inherited: InheritanceState },
+pub struct UpdatePermissiveness {
+    inherited: InheritanceState,
+    permissiveness_type: UpdatePermissivenessType,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+pub enum UpdatePermissivenessType {
+    TokenHolderCanUpdate,
+    ClassHolderCanUpdate,
+    UpdateAuthorityCanUpdate,
+    AnybodyCanUpdate,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ChildUpdatePropagationPermissiveness {
-    Class { overridable: bool },
-    Usages { overridable: bool },
-    Components { overridable: bool },
-    UpdatePermissiveness { overridable: bool },
-    ChildUpdatePropagationPermissiveness { overridable: bool },
-    ChildrenMustBeEditionsPermissiveness { overridable: bool },
-    BuilderMustBeHolderPermissiveness { overridable: bool },
+pub struct ChildUpdatePropagationPermissiveness {
+    overridable: bool,
+    inherited: InheritanceState,
+    child_update_propagation_permissiveness_type: ChildUpdatePropagationPermissivenessType,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ChildUpdatePropagationPermissivenessType {
+    DefaultItemCategory,
+    Usages,
+    Components,
+    UpdatePermissiveness,
+    ChildUpdatePropagationPermissiveness,
+    ChildrenMustBeEditionsPermissiveness,
+    BuilderMustBeHolderPermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,
-    Overriden,
+    Overridden,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -510,33 +548,92 @@ pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 1 + // mint
 1 + // metadata
 1 + // edition
+1 + // default item category
 4 + // number of namespaces
 1 + // children must be editions
-4 + // number of default update permissivenesses
-2 + // minimum 1 default update
-4+// number of child update propagations
+1 + // number of default update permissivenesses
+1 + // default update permissiveness minimum (could have no way to update)
+1 + // child update propagation opt
 1 + // parent
-4 + // number of usages
-4 +  // number of components
+1 + // number of usages
+1 +  // number of components
 3 + // roots
 1; //bump
 
+pub trait Inherited: Clone {
+    fn set_inherited(&mut self, i: InheritanceState);
+}
+
+impl Inherited for Root {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
+impl Inherited for DefaultItemCategory {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
+impl Inherited for ItemUsage {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
+impl Inherited for Component {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
+impl Inherited for UpdatePermissiveness {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
+impl Inherited for ChildUpdatePropagationPermissiveness {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
+impl Inherited for Boolean {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Root {
+    inherited: InheritanceState,
+    root: [u8; 32],
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Boolean {
+    inherited: InheritanceState,
+    boolean: bool,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemClassData {
-    children_must_be_editions: bool,
-    builder_must_be_holder: bool,
-    default_category: DefaultItemCategory,
-    default_update_permissiveness: Vec<UpdatePermissiveness>,
-    child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
+    children_must_be_editions: Option<Boolean>,
+    builder_must_be_holder: Option<Boolean>,
+    default_category: Option<DefaultItemCategory>,
+    default_update_permissiveness: Option<Vec<UpdatePermissiveness>>,
+    child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
     // The roots are merkle roots, used to keep things cheap on chain (optional)
-    usage_root: Option<[u8; 32]>,
+    usage_root: Option<Root>,
     // Used to seed the root for new items
-    usage_state_root: Option<[u8; 32]>,
-    component_root: Option<[u8; 32]>,
+    usage_state_root: Option<Root>,
+    component_root: Option<Root>,
     // Note that both usages and components are mutually exclusive with usage_root and component_root - if those are set, these are considered
     // cached values, and root is source of truth. Up to you to keep them up to date.
-    usages: Vec<ItemUsage>,
-    components: Vec<Component>,
+    usages: Option<Vec<ItemUsage>>,
+    components: Option<Vec<Component>>,
 }
 
 #[account]
