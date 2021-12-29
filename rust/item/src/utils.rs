@@ -2,7 +2,7 @@ use {
     crate::{
         ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
         DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item, ItemClass,
-        ItemClassData, ItemUsage, Root, UpdatePermissiveness, UpdatePermissivenessType, PREFIX,
+        ItemClassData, ItemUsage, Permissiveness, PermissivenessType, Root, PREFIX,
     },
     anchor_lang::{
         prelude::{
@@ -11,13 +11,16 @@ use {
         },
         solana_program::{
             program::{invoke, invoke_signed},
+            program_option::COption,
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
         ToAccountInfo,
     },
+    anchor_spl::token::Mint,
     arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
+    spl_token::instruction::{set_authority, AuthorityType},
     std::convert::TryInto,
 };
 
@@ -233,8 +236,8 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
     pub program_id: &'a Pubkey,
     pub given_account: &'b AccountInfo<'info>,
     pub remaining_accounts: &'c [AccountInfo<'info>],
-    pub update_permissiveness_to_use: &'a UpdatePermissiveness,
-    pub update_permissiveness_array: &'a [UpdatePermissiveness],
+    pub permissiveness_to_use: &'a Permissiveness,
+    pub permissiveness_array: &'a [Permissiveness],
     pub index: u64,
     pub account_mint: Option<&'b AccountInfo<'info>>,
 }
@@ -244,14 +247,14 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
         program_id,
         given_account,
         remaining_accounts,
-        update_permissiveness_to_use,
-        update_permissiveness_array,
+        permissiveness_to_use,
+        permissiveness_array,
         index,
         account_mint,
     } = args;
     let mut found = false;
-    for entry in update_permissiveness_array {
-        if entry == update_permissiveness_to_use {
+    for entry in permissiveness_array {
+        if entry == permissiveness_to_use {
             found = true;
             break;
         }
@@ -261,8 +264,8 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
         return Err(ErrorCode::PermissivenessNotFound.into());
     }
 
-    match update_permissiveness_to_use.permissiveness_type {
-        UpdatePermissivenessType::TokenHolderCanUpdate => {
+    match permissiveness_to_use.permissiveness_type {
+        PermissivenessType::TokenHolder => {
             //  token_account [readable]
             //  token_holder [signer]
             //  mint [readable] OR none if already present in the main array
@@ -288,7 +291,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 &[PREFIX.as_bytes(), mint.key.as_ref(), &index.to_le_bytes()],
             )?;
         }
-        UpdatePermissivenessType::ClassHolderCanUpdate => {
+        PermissivenessType::ClassHolder => {
             // parent class token_account [readable]
             // parent class token_holder [signer]
             // parent class [readable]
@@ -323,7 +326,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
 
             assert_keys_equal(grab_parent(given_account)?, *class.key)?;
         }
-        UpdatePermissivenessType::UpdateAuthorityCanUpdate => {
+        PermissivenessType::UpdateAuthority => {
             // metadata_update_authority [signer]
             // metadata [readable]
             // mint [readable] OR none if already present in the main array
@@ -344,7 +347,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
 
             assert_keys_equal(update_authority, *metadata_update_authority.key)?;
         }
-        UpdatePermissivenessType::AnybodyCanUpdate => {
+        PermissivenessType::Anybody => {
             // nothing
         }
     }
@@ -500,6 +503,14 @@ pub fn update_item_class_with_inherited_information(
                                 overridable: update_perm.overridable,
                             });
                     }
+                    ChildUpdatePropagationPermissivenessType::BuildPermissiveness => {
+                        item.data.build_permissiveness =
+                            propagate_parent_array(PropagateParentArrayArgs {
+                                parent_items: &parent_item_data.build_permissiveness,
+                                child_items: &item.data.build_permissiveness,
+                                overridable: update_perm.overridable,
+                            });
+                    }
                     ChildUpdatePropagationPermissivenessType::ChildUpdatePropagationPermissiveness => {
                         item.data.child_update_propagation_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
@@ -619,6 +630,92 @@ pub fn assert_metadata_valid<'a>(
         if ed.data_is_empty() {
             return Err(ErrorCode::EditionDoesntExist.into());
         }
+    }
+
+    Ok(())
+}
+
+pub fn assert_mint_authority_matches_mint(
+    mint_authority: &COption<Pubkey>,
+    mint_authority_info: &AccountInfo,
+) -> ProgramResult {
+    match mint_authority {
+        COption::None => {
+            return Err(ErrorCode::InvalidMintAuthority.into());
+        }
+        COption::Some(key) => {
+            if mint_authority_info.key != key {
+                return Err(ErrorCode::InvalidMintAuthority.into());
+            }
+        }
+    }
+
+    if !mint_authority_info.is_signer {
+        return Err(ErrorCode::NotMintAuthority.into());
+    }
+
+    Ok(())
+}
+
+pub struct TransferMintAuthorityArgs<'b, 'info> {
+    pub item_class_key: &'b Pubkey,
+    pub item_class_info: &'b AccountInfo<'info>,
+    pub mint_authority_info: &'b AccountInfo<'info>,
+    pub token_program_info: &'b AccountInfo<'info>,
+    pub mint: &'b Account<'info, Mint>,
+}
+
+pub fn transfer_mint_authority<'b, 'info>(
+    args: TransferMintAuthorityArgs<'b, 'info>,
+) -> ProgramResult {
+    let TransferMintAuthorityArgs {
+        item_class_key,
+        item_class_info,
+        mint_authority_info,
+        token_program_info,
+        mint,
+    } = args;
+
+    msg!("Setting mint authority");
+    let mint_info = mint.to_account_info();
+    let accounts = &[
+        mint_authority_info.clone(),
+        mint_info.clone(),
+        token_program_info.clone(),
+        item_class_info.clone(),
+    ];
+    invoke_signed(
+        &set_authority(
+            token_program_info.key,
+            mint_info.key,
+            Some(item_class_key),
+            AuthorityType::MintTokens,
+            mint_authority_info.key,
+            &[&mint_authority_info.key],
+        )
+        .unwrap(),
+        accounts,
+        &[],
+    )?;
+    msg!("Setting freeze authority");
+
+    if mint.freeze_authority.is_some() {
+        invoke_signed(
+            &set_authority(
+                token_program_info.key,
+                mint_info.key,
+                Some(&item_class_key),
+                AuthorityType::FreezeAccount,
+                mint_authority_info.key,
+                &[&mint_authority_info.key],
+            )
+            .unwrap(),
+            accounts,
+            &[],
+        )?;
+        msg!("Finished setting freeze authority");
+    } else {
+        msg!("Skipping freeze authority because this mint has none")
     }
 
     Ok(())

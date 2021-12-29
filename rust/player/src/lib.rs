@@ -50,11 +50,11 @@ pub struct EquippedItem {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum UpdatePermissiveness {
-    TokenHolderCanUpdate { inherited: InheritanceState },
-    PlayerClassHolderCanUpdate { inherited: InheritanceState },
-    UpdateAuthorityCanUpdate { inherited: InheritanceState },
-    AnybodyCanUpdate { inherited: InheritanceState },
+pub enum Permissiveness {
+    TokenHolder { inherited: InheritanceState },
+    PlayerClassHolder { inherited: InheritanceState },
+    UpdateAuthority { inherited: InheritanceState },
+    Anybody { inherited: InheritanceState },
 }
 
 pub const MAX_NAMESPACES: usize = 10;
@@ -64,7 +64,7 @@ pub enum ChildUpdatePropagationPermissiveness {
     Class { overridable: bool },
     Usages { overridable: bool },
     Components { overridable: bool },
-    UpdatePermissiveness { overridable: bool },
+    Permissiveness { overridable: bool },
     ChildUpdatePropagationPermissiveness { overridable: bool },
     ChildrenMustBeEditionsPermissiveness { overridable: bool },
     BuilderMustBeHolderPermissiveness { overridable: bool },
@@ -115,7 +115,7 @@ pub struct PlayerClass {
     default_category: Option<PlayerCategory>,
     children_must_be_editions: bool,
     builder_must_be_holder: bool,
-    update_permissiveness: Vec<UpdatePermissiveness>,
+    update_permissiveness: Vec<Permissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     body_parts: Vec<BodyPart>,
 }
@@ -130,7 +130,7 @@ pub struct Player {
     edition: Option<Pubkey>,
     stats_uri: Option<StatsUri>,
     category: Option<PlayerCategory>,
-    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
+    update_permissiveness: Option<Vec<Permissiveness>>,
     equipped_items: Vec<EquippedItem>,
     basic_stats: Vec<BasicStat>,
     body_parts: Vec<BodyPart>,
