@@ -115,7 +115,7 @@ pub struct PlayerClass {
     default_category: Option<PlayerCategory>,
     children_must_be_editions: bool,
     builder_must_be_holder: bool,
-    default_update_permissiveness: Vec<UpdatePermissiveness>,
+    update_permissiveness: Vec<UpdatePermissiveness>,
     child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
     body_parts: Vec<BodyPart>,
 }

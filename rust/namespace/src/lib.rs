@@ -8,7 +8,6 @@ use {
     },
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{Mint, Token, TokenAccount},
-    arrayref::array_mut_ref,
     std::str::FromStr,
 };
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");

@@ -2,8 +2,8 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_derivation, assert_initialized, assert_is_ata, assert_metadata_valid,
-        assert_owned_by, assert_permissiveness_access, assert_signer,
+        assert_derivation, assert_initialized, assert_is_ata, assert_keys_equal,
+        assert_metadata_valid, assert_owned_by, assert_permissiveness_access, assert_signer,
         create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
         spl_token_mint_to, spl_token_transfer, update_item_class_with_inherited_information,
         AssertPermissivenessAccessArgs, TokenBurnParams, TokenTransferParams,
@@ -75,7 +75,7 @@ pub mod item {
         if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
             let parent_deserialized: anchor_lang::Account<'_, ItemClass> =
                 Account::try_from(&parent.to_account_info())?;
-            if let Some(dc) = &parent_deserialized.data.default_update_permissiveness {
+            if let Some(dc) = &parent_deserialized.data.update_permissiveness {
                 match update_permissiveness_to_use {
                     Some(val) => assert_permissiveness_access(AssertPermissivenessAccessArgs {
                         program_id: ctx.program_id,
@@ -88,8 +88,9 @@ pub mod item {
                     })?,
                     None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
                 }
+            } else {
+                return Err(ErrorCode::PermissivenessNotFound.into());
             }
-            item_class.data = item_class_data;
             item_class.parent = Some(parent.key());
             update_item_class_with_inherited_information(&mut item_class, &parent_deserialized);
         } else {
@@ -110,6 +111,7 @@ pub mod item {
             })?;
         }
 
+        item_class.data = item_class_data;
         item_class.bump = item_class_bump;
         if store_metadata_fields {
             item_class.metadata = Some(metadata.key());
@@ -139,6 +141,50 @@ pub mod item {
             item_class.namespaces = None
         }
 
+        Ok(())
+    }
+
+    pub fn update_item_class<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdateItemClass<'info>>,
+        class_index: u64,
+        update_permissiveness_to_use: Option<UpdatePermissiveness>,
+        item_class_data: Option<ItemClassData>,
+    ) -> ProgramResult {
+        let item_class = &mut ctx.accounts.item_class;
+        let item_mint = &ctx.accounts.item_mint;
+        // The only case where only one account is passed in is when you are just
+        // requesting a permissionless inheritance update.
+        if ctx.remaining_accounts.len() == 1 {
+            let parent = &ctx.remaining_accounts[0];
+            if let Some(ic_parent) = item_class.parent {
+                assert_keys_equal(parent.key(), ic_parent)?;
+            } else {
+                return Err(ErrorCode::NoParentPresent.into());
+            }
+            let parent_deserialized: anchor_lang::Account<'_, ItemClass> =
+                Account::try_from(parent)?;
+
+            update_item_class_with_inherited_information(item_class, &parent_deserialized);
+        } else if let Some(icd) = item_class_data {
+            match update_permissiveness_to_use {
+                Some(val) => {
+                    if let Some(dc) = &item_class.data.update_permissiveness {
+                        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                            program_id: ctx.program_id,
+                            given_account: &item_class.to_account_info(),
+                            remaining_accounts: ctx.remaining_accounts,
+                            update_permissiveness_to_use: &val,
+                            update_permissiveness_array: &dc,
+                            index: class_index,
+                            account_mint: Some(&item_mint.to_account_info()),
+                        })?
+                    }
+                }
+                None => return Err(ErrorCode::MustSpecifyUpdatePermissivenessType.into()),
+            }
+
+            item_class.data = icd;
+        }
         Ok(())
     }
 }
@@ -176,6 +222,7 @@ pub struct CreateItemClass<'info> {
     rent: Sysvar<'info, Rent>,
     // If parent is unset, need to provide:
     // metadata_update_authority [signer]
+    // metadata [readable]
     // If parent is set, and update permissiveness is token holder can update:
     // parent token_account [readable]
     // parent token_holder [signer]
@@ -330,6 +377,8 @@ pub struct UpdateItemClass<'info> {
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
+    // also if you JUST pass up the parent key as the third account, with NO item data to update,
+    // this command will permissionlessly enforce inheritance rules on the item class from it's parent.
 }
 
 #[derive(Accounts)]
@@ -642,7 +691,7 @@ pub struct ItemClassData {
     children_must_be_editions: Option<Boolean>,
     builder_must_be_holder: Option<Boolean>,
     default_category: Option<DefaultItemCategory>,
-    default_update_permissiveness: Option<Vec<UpdatePermissiveness>>,
+    update_permissiveness: Option<Vec<UpdatePermissiveness>>,
     child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
     // The roots are merkle roots, used to keep things cheap on chain (optional)
     usage_root: Option<Root>,
@@ -694,7 +743,7 @@ pub const MIN_ITEM_SIZE: usize = 8 + // key
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemData {
     update_permissiveness: Option<Vec<UpdatePermissiveness>>,
-    usage_state_root: Option<[u8; 32]>,
+    usage_state_root: Option<Root>,
     // if state root is set, usage states is considered a cache, not source of truth
     usage_states: Option<Vec<ItemUsageState>>,
 }

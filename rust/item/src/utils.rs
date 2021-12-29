@@ -1,12 +1,12 @@
 use {
     crate::{
         ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
-        DefaultItemCategory, ErrorCode, InheritanceState, Inherited, ItemClass, ItemClassData,
-        ItemUsage, Root, UpdatePermissiveness, UpdatePermissivenessType, PREFIX,
+        DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item, ItemClass,
+        ItemClassData, ItemUsage, Root, UpdatePermissiveness, UpdatePermissivenessType, PREFIX,
     },
     anchor_lang::{
         prelude::{
-            msg, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
+            msg, Account, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
             UncheckedAccount,
         },
         solana_program::{
@@ -265,7 +265,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
         UpdatePermissivenessType::TokenHolderCanUpdate => {
             //  token_account [readable]
             //  token_holder [signer]
-            // parent mint [readable] OR none (depending if this is a create item class call or not and we are running off the parent's settings)
+            //  mint [readable] OR none if already present in the main array
             let token_account = &remaining_accounts[0];
             let token_holder = &remaining_accounts[1];
             let mint = if let Some(m) = account_mint {
@@ -289,15 +289,19 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
             )?;
         }
         UpdatePermissivenessType::ClassHolderCanUpdate => {
-            // class token_account [readable]
-            // class token_holder [signer]
-            // class [readable]
-            // class mint [readable]
+            // parent class token_account [readable]
+            // parent class token_holder [signer]
+            // parent class [readable]
+            // parent class mint [readable] OR none if already present in the main array
 
             let class_token_account = &remaining_accounts[0];
             let class_token_holder = &remaining_accounts[1];
             let class = &remaining_accounts[2];
-            let class_mint = &remaining_accounts[3];
+            let class_mint = if let Some(m) = account_mint {
+                m
+            } else {
+                &remaining_accounts[3]
+            };
 
             assert_signer(class_token_holder)?;
 
@@ -322,11 +326,15 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
         UpdatePermissivenessType::UpdateAuthorityCanUpdate => {
             // metadata_update_authority [signer]
             // metadata [readable]
-            // mint [readable] OR none (depending if this is a create item class call or not and we are running off the parent's settings)
+            // mint [readable] OR none if already present in the main array
 
             let metadata_update_authority = &remaining_accounts[0];
             let metadata = &remaining_accounts[1];
-            let mint = &remaining_accounts[2];
+            let mint = if let Some(m) = account_mint {
+                m
+            } else {
+                &remaining_accounts[2]
+            };
 
             assert_signer(metadata_update_authority)?;
 
@@ -438,77 +446,79 @@ pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T>
     }
 }
 
-pub fn update_item_class_with_inherited_information(item: &mut ItemClass, parent_item: &ItemClass) {
-    let item_data = &mut item.data;
+pub fn update_item_class_with_inherited_information(
+    item: &mut Account<ItemClass>,
+    parent_item: &Account<ItemClass>,
+) {
     let parent_item_data = &parent_item.data;
     match &parent_item_data.child_update_propagation_permissiveness {
         Some(cupp) => {
             for update_perm in cupp {
                 match update_perm.child_update_propagation_permissiveness_type {
                     ChildUpdatePropagationPermissivenessType::DefaultItemCategory => {
-                        item_data.default_category = propagate_parent(PropagateParentArgs {
+                        item.data.default_category = propagate_parent(PropagateParentArgs {
                             parent: &parent_item_data.default_category,
-                            child: &item_data.default_category,
+                            child: &item.data.default_category,
                             overridable: update_perm.overridable,
                         })
                     }
                     ChildUpdatePropagationPermissivenessType::Usages => {
-                        item_data.usages = propagate_parent_array(PropagateParentArrayArgs {
+                        item.data.usages = propagate_parent_array(PropagateParentArrayArgs {
                             parent_items: &parent_item_data.usages,
-                            child_items: &item_data.usages,
+                            child_items: &item.data.usages,
                             overridable: update_perm.overridable,
                         });
-                        item_data.usage_root = propagate_parent(PropagateParentArgs {
+                        item.data.usage_root = propagate_parent(PropagateParentArgs {
                             parent: &parent_item_data.usage_root,
-                            child: &item_data.usage_root,
+                            child: &item.data.usage_root,
                             overridable: update_perm.overridable,
                         });
 
-                        item_data.usage_state_root = propagate_parent(PropagateParentArgs {
+                        item.data.usage_state_root = propagate_parent(PropagateParentArgs {
                             parent: &parent_item_data.usage_state_root,
-                            child: &item_data.usage_state_root,
+                            child: &item.data.usage_state_root,
                             overridable: update_perm.overridable,
                         });
                     }
                     ChildUpdatePropagationPermissivenessType::Components => {
-                        item_data.components = propagate_parent_array(PropagateParentArrayArgs {
+                        item.data.components = propagate_parent_array(PropagateParentArrayArgs {
                             parent_items: &parent_item_data.components,
-                            child_items: &item_data.components,
+                            child_items: &item.data.components,
                             overridable: update_perm.overridable,
                         });
-                        item_data.component_root = propagate_parent(PropagateParentArgs {
+                        item.data.component_root = propagate_parent(PropagateParentArgs {
                             parent: &parent_item_data.component_root,
-                            child: &item_data.component_root,
+                            child: &item.data.component_root,
                             overridable: update_perm.overridable,
                         });
                     }
                     ChildUpdatePropagationPermissivenessType::UpdatePermissiveness => {
-                        item_data.default_update_permissiveness =
+                        item.data.update_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
-                                parent_items: &parent_item_data.default_update_permissiveness,
-                                child_items: &item_data.default_update_permissiveness,
+                                parent_items: &parent_item_data.update_permissiveness,
+                                child_items: &item.data.update_permissiveness,
                                 overridable: update_perm.overridable,
                             });
                     }
                     ChildUpdatePropagationPermissivenessType::ChildUpdatePropagationPermissiveness => {
-                        item_data.child_update_propagation_permissiveness =
+                        item.data.child_update_propagation_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
                                 parent_items: &parent_item_data.child_update_propagation_permissiveness,
-                                child_items: &item_data.child_update_propagation_permissiveness,
+                                child_items: &item.data.child_update_propagation_permissiveness,
                                 overridable: update_perm.overridable,
                             });
                     }
                     ChildUpdatePropagationPermissivenessType::ChildrenMustBeEditionsPermissiveness => {
-                        item_data.children_must_be_editions = propagate_parent(PropagateParentArgs {
+                        item.data.children_must_be_editions = propagate_parent(PropagateParentArgs {
                             parent: &parent_item_data.children_must_be_editions,
-                            child: &item_data.children_must_be_editions,
+                            child: &item.data.children_must_be_editions,
                             overridable: update_perm.overridable,
                         });
                     }
                     ChildUpdatePropagationPermissivenessType::BuilderMustBeHolderPermissiveness => {
-                        item_data.builder_must_be_holder = propagate_parent(PropagateParentArgs {
+                        item.data.builder_must_be_holder = propagate_parent(PropagateParentArgs {
                             parent: &parent_item_data.builder_must_be_holder,
-                            child: &item_data.builder_must_be_holder,
+                            child: &item.data.builder_must_be_holder,
                             overridable: update_perm.overridable,
                         });
                     },
