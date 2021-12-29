@@ -513,9 +513,11 @@ pub fn update_item_class_with_inherited_information(item: &mut ItemClass, parent
                         });
                     },
                     ChildUpdatePropagationPermissivenessType::Namespaces => {
-                        if update_perm.overridable {
-                            //item.namespaces;
-                        }
+                        item.namespaces = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item.namespaces,
+                            child_items: &item.namespaces,
+                            overridable: update_perm.overridable,
+                        });
                     },
                 }
             }

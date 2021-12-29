@@ -15,7 +15,6 @@ anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const MATCH_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const ITEM_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const MAX_NAMESPACES: usize = 5;
 
 const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
@@ -61,16 +60,21 @@ pub mod namespace {
 
         assert_metadata_valid(metadata, Some(master_edition), &mint.key())?;
 
-        let mut namespace_arr = vec![];
-        for _n in 0..desired_namespace_array_size {
-            namespace_arr.push(NamespaceAndIndex {
-                namespace: anchor_lang::solana_program::system_program::id(),
-                indexed: false,
-                inherited: InheritanceState::NotInherited,
-            });
-        }
+        if desired_namespace_array_size > 0 {
+            let mut namespace_arr = vec![];
 
-        namespace.namespaces = Some(namespace_arr);
+            for _n in 0..desired_namespace_array_size {
+                namespace_arr.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    indexed: false,
+                    inherited: InheritanceState::NotInherited,
+                });
+            }
+
+            namespace.namespaces = Some(namespace_arr);
+        } else {
+            namespace.namespaces = None
+        }
 
         namespace.bump = bump;
         namespace.uuid = uuid;
@@ -296,10 +300,14 @@ pub mod namespace {
                         new_vec.push(&new_name);
                         let mut data = artifact.data.borrow_mut();
                         data[8] = 1; // Option yes.
-                        let arr =
-                            array_mut_ref![data, 9, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
-
-                        arr.copy_from_slice(&new_vec.try_to_vec()?);
+                        let mut start: usize = 0;
+                        for j in 0..new_vec.len() {
+                            let as_vec = new_vec[j].try_to_vec()?;
+                            for byte in as_vec {
+                                data[13 + start] = byte;
+                                start += 1;
+                            }
+                        }
                         namespace.artifacts_added = namespace
                             .artifacts_added
                             .checked_sub(1)
@@ -334,6 +342,8 @@ pub mod namespace {
             }
             if !found {
                 let mut most_recent_zero = false;
+                let mut start: usize = 0;
+
                 for mut n in art_names {
                     if n.namespace == anchor_lang::solana_program::system_program::id() {
                         most_recent_zero = true;
@@ -341,22 +351,28 @@ pub mod namespace {
                         n.indexed = false;
                         let mut data = artifact.data.borrow_mut();
                         data[8] = 1; // option yes
-                        let arr =
-                            array_mut_ref![data, 9, NAMESPACE_AND_INDEX_SIZE * MAX_NAMESPACES + 4];
+                        let as_vec = n.try_to_vec()?;
+                        for byte in as_vec {
+                            data[13 + start] = byte;
+                            start += 1;
+                        }
 
-                        arr.copy_from_slice(&art_namespaces.try_to_vec()?);
                         namespace.artifacts_added = namespace
                             .artifacts_added
                             .checked_add(1)
                             .ok_or(ErrorCode::NumericalOverflowError)?;
                         break;
                     }
+                    start += NAMESPACE_AND_INDEX_SIZE;
                 }
                 if !most_recent_zero {
                     msg!("Out of space!");
                     return Err(ErrorCode::CannotJoinNamespace.into());
                 }
             }
+        } else {
+            msg!("Out of space! You did not allocate any space for namespaces.");
+            return Err(ErrorCode::CannotJoinNamespace.into());
         }
         Ok(())
     }

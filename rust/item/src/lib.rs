@@ -46,6 +46,7 @@ pub mod item {
         class_index: u64,
         parent_class_index: Option<u64>,
         _space: usize,
+        desired_namespace_array_size: usize,
         update_permissiveness_to_use: Option<UpdatePermissiveness>,
         store_mint: bool,
         store_metadata_fields: bool,
@@ -89,6 +90,7 @@ pub mod item {
                 }
             }
             item_class.data = item_class_data;
+            item_class.parent = Some(parent.key());
             update_item_class_with_inherited_information(&mut item_class, &parent_deserialized);
         } else {
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
@@ -120,6 +122,21 @@ pub mod item {
 
         if store_mint {
             item_class.mint = Some(item_mint.key());
+        }
+        if desired_namespace_array_size > 0 {
+            let mut namespace_arr = vec![];
+
+            for _n in 0..desired_namespace_array_size {
+                namespace_arr.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    indexed: false,
+                    inherited: InheritanceState::NotInherited,
+                });
+            }
+
+            item_class.namespaces = Some(namespace_arr);
+        } else {
+            item_class.namespaces = None
         }
 
         Ok(())
