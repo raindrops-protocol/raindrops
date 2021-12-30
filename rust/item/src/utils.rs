@@ -2,7 +2,8 @@ use {
     crate::{
         ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
         DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item, ItemClass,
-        ItemClassData, ItemUsage, Permissiveness, PermissivenessType, Root, PREFIX,
+        ItemClassData, ItemUsage, ItemUsageSpecifics, ItemUsageType, Permissiveness,
+        PermissivenessType, Root, PREFIX,
     },
     anchor_lang::{
         prelude::{
@@ -547,6 +548,50 @@ pub fn update_item_class_with_inherited_information(
             // do nothing
         }
     }
+}
+
+pub fn assert_valid_item_settings_for_edition_type(
+    edition: Option<&AccountInfo>,
+    item_data: ItemClassData,
+) -> ProgramResult {
+    if edition.is_none() {
+        if let Some(usages) = &item_data.usages {
+            for usage in usages {
+                if let Some(basic_item_effects) = &usage.basic_item_effects {
+                    for item_effects in basic_item_effects {
+                        if item_effects.active_duration.is_some()
+                            || item_effects.staking_amount_scaler.is_some()
+                            || item_effects.staking_duration_scaler.is_some()
+                        {
+                            return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                        }
+                    }
+                }
+
+                match &usage.specifics {
+                    ItemUsageSpecifics::Consumable {
+                        uses,
+                        max_players_per_use: _,
+                        item_usage_type,
+                        consumption_callback: _c,
+                    } => {
+                        if uses > &1 {
+                            // cant have a fungible mint with more than one use. Impossible to track state per token.
+                            return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                        }
+
+                        if item_usage_type != &ItemUsageType::Destruction
+                            && item_usage_type != &ItemUsageType::Infinite
+                        {
+                            return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {

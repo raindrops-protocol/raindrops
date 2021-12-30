@@ -4,11 +4,11 @@ use {
     crate::utils::{
         assert_derivation, assert_initialized, assert_is_ata, assert_keys_equal,
         assert_metadata_valid, assert_mint_authority_matches_mint, assert_owned_by,
-        assert_permissiveness_access, assert_signer, create_or_allocate_account_raw,
-        get_mask_and_index_for_seq, spl_token_burn, spl_token_mint_to, spl_token_transfer,
-        transfer_mint_authority, update_item_class_with_inherited_information,
-        AssertPermissivenessAccessArgs, TokenBurnParams, TokenTransferParams,
-        TransferMintAuthorityArgs,
+        assert_permissiveness_access, assert_signer, assert_valid_item_settings_for_edition_type,
+        create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
+        spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+        update_item_class_with_inherited_information, AssertPermissivenessAccessArgs,
+        TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -78,6 +78,8 @@ pub mod item {
             })?;
             None
         };
+
+        assert_valid_item_settings_for_edition_type(edition_option, item_class_data)?;
 
         assert_metadata_valid(
             &metadata.to_account_info(),
@@ -224,6 +226,12 @@ pub mod item {
             return Err(ErrorCode::CannotMakeZero.into());
         }
 
+        if let Some(b) = &item_class.data.builder_must_be_holder {
+            if b.boolean && !new_item_token_holder.is_signer {
+                return Err(ErrorCode::MustBeHolderToBuild.into());
+            }
+        }
+
         assert_is_ata(
             &new_item_token.to_account_info(),
             &new_item_token_holder.key(),
@@ -247,7 +255,7 @@ pub mod item {
             )?;
             // give minting for the item to the item's class since we will need it
             // to produce the fungible tokens when completed. Can also then be reused.
-            if &mint_authority_info.key != item_class.key() {
+            if mint_authority_info.key != &item_class.key() {
                 transfer_mint_authority(TransferMintAuthorityArgs {
                     item_class_key: &item_class.key(),
                     item_class_info: &item_class.to_account_info(),
@@ -582,7 +590,7 @@ pub enum ItemUsageState {
 }
 
 pub const ITEM_USAGE_TYPE_SIZE: usize = 9;
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum ItemUsageType {
     Cooldown { duration: i64 },
     Exhaustion,
@@ -902,4 +910,8 @@ pub enum ErrorCode {
     NotMintAuthority,
     #[msg("Cannot make zero of an item")]
     CannotMakeZero,
+    #[msg("Must be token holder to build against it")]
+    MustBeHolderToBuild,
+    #[msg("This config is invalid for fungible mints")]
+    InvalidConfigForFungibleMints,
 }
