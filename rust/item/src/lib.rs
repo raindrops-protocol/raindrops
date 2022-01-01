@@ -360,7 +360,9 @@ pub mod item {
             return Err(ErrorCode::MustUseMerkleOrComponentList.into());
         };
 
-        if chosen_component.condition == ComponentCondition::Cooldown {
+        if chosen_component.condition == ComponentCondition::Cooldown
+            || chosen_component.condition == ComponentCondition::CooldownAndConsume
+        {
             verify_cooldown(VerifyCooldownArgs {
                 craft_usage_info,
                 craft_item_class,
@@ -751,6 +753,7 @@ pub enum ComponentCondition {
     Presence,
     Absence,
     Cooldown,
+    CooldownAndConsume,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
