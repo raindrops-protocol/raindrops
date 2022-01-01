@@ -7,8 +7,9 @@ use {
         assert_permissiveness_access, assert_signer, assert_valid_item_settings_for_edition_type,
         create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
         spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
-        update_item_class_with_inherited_information, AssertPermissivenessAccessArgs,
-        TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
+        update_item_class_with_inherited_information, verify, verify_cooldown,
+        AssertPermissivenessAccessArgs, TokenBurnParams, TokenTransferParams,
+        TransferMintAuthorityArgs, VerifyCooldownArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -79,7 +80,7 @@ pub mod item {
             None
         };
 
-        assert_valid_item_settings_for_edition_type(edition_option, item_class_data)?;
+        assert_valid_item_settings_for_edition_type(edition_option, &item_class_data)?;
 
         assert_metadata_valid(
             &metadata.to_account_info(),
@@ -299,6 +300,98 @@ pub mod item {
         }
         Ok(())
     }
+
+    pub fn add_craft_item_to_escrow<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, AddCraftItemToEscrow<'info>>,
+        _token_bump: u8,
+        class_index: u64,
+        craft_class_index: u64,
+        _index: u64,
+        amount_to_make: u64,
+        // These required if using roots
+        component_proof: Option<Vec<[u8; 32]>>,
+        component: Option<Component>,
+        craft_usage_info: Option<CraftUsageInfo>,
+    ) -> ProgramResult {
+        let item_class = &ctx.accounts.item_class;
+        let item_class_mint = &ctx.accounts.item_class_mint;
+        let item_escrow = &mut ctx.accounts.item_escrow;
+        let new_item_mint = &ctx.accounts.new_item_mint;
+        let new_item_token = &ctx.accounts.new_item_token;
+        let new_item_token_holder = &ctx.accounts.new_item_token_holder;
+        let craft_item_token_mint = &ctx.accounts.craft_item_token_mint;
+        let craft_item_token_account = &ctx.accounts.craft_item_token_account;
+        let craft_item = &ctx.accounts.craft_item;
+        let craft_item_class = &ctx.accounts.craft_item_class;
+
+        if let Some(b) = &item_class.data.builder_must_be_holder {
+            require!(
+                b.boolean && !new_item_token_holder.is_signer,
+                MustBeHolderToBuild
+            )
+        }
+
+        let chosen_component = if let Some(component_root) = &item_class.data.component_root {
+            if let Some(p) = component_proof {
+                if let Some(c) = component {
+                    // Verify the merkle proof.
+                    let node = anchor_lang::solana_program::keccak::hashv(&[
+                        &[0x00],
+                        &item_escrow.step.to_le_bytes(),
+                        &craft_item_token_mint.key().to_bytes(),
+                        &AnchorSerialize::try_to_vec(&c)?,
+                    ]);
+                    require!(verify(p, component_root.root, node.0), InvalidProof);
+                    c
+                } else {
+                    return Err(ErrorCode::MissingMerkleInfo.into());
+                }
+            } else {
+                return Err(ErrorCode::MissingMerkleInfo.into());
+            }
+        } else if let Some(components) = &item_class.data.components {
+            require!(
+                item_escrow.step as usize == components.len(),
+                ErrorCode::ItemReadyForCompletion
+            );
+
+            components[item_escrow.step as usize].clone()
+        } else {
+            return Err(ErrorCode::MustUseMerkleOrComponentList.into());
+        };
+
+        if chosen_component.condition == ComponentCondition::Cooldown {
+            verify_cooldown(VerifyCooldownArgs {
+                craft_usage_info,
+                craft_item_class,
+                craft_item,
+                chosen_component: &chosen_component,
+            })?;
+        }
+
+        assert_keys_equal(chosen_component.mint, craft_item_token_mint.key())?;
+
+        if chosen_component.condition != ComponentCondition::Absence {
+            require!(
+                craft_item_token_account
+                    .amount
+                    .checked_mul(amount_to_make)
+                    .ok_or(ErrorCode::NumericalOverflowError)?
+                    < chosen_component
+                        .amount
+                        .checked_mul(amount_to_make)
+                        .ok_or(ErrorCode::NumericalOverflowError)?,
+                InsufficientBalance
+            );
+        }
+
+        item_escrow.step = item_escrow
+            .step
+            .checked_add(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
@@ -367,7 +460,7 @@ pub struct CreateItemEscrow<'info> {
     new_item_edition: UncheckedAccount<'info>,
     #[account(init, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=craft_bump, space=if namespace_index.is_none() { 18 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 18} , payer=payer)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    #[account(constraint=new_item_token.mint == new_item_mint.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -378,7 +471,7 @@ pub struct CreateItemEscrow<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(token_bump: u8, class_index: u64, index: u64, amount_to_make: u64)]
+#[instruction(token_bump: u8, class_index: u64, craft_item_index: u64, index: u64, amount_to_make: u64)]
 pub struct AddCraftItemToEscrow<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
@@ -387,7 +480,7 @@ pub struct AddCraftItemToEscrow<'info> {
     // payer is in seed so that draining funds can only be done by original payer
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    #[account(constraint=new_item_token.mint == new_item_mint.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -397,6 +490,10 @@ pub struct AddCraftItemToEscrow<'info> {
     #[account(mut, constraint=craft_item_token_account.mint == craft_item_token_mint.key())]
     craft_item_token_account: Account<'info, TokenAccount>,
     craft_item_token_mint: Account<'info, Mint>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), craft_item_token_mint.key().as_ref(), &craft_item_index.to_le_bytes()], bump=craft_item.bump)]
+    craft_item: Account<'info, Item>,
+    #[account(constraint=craft_item.parent.unwrap() == craft_item_class.key())]
+    craft_item_class: Account<'info, ItemClass>,
     craft_item_transfer_authority: Signer<'info>,
     payer: Signer<'info>,
     originator: UncheckedAccount<'info>,
@@ -414,7 +511,7 @@ pub struct RemoveCraftItemFromEscrow<'info> {
     new_item_mint: Account<'info, Mint>,
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    #[account(constraint=new_item_token.mint == new_item_mint.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -445,7 +542,7 @@ pub struct DeactivateItemEscrow<'info> {
     new_item_mint: Account<'info, Mint>,
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    #[account(constraint=new_item_token.mint == new_item_mint.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -575,16 +672,19 @@ pub enum ItemUsageSpecifics {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ItemUsageState {
+pub struct ItemUsageState {
+    inherited: InheritanceState,
+    item_usage_type: ItemUsageTypeState,
+    data: ItemUsageStateData,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ItemUsageStateData {
     Wearable {
-        inherited: InheritanceState,
-        item_usage_type: ItemUsageTypeState, //  ITEM_USAGE_TYPE_STATE_SIZE
         basic_item_effect_states: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_STATE_SIZE
     },
     Consumable {
-        inherited: InheritanceState,
-        uses_remaining: u64,                                  // 8
-        item_usage_type: ItemUsageTypeState,                  //  ITEM_USAGE_TYPE_SIZE
+        uses_remaining: u64,
         basic_item_effect: Option<Vec<BasicItemEffectState>>, // BASIC_ITEM_EFFECT_SIZE
     },
 }
@@ -601,7 +701,7 @@ pub enum ItemUsageType {
 pub const ITEM_USAGE_TYPE_STATE_SIZE: usize = 9;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ItemUsageTypeState {
-    Cooldown { activated_at: i64 },
+    Cooldown { activated_at: Option<i64> },
     Exhaustion,
     Destruction,
     Infinite,
@@ -645,18 +745,19 @@ pub struct BasicItemEffect {
     staking_duration_scaler: Option<u64>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum ComponentCondition {
     Consumed,
     Presence,
     Absence,
+    Cooldown,
 }
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Component {
     mint: Pubkey,
     amount: u64,
-    // if we cant count this component if its incooldown
-    non_cooldown_required: bool,
+    use_category: String,
     condition: ComponentCondition,
     inherited: InheritanceState,
 }
@@ -858,6 +959,16 @@ pub struct ItemData {
     // if state root is set, usage states is considered a cache, not source of truth
     usage_states: Option<Vec<ItemUsageState>>,
 }
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CraftUsageInfo {
+    // a specific usage state that is in the cooldown phase if the component condition is "Cooldown"
+    pub craft_usage_state_proof: Vec<[u8; 32]>,
+    pub craft_usage_state: ItemUsageState,
+    pub craft_usage_proof: Vec<[u8; 32]>,
+    pub craft_usage: ItemUsage,
+}
+
 #[account]
 pub struct Item {
     namespaces: Option<Vec<NamespaceAndIndex>>,
@@ -914,4 +1025,16 @@ pub enum ErrorCode {
     MustBeHolderToBuild,
     #[msg("This config is invalid for fungible mints")]
     InvalidConfigForFungibleMints,
+    #[msg("Missing the merkle fields")]
+    MissingMerkleInfo,
+    #[msg("Invalid proof")]
+    InvalidProof,
+    #[msg("Item ready for completion")]
+    ItemReadyForCompletion,
+    #[msg("In order for crafting to work there must be either a component list or a component merkle root")]
+    MustUseMerkleOrComponentList,
+    #[msg("In order for crafting to work there must be either a usage state list on the craft component or a usage merkle root")]
+    MustUseMerkleOrUsageState,
+    #[msg("Unable to find a valid cooldown state")]
+    UnableToFindValidCooldownState,
 }

@@ -1,22 +1,23 @@
 use {
     crate::{
         ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
-        DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item, ItemClass,
-        ItemClassData, ItemUsage, ItemUsageSpecifics, ItemUsageType, Permissiveness,
-        PermissivenessType, Root, PREFIX,
+        CraftUsageInfo, DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item,
+        ItemClass, ItemClassData, ItemUsage, ItemUsageSpecifics, ItemUsageState, ItemUsageType,
+        Permissiveness, PermissivenessType, Root, PREFIX,
     },
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
-            UncheckedAccount,
+            msg, Account, AccountInfo, AnchorSerialize, ProgramError, ProgramResult, Pubkey, Rent,
+            SolanaSysvar, UncheckedAccount,
         },
+        require,
         solana_program::{
             program::{invoke, invoke_signed},
             program_option::COption,
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
-        ToAccountInfo,
+        Key, ToAccountInfo,
     },
     anchor_spl::token::Mint,
     arrayref::array_ref,
@@ -552,7 +553,7 @@ pub fn update_item_class_with_inherited_information(
 
 pub fn assert_valid_item_settings_for_edition_type(
     edition: Option<&AccountInfo>,
-    item_data: ItemClassData,
+    item_data: &ItemClassData,
 ) -> ProgramResult {
     if edition.is_none() {
         if let Some(usages) = &item_data.usages {
@@ -762,6 +763,134 @@ pub fn transfer_mint_authority<'b, 'info>(
     } else {
         msg!("Skipping freeze authority because this mint has none")
     }
+
+    Ok(())
+}
+
+/// Returns true if a `leaf` can be proved to be a part of a Merkle tree
+/// defined by `root`. For this, a `proof` must be provided, containing
+/// sibling hashes on the branch from the leaf to the root of the tree. Each
+/// pair of leaves and each pair of pre-images are assumed to be sorted.
+pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
+    let mut computed_hash = leaf;
+    for proof_element in proof.into_iter() {
+        if computed_hash <= proof_element {
+            // Hash(current computed hash + current element of the proof)
+            computed_hash = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x01],
+                &computed_hash,
+                &proof_element,
+            ])
+            .0;
+        } else {
+            // Hash(current element of the proof + current computed hash)
+            computed_hash = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x01],
+                &proof_element,
+                &computed_hash,
+            ])
+            .0;
+        }
+    }
+    // Check if the computed hash (root) is equal to the provided root
+    computed_hash == root
+}
+
+pub struct VerifyCooldownArgs<'a, 'info> {
+    pub craft_usage_info: Option<CraftUsageInfo>,
+    pub craft_item_class: &'a Account<'info, ItemClass>,
+    pub craft_item: &'a Account<'info, Item>,
+    pub chosen_component: &'a Component,
+}
+
+pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> ProgramResult {
+    let VerifyCooldownArgs {
+        craft_usage_info,
+        craft_item_class,
+        craft_item,
+        chosen_component,
+    } = args;
+
+    if let Some(csi) = craft_usage_info {
+        let CraftUsageInfo {
+            craft_usage_state_proof,
+            craft_usage_state,
+            craft_usage_proof,
+            craft_usage,
+        } = csi;
+
+        // Verify the merkle proof.
+        let node = anchor_lang::solana_program::keccak::hashv(&[
+            &[0x00],
+            &craft_item.key().to_bytes(),
+            &AnchorSerialize::try_to_vec(&craft_usage_state)?,
+        ]);
+        if let Some(craft_usage_state_root) = &craft_item.data.usage_state_root {
+            require!(
+                verify(craft_usage_state_proof, craft_usage_state_root.root, node.0),
+                InvalidProof
+            );
+        } else {
+            return Err(ErrorCode::MissingMerkleInfo.into());
+        }
+
+        let class_node = anchor_lang::solana_program::keccak::hashv(&[
+            &[0x00],
+            &craft_item_class.key().to_bytes(),
+            &AnchorSerialize::try_to_vec(&craft_usage)?,
+        ]);
+
+        if let Some(craft_usage_root) = &craft_item_class.data.usage_root {
+            require!(
+                verify(craft_usage_proof, craft_usage_root.root, class_node.0),
+                InvalidProof
+            );
+        } else {
+            return Err(ErrorCode::MissingMerkleInfo.into());
+        }
+
+        let mut found = false;
+        for cat in &craft_usage.category {
+            if cat == &chosen_component.use_category {
+                found = true;
+                break;
+            }
+        }
+        require!(found, UnableToFindValidCooldownState);
+
+        match craft_usage_state.item_usage_type {
+            crate::ItemUsageTypeState::Cooldown { activated_at } => {
+                if activated_at.is_some() {
+                    return Ok(());
+                }
+            }
+            _ => {}
+        }
+    } else if let Some(usages) = &craft_item_class.data.usages {
+        for i in 0..usages.len() {
+            let usage = &usages[i];
+            for cat in &usage.category {
+                if cat == &chosen_component.use_category {
+                    if let Some(states) = &craft_item.data.usage_states {
+                        match states[i].item_usage_type {
+                            crate::ItemUsageTypeState::Cooldown { activated_at } => {
+                                if activated_at.is_some() {
+                                    return Ok(());
+                                }
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return Err(ErrorCode::UnableToFindValidCooldownState.into());
+    } else {
+        return Err(ErrorCode::MissingMerkleInfo.into());
+    };
 
     Ok(())
 }
