@@ -304,7 +304,7 @@ pub mod item {
     pub fn add_craft_item_to_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, AddCraftItemToEscrow<'info>>,
         _token_bump: u8,
-        _class_index: u64,
+        class_index: u64,
         _craft_item_index: u64,
         _index: u64,
         amount_to_make: u64,
@@ -312,8 +312,10 @@ pub mod item {
         component_proof: Option<Vec<[u8; 32]>>,
         component: Option<Component>,
         craft_usage_info: Option<CraftUsageInfo>,
+        build_permissiveness_to_use: Option<Permissiveness>,
     ) -> ProgramResult {
         let item_class = &ctx.accounts.item_class;
+        let item_class_mint = &ctx.accounts.item_class_mint;
         let item_escrow = &mut ctx.accounts.item_escrow;
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
         let craft_item_token_mint = &ctx.accounts.craft_item_token_mint;
@@ -329,6 +331,23 @@ pub mod item {
                 b.boolean && !new_item_token_holder.is_signer,
                 MustBeHolderToBuild
             )
+        }
+
+        match build_permissiveness_to_use {
+            Some(val) => {
+                if let Some(dc) = &item_class.data.build_permissiveness {
+                    assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                        program_id: ctx.program_id,
+                        given_account: &item_class.to_account_info(),
+                        remaining_accounts: ctx.remaining_accounts,
+                        permissiveness_to_use: &val,
+                        permissiveness_array: &dc,
+                        index: class_index,
+                        account_mint: Some(&item_class_mint.to_account_info()),
+                    })?
+                }
+            }
+            None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
         }
 
         let chosen_component = verify_component(VerifyComponentArgs {
@@ -509,6 +528,7 @@ pub struct AddCraftItemToEscrow<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
 #[derive(Accounts)]
