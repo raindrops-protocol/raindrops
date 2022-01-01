@@ -901,6 +901,7 @@ pub struct VerifyComponentArgs<'a, 'info> {
     pub component_proof: Option<Vec<[u8; 32]>>,
     pub item_escrow: &'a Account<'info, ItemEscrow>,
     pub craft_item_token_mint: &'a Account<'info, Mint>,
+    pub component_scope: String,
 }
 
 pub fn verify_component<'a, 'info>(
@@ -912,6 +913,7 @@ pub fn verify_component<'a, 'info>(
         component_proof,
         item_escrow,
         craft_item_token_mint,
+        component_scope,
     } = args;
     let chosen_component = if let Some(component_root) = &item_class.data.component_root {
         if let Some(p) = component_proof {
@@ -932,8 +934,15 @@ pub fn verify_component<'a, 'info>(
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
     } else if let Some(components) = &item_class.data.components {
+        let mut counter = 0;
+        for c in component {
+            if c.component_scope == component_scope {
+                counter += 1;
+            }
+        }
+
         require!(
-            item_escrow.step as usize == components.len(),
+            item_escrow.step as usize != counter,
             ErrorCode::ItemReadyForCompletion
         );
 
@@ -941,6 +950,11 @@ pub fn verify_component<'a, 'info>(
     } else {
         return Err(ErrorCode::MustUseMerkleOrComponentList.into());
     };
+
+    require!(
+        chosen_component.component_scope == component_scope,
+        NotPartOfComponentScope
+    );
 
     Ok(chosen_component)
 }
