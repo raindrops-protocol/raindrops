@@ -2,8 +2,8 @@ use {
     crate::{
         ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
         CraftUsageInfo, DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item,
-        ItemClass, ItemClassData, ItemUsage, ItemUsageSpecifics, ItemUsageState, ItemUsageType,
-        Permissiveness, PermissivenessType, Root, PREFIX,
+        ItemClass, ItemClassData, ItemEscrow, ItemUsage, ItemUsageSpecifics, ItemUsageState,
+        ItemUsageType, Permissiveness, PermissivenessType, Root, PREFIX,
     },
     anchor_lang::{
         prelude::{
@@ -893,4 +893,54 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
     };
 
     Ok(())
+}
+
+pub struct VerifyComponentArgs<'a, 'info> {
+    pub item_class: &'a Account<'info, ItemClass>,
+    pub component: Option<Component>,
+    pub component_proof: Option<Vec<[u8; 32]>>,
+    pub item_escrow: &'a Account<'info, ItemEscrow>,
+    pub craft_item_token_mint: &'a Account<'info, Mint>,
+}
+
+pub fn verify_component<'a, 'info>(
+    args: VerifyComponentArgs<'a, 'info>,
+) -> Result<Component, ProgramError> {
+    let VerifyComponentArgs {
+        item_class,
+        component,
+        component_proof,
+        item_escrow,
+        craft_item_token_mint,
+    } = args;
+    let chosen_component = if let Some(component_root) = &item_class.data.component_root {
+        if let Some(p) = component_proof {
+            if let Some(c) = component {
+                // Verify the merkle proof.
+                let node = anchor_lang::solana_program::keccak::hashv(&[
+                    &[0x00],
+                    &item_escrow.step.to_le_bytes(),
+                    &craft_item_token_mint.key().to_bytes(),
+                    &AnchorSerialize::try_to_vec(&c)?,
+                ]);
+                require!(verify(p, component_root.root, node.0), InvalidProof);
+                c
+            } else {
+                return Err(ErrorCode::MissingMerkleInfo.into());
+            }
+        } else {
+            return Err(ErrorCode::MissingMerkleInfo.into());
+        }
+    } else if let Some(components) = &item_class.data.components {
+        require!(
+            item_escrow.step as usize == components.len(),
+            ErrorCode::ItemReadyForCompletion
+        );
+
+        components[item_escrow.step as usize].clone()
+    } else {
+        return Err(ErrorCode::MustUseMerkleOrComponentList.into());
+    };
+
+    Ok(chosen_component)
 }

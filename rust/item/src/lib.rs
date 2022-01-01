@@ -7,9 +7,9 @@ use {
         assert_permissiveness_access, assert_signer, assert_valid_item_settings_for_edition_type,
         create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
         spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
-        update_item_class_with_inherited_information, verify, verify_cooldown,
+        update_item_class_with_inherited_information, verify, verify_component, verify_cooldown,
         AssertPermissivenessAccessArgs, TokenBurnParams, TokenTransferParams,
-        TransferMintAuthorityArgs, VerifyCooldownArgs,
+        TransferMintAuthorityArgs, VerifyComponentArgs, VerifyCooldownArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -304,8 +304,8 @@ pub mod item {
     pub fn add_craft_item_to_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, AddCraftItemToEscrow<'info>>,
         _token_bump: u8,
-        class_index: u64,
-        craft_class_index: u64,
+        _class_index: u64,
+        _craft_item_index: u64,
         _index: u64,
         amount_to_make: u64,
         // These required if using roots
@@ -314,15 +314,15 @@ pub mod item {
         craft_usage_info: Option<CraftUsageInfo>,
     ) -> ProgramResult {
         let item_class = &ctx.accounts.item_class;
-        let item_class_mint = &ctx.accounts.item_class_mint;
         let item_escrow = &mut ctx.accounts.item_escrow;
-        let new_item_mint = &ctx.accounts.new_item_mint;
-        let new_item_token = &ctx.accounts.new_item_token;
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
         let craft_item_token_mint = &ctx.accounts.craft_item_token_mint;
+        let craft_item_token_account_escrow = &ctx.accounts.craft_item_token_account_escrow;
+        let craft_item_transfer_authority = &ctx.accounts.craft_item_transfer_authority;
         let craft_item_token_account = &ctx.accounts.craft_item_token_account;
         let craft_item = &ctx.accounts.craft_item;
         let craft_item_class = &ctx.accounts.craft_item_class;
+        let token_program = &ctx.accounts.token_program;
 
         if let Some(b) = &item_class.data.builder_must_be_holder {
             require!(
@@ -331,34 +331,13 @@ pub mod item {
             )
         }
 
-        let chosen_component = if let Some(component_root) = &item_class.data.component_root {
-            if let Some(p) = component_proof {
-                if let Some(c) = component {
-                    // Verify the merkle proof.
-                    let node = anchor_lang::solana_program::keccak::hashv(&[
-                        &[0x00],
-                        &item_escrow.step.to_le_bytes(),
-                        &craft_item_token_mint.key().to_bytes(),
-                        &AnchorSerialize::try_to_vec(&c)?,
-                    ]);
-                    require!(verify(p, component_root.root, node.0), InvalidProof);
-                    c
-                } else {
-                    return Err(ErrorCode::MissingMerkleInfo.into());
-                }
-            } else {
-                return Err(ErrorCode::MissingMerkleInfo.into());
-            }
-        } else if let Some(components) = &item_class.data.components {
-            require!(
-                item_escrow.step as usize == components.len(),
-                ErrorCode::ItemReadyForCompletion
-            );
-
-            components[item_escrow.step as usize].clone()
-        } else {
-            return Err(ErrorCode::MustUseMerkleOrComponentList.into());
-        };
+        let chosen_component = verify_component(VerifyComponentArgs {
+            item_class,
+            component,
+            component_proof,
+            item_escrow,
+            craft_item_token_mint,
+        })?;
 
         if chosen_component.condition == ComponentCondition::Cooldown
             || chosen_component.condition == ComponentCondition::CooldownAndConsume
@@ -374,17 +353,45 @@ pub mod item {
         assert_keys_equal(chosen_component.mint, craft_item_token_mint.key())?;
 
         if chosen_component.condition != ComponentCondition::Absence {
+            let amount_to_take = craft_item_token_account
+                .amount
+                .checked_mul(amount_to_make)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
             require!(
-                craft_item_token_account
-                    .amount
-                    .checked_mul(amount_to_make)
-                    .ok_or(ErrorCode::NumericalOverflowError)?
+                amount_to_take
                     < chosen_component
                         .amount
                         .checked_mul(amount_to_make)
                         .ok_or(ErrorCode::NumericalOverflowError)?,
                 InsufficientBalance
             );
+
+            if chosen_component.condition == ComponentCondition::Consumed
+                || chosen_component.condition == ComponentCondition::CooldownAndConsume
+            {
+                spl_token_burn(TokenBurnParams {
+                    mint: craft_item_token_mint.to_account_info(),
+                    source: craft_item_token_account.to_account_info(),
+                    amount: amount_to_take,
+                    authority: craft_item_transfer_authority.to_account_info(),
+                    authority_signer_seeds: None,
+                    token_program: token_program.to_account_info(),
+                })?;
+            } else {
+                spl_token_transfer(TokenTransferParams {
+                    source: craft_item_token_account.to_account_info(),
+                    destination: craft_item_token_account_escrow.to_account_info(),
+                    amount: amount_to_take,
+                    authority: craft_item_transfer_authority.to_account_info(),
+                    authority_signer_seeds: &[],
+                    token_program: token_program.to_account_info(),
+                })?;
+            }
+        } else {
+            // Absence works specifically as overall supply being 0 - only way
+            // to truly make it work and avoid workarounds. This means while you can technically have a fungible
+            // be absence, the user must find and burn all tokens to get this condition satisfied.
+            require!(craft_item_token_mint.supply == 0, BalanceNeedsToBeZero)
         }
 
         item_escrow.step = item_escrow
@@ -460,9 +467,9 @@ pub struct CreateItemEscrow<'info> {
     new_item_mint: Account<'info, Mint>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=craft_bump, space=if namespace_index.is_none() { 18 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 18} , payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=craft_bump, space=if namespace_index.is_none() { 18 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 18} , payer=payer)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key())]
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -480,9 +487,9 @@ pub struct AddCraftItemToEscrow<'info> {
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
     // payer is in seed so that draining funds can only be done by original payer
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key())]
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -511,9 +518,9 @@ pub struct RemoveCraftItemFromEscrow<'info> {
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(),&index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key())]
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -542,9 +549,9 @@ pub struct DeactivateItemEscrow<'info> {
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key())]
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -557,9 +564,13 @@ pub struct DrainItemEscrow<'info> {
     item_class: Account<'info, ItemClass>,
     item_class_mint: Account<'info, Mint>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     originator: Signer<'info>,
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
+    new_item_token: Account<'info, TokenAccount>,
+    // may be required signer if builder must be holder in item class is true
+    new_item_token_holder: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -573,9 +584,9 @@ pub struct CompleteItemEscrow<'info> {
     #[account(init, seeds=[PREFIX.as_bytes(), new_item_mint.key().as_ref(), &index.to_le_bytes()], bump=new_item_bump, payer=payer, space=space as usize, constraint= space as usize >= MIN_ITEM_SIZE)]
     new_item: Account<'info, ItemClass>,
     new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(),&index.to_le_bytes(), &amount_to_make.to_le_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.amount > 0)]
+    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
@@ -751,6 +762,7 @@ pub struct BasicItemEffect {
 pub enum ComponentCondition {
     Consumed,
     Presence,
+    // Specifically, mint.supply == 0.
     Absence,
     Cooldown,
     CooldownAndConsume,
@@ -1040,4 +1052,6 @@ pub enum ErrorCode {
     MustUseMerkleOrUsageState,
     #[msg("Unable to find a valid cooldown state")]
     UnableToFindValidCooldownState,
+    #[msg("Balance needs to be zero")]
+    BalanceNeedsToBeZero,
 }
