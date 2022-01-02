@@ -361,6 +361,14 @@ pub mod item {
             component_scope,
         })?;
 
+        if let Some(time) = chosen_component.time_to_build {
+            if let Some(already_set_time) = item_escrow.time_to_build {
+                require!(time == already_set_time, TimeToBuildMismatch)
+            } else {
+                item_escrow.time_to_build = chosen_component.time_to_build;
+            }
+        }
+
         if chosen_component.condition == ComponentCondition::Cooldown
             || chosen_component.condition == ComponentCondition::CooldownAndConsume
         {
@@ -795,6 +803,10 @@ pub enum ComponentCondition {
 pub struct Component {
     mint: Pubkey,
     amount: u64,
+    // Should be a per-scope, but double layered arrays suck for inheritance
+    // therefore we splat this out in duplicative fashion.
+    // Only needs to be set on one component to get picked up by the builder.
+    time_to_build: Option<u64>,
     // To have more than one way to craft a component, silo components like this
     component_scope: String,
     // used to find a valid cooldown state to check for cooldown status on the
@@ -978,6 +990,7 @@ pub struct ItemEscrow {
     bump: u8,
     deactivated: bool,
     step: u64,
+    time_to_build: Option<u64>,
 }
 
 // can make this super cheap
@@ -1083,4 +1096,6 @@ pub enum ErrorCode {
     BalanceNeedsToBeZero,
     #[msg("This component is not part of this escrow's component scope")]
     NotPartOfComponentScope,
+    #[msg("The time to build on two disparate components in the same scope is different. Either unset one or make them both the same.")]
+    TimeToBuildMismatch,
 }
