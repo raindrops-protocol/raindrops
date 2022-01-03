@@ -1,7 +1,7 @@
 use {
     crate::{
-        ErrorCode, Filter, Namespace, NamespaceAndIndex, NamespaceGatekeeper, Permissiveness,
-        NAMESPACE_AND_INDEX_SIZE,
+        ErrorCode, Filter, InheritanceState, Namespace, NamespaceAndIndex, NamespaceGatekeeper,
+        Permissiveness, NAMESPACE_AND_INDEX_SIZE,
     },
     anchor_lang::{
         prelude::{
@@ -237,7 +237,7 @@ pub fn assert_signer(account: &UncheckedAccount) -> ProgramResult {
 }
 
 pub fn assert_part_of_namespace<'a>(
-    artifact: &UncheckedAccount<'a>,
+    artifact: &AccountInfo<'a>,
     namespace: &Account<'a, Namespace>,
 ) -> ProgramResult {
     let data = artifact.data.borrow_mut();
@@ -275,18 +275,20 @@ pub fn inverse_indexed_bool_for_namespace(
 }
 
 pub fn pull_namespaces(
-    artifact: &UncheckedAccount,
+    artifact: &AccountInfo,
 ) -> Result<Option<Vec<NamespaceAndIndex>>, ProgramError> {
     let data = artifact.data.borrow_mut();
-    let amount = u32::from_le_bytes(*array_ref![data, 8, 4]);
 
     if data[8] == 0 {
         return Ok(None);
     }
+
+    let amount = u32::from_le_bytes(*array_ref![data, 9, 4]);
+
     let cursor: usize = 13;
 
     let mut arr: Vec<NamespaceAndIndex> = vec![];
-    for n in 0..amount {
+    for _n in 0..amount {
         let bytes = array_ref![data, cursor, NAMESPACE_AND_INDEX_SIZE];
         let serialized: NamespaceAndIndex = try_from_slice_unchecked(bytes)?;
         arr.push(serialized)
@@ -509,4 +511,33 @@ pub fn assert_metadata_valid<'a>(
     }
 
     Ok(())
+}
+
+/// Returns true if a `leaf` can be proved to be a part of a Merkle tree
+/// defined by `root`. For this, a `proof` must be provided, containing
+/// sibling hashes on the branch from the leaf to the root of the tree. Each
+/// pair of leaves and each pair of pre-images are assumed to be sorted.
+pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
+    let mut computed_hash = leaf;
+    for proof_element in proof.into_iter() {
+        if computed_hash <= proof_element {
+            // Hash(current computed hash + current element of the proof)
+            computed_hash = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x01],
+                &computed_hash,
+                &proof_element,
+            ])
+            .0;
+        } else {
+            // Hash(current element of the proof + current computed hash)
+            computed_hash = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x01],
+                &proof_element,
+                &computed_hash,
+            ])
+            .0;
+        }
+    }
+    // Check if the computed hash (root) is equal to the provided root
+    computed_hash == root
 }

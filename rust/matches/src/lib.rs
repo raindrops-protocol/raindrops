@@ -58,6 +58,12 @@ pub enum InheritanceState {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Root {
+    inherited: InheritanceState,
+    root: [u8; 32],
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct OracleCallback(pub Pubkey, pub u8);
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {

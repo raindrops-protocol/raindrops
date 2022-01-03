@@ -241,7 +241,7 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
     pub permissiveness_to_use: &'a Permissiveness,
     pub permissiveness_array: &'a [Permissiveness],
     pub index: u64,
-    pub account_mint: Option<&'b AccountInfo<'info>>,
+    pub account_mint: Option<&'b Pubkey>,
 }
 
 pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> ProgramResult {
@@ -274,14 +274,14 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
             let token_account = &remaining_accounts[0];
             let token_holder = &remaining_accounts[1];
             let mint = if let Some(m) = account_mint {
-                m
+                *m
             } else {
-                &remaining_accounts[2]
+                remaining_accounts[2].key()
             };
 
             assert_signer(token_holder)?;
 
-            let acct = assert_is_ata(token_account, token_holder.key, mint.key)?;
+            let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
 
             if acct.amount == 0 {
                 return Err(ErrorCode::InsufficientBalance.into());
@@ -290,7 +290,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
             assert_derivation(
                 program_id,
                 given_account,
-                &[PREFIX.as_bytes(), mint.key.as_ref(), &index.to_le_bytes()],
+                &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
             )?;
         }
         PermissivenessType::ClassHolder => {
@@ -303,14 +303,14 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
             let class_token_holder = &remaining_accounts[1];
             let class = &remaining_accounts[2];
             let class_mint = if let Some(m) = account_mint {
-                m
+                *m
             } else {
-                &remaining_accounts[3]
+                remaining_accounts[3].key()
             };
 
             assert_signer(class_token_holder)?;
 
-            let acct = assert_is_ata(class_token_account, class_token_holder.key, class_mint.key)?;
+            let acct = assert_is_ata(class_token_account, class_token_holder.key, &class_mint)?;
 
             if acct.amount == 0 {
                 return Err(ErrorCode::InsufficientBalance.into());
@@ -319,11 +319,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
             assert_derivation(
                 program_id,
                 class,
-                &[
-                    PREFIX.as_bytes(),
-                    class_mint.key.as_ref(),
-                    &index.to_le_bytes(),
-                ],
+                &[PREFIX.as_bytes(), class_mint.as_ref(), &index.to_le_bytes()],
             )?;
 
             assert_keys_equal(grab_parent(given_account)?, *class.key)?;
@@ -336,14 +332,14 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
             let metadata_update_authority = &remaining_accounts[0];
             let metadata = &remaining_accounts[1];
             let mint = if let Some(m) = account_mint {
-                m
+                *m
             } else {
-                &remaining_accounts[2]
+                remaining_accounts[2].key()
             };
 
             assert_signer(metadata_update_authority)?;
 
-            assert_metadata_valid(metadata, None, mint.key)?;
+            assert_metadata_valid(metadata, None, &mint)?;
 
             let update_authority = grab_update_authority(metadata)?;
 
@@ -482,6 +478,18 @@ pub fn update_item_class_with_inherited_information(
                         item.data.usage_state_root = propagate_parent(PropagateParentArgs {
                             parent: &parent_item_data.usage_state_root,
                             child: &item.data.usage_state_root,
+                            overridable: update_perm.overridable,
+                        });
+                    }
+                    ChildUpdatePropagationPermissivenessType::StakingPermissiveness => {
+                        item.data.staking_permissiveness = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.staking_permissiveness,
+                            child_items: &item.data.staking_permissiveness,
+                            overridable: update_perm.overridable,
+                        });
+                        item.data.staking_root = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.staking_root,
+                            child: &item.data.staking_root,
                             overridable: update_perm.overridable,
                         });
                     }
@@ -701,6 +709,28 @@ pub fn assert_mint_authority_matches_mint(
     }
 
     Ok(())
+}
+
+pub fn assert_part_of_namespace<'a, 'b>(
+    artifact: &'b AccountInfo<'a>,
+    namespace: &'b AccountInfo<'a>,
+) -> Result<Account<'a, raindrops_namespace::Namespace>, ProgramError> {
+    assert_owned_by(namespace, &raindrops_namespace::id())?;
+
+    let deserialized: Account<raindrops_namespace::Namespace> = Account::try_from(namespace)?;
+
+    assert_derivation(
+        &raindrops_namespace::id(),
+        namespace,
+        &[
+            raindrops_namespace::PREFIX.as_bytes(),
+            deserialized.mint.key().as_ref(),
+        ],
+    )?;
+
+    raindrops_namespace::utils::assert_part_of_namespace(artifact, &deserialized)?;
+
+    Ok(deserialized)
 }
 
 pub struct TransferMintAuthorityArgs<'b, 'info> {

@@ -41,6 +41,12 @@ pub const EQUIPPED_ITEM_SIZE: usize = 32 + //item
 32; // padding
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Root {
+    inherited: InheritanceState,
+    root: [u8; 32],
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EquippedItem {
     item: Pubkey,
     item_class: Pubkey,
@@ -107,6 +113,7 @@ pub struct NamespaceAndIndex {
 #[account]
 pub struct PlayerClass {
     namespaces: Option<Vec<NamespaceAndIndex>>,
+
     parent: Option<Pubkey>,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,
@@ -124,6 +131,7 @@ pub struct PlayerClass {
 #[account]
 pub struct Player {
     namespaces: Option<Vec<NamespaceAndIndex>>,
+
     parent: Pubkey,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,

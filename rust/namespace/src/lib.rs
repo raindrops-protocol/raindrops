@@ -4,7 +4,7 @@ use {
     crate::utils::{
         assert_can_add_to_namespace, assert_initialized, assert_metadata_valid,
         assert_part_of_namespace, create_or_allocate_account_raw,
-        inverse_indexed_bool_for_namespace,
+        inverse_indexed_bool_for_namespace, pull_namespaces,
     },
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{Mint, Token, TokenAccount},
@@ -15,14 +15,12 @@ pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const MATCH_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const ITEM_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 
-const PREFIX: &str = "namespace";
+pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
 const MAX_WHITELIST: usize = 5;
 const MAX_CACHED_ITEMS: usize = 100;
 #[program]
 pub mod namespace {
-
-    use utils::pull_namespaces;
 
     use super::*;
     pub fn initialize_namespace<'info>(
@@ -444,18 +442,18 @@ pub struct PermissivenessSettings {
 /// seed ['namespace', namespace program, mint]
 #[account]
 pub struct Namespace {
-    namespaces: Option<Vec<NamespaceAndIndex>>,
-    mint: Pubkey,
-    metadata: Pubkey,
-    master_edition: Pubkey,
-    uuid: String,
-    pretty_name: String,
-    artifacts_added: u64,
-    highest_page: u64,
-    artifacts_cached: u64,
-    permissiveness_settings: PermissivenessSettings,
-    bump: u8,
-    whitelisted_staking_mints: Vec<Pubkey>,
+    pub namespaces: Option<Vec<NamespaceAndIndex>>,
+    pub mint: Pubkey,
+    pub metadata: Pubkey,
+    pub master_edition: Pubkey,
+    pub uuid: String,
+    pub pretty_name: String,
+    pub artifacts_added: u64,
+    pub highest_page: u64,
+    pub artifacts_cached: u64,
+    pub permissiveness_settings: PermissivenessSettings,
+    pub bump: u8,
+    pub whitelisted_staking_mints: Vec<Pubkey>,
 }
 
 /// seed ['namespace', namespace program, mint, page number]
