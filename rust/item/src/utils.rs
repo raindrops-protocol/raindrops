@@ -2,8 +2,8 @@ use {
     crate::{
         ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
         CraftUsageInfo, DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item,
-        ItemClass, ItemClassData, ItemEscrow, ItemUsage, ItemUsageSpecifics, ItemUsageState,
-        ItemUsageType, Permissiveness, PermissivenessType, Root, PREFIX,
+        ItemClass, ItemClassData, ItemClassType, ItemClassUsageType, ItemEscrow, ItemType,
+        ItemUsage, ItemUsageState, ItemUsageType, Permissiveness, PermissivenessType, Root, PREFIX,
     },
     anchor_lang::{
         prelude::{
@@ -577,20 +577,26 @@ pub fn assert_valid_item_settings_for_edition_type(
                     }
                 }
 
-                match &usage.specifics {
-                    ItemUsageSpecifics::Consumable {
-                        uses,
-                        max_players_per_use: _,
-                        item_usage_type,
-                        consumption_callback: _c,
+                match &usage.item_class_type {
+                    ItemClassType::Consumable {
+                        max_uses,
+                        item_class_usage_type,
+                        cooldown_duration,
+                        ..
                     } => {
-                        if uses > &1 {
-                            // cant have a fungible mint with more than one use. Impossible to track state per token.
+                        if let Some(max) = max_uses {
+                            if max > &1 {
+                                // cant have a fungible mint with more than one use. Impossible to track state per token.
+                                return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                            }
+                        }
+
+                        if cooldown_duration.is_some() {
                             return Err(ErrorCode::InvalidConfigForFungibleMints.into());
                         }
 
-                        if item_usage_type != &ItemUsageType::Destruction
-                            && item_usage_type != &ItemUsageType::Infinite
+                        if item_class_usage_type != &ItemClassUsageType::Destruction
+                            && item_class_usage_type != &ItemClassUsageType::Infinite
                         {
                             return Err(ErrorCode::InvalidConfigForFungibleMints.into());
                         }
@@ -888,13 +894,8 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
         }
         require!(found, UnableToFindValidCooldownState);
 
-        match craft_usage_state.item_usage_type {
-            crate::ItemUsageTypeState::Cooldown { activated_at } => {
-                if activated_at.is_some() {
-                    return Ok(());
-                }
-            }
-            _ => {}
+        if let Some(activated_at) = craft_usage_state.activated_at {
+            return Ok(());
         }
     } else if let Some(usages) = &craft_item_class.data.usages {
         for i in 0..usages.len() {
@@ -902,13 +903,8 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
             for cat in &usage.category {
                 if cat == &chosen_component.use_category {
                     if let Some(states) = &craft_item.data.usage_states {
-                        match states[i].item_usage_type {
-                            crate::ItemUsageTypeState::Cooldown { activated_at } => {
-                                if activated_at.is_some() {
-                                    return Ok(());
-                                }
-                            }
-                            _ => {}
+                        if let Some(activated_at) = states[i].activated_at {
+                            return Ok(());
                         }
                     } else {
                         break;
@@ -987,4 +983,60 @@ pub fn verify_component<'a, 'info>(
     );
 
     Ok(chosen_component)
+}
+
+pub fn propagate_item_class_data_fields_to_item_data(
+    item: &mut Account<Item>,
+    item_class: &Account<ItemClass>,
+) {
+    item.namespaces = item_class.namespaces.clone();
+
+    item.data.usage_state_root = item_class.data.usage_state_root.clone();
+
+    if let Some(item_usage) = &item_class.data.usages {
+        let mut new_states: Vec<ItemUsageState> = vec![];
+
+        let mut states_length = 0;
+        if let Some(states) = &item.data.usage_states {
+            states_length = states.len();
+        }
+
+        let mut existing_values: Vec<(Option<i64>, u64)> =
+            vec![(None, 0); std::cmp::max(item_usage.len(), states_length)];
+
+        if let Some(states) = &item.data.usage_states {
+            for i in 0..states.len() {
+                existing_values[states[i].index as usize] =
+                    (states[i].activated_at, states[i].uses);
+            }
+        }
+
+        for usage in item_usage {
+            match &usage.item_class_type {
+                ItemClassType::Wearable { .. } => new_states.push(ItemUsageState {
+                    item_type: ItemType::Wearable,
+                    uses: existing_values[usage.index as usize].1,
+                    activated_at: existing_values[usage.index as usize].0,
+                    index: usage.index,
+                }),
+                ItemClassType::Consumable {
+                    item_class_usage_type,
+                    ..
+                } => new_states.push(ItemUsageState {
+                    uses: existing_values[usage.index as usize].1,
+                    activated_at: existing_values[usage.index as usize].0,
+                    item_type: ItemType::Consumable {
+                        item_usage_type: match item_class_usage_type {
+                            ItemClassUsageType::Exhaustion => ItemUsageType::Exhaustion,
+                            ItemClassUsageType::Destruction => ItemUsageType::Destruction,
+                            ItemClassUsageType::Infinite => ItemUsageType::Infinite,
+                        },
+                    },
+                    index: usage.index,
+                }),
+            };
+        }
+
+        item.data.usage_states = Some(new_states);
+    }
 }
