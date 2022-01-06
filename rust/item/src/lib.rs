@@ -2,9 +2,9 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_derivation, assert_initialized, assert_is_ata, assert_keys_equal,
-        assert_metadata_valid, assert_mint_authority_matches_mint, assert_owned_by,
-        assert_part_of_namespace, assert_permissiveness_access, assert_signer,
+        assert_builder_must_be_holder_check, assert_derivation, assert_initialized, assert_is_ata,
+        assert_keys_equal, assert_metadata_valid, assert_mint_authority_matches_mint,
+        assert_owned_by, assert_part_of_namespace, assert_permissiveness_access, assert_signer,
         assert_valid_item_settings_for_edition_type, create_or_allocate_account_raw,
         get_mask_and_index_for_seq, propagate_item_class_data_fields_to_item_data, spl_token_burn,
         spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
@@ -96,18 +96,15 @@ pub mod item {
             let mut parent_deserialized: anchor_lang::Account<'_, ItemClass> =
                 Account::try_from(&parent.to_account_info())?;
             if let Some(dc) = &parent_deserialized.data.update_permissiveness {
-                match update_permissiveness_to_use {
-                    Some(val) => assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                        program_id: ctx.program_id,
-                        given_account: parent,
-                        remaining_accounts: ctx.remaining_accounts,
-                        permissiveness_to_use: &val,
-                        permissiveness_array: &dc,
-                        index: parent_class_index.unwrap(),
-                        account_mint: None,
-                    })?,
-                    None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
-                }
+                assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                    program_id: ctx.program_id,
+                    given_account: parent,
+                    remaining_accounts: ctx.remaining_accounts,
+                    permissiveness_to_use: &update_permissiveness_to_use,
+                    permissiveness_array: &item_class.data.update_permissiveness,
+                    index: parent_class_index.unwrap(),
+                    account_mint: None,
+                })?;
             } else {
                 return Err(ErrorCode::PermissivenessNotFound.into());
             }
@@ -124,14 +121,14 @@ pub mod item {
                 program_id: ctx.program_id,
                 given_account: &item_class_info,
                 remaining_accounts: ctx.remaining_accounts,
-                permissiveness_to_use: &Permissiveness {
+                permissiveness_to_use: &Some(Permissiveness {
                     permissiveness_type: PermissivenessType::UpdateAuthority,
                     inherited: InheritanceState::NotInherited,
-                },
-                permissiveness_array: &[Permissiveness {
+                }),
+                permissiveness_array: &Some(vec![Permissiveness {
                     permissiveness_type: PermissivenessType::UpdateAuthority,
                     inherited: InheritanceState::NotInherited,
-                }],
+                }]),
                 index: class_index,
                 account_mint: Some(&item_mint.key()),
             })?;
@@ -192,22 +189,15 @@ pub mod item {
 
             update_item_class_with_inherited_information(item_class, &parent_deserialized);
         } else if let Some(icd) = item_class_data {
-            match update_permissiveness_to_use {
-                Some(val) => {
-                    if let Some(dc) = &item_class.data.update_permissiveness {
-                        assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                            program_id: ctx.program_id,
-                            given_account: &item_class.to_account_info(),
-                            remaining_accounts: ctx.remaining_accounts,
-                            permissiveness_to_use: &val,
-                            permissiveness_array: &dc,
-                            index: class_index,
-                            account_mint: Some(&item_mint.key()),
-                        })?
-                    }
-                }
-                None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
-            }
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: &item_class.to_account_info(),
+                remaining_accounts: ctx.remaining_accounts,
+                permissiveness_to_use: &update_permissiveness_to_use,
+                permissiveness_array: &item_class.data.update_permissiveness,
+                index: class_index,
+                account_mint: Some(&item_mint.key()),
+            })?;
 
             item_class.data = icd;
         }
@@ -238,11 +228,7 @@ pub mod item {
             return Err(ErrorCode::CannotMakeZero.into());
         }
 
-        if let Some(b) = &item_class.data.builder_must_be_holder {
-            if b.boolean && !new_item_token_holder.is_signer {
-                return Err(ErrorCode::MustBeHolderToBuild.into());
-            }
-        }
+        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
 
         assert_is_ata(
             &new_item_token.to_account_info(),
@@ -293,22 +279,15 @@ pub mod item {
             }
         }
 
-        match build_permissiveness_to_use {
-            Some(val) => {
-                if let Some(dc) = &item_class.data.build_permissiveness {
-                    assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                        program_id: ctx.program_id,
-                        given_account: &item_class.to_account_info(),
-                        remaining_accounts: ctx.remaining_accounts,
-                        permissiveness_to_use: &val,
-                        permissiveness_array: &dc,
-                        index: class_index,
-                        account_mint: Some(&item_class_mint),
-                    })?
-                }
-            }
-            None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
-        }
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &build_permissiveness_to_use,
+            permissiveness_array: &item_class.data.build_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
         Ok(())
     }
 
@@ -339,29 +318,21 @@ pub mod item {
         let craft_item_class = &ctx.accounts.craft_item_class;
         let token_program = &ctx.accounts.token_program;
 
-        if let Some(b) = &item_class.data.builder_must_be_holder {
-            require!(
-                b.boolean && !new_item_token_holder.is_signer,
-                MustBeHolderToBuild
-            )
-        }
+        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
 
-        match build_permissiveness_to_use {
-            Some(val) => {
-                if let Some(dc) = &item_class.data.build_permissiveness {
-                    assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                        program_id: ctx.program_id,
-                        given_account: &item_class.to_account_info(),
-                        remaining_accounts: ctx.remaining_accounts,
-                        permissiveness_to_use: &val,
-                        permissiveness_array: &dc,
-                        index: class_index,
-                        account_mint: Some(&item_class_mint),
-                    })?
-                }
-            }
-            None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
-        }
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &build_permissiveness_to_use,
+            permissiveness_array: &item_class.data.build_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
+
+        require!(!item_escrow.deactivated, DeactivatedItemEscrow);
+
+        require!(!item_escrow.build_began.is_some(), BuildPhaseAlreadyStarted);
 
         let chosen_component = verify_component(VerifyComponentArgs {
             item_class,
@@ -443,6 +414,77 @@ pub mod item {
         Ok(())
     }
 
+    pub fn start_item_escrow_build_phase<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, StartItemEscrowBuildPhase<'info>>,
+        class_index: u64,
+        _index: u64,
+        _component_scope: String,
+        _amount_to_make: u64,
+        item_class_mint: Pubkey,
+        _originator: Pubkey,
+        _new_item_mint: Pubkey,
+        build_permissiveness_to_use: Option<Permissiveness>,
+        // The following fields are optional for use with component roots.
+        // Proof containing information on the total number of steps in the proof
+        end_node_proof: Option<Vec<[u8; 32]>>,
+        // Total steps you are claiming (to be proved by the end node proof) exist
+        // Will be used with step field on item escrow to determine if you have
+        // actually completed all steps in the proof.
+        total_steps: Option<u64>,
+    ) -> ProgramResult {
+        let item_class = &ctx.accounts.item_class;
+        let item_escrow = &mut ctx.accounts.item_escrow;
+        let new_item_token_holder = &ctx.accounts.new_item_token_holder;
+        let clock = &ctx.accounts.clock;
+
+        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &build_permissiveness_to_use,
+            permissiveness_array: &item_class.data.build_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
+
+        require!(!item_escrow.deactivated, DeactivatedItemEscrow);
+
+        require!(!item_escrow.build_began.is_some(), BuildPhaseAlreadyStarted);
+
+        if let Some(components) = &item_class.data.components {
+            require!(
+                components.len() == item_escrow.step as usize,
+                StillMissingComponents
+            );
+        } else if let Some(component_root) = &item_class.data.component_root {
+            if let Some(en_proof) = end_node_proof {
+                if let Some(total_s) = total_steps {
+                    // Verify the merkle proof.
+                    let node = anchor_lang::solana_program::keccak::hashv(&[
+                        &[0x00],
+                        &total_s.to_le_bytes(),
+                    ]);
+                    // Proof that the component root has as a leaf the number of steps,
+                    // and that the one you sent up matches that
+                    require!(verify(en_proof, component_root.root, node.0), InvalidProof);
+                    require!(total_s == item_escrow.step, StillMissingComponents);
+                } else {
+                    return Err(ErrorCode::MissingMerkleInfo.into());
+                }
+            } else {
+                return Err(ErrorCode::MissingMerkleInfo.into());
+            }
+        } else {
+            return Err(ErrorCode::MustUseMerkleOrComponentList.into());
+        };
+
+        item_escrow.build_began = Some(clock.unix_timestamp);
+
+        Ok(())
+    }
+
     pub fn complete_item_escrow_build_phase<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CompleteItemEscrowBuildPhase<'info>>,
         new_item_bump: u8,
@@ -457,7 +499,7 @@ pub mod item {
         store_mint: bool,
         store_metadata_fields: bool,
     ) -> ProgramResult {
-        let item_class = &ctx.accounts.item_class;
+        let item_class = &mut ctx.accounts.item_class;
         let item_escrow = &mut ctx.accounts.item_escrow;
         let new_item = &mut ctx.accounts.new_item;
         let new_item_mint = &ctx.accounts.new_item_mint;
@@ -480,34 +522,24 @@ pub mod item {
             &new_item_mint.key(),
         )?;
 
-        if let Some(b) = &item_class.data.builder_must_be_holder {
-            require!(
-                b.boolean && !new_item_token_holder.is_signer,
-                MustBeHolderToBuild
-            )
-        }
+        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
 
-        match build_permissiveness_to_use {
-            Some(val) => {
-                if let Some(dc) = &item_class.data.build_permissiveness {
-                    assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                        program_id: ctx.program_id,
-                        given_account: &item_class.to_account_info(),
-                        remaining_accounts: ctx.remaining_accounts,
-                        permissiveness_to_use: &val,
-                        permissiveness_array: &dc,
-                        index: class_index,
-                        account_mint: Some(&item_class_mint),
-                    })?
-                }
-            }
-            None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
-        }
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &build_permissiveness_to_use,
+            permissiveness_array: &item_class.data.build_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
+
+        require!(!item_escrow.deactivated, DeactivatedItemEscrow);
 
         if let Some(build_began) = item_escrow.build_began {
             if let Some(time_to_build) = item_escrow.time_to_build {
                 let finish = (build_began)
-                    .checked_add(time_to_build)
+                    .checked_add(time_to_build as i64)
                     .ok_or(ErrorCode::NumericalOverflowError)?;
                 if clock.unix_timestamp < finish as i64 {
                     msg!(
@@ -539,6 +571,13 @@ pub mod item {
         }
 
         propagate_item_class_data_fields_to_item_data(new_item, item_class);
+
+        if new_item_mint.supply <= 1 {
+            item_class.existing_children = item_class
+                .existing_children
+                .checked_add(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
 
         if amount_to_make > 1 {
             // means it's a fungible mint, so we are minting the tokens, vs
@@ -594,22 +633,15 @@ pub mod item {
 
         let namespace = assert_part_of_namespace(&item.to_account_info(), namespace)?;
 
-        match staking_permissiveness_to_use {
-            Some(val) => {
-                if let Some(dc) = &item_class.data.staking_permissiveness {
-                    assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                        program_id: ctx.program_id,
-                        given_account: &item_class.to_account_info(),
-                        remaining_accounts: ctx.remaining_accounts,
-                        permissiveness_to_use: &val,
-                        permissiveness_array: &dc,
-                        index: class_index,
-                        account_mint: Some(&item_class_mint),
-                    })?
-                }
-            }
-            None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
-        }
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &staking_permissiveness_to_use,
+            permissiveness_array: &item_class.data.staking_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
 
         for wl in &namespace.whitelisted_staking_mints {
             if *wl == staking_mint.key() {
@@ -687,7 +719,7 @@ pub struct CreateItemClass<'info> {
 #[derive(Accounts)]
 #[instruction(craft_bump: u8, class_index: u64, index: u64, component_scope: String, amount_to_make: u64, namespace_index: Option<u64>, item_class_mint: Pubkey)]
 pub struct CreateItemEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     new_item_mint: Account<'info, Mint>,
     new_item_metadata: UncheckedAccount<'info>,
@@ -707,7 +739,7 @@ pub struct CreateItemEscrow<'info> {
 #[derive(Accounts)]
 #[instruction(token_bump: u8, class_index: u64, craft_item_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey, originator: Pubkey)]
 pub struct AddCraftItemToEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     new_item_mint: Account<'info, Mint>,
     // payer is in seed so that draining funds can only be done by original payer
@@ -738,7 +770,7 @@ pub struct AddCraftItemToEscrow<'info> {
 #[derive(Accounts)]
 #[instruction(token_bump: u8, class_index: u64,  craft_item_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey, originator: Pubkey)]
 pub struct RemoveCraftItemFromEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     new_item_mint: Account<'info, Mint>,
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), originator.as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(),&index.to_le_bytes(), &amount_to_make.to_le_bytes(), &component_scope.as_bytes()], bump=item_escrow.bump)]
@@ -762,12 +794,13 @@ pub struct RemoveCraftItemFromEscrow<'info> {
     receiver: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
 #[derive(Accounts)]
 #[instruction(class_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey)]
 pub struct DeactivateItemEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     new_item_mint: Account<'info, Mint>,
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes(), &component_scope.as_bytes()], bump=item_escrow.bump)]
@@ -781,7 +814,7 @@ pub struct DeactivateItemEscrow<'info> {
 #[derive(Accounts)]
 #[instruction(class_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey)]
 pub struct DrainItemEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     new_item_mint: Account<'info, Mint>,
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes(), &component_scope.as_bytes()], bump=item_escrow.bump)]
@@ -791,6 +824,23 @@ pub struct DrainItemEscrow<'info> {
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(class_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey, originator: Pubkey, new_item_mint: Pubkey)]
+pub struct StartItemEscrowBuildPhase<'info> {
+    // parent determines who can create this (if present) so need to add all classes and check who is the signer...
+    // perhaps do this via optional additional accounts to save space.
+    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), originator.as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(),&index.to_le_bytes(), &amount_to_make.to_le_bytes(), &component_scope.as_bytes()], bump=item_escrow.bump)]
+    item_escrow: Account<'info, ItemEscrow>,
+    #[account(constraint=new_item_token.mint == new_item_mint && new_item_token.owner == new_item_token_holder.key())]
+    new_item_token: Account<'info, TokenAccount>,
+    // may be required signer if builder must be holder in item class is true
+    new_item_token_holder: UncheckedAccount<'info>,
+    clock: Sysvar<'info, Clock>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
 #[derive(Accounts)]
@@ -816,6 +866,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
     clock: Sysvar<'info, Clock>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
 #[derive(Accounts)]
@@ -1200,7 +1251,7 @@ pub struct ItemEscrow {
     deactivated: bool,
     step: u64,
     time_to_build: Option<u64>,
-    build_began: Option<u64>,
+    build_began: Option<i64>,
 }
 
 #[account]
@@ -1315,4 +1366,10 @@ pub enum ErrorCode {
     BuildPhaseNotStarted,
     #[msg("Build phase not finished")]
     BuildPhaseNotFinished,
+    #[msg("Item escrow has been deactivated")]
+    DeactivatedItemEscrow,
+    #[msg("Build phase already started")]
+    BuildPhaseAlreadyStarted,
+    #[msg("You havent added all components to the escrow")]
+    StillMissingComponents,
 }

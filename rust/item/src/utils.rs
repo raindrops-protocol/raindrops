@@ -238,10 +238,24 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
     pub program_id: &'a Pubkey,
     pub given_account: &'b AccountInfo<'info>,
     pub remaining_accounts: &'c [AccountInfo<'info>],
-    pub permissiveness_to_use: &'a Permissiveness,
-    pub permissiveness_array: &'a [Permissiveness],
+    pub permissiveness_to_use: &'a Option<Permissiveness>,
+    pub permissiveness_array: &'a Option<Vec<Permissiveness>>,
     pub index: u64,
     pub account_mint: Option<&'b Pubkey>,
+}
+
+pub fn assert_builder_must_be_holder_check(
+    item_class: &Account<ItemClass>,
+    new_item_token_holder: &UncheckedAccount,
+) -> ProgramResult {
+    if let Some(b) = &item_class.data.builder_must_be_holder {
+        require!(
+            b.boolean && !new_item_token_holder.is_signer,
+            MustBeHolderToBuild
+        )
+    }
+
+    return Ok(());
 }
 
 pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> ProgramResult {
@@ -254,100 +268,112 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
         index,
         account_mint,
     } = args;
-    let mut found = false;
-    for entry in permissiveness_array {
-        if entry == permissiveness_to_use {
-            found = true;
-            break;
-        }
-    }
 
-    if !found {
-        return Err(ErrorCode::PermissivenessNotFound.into());
-    }
+    match permissiveness_to_use {
+        Some(perm_to_use) => {
+            if let Some(permissiveness_arr) = permissiveness_array {
+                let mut found = false;
+                for entry in permissiveness_arr {
+                    if entry == perm_to_use {
+                        found = true;
+                        break;
+                    }
+                }
 
-    match permissiveness_to_use.permissiveness_type {
-        PermissivenessType::TokenHolder => {
-            //  token_account [readable]
-            //  token_holder [signer]
-            //  mint [readable] OR none if already present in the main array
-            let token_account = &remaining_accounts[0];
-            let token_holder = &remaining_accounts[1];
-            let mint = if let Some(m) = account_mint {
-                *m
-            } else {
-                remaining_accounts[2].key()
-            };
+                if !found {
+                    return Err(ErrorCode::PermissivenessNotFound.into());
+                }
 
-            assert_signer(token_holder)?;
+                match perm_to_use.permissiveness_type {
+                    PermissivenessType::TokenHolder => {
+                        //  token_account [readable]
+                        //  token_holder [signer]
+                        //  mint [readable] OR none if already present in the main array
+                        let token_account = &remaining_accounts[0];
+                        let token_holder = &remaining_accounts[1];
+                        let mint = if let Some(m) = account_mint {
+                            *m
+                        } else {
+                            remaining_accounts[2].key()
+                        };
 
-            let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+                        assert_signer(token_holder)?;
 
-            if acct.amount == 0 {
-                return Err(ErrorCode::InsufficientBalance.into());
+                        let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+
+                        if acct.amount == 0 {
+                            return Err(ErrorCode::InsufficientBalance.into());
+                        }
+
+                        assert_derivation(
+                            program_id,
+                            given_account,
+                            &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
+                        )?;
+                    }
+                    PermissivenessType::ClassHolder => {
+                        // parent class token_account [readable]
+                        // parent class token_holder [signer]
+                        // parent class [readable]
+                        // parent class mint [readable] OR none if already present in the main array
+
+                        let class_token_account = &remaining_accounts[0];
+                        let class_token_holder = &remaining_accounts[1];
+                        let class = &remaining_accounts[2];
+                        let class_mint = if let Some(m) = account_mint {
+                            *m
+                        } else {
+                            remaining_accounts[3].key()
+                        };
+
+                        assert_signer(class_token_holder)?;
+
+                        let acct = assert_is_ata(
+                            class_token_account,
+                            class_token_holder.key,
+                            &class_mint,
+                        )?;
+
+                        if acct.amount == 0 {
+                            return Err(ErrorCode::InsufficientBalance.into());
+                        }
+
+                        assert_derivation(
+                            program_id,
+                            class,
+                            &[PREFIX.as_bytes(), class_mint.as_ref(), &index.to_le_bytes()],
+                        )?;
+
+                        assert_keys_equal(grab_parent(given_account)?, *class.key)?;
+                    }
+                    PermissivenessType::UpdateAuthority => {
+                        // metadata_update_authority [signer]
+                        // metadata [readable]
+                        // mint [readable] OR none if already present in the main array
+
+                        let metadata_update_authority = &remaining_accounts[0];
+                        let metadata = &remaining_accounts[1];
+                        let mint = if let Some(m) = account_mint {
+                            *m
+                        } else {
+                            remaining_accounts[2].key()
+                        };
+
+                        assert_signer(metadata_update_authority)?;
+
+                        assert_metadata_valid(metadata, None, &mint)?;
+
+                        let update_authority = grab_update_authority(metadata)?;
+
+                        assert_keys_equal(update_authority, *metadata_update_authority.key)?;
+                    }
+                    PermissivenessType::Anybody => {
+                        // nothing
+                    }
+                }
             }
-
-            assert_derivation(
-                program_id,
-                given_account,
-                &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
-            )?;
         }
-        PermissivenessType::ClassHolder => {
-            // parent class token_account [readable]
-            // parent class token_holder [signer]
-            // parent class [readable]
-            // parent class mint [readable] OR none if already present in the main array
-
-            let class_token_account = &remaining_accounts[0];
-            let class_token_holder = &remaining_accounts[1];
-            let class = &remaining_accounts[2];
-            let class_mint = if let Some(m) = account_mint {
-                *m
-            } else {
-                remaining_accounts[3].key()
-            };
-
-            assert_signer(class_token_holder)?;
-
-            let acct = assert_is_ata(class_token_account, class_token_holder.key, &class_mint)?;
-
-            if acct.amount == 0 {
-                return Err(ErrorCode::InsufficientBalance.into());
-            }
-
-            assert_derivation(
-                program_id,
-                class,
-                &[PREFIX.as_bytes(), class_mint.as_ref(), &index.to_le_bytes()],
-            )?;
-
-            assert_keys_equal(grab_parent(given_account)?, *class.key)?;
-        }
-        PermissivenessType::UpdateAuthority => {
-            // metadata_update_authority [signer]
-            // metadata [readable]
-            // mint [readable] OR none if already present in the main array
-
-            let metadata_update_authority = &remaining_accounts[0];
-            let metadata = &remaining_accounts[1];
-            let mint = if let Some(m) = account_mint {
-                *m
-            } else {
-                remaining_accounts[2].key()
-            };
-
-            assert_signer(metadata_update_authority)?;
-
-            assert_metadata_valid(metadata, None, &mint)?;
-
-            let update_authority = grab_update_authority(metadata)?;
-
-            assert_keys_equal(update_authority, *metadata_update_authority.key)?;
-        }
-        PermissivenessType::Anybody => {
-            // nothing
-        }
+        None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
     }
 
     Ok(())
