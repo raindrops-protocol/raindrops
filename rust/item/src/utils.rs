@@ -17,12 +17,12 @@ use {
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
-        Key, ToAccountInfo,
+        Key, Program, System, Sysvar, ToAccountInfo,
     },
-    anchor_spl::token::Mint,
+    anchor_spl::token::{Mint, Token, TokenAccount},
     arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
-    spl_token::instruction::{set_authority, AuthorityType},
+    spl_token::instruction::{close_account, initialize_account2, set_authority, AuthorityType},
     std::convert::TryInto,
 };
 
@@ -595,8 +595,10 @@ pub fn assert_valid_item_settings_for_edition_type(
                 if let Some(basic_item_effects) = &usage.basic_item_effects {
                     for item_effects in basic_item_effects {
                         if item_effects.active_duration.is_some()
-                            || item_effects.staking_amount_scaler.is_some()
-                            || item_effects.staking_duration_scaler.is_some()
+                            || item_effects.staking_amount_numerator.is_some()
+                            || item_effects.staking_duration_numerator.is_some()
+                            || item_effects.staking_amount_divisor.is_some()
+                            || item_effects.staking_duration_divisor.is_some()
                         {
                             return Err(ErrorCode::InvalidConfigForFungibleMints.into());
                         }
@@ -1065,4 +1067,77 @@ pub fn propagate_item_class_data_fields_to_item_data(
 
         item.data.usage_states = Some(new_states);
     }
+}
+
+pub fn create_program_token_account_if_not_present<'a>(
+    program_account: &UncheckedAccount<'a>,
+    system_program: &Program<'a, System>,
+    fee_payer: &AccountInfo<'a>,
+    token_program: &Program<'a, Token>,
+    mint: &Account<'a, Mint>,
+    owner: &AccountInfo<'a>,
+    rent: &Sysvar<'a, Rent>,
+    signer_seeds: &[&[u8]],
+) -> ProgramResult {
+    assert_owned_by(&mint.to_account_info(), &token_program.key())?;
+
+    if program_account.data_is_empty() {
+        create_or_allocate_account_raw(
+            *token_program.key,
+            &program_account.to_account_info(),
+            &rent.to_account_info(),
+            &system_program,
+            &fee_payer,
+            spl_token::state::Account::LEN,
+            signer_seeds,
+        )?;
+
+        invoke_signed(
+            &initialize_account2(
+                &token_program.key,
+                &program_account.key(),
+                &mint.key(),
+                &owner.key(),
+            )
+            .unwrap(),
+            &[
+                token_program.to_account_info(),
+                mint.to_account_info(),
+                program_account.to_account_info(),
+                rent.to_account_info(),
+                owner.clone(),
+            ],
+            &[&signer_seeds],
+        )?;
+    }
+
+    Ok(())
+}
+
+pub fn close_token_account<'a>(
+    program_account: &Account<'a, TokenAccount>,
+    fee_payer: &AccountInfo<'a>,
+    token_program: &Program<'a, Token>,
+    owner: &AccountInfo<'a>,
+    signer_seeds: &[&[u8]],
+) -> ProgramResult {
+    invoke_signed(
+        &close_account(
+            &token_program.key,
+            &program_account.key(),
+            &fee_payer.key(),
+            &owner.key(),
+            &[],
+        )
+        .unwrap(),
+        &[
+            token_program.to_account_info(),
+            fee_payer.clone(),
+            program_account.to_account_info(),
+            owner.clone(),
+        ],
+        &[&signer_seeds],
+    )?;
+
+    Ok(())
 }
