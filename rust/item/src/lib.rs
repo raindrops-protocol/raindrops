@@ -205,6 +205,93 @@ pub mod item {
         Ok(())
     }
 
+    pub fn drain_item_class<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DrainItemClass<'info>>,
+        class_index: u64,
+        item_class_mint: Pubkey,
+        update_permissiveness_to_use: Option<Permissiveness>,
+    ) -> ProgramResult {
+        let item_class = &mut ctx.accounts.item_class;
+        let receiver = &ctx.accounts.receiver;
+        let parent = &ctx.accounts.parent_class;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &update_permissiveness_to_use,
+            permissiveness_array: &item_class.data.update_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint.key()),
+        })?;
+
+        require!(item_class.existing_children == 0, ChildrenStillExist);
+
+        if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
+            let mut parent_deserialized: anchor_lang::Account<'_, ItemClass> =
+                Account::try_from(&parent.to_account_info())?;
+
+            parent_deserialized.existing_children = parent_deserialized
+                .existing_children
+                .checked_sub(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        let item_class_info = item_class.to_account_info();
+        let snapshot: u64 = item_class_info.lamports();
+
+        **item_class_info.lamports.borrow_mut() = 0;
+
+        **receiver.lamports.borrow_mut() = receiver
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
+
+    pub fn drain_item<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DrainItem<'info>>,
+        _index: u64,
+        class_index: u64,
+        _item_mint: Pubkey,
+        item_class_mint: Pubkey,
+        update_permissiveness_to_use: Option<Permissiveness>,
+    ) -> ProgramResult {
+        let item_class = &mut ctx.accounts.item_class;
+        let item = &mut ctx.accounts.item;
+        let receiver = &ctx.accounts.receiver;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &update_permissiveness_to_use,
+            permissiveness_array: &item_class.data.update_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint.key()),
+        })?;
+
+        require!(item.tokens_staked == 0, UnstakeTokensFirst);
+
+        item_class.existing_children = item_class
+            .existing_children
+            .checked_sub(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        let item_info = item.to_account_info();
+        let snapshot: u64 = item_info.lamports();
+
+        **item_info.lamports.borrow_mut() = 0;
+
+        **receiver.lamports.borrow_mut() = receiver
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
+
     pub fn create_item_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CreateItemEscrow<'info>>,
         craft_bump: u8,
@@ -663,7 +750,7 @@ pub mod item {
     pub fn end_item_stake_warmup<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, EndItemStakeWarmup<'info>>,
         _item_intermediary_staking_bump: u8,
-        staking_counter_bump: u8,
+        _item_mint_staking_bump: u8,
         class_index: u64,
         index: u64,
         _staking_index: u64,
@@ -671,7 +758,7 @@ pub mod item {
         staking_amount: u64,
         staking_permissiveness_to_use: Option<Permissiveness>,
     ) -> ProgramResult {
-        let item = &ctx.accounts.item;
+        let item = &mut ctx.accounts.item;
         let item_class = &ctx.accounts.item_class;
         let item_mint = &ctx.accounts.item_mint;
         let staking_escrow = &mut ctx.accounts.item_intermediary_staking_account;
@@ -706,9 +793,11 @@ pub mod item {
             account_mint: Some(&item_class_mint),
         })?;
 
+        let item_mint_key = item_mint.key();
+
         let signer_seeds = [
             PREFIX.as_bytes(),
-            item_mint.key().as_ref(),
+            item_mint_key.as_ref(),
             &index.to_le_bytes(),
             &[item.bump],
         ];
@@ -752,6 +841,11 @@ pub mod item {
             &item.to_account_info(),
             &signer_seeds,
         )?;
+
+        item.tokens_staked = item
+            .tokens_staked
+            .checked_add(staking_amount)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         return Ok(());
     }
@@ -997,7 +1091,7 @@ pub struct EndItemStakeWarmup<'info> {
     #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
-    #[account(seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &index.to_le_bytes()], bump=item.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
     #[account(mut, seeds=[PREFIX.as_bytes(),item_class_mint.as_ref(), item_mint.key().as_ref(), &index.to_le_bytes(), &staking_mint.key().as_ref(), &staking_index.to_le_bytes()], bump=item_intermediary_staking_bump)]
     item_intermediary_staking_account: Account<'info, TokenAccount>,
@@ -1026,21 +1120,23 @@ pub struct UpdateItemClass<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(class_index: u64)]
+#[instruction(class_index: u64, item_class_mint: Pubkey)]
 pub struct DrainItemClass<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    item_mint: Account<'info, Mint>,
+    #[account(mut)]
+    parent_class: UncheckedAccount<'info>,
     receiver: Signer<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
 #[derive(Accounts)]
-#[instruction(index: u64, item_class_mint: Pubkey)]
+#[instruction(index: u64, class_index: u64,item_mint: Pubkey, item_class_mint: Pubkey)]
 pub struct DrainItem<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), item_mint.key().as_ref(), &index.to_le_bytes()], bump=item.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
-    item_mint: Account<'info, Mint>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.key().as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
     receiver: Signer<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
@@ -1389,6 +1485,7 @@ pub const MIN_ITEM_SIZE: usize = 8 + // key
 1 + // edition
 1 + // item usage states
 1 + // root
+8 + // unique tokens staked
 1; //bump
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1418,6 +1515,7 @@ pub struct Item {
     /// on a mint with more than 1 coin.
     edition: Option<Pubkey>,
     bump: u8,
+    tokens_staked: u64,
     data: ItemData,
 }
 
@@ -1497,4 +1595,8 @@ pub enum ErrorCode {
     StakingWarmupNotStarted,
     #[msg("You havent finished your warm up period")]
     StakingWarmupNotFinished,
+    #[msg("You cannot delete this class until all children are deleted")]
+    ChildrenStillExist,
+    #[msg("An item cannot be destroyed until all its staked tokens are unstaked")]
+    UnstakeTokensFirst,
 }
