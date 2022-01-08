@@ -954,7 +954,7 @@ pub struct VerifyComponentArgs<'a, 'info> {
     pub component: Option<Component>,
     pub component_proof: Option<Vec<[u8; 32]>>,
     pub item_escrow: &'a Account<'info, ItemEscrow>,
-    pub craft_item_token_mint: &'a Account<'info, Mint>,
+    pub craft_item_token_mint: &'a Pubkey,
     pub component_scope: String,
 }
 
@@ -976,7 +976,7 @@ pub fn verify_component<'a, 'info>(
                 let node = anchor_lang::solana_program::keccak::hashv(&[
                     &[0x00],
                     &item_escrow.step.to_le_bytes(),
-                    &craft_item_token_mint.key().to_bytes(),
+                    &craft_item_token_mint.to_bytes(),
                     &AnchorSerialize::try_to_vec(&c)?,
                 ]);
                 require!(verify(p, component_root.root, node.0), InvalidProof);

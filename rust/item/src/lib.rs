@@ -98,6 +98,7 @@ pub struct AddCraftItemToEscrowArgs {
     component_scope: String,
     amount_to_make: u64,
     item_class_mint: Pubkey,
+    new_item_mint: Pubkey,
     originator: Pubkey,
     build_permissiveness_to_use: Option<Permissiveness>,
     // These required if using roots
@@ -181,6 +182,24 @@ pub struct DrainItemEscrowArgs {
     item_class_mint: Pubkey,
     new_item_mint: Pubkey,
     new_item_token: Pubkey,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct RemoveCraftItemFromEscrowArgs {
+    token_bump: u8,
+    class_index: u64,
+    craft_item_index: u64,
+    index: u64,
+    component_scope: String,
+    amount_to_make: u64,
+    item_class_mint: Pubkey,
+    new_item_mint: Pubkey,
+    originator: Pubkey,
+    craft_item_token_mint: Pubkey,
+    build_permissiveness_to_use: Option<Permissiveness>,
+    // These required if using roots
+    component_proof: Option<Vec<[u8; 32]>>,
+    component: Option<Component>,
 }
 
 #[program]
@@ -585,7 +604,7 @@ pub mod item {
             component,
             component_proof,
             item_escrow,
-            craft_item_token_mint,
+            craft_item_token_mint: &craft_item_token_mint.key(),
             component_scope,
         })?;
 
@@ -657,6 +676,85 @@ pub mod item {
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
+        Ok(())
+    }
+
+    pub fn remove_craft_item_from_escrow<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, RemoveCraftItemFromEscrow<'info>>,
+        args: RemoveCraftItemFromEscrowArgs,
+    ) -> ProgramResult {
+        let item_class = &ctx.accounts.item_class;
+        let item_escrow = &mut ctx.accounts.item_escrow;
+        let new_item_token_holder = &ctx.accounts.new_item_token_holder;
+        let craft_item_token_account_escrow = &ctx.accounts.craft_item_token_account_escrow;
+        let craft_item_token_account = &ctx.accounts.craft_item_token_account;
+        let token_program = &ctx.accounts.token_program;
+        let receiver = &ctx.accounts.receiver;
+
+        let RemoveCraftItemFromEscrowArgs {
+            class_index,
+            component_scope,
+            item_class_mint,
+            build_permissiveness_to_use,
+            component_proof,
+            component,
+            craft_item_token_mint,
+            ..
+        } = args;
+
+        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &build_permissiveness_to_use,
+            permissiveness_array: &item_class.data.build_permissiveness,
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
+
+        require!(item_escrow.deactivated, NotDeactivated);
+
+        let chosen_component = verify_component(VerifyComponentArgs {
+            item_class,
+            component,
+            component_proof,
+            item_escrow,
+            craft_item_token_mint: &craft_item_token_mint,
+            component_scope,
+        })?;
+
+        assert_keys_equal(chosen_component.mint, craft_item_token_mint)?;
+
+        let item_class_seeds = [
+            PREFIX.as_bytes(),
+            item_class_mint.as_ref(),
+            &class_index.to_le_bytes(),
+            &[item_class.bump],
+        ];
+        // Give back any in the escrow. Any that should have been burned will have been.
+        spl_token_transfer(TokenTransferParams {
+            source: craft_item_token_account_escrow.to_account_info(),
+            destination: craft_item_token_account.to_account_info(),
+            amount: craft_item_token_account_escrow.amount,
+            authority: item_class.to_account_info(),
+            authority_signer_seeds: &item_class_seeds,
+            token_program: token_program.to_account_info(),
+        })?;
+
+        item_escrow.step = item_escrow
+            .step
+            .checked_sub(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        close_token_account(
+            craft_item_token_account_escrow,
+            receiver,
+            token_program,
+            &item_class.to_account_info(),
+            &item_class_seeds,
+        )?;
         Ok(())
     }
 
@@ -1128,20 +1226,19 @@ pub struct CreateItemEscrow<'info> {
 pub struct AddCraftItemToEscrow<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    new_item_mint: Account<'info, Mint>,
     // payer is in seed so that draining funds can only be done by original payer
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.originator.as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.originator.as_ref(), args.new_item_mint.as_ref(),new_item_token.key().as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
+    #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), new_item_mint.key().as_ref(), payer.key().as_ref(), craft_item_token_account.key().as_ref(), &args.index.to_le_bytes(), craft_item_token_account.mint.as_ref()], bump=args.token_bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.new_item_mint.as_ref(), payer.key().as_ref(), craft_item_token_account.key().as_ref(), &args.index.to_le_bytes(), craft_item_token_account.mint.as_ref()], bump=args.token_bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
     craft_item_token_account_escrow: Account<'info, TokenAccount>,
+    craft_item_token_mint: Account<'info, Mint>,
     #[account(mut, constraint=craft_item_token_account.mint == craft_item_token_mint.key())]
     craft_item_token_account: Account<'info, TokenAccount>,
-    craft_item_token_mint: Account<'info, Mint>,
     #[account(mut, seeds=[PREFIX.as_bytes(), craft_item_token_mint.key().as_ref(), &args.craft_item_index.to_le_bytes()], bump=craft_item.bump)]
     craft_item: Account<'info, Item>,
     #[account(constraint=craft_item.parent == craft_item_class.key())]
@@ -1155,32 +1252,25 @@ pub struct AddCraftItemToEscrow<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(token_bump: u8, class_index: u64,  craft_item_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey, originator: Pubkey)]
+#[instruction(args: RemoveCraftItemFromEscrowArgs)]
 pub struct RemoveCraftItemFromEscrow<'info> {
-    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), originator.as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(),&index.to_le_bytes(), &amount_to_make.to_le_bytes(), &component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.originator.as_ref(), args.new_item_mint.as_ref(), new_item_token.key().as_ref(),&args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
+    #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), new_item_mint.key().as_ref(),receiver.key().as_ref(), craft_item_token_account.key().as_ref(), &index.to_le_bytes()], bump=token_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.new_item_mint.as_ref(),receiver.key().as_ref(), craft_item_token_account.key().as_ref(), &args.index.to_le_bytes()], bump=args.token_bump)]
     craft_item_token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     craft_item_token_account: Account<'info, TokenAccount>,
-    // if craft item is burned and mint supply -> 0, lamports are returned from this account as well to kill the item off completely in the gamespace
-    #[account(mut, seeds=[PREFIX.as_bytes(), craft_item_mint.key().as_ref(), &craft_item_index.to_le_bytes()], bump=craft_item.bump)]
-    craft_item: Account<'info, Item>,
-    #[account(constraint=craft_item.parent == craft_item_class.key())]
-    craft_item_class: Account<'info, ItemClass>,
-    craft_item_mint: Account<'info, Mint>,
     // account funds will be drained here from craft_item_token_account_escrow
     receiver: Signer<'info>,
     system_program: Program<'info, System>,
-    rent: Sysvar<'info, Rent>,
+    token_program: Program<'info, Token>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
