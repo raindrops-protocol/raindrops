@@ -163,6 +163,25 @@ pub struct EndItemStakeWarmupArgs {
     staking_amount: u64,
     staking_permissiveness_to_use: Option<Permissiveness>,
 }
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DeactivateItemEscrowArgs {
+    index: u64,
+    component_scope: String,
+    amount_to_make: u64,
+    item_class_mint: Pubkey,
+    new_item_mint: Pubkey,
+    new_item_token: Pubkey,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DrainItemEscrowArgs {
+    index: u64,
+    component_scope: String,
+    amount_to_make: u64,
+    item_class_mint: Pubkey,
+    new_item_mint: Pubkey,
+    new_item_token: Pubkey,
+}
 
 #[program]
 pub mod item {
@@ -988,6 +1007,44 @@ pub mod item {
 
         return Ok(());
     }
+
+    pub fn deactivate_item_escrow<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DeactivateItemEscrow<'info>>,
+        _args: DeactivateItemEscrowArgs,
+    ) -> ProgramResult {
+        let item_escrow = &mut ctx.accounts.item_escrow;
+
+        require!(!item_escrow.deactivated, AlreadyDeactivated);
+
+        item_escrow.build_began = None;
+        item_escrow.deactivated = true;
+
+        Ok(())
+    }
+
+    pub fn drain_item_escrow<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DrainItemEscrow<'info>>,
+        _args: DrainItemEscrowArgs,
+    ) -> ProgramResult {
+        let item_escrow = &mut ctx.accounts.item_escrow;
+        let originator = &ctx.accounts.originator;
+
+        require!(item_escrow.deactivated, NotDeactivated);
+
+        require!(item_escrow.step == 0, NotEmptied);
+
+        let item_escrow_info = item_escrow.to_account_info();
+        let snapshot: u64 = item_escrow_info.lamports();
+
+        **item_escrow_info.lamports.borrow_mut() = 0;
+
+        **originator.lamports.borrow_mut() = originator
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
@@ -1128,32 +1185,18 @@ pub struct RemoveCraftItemFromEscrow<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(class_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey)]
+#[instruction(args: DeactivateItemEscrowArgs)]
 pub struct DeactivateItemEscrow<'info> {
-    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
-    item_class: Account<'info, ItemClass>,
-    new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes(), &component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), originator.key().as_ref(), args.new_item_mint.as_ref(),args.new_item_token.as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
-    new_item_token: Account<'info, TokenAccount>,
-    // may be required signer if builder must be holder in item class is true
-    new_item_token_holder: UncheckedAccount<'info>,
     originator: Signer<'info>,
 }
 #[derive(Accounts)]
-#[instruction(class_index: u64, index: u64, component_scope: String, amount_to_make: u64, item_class_mint: Pubkey)]
+#[instruction(args: DrainItemEscrowArgs)]
 pub struct DrainItemEscrow<'info> {
-    #[account(seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), &class_index.to_le_bytes()], bump=item_class.bump)]
-    item_class: Account<'info, ItemClass>,
-    new_item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(), originator.key().as_ref(), new_item_mint.key().as_ref(),new_item_token.key().as_ref(), &index.to_le_bytes(), &amount_to_make.to_le_bytes(), &component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), originator.key().as_ref(), args.new_item_mint.as_ref(),args.new_item_token.as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     originator: Signer<'info>,
-    #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
-    new_item_token: Account<'info, TokenAccount>,
-    // may be required signer if builder must be holder in item class is true
-    new_item_token_holder: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -1738,4 +1781,10 @@ pub enum ErrorCode {
     ChildrenStillExist,
     #[msg("An item cannot be destroyed until all its staked tokens are unstaked")]
     UnstakeTokensFirst,
+    #[msg("Already deactivated")]
+    AlreadyDeactivated,
+    #[msg("Escrow not deactivated")]
+    NotDeactivated,
+    #[msg("Item escrow not emptied")]
+    NotEmptied,
 }
