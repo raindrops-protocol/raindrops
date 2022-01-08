@@ -19,19 +19,53 @@ pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
 const MAX_WHITELIST: usize = 5;
 const MAX_CACHED_ITEMS: usize = 100;
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct InitializeNamespaceArgs {
+    bump: u8,
+    desired_namespace_array_size: usize,
+    uuid: String,
+    pretty_name: String,
+    permissiveness_settings: PermissivenessSettings,
+    whitelisted_staking_mints: Vec<Pubkey>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UpdateNamespaceArgs {
+    pretty_name: Option<String>,
+    permissiveness_settings: Option<PermissivenessSettings>,
+    whitelisted_staking_mints: Option<Vec<Pubkey>>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CacheArtifactArgs {
+    index_bump: u8,
+    prior_index_bump: u8,
+    page: u64,
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UncacheArtifactArgs {
+    page: u64,
+    namespace_gatekeeper_bump: u8,
+}
+
 #[program]
 pub mod namespace {
 
     use super::*;
     pub fn initialize_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, InitializeNamespace<'info>>,
-        bump: u8,
-        desired_namespace_array_size: usize,
-        uuid: String,
-        pretty_name: String,
-        permissiveness_settings: PermissivenessSettings,
-        whitelisted_staking_mints: Vec<Pubkey>,
+        args: InitializeNamespaceArgs,
     ) -> ProgramResult {
+        let InitializeNamespaceArgs {
+            bump,
+            desired_namespace_array_size,
+            uuid,
+            pretty_name,
+            permissiveness_settings,
+            whitelisted_staking_mints,
+        } = args;
+
         if uuid.len() > 6 {
             return Err(ErrorCode::UUIDTooLong.into());
         }
@@ -89,10 +123,14 @@ pub mod namespace {
 
     pub fn update_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, UpdateNamespace<'info>>,
-        pretty_name: Option<String>,
-        permissiveness_settings: Option<PermissivenessSettings>,
-        whitelisted_staking_mints: Option<Vec<Pubkey>>,
+        args: UpdateNamespaceArgs,
     ) -> ProgramResult {
+        let UpdateNamespaceArgs {
+            pretty_name,
+            permissiveness_settings,
+            whitelisted_staking_mints,
+        } = args;
+
         let namespace = &mut ctx.accounts.namespace;
 
         if let Some(ws_mints) = whitelisted_staking_mints {
@@ -122,10 +160,12 @@ pub mod namespace {
 
     pub fn cache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, CacheArtifact<'info>>,
-        index_bump: u8,
-        _prior_index_bump: u8,
-        page: u64,
+        args: CacheArtifactArgs,
     ) -> ProgramResult {
+        let CacheArtifactArgs {
+            index_bump, page, ..
+        } = args;
+
         let namespace = &mut ctx.accounts.namespace;
         let index = &mut ctx.accounts.index;
         let prior_index = &ctx.accounts.prior_index;
@@ -190,9 +230,9 @@ pub mod namespace {
 
     pub fn uncache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, UncacheArtifact<'info>>,
-        page: u64,
-        _namespace_gatekeeper_bump: u8,
+        args: UncacheArtifactArgs,
     ) -> ProgramResult {
+        let UncacheArtifactArgs { page, .. } = args;
         let namespace = &mut ctx.accounts.namespace;
         let index = &mut ctx.accounts.index;
         let artifact = &mut ctx.accounts.artifact;
@@ -517,9 +557,9 @@ FILTER_SIZE + //
 100; //padding
 
 #[derive(Accounts)]
-#[instruction(bump: u8, desired_namespace_array_size: usize)]
+#[instruction(args: InitializeNamespaceArgs)]
 pub struct InitializeNamespace<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), mint.key().as_ref()], payer=payer, bump=bump, space=desired_namespace_array_size*NAMESPACE_AND_INDEX_SIZE + MIN_NAMESPACE_SIZE + 4)]
+    #[account(init, seeds=[PREFIX.as_bytes(), mint.key().as_ref()], payer=payer, bump=args.bump, space=args.desired_namespace_array_size*NAMESPACE_AND_INDEX_SIZE + MIN_NAMESPACE_SIZE + 4)]
     namespace: Account<'info, Namespace>,
     mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
@@ -605,15 +645,15 @@ pub struct LeaveNamespace<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(index_bump: u8, prior_index_bump: u8, page: u64)]
+#[instruction(args: CacheArtifactArgs)]
 pub struct CacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.to_string().as_bytes()], bump=index_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.to_string().as_bytes()], bump=args.index_bump)]
     index: Account<'info, NamespaceIndex>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.checked_sub(1).ok_or(0)?.to_string().as_bytes()], bump=prior_index_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.checked_sub(1).ok_or(0)?.to_string().as_bytes()], bump=args.prior_index_bump)]
     prior_index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
@@ -623,13 +663,13 @@ pub struct CacheArtifact<'info> {
     rent: Sysvar<'info, Rent>,
 }
 #[derive(Accounts)]
-#[instruction( page: u64)]
+#[instruction(args: UncacheArtifactArgs)]
 pub struct UncacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), page.to_string().as_bytes()], bump=index.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.to_string().as_bytes()], bump=index.bump)]
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,

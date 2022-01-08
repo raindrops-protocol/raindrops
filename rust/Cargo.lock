@@ -845,18 +845,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "raindrops-game"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "arrayref",
- "metaplex-token-metadata",
- "spl-associated-token-account",
- "spl-token",
-]
-
-[[package]]
 name = "raindrops-item"
 version = "0.1.0"
 dependencies = [

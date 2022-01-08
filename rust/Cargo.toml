@@ -2,7 +2,6 @@
 members = [
   "item/",
   "player/",
-  "game/",
   "namespace/",
   "matches/"
 ]
