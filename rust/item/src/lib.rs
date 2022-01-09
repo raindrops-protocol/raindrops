@@ -239,7 +239,7 @@ pub mod item {
         )?;
 
         if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
-            let mut parent_deserialized: anchor_lang::Account<'_, ItemClass> =
+            let mut parent_deserialized: Account<'_, ItemClass> =
                 Account::try_from(&parent.to_account_info())?;
             if let Some(dc) = &parent_deserialized.data.update_permissiveness {
                 assert_permissiveness_access(AssertPermissivenessAccessArgs {
@@ -334,8 +334,7 @@ pub mod item {
             } else {
                 return Err(ErrorCode::NoParentPresent.into());
             }
-            let parent_deserialized: anchor_lang::Account<'_, ItemClass> =
-                Account::try_from(parent)?;
+            let parent_deserialized: Account<'_, ItemClass> = Account::try_from(parent)?;
 
             update_item_class_with_inherited_information(item_class, &parent_deserialized);
         } else if let Some(icd) = item_class_data {
@@ -380,7 +379,7 @@ pub mod item {
         require!(item_class.existing_children == 0, ChildrenStillExist);
 
         if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
-            let mut parent_deserialized: anchor_lang::Account<'_, ItemClass> =
+            let mut parent_deserialized: Account<'_, ItemClass> =
                 Account::try_from(&parent.to_account_info())?;
 
             parent_deserialized.existing_children = parent_deserialized

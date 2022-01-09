@@ -310,7 +310,7 @@ pub fn check_permissiveness_against_holder<'a>(
             if namespace_gatekeeper.data_is_empty() {
                 return Err(ErrorCode::CannotJoinNamespace.into());
             } else {
-                let deserialized: anchor_lang::Account<'_, NamespaceGatekeeper> =
+                let deserialized: Account<'_, NamespaceGatekeeper> =
                     Account::try_from(&namespace_gatekeeper.to_account_info())?;
                 for filter in &deserialized.artifact_filters {
                     match &filter.filter {
@@ -372,7 +372,7 @@ pub fn check_permissiveness_against_holder<'a>(
             if namespace_gatekeeper.data_is_empty() {
                 return Err(ErrorCode::CannotJoinNamespace.into());
             } else {
-                let deserialized: anchor_lang::Account<'_, NamespaceGatekeeper> =
+                let deserialized: Account<'_, NamespaceGatekeeper> =
                     Account::try_from(&namespace_gatekeeper.to_account_info())?;
                 for filter in &deserialized.artifact_filters {
                     match &filter.filter {

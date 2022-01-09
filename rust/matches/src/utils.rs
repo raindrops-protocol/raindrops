@@ -1,10 +1,7 @@
 use {
     crate::ErrorCode,
     anchor_lang::{
-        prelude::{
-            msg, AccountInfo, ProgramAccount, ProgramError, ProgramResult, Pubkey, Rent,
-            SolanaSysvar,
-        },
+        prelude::{msg, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar},
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},

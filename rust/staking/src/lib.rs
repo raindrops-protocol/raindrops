@@ -3,8 +3,7 @@ pub mod utils;
 use {
     crate::utils::{
         assert_is_proper_class, assert_is_proper_instance, assert_part_of_namespace,
-        assert_permissiveness_access, close_token_account,
-        create_program_token_account_if_not_present, spl_token_transfer,
+        assert_permissiveness_access, close_token_account, spl_token_transfer,
         AssertPermissivenessAccessArgs, TokenTransferParams,
     },
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
@@ -196,17 +195,6 @@ pub mod staking {
         ];
 
         let artifact_info = artifact_unchecked.to_account_info();
-
-        create_program_token_account_if_not_present(
-            artifact_mint_staking_account,
-            system,
-            &payer.to_account_info(),
-            token_program,
-            staking_mint,
-            &artifact_info,
-            rent,
-            &signer_seeds,
-        )?;
 
         spl_token_transfer(TokenTransferParams {
             source: staking_escrow.to_account_info(),
@@ -451,8 +439,8 @@ pub struct EndArtifactStakeWarmup<'info> {
     artifact_intermediary_staking_account: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(),args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=artifact_intermediary_staking_counter.bump)]
     artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump=args.artifact_mint_staking_bump)]
-    artifact_mint_staking_account: UncheckedAccount<'info>,
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump=args.artifact_mint_staking_bump, token::mint = staking_mint, token::authority = artifact, payer=payer)]
+    artifact_mint_staking_account: Account<'info, TokenAccount>,
     staking_mint: Account<'info, Mint>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,

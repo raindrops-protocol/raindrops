@@ -7,8 +7,8 @@ use {
     },
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, AnchorSerialize, ProgramError, ProgramResult, Pubkey, Rent,
-            SolanaSysvar, UncheckedAccount,
+            msg, Account, AccountInfo, AnchorSerialize, Program, ProgramError, ProgramResult,
+            Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{
@@ -17,7 +17,7 @@ use {
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
-        Key, Program, System, Sysvar, ToAccountInfo,
+        Key, System, ToAccountInfo,
     },
     anchor_spl::token::{Mint, Token, TokenAccount},
     arrayref::array_ref,

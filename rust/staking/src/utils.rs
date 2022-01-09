@@ -1,23 +1,21 @@
 use {
     crate::{Artifact, ArtifactClass, ErrorCode, Permissiveness, PermissivenessType, PREFIX},
     anchor_lang::{
+        accounts::program_account::ProgramAccount,
         prelude::{
-            msg, Account, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
-            UncheckedAccount,
+            Account, AccountInfo, Program, ProgramError, ProgramResult, Pubkey, UncheckedAccount,
         },
         require,
         solana_program::{
-            program::{invoke, invoke_signed},
+            program::invoke_signed,
             program_pack::{IsInitialized, Pack},
-            system_instruction,
         },
-        Key, Program, System, Sysvar, ToAccountInfo,
+        Key, ToAccountInfo,
     },
-    anchor_spl::token::{Mint, Token, TokenAccount},
+    anchor_spl::token::{Token, TokenAccount},
     arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
-    spl_token::instruction::{close_account, initialize_account2},
-    std::convert::TryInto,
+    spl_token::instruction::close_account,
 };
 
 pub fn assert_initialized<T: Pack + IsInitialized>(
@@ -108,56 +106,6 @@ pub fn assert_derivation_with_bump(
     if key != *account.key {
         return Err(ErrorCode::DerivedKeyInvalid.into());
     }
-    Ok(())
-}
-
-/// Create account almost from scratch, lifted from
-/// https://github.com/solana-labs/solana-program-library/blob/7d4873c61721aca25464d42cc5ef651a7923ca79/associated-token-account/program/src/processor.rs#L51-L98
-#[inline(always)]
-pub fn create_or_allocate_account_raw<'a>(
-    program_id: Pubkey,
-    new_account_info: &AccountInfo<'a>,
-    rent_sysvar_info: &AccountInfo<'a>,
-    system_program_info: &AccountInfo<'a>,
-    payer_info: &AccountInfo<'a>,
-    size: usize,
-    signer_seeds: &[&[u8]],
-) -> Result<(), ProgramError> {
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
-    let required_lamports = rent
-        .minimum_balance(size)
-        .max(1)
-        .saturating_sub(new_account_info.lamports());
-
-    if required_lamports > 0 {
-        msg!("Transfer {} lamports to the new account", required_lamports);
-        invoke(
-            &system_instruction::transfer(&payer_info.key, new_account_info.key, required_lamports),
-            &[
-                payer_info.clone(),
-                new_account_info.clone(),
-                system_program_info.clone(),
-            ],
-        )?;
-    }
-
-    let accounts = &[new_account_info.clone(), system_program_info.clone()];
-
-    msg!("Allocate space for the account");
-    invoke_signed(
-        &system_instruction::allocate(new_account_info.key, size.try_into().unwrap()),
-        accounts,
-        &[&signer_seeds],
-    )?;
-
-    msg!("Assign the account to the owning program");
-    invoke_signed(
-        &system_instruction::assign(new_account_info.key, &program_id),
-        accounts,
-        &[&signer_seeds],
-    )?;
-    msg!("Completed assignation!");
-
     Ok(())
 }
 
@@ -414,51 +362,6 @@ pub fn assert_part_of_namespace<'a, 'b>(
     Ok(deserialized)
 }
 
-pub fn create_program_token_account_if_not_present<'a>(
-    program_account: &UncheckedAccount<'a>,
-    system_program: &Program<'a, System>,
-    fee_payer: &AccountInfo<'a>,
-    token_program: &Program<'a, Token>,
-    mint: &Account<'a, Mint>,
-    owner: &AccountInfo<'a>,
-    rent: &Sysvar<'a, Rent>,
-    signer_seeds: &[&[u8]],
-) -> ProgramResult {
-    assert_owned_by(&mint.to_account_info(), &token_program.key())?;
-
-    if program_account.data_is_empty() {
-        create_or_allocate_account_raw(
-            *token_program.key,
-            &program_account.to_account_info(),
-            &rent.to_account_info(),
-            &system_program,
-            &fee_payer,
-            spl_token::state::Account::LEN,
-            signer_seeds,
-        )?;
-
-        invoke_signed(
-            &initialize_account2(
-                &token_program.key,
-                &program_account.key(),
-                &mint.key(),
-                &owner.key(),
-            )
-            .unwrap(),
-            &[
-                token_program.to_account_info(),
-                mint.to_account_info(),
-                program_account.to_account_info(),
-                rent.to_account_info(),
-                owner.clone(),
-            ],
-            &[&signer_seeds],
-        )?;
-    }
-
-    Ok(())
-}
-
 pub fn close_token_account<'a>(
     program_account: &Account<'a, TokenAccount>,
     fee_payer: &AccountInfo<'a>,
@@ -491,7 +394,7 @@ pub fn assert_is_proper_class<'info>(
     artifact_class: &UncheckedAccount<'info>,
     mint: &Pubkey,
     index: u64,
-) -> Result<Account<'info, ArtifactClass>, ProgramError> {
+) -> Result<ProgramAccount<'info, ArtifactClass>, ProgramError> {
     require!(
         artifact_class.owner == &raindrops_player::id()
             || artifact_class.owner == &raindrops_item::id(),
@@ -506,8 +409,8 @@ pub fn assert_is_proper_class<'info>(
 
     require!(!artifact_class.data_is_empty(), NotInitialized);
 
-    let class_deserialized: anchor_lang::Account<'_, ArtifactClass> =
-        Account::try_from(&artifact_class.to_account_info())?;
+    let class_deserialized: ProgramAccount<ArtifactClass> =
+        ProgramAccount::try_from(&artifact_class.owner, &artifact_class.to_account_info())?;
 
     assert_derivation_with_bump(
         artifact_class.owner,
@@ -528,7 +431,7 @@ pub fn assert_is_proper_instance<'info>(
     artifact_class: &Pubkey,
     mint: &Pubkey,
     index: u64,
-) -> Result<Account<'info, Artifact>, ProgramError> {
+) -> Result<ProgramAccount<'info, Artifact>, ProgramError> {
     require!(
         artifact.owner == &raindrops_player::id() || artifact.owner == &raindrops_item::id(),
         InvalidProgramOwner
@@ -539,10 +442,11 @@ pub fn assert_is_proper_instance<'info>(
     } else {
         raindrops_item::PREFIX
     };
+
     require!(!artifact.data_is_empty(), NotInitialized);
 
-    let instance_deserialized: anchor_lang::Account<'_, Artifact> =
-        Account::try_from(&artifact.to_account_info())?;
+    let instance_deserialized: ProgramAccount<Artifact> =
+        ProgramAccount::try_from(&artifact.owner, &artifact.to_account_info())?;
 
     assert_derivation_with_bump(
         artifact.owner,
