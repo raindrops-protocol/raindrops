@@ -146,13 +146,10 @@ pub mod staking {
         let artifact_class_unchecked = &ctx.accounts.artifact_class;
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
-        let staking_mint = &ctx.accounts.staking_mint;
         let artifact_mint_staking_account = &ctx.accounts.artifact_mint_staking_account;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
-        let system = &ctx.accounts.system_program;
         let payer = &ctx.accounts.payer;
-        let rent = &ctx.accounts.rent;
 
         let EndArtifactStakeWarmupArgs {
             class_index,
@@ -228,6 +225,10 @@ pub mod staking {
             .checked_add(staking_amount)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
+        // Because artifact is using a copy of this data
+        let mut data = artifact_unchecked.data.borrow_mut();
+        data.copy_from_slice(&artifact.try_to_vec()?);
+
         return Ok(());
     }
 
@@ -298,6 +299,10 @@ pub mod staking {
             .tokens_staked
             .checked_sub(amount_to_unstake)
             .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        // Because artifact is using a copy of this data
+        let mut data = artifact_unchecked.data.borrow_mut();
+        data.copy_from_slice(&artifact.try_to_vec()?);
 
         staking_counter.bump = staking_counter_bump;
         staking_counter.event_start = clock.unix_timestamp;
@@ -658,4 +663,6 @@ pub enum ErrorCode {
     NotInitialized,
     #[msg("Staking mint not whitelisted")]
     StakingMintNotWhitelisted,
+    #[msg("Discriminator mismatch")]
+    DiscriminatorMismatch,
 }

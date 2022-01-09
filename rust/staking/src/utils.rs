@@ -1,12 +1,15 @@
 use {
-    crate::{Artifact, ArtifactClass, ErrorCode, Permissiveness, PermissivenessType, PREFIX},
+    crate::{
+        borsh::BorshDeserialize, Artifact, ArtifactClass, ErrorCode, Permissiveness,
+        PermissivenessType, PREFIX,
+    },
     anchor_lang::{
-        accounts::program_account::ProgramAccount,
         prelude::{
             Account, AccountInfo, Program, ProgramError, ProgramResult, Pubkey, UncheckedAccount,
         },
         require,
         solana_program::{
+            hash,
             program::invoke_signed,
             program_pack::{IsInitialized, Pack},
         },
@@ -16,6 +19,7 @@ use {
     arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
     spl_token::instruction::close_account,
+    std::convert::TryFrom,
 };
 
 pub fn assert_initialized<T: Pack + IsInitialized>(
@@ -394,7 +398,7 @@ pub fn assert_is_proper_class<'info>(
     artifact_class: &UncheckedAccount<'info>,
     mint: &Pubkey,
     index: u64,
-) -> Result<ProgramAccount<'info, ArtifactClass>, ProgramError> {
+) -> Result<ArtifactClass, ProgramError> {
     require!(
         artifact_class.owner == &raindrops_player::id()
             || artifact_class.owner == &raindrops_item::id(),
@@ -407,10 +411,32 @@ pub fn assert_is_proper_class<'info>(
         raindrops_item::PREFIX
     };
 
+    let class_name = if artifact_class.owner == &raindrops_player::id() {
+        "PlayerClass"
+    } else {
+        "ItemClass"
+    };
+
     require!(!artifact_class.data_is_empty(), NotInitialized);
 
-    let class_deserialized: ProgramAccount<ArtifactClass> =
-        ProgramAccount::try_from(&artifact_class.owner, &artifact_class.to_account_info())?;
+    let mut arr = vec![];
+    let data = artifact_class.data.borrow();
+
+    let discriminator = u64::from_le_bytes(*array_ref![data, 0, 8]);
+    let mut expected_discriminator = [0; 8];
+    expected_discriminator
+        .copy_from_slice(&hash::hash(format!("account:{}", class_name).as_bytes()).to_bytes()[..8]);
+    let expected_discriminator_as_u64 = u64::from_le_bytes(expected_discriminator);
+
+    require!(
+        expected_discriminator_as_u64 == discriminator,
+        DiscriminatorMismatch
+    );
+
+    for entry in 8..data.len() {
+        arr.push(data[entry]);
+    }
+    let class_deserialized: ArtifactClass = ArtifactClass::try_from_slice(&arr)?;
 
     assert_derivation_with_bump(
         artifact_class.owner,
@@ -431,7 +457,7 @@ pub fn assert_is_proper_instance<'info>(
     artifact_class: &Pubkey,
     mint: &Pubkey,
     index: u64,
-) -> Result<ProgramAccount<'info, Artifact>, ProgramError> {
+) -> Result<Artifact, ProgramError> {
     require!(
         artifact.owner == &raindrops_player::id() || artifact.owner == &raindrops_item::id(),
         InvalidProgramOwner
@@ -443,10 +469,32 @@ pub fn assert_is_proper_instance<'info>(
         raindrops_item::PREFIX
     };
 
+    let class_name = if artifact.owner == &raindrops_player::id() {
+        "Player"
+    } else {
+        "Item"
+    };
+
     require!(!artifact.data_is_empty(), NotInitialized);
 
-    let instance_deserialized: ProgramAccount<Artifact> =
-        ProgramAccount::try_from(&artifact.owner, &artifact.to_account_info())?;
+    let mut arr = vec![];
+    let data = artifact.data.borrow();
+
+    let discriminator = u64::from_le_bytes(*array_ref![data, 0, 8]);
+    let mut expected_discriminator = [0; 8];
+    expected_discriminator
+        .copy_from_slice(&hash::hash(format!("account:{}", class_name).as_bytes()).to_bytes()[..8]);
+    let expected_discriminator_as_u64 = u64::from_le_bytes(expected_discriminator);
+
+    require!(
+        expected_discriminator_as_u64 == discriminator,
+        DiscriminatorMismatch
+    );
+
+    for entry in 8..data.len() {
+        arr.push(data[entry]);
+    }
+    let instance_deserialized: Artifact = Artifact::try_from_slice(&arr)?;
 
     assert_derivation_with_bump(
         artifact.owner,
