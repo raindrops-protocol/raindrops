@@ -51,7 +51,6 @@ pub struct EndArtifactStakeWarmupArgs {
     artifact_class_mint: Pubkey,
     artifact_mint: Pubkey,
     staking_amount: u64,
-    staking_permissiveness_to_use: Option<Permissiveness>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -64,7 +63,6 @@ pub struct EndArtifactStakeCooldownArgs {
     staking_mint: Pubkey,
     artifact_class_mint: Pubkey,
     artifact_mint: Pubkey,
-    staking_permissiveness_to_use: Option<Permissiveness>,
 }
 
 #[program]
@@ -162,7 +160,6 @@ pub mod staking {
             index,
             artifact_class_mint,
             staking_amount,
-            staking_permissiveness_to_use,
             artifact_mint,
             ..
         } = args;
@@ -190,16 +187,6 @@ pub mod staking {
                 StakingWarmupNotFinished
             )
         }
-
-        assert_permissiveness_access(AssertPermissivenessAccessArgs {
-            program_id: ctx.program_id,
-            given_account: &artifact_class_unchecked.to_account_info(),
-            remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &staking_permissiveness_to_use,
-            permissiveness_array: &artifact_class.data.staking_permissiveness,
-            index: class_index,
-            account_mint: Some(&artifact_class_mint),
-        })?;
 
         let signer_seeds = [
             PREFIX.as_bytes(),
@@ -348,7 +335,6 @@ pub mod staking {
             class_index,
             index,
             artifact_class_mint,
-            staking_permissiveness_to_use,
             artifact_mint,
             ..
         } = args;
@@ -376,20 +362,6 @@ pub mod staking {
                 StakingCooldownNotFinished
             )
         }
-
-        assert_permissiveness_access(AssertPermissivenessAccessArgs {
-            program_id: ctx.program_id,
-            given_account: &artifact_class_unchecked.to_account_info(),
-            remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &staking_permissiveness_to_use,
-            permissiveness_array: if artifact_class.data.unstaking_permissiveness.is_some() {
-                &artifact_class.data.unstaking_permissiveness
-            } else {
-                &artifact_class.data.staking_permissiveness
-            },
-            index: class_index,
-            account_mint: Some(&artifact_class_mint),
-        })?;
 
         let signer_seeds = [
             PREFIX.as_bytes(),
@@ -497,10 +469,18 @@ pub struct BeginArtifactStakeCooldown<'info> {
     artifact: UncheckedAccount<'info>,
     #[account(init, seeds=[PREFIX.as_bytes(),args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.artifact_intermediary_staking_bump, token::mint = staking_mint, token::authority = artifact, payer=payer)]
     artifact_intermediary_staking_account: Account<'info, TokenAccount>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=args.staking_counter_bump, space=8+1+8+1, payer=payer)]
+    // Note that staking counters going IN do not have intended staking account destination in the seeds
+    // This is so they are easily derivable and findable by any user interface without an accounts query, so people can see inbound statuses
+    // It's also okay to make ingoing end action permissionless because you are just moving tokens from controlled escrow to controlled internal bank of item
+    // for outgoing, the final step should be permissionless too, but that would mean someone else could claim your tokens, unless
+    // the staking counter is TIED in some way to the intended destination account. In order to make this permissionless without spending 32 bytes, we make the
+    // seed have an additional key in the staking counter.
+    #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes(), staking_account.key().as_ref()], bump=args.staking_counter_bump, space=8+1+8+1, payer=payer)]
     artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump=args.artifact_mint_staking_bump)]
     artifact_mint_staking_account: UncheckedAccount<'info>,
+    #[account(mut, constraint=staking_account.mint == staking_mint.key())]
+    staking_account: Account<'info, TokenAccount>,
     staking_mint: Account<'info, Mint>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -517,7 +497,8 @@ pub struct EndArtifactStakeCooldown<'info> {
     artifact: UncheckedAccount<'info>,
     #[account(mut, seeds=[PREFIX.as_bytes(),args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &args.staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.artifact_intermediary_staking_bump)]
     artifact_intermediary_staking_account: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(),args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &args.staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=artifact_intermediary_staking_counter.bump)]
+    // Wondering why this counter has an additional key of staking_account where inbound staking counters do not? See cooldown begin action.
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(),args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &args.staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes(), staking_account.key().as_ref()], bump=artifact_intermediary_staking_counter.bump)]
     artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
     #[account(mut, constraint=staking_account.mint == args.staking_mint)]
     staking_account: Account<'info, TokenAccount>,
