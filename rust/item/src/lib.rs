@@ -151,7 +151,22 @@ pub struct BeginItemStakeWarmupArgs {
     index: u64,
     staking_index: u64,
     item_class_mint: Pubkey,
+    item_mint: Pubkey,
     staking_amount: u64,
+    staking_permissiveness_to_use: Option<Permissiveness>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BeginItemStakeCooldownArgs {
+    item_intermediary_staking_bump: u8,
+    item_mint_staking_bump: u8,
+    staking_counter_bump: u8,
+    class_index: u64,
+    index: u64,
+    staking_index: u64,
+    item_class_mint: Pubkey,
+    item_mint: Pubkey,
+    amount_to_unstake: u64,
     staking_permissiveness_to_use: Option<Permissiveness>,
 }
 
@@ -163,9 +178,24 @@ pub struct EndItemStakeWarmupArgs {
     index: u64,
     staking_index: u64,
     item_class_mint: Pubkey,
+    item_mint: Pubkey,
     staking_amount: u64,
     staking_permissiveness_to_use: Option<Permissiveness>,
 }
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct EndItemStakeCooldownArgs {
+    item_intermediary_staking_bump: u8,
+    staking_counter_bump: u8,
+    class_index: u64,
+    index: u64,
+    staking_index: u64,
+    staking_mint: Pubkey,
+    item_class_mint: Pubkey,
+    item_mint: Pubkey,
+    staking_permissiveness_to_use: Option<Permissiveness>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DeactivateItemEscrowArgs {
     index: u64,
@@ -801,6 +831,16 @@ pub mod item {
                 .step
                 .checked_sub(1)
                 .ok_or(ErrorCode::NumericalOverflowError)?;
+
+            let craft_item_counter_info = craft_item_counter.to_account_info();
+            let snapshot: u64 = craft_item_counter_info.lamports();
+
+            **craft_item_counter_info.lamports.borrow_mut() = 0;
+
+            **receiver.lamports.borrow_mut() = receiver
+                .lamports()
+                .checked_add(snapshot)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
         }
 
         close_token_account(
@@ -1025,9 +1065,6 @@ pub mod item {
             ..
         } = args;
 
-        staking_counter.bump = staking_counter_bump;
-        staking_counter.staking_start = clock.unix_timestamp;
-
         let namespace = assert_part_of_namespace(&item.to_account_info(), namespace)?;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
@@ -1050,9 +1087,14 @@ pub mod item {
                     authority_signer_seeds: &[],
                     token_program: token_program.to_account_info(),
                 })?;
+
+                staking_counter.bump = staking_counter_bump;
+                staking_counter.event_start = clock.unix_timestamp;
+                staking_counter.event_type = 0;
                 return Ok(());
             }
         }
+
         return Err(ErrorCode::StakingMintNotWhitelisted.into());
     }
 
@@ -1062,7 +1104,6 @@ pub mod item {
     ) -> ProgramResult {
         let item = &mut ctx.accounts.item;
         let item_class = &ctx.accounts.item_class;
-        let item_mint = &ctx.accounts.item_mint;
         let staking_escrow = &mut ctx.accounts.item_intermediary_staking_account;
         let staking_counter = &mut ctx.accounts.item_intermediary_staking_counter;
         let staking_mint = &ctx.accounts.staking_mint;
@@ -1079,14 +1120,17 @@ pub mod item {
             item_class_mint,
             staking_amount,
             staking_permissiveness_to_use,
+            item_mint,
             ..
         } = args;
 
-        require!(staking_counter.staking_start > 0, StakingWarmupNotStarted);
+        require!(staking_counter.event_type == 0, IncorrectStakingCounterType);
+        require!(staking_counter.event_start > 0, StakingWarmupNotStarted);
+
         if let Some(duration) = item_class.data.staking_warm_up_duration {
             require!(
                 staking_counter
-                    .staking_start
+                    .event_start
                     .checked_add(duration as i64)
                     .ok_or(ErrorCode::NumericalOverflowError)?
                     <= clock.unix_timestamp,
@@ -1104,11 +1148,9 @@ pub mod item {
             account_mint: Some(&item_class_mint),
         })?;
 
-        let item_mint_key = item_mint.key();
-
         let signer_seeds = [
             PREFIX.as_bytes(),
-            item_mint_key.as_ref(),
+            item_mint.as_ref(),
             &index.to_le_bytes(),
             &[item.bump],
         ];
@@ -1157,6 +1199,160 @@ pub mod item {
             .tokens_staked
             .checked_add(staking_amount)
             .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        return Ok(());
+    }
+
+    pub fn begin_item_stake_cooldown<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, BeginItemStakeCooldown<'info>>,
+        args: BeginItemStakeCooldownArgs,
+    ) -> ProgramResult {
+        let item = &mut ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
+        let staking_escrow = &mut ctx.accounts.item_intermediary_staking_account;
+        let staking_counter = &mut ctx.accounts.item_intermediary_staking_counter;
+        let token_program = &ctx.accounts.token_program;
+        let clock = &ctx.accounts.clock;
+        let item_mint_staking_account = &ctx.accounts.item_mint_staking_account;
+
+        let BeginItemStakeCooldownArgs {
+            staking_counter_bump,
+            class_index,
+            index,
+            item_class_mint,
+            amount_to_unstake,
+            staking_permissiveness_to_use,
+            item_mint,
+            ..
+        } = args;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &staking_permissiveness_to_use,
+            permissiveness_array: if item_class.data.unstaking_permissiveness.is_some() {
+                &item_class.data.unstaking_permissiveness
+            } else {
+                &item_class.data.staking_permissiveness
+            },
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
+
+        let signer_seeds = [
+            PREFIX.as_bytes(),
+            item_mint.as_ref(),
+            &index.to_le_bytes(),
+            &[item.bump],
+        ];
+
+        spl_token_transfer(TokenTransferParams {
+            source: item_mint_staking_account.to_account_info(),
+            destination: staking_escrow.to_account_info(),
+            amount: amount_to_unstake,
+            authority: item.to_account_info(),
+            authority_signer_seeds: &signer_seeds,
+            token_program: token_program.to_account_info(),
+        })?;
+
+        item.tokens_staked = item
+            .tokens_staked
+            .checked_sub(amount_to_unstake)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        staking_counter.bump = staking_counter_bump;
+        staking_counter.event_start = clock.unix_timestamp;
+        staking_counter.event_type = 1;
+
+        return Ok(());
+    }
+
+    pub fn end_item_stake_cooldown<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, EndItemStakeCooldown<'info>>,
+        args: EndItemStakeCooldownArgs,
+    ) -> ProgramResult {
+        let item = &mut ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
+        let staking_escrow = &mut ctx.accounts.item_intermediary_staking_account;
+        let staking_counter = &mut ctx.accounts.item_intermediary_staking_counter;
+        let staking_account = &ctx.accounts.staking_account;
+        let token_program = &ctx.accounts.token_program;
+        let clock = &ctx.accounts.clock;
+        let payer = &ctx.accounts.payer;
+
+        let EndItemStakeCooldownArgs {
+            class_index,
+            index,
+            item_class_mint,
+            staking_permissiveness_to_use,
+            item_mint,
+            ..
+        } = args;
+
+        require!(staking_counter.event_type == 1, IncorrectStakingCounterType);
+        require!(staking_counter.event_start > 0, StakingWarmupNotStarted);
+
+        if let Some(duration) = item_class.data.staking_cooldown_duration {
+            require!(
+                staking_counter
+                    .event_start
+                    .checked_add(duration as i64)
+                    .ok_or(ErrorCode::NumericalOverflowError)?
+                    <= clock.unix_timestamp,
+                StakingCooldownNotFinished
+            )
+        }
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &staking_permissiveness_to_use,
+            permissiveness_array: if item_class.data.unstaking_permissiveness.is_some() {
+                &item_class.data.unstaking_permissiveness
+            } else {
+                &item_class.data.staking_permissiveness
+            },
+            index: class_index,
+            account_mint: Some(&item_class_mint),
+        })?;
+
+        let signer_seeds = [
+            PREFIX.as_bytes(),
+            item_mint.as_ref(),
+            &index.to_le_bytes(),
+            &[item.bump],
+        ];
+
+        let item_info = item.to_account_info();
+
+        spl_token_transfer(TokenTransferParams {
+            source: staking_escrow.to_account_info(),
+            destination: staking_account.to_account_info(),
+            amount: staking_escrow.amount,
+            authority: item_info,
+            authority_signer_seeds: &signer_seeds,
+            token_program: token_program.to_account_info(),
+        })?;
+
+        let counter_info = staking_counter.to_account_info();
+        let snapshot: u64 = counter_info.lamports();
+
+        **counter_info.lamports.borrow_mut() = 0;
+
+        **payer.lamports.borrow_mut() = payer
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        close_token_account(
+            staking_escrow,
+            payer,
+            token_program,
+            &item.to_account_info(),
+            &signer_seeds,
+        )?;
 
         return Ok(());
     }
@@ -1396,12 +1592,11 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
 pub struct BeginItemStakeWarmup<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    item_mint: Account<'info, Mint>,
-    #[account(seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
-    #[account(init, seeds=[PREFIX.as_bytes(),args.item_class_mint.as_ref(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.item_intermediary_staking_bump, token::mint = staking_mint, token::authority = item, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.item_intermediary_staking_bump, token::mint = staking_mint, token::authority = item, payer=payer)]
     item_intermediary_staking_account: Account<'info, TokenAccount>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),item_mint.key().as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=args.staking_counter_bump, space=8+1+8, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=args.staking_counter_bump, space=8+1+8+1, payer=payer)]
     item_intermediary_staking_counter: Account<'info, StakingCounter>,
     #[account(constraint=staking_token_account.mint == staking_mint.key())]
     staking_token_account: Account<'info, TokenAccount>,
@@ -1421,20 +1616,59 @@ pub struct BeginItemStakeWarmup<'info> {
 pub struct EndItemStakeWarmup<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    item_mint: Account<'info, Mint>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
-    #[account(mut, seeds=[PREFIX.as_bytes(),args.item_class_mint.as_ref(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.item_intermediary_staking_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(),args.item_class_mint.as_ref(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.item_intermediary_staking_bump)]
     item_intermediary_staking_account: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),item_mint.key().as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=item_intermediary_staking_counter.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=item_intermediary_staking_counter.bump)]
     item_intermediary_staking_counter: Account<'info, StakingCounter>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump=args.item_mint_staking_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump=args.item_mint_staking_bump)]
     item_mint_staking_account: UncheckedAccount<'info>,
     staking_mint: Account<'info, Mint>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
+    clock: Sysvar<'info, Clock>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
+}
+#[derive(Accounts)]
+#[instruction(args: BeginItemStakeCooldownArgs)]
+pub struct BeginItemStakeCooldown<'info> {
+    #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    item: Account<'info, Item>,
+    #[account(init, seeds=[PREFIX.as_bytes(),args.item_class_mint.as_ref(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.item_intermediary_staking_bump, token::mint = staking_mint, token::authority = item, payer=payer)]
+    item_intermediary_staking_account: Account<'info, TokenAccount>,
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=args.staking_counter_bump, space=8+1+8+1, payer=payer)]
+    item_intermediary_staking_counter: Account<'info, StakingCounter>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump=args.item_mint_staking_bump)]
+    item_mint_staking_account: UncheckedAccount<'info>,
+    staking_mint: Account<'info, Mint>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+    rent: Sysvar<'info, Rent>,
+    clock: Sysvar<'info, Clock>,
+    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
+}
+
+#[derive(Accounts)]
+#[instruction(args: EndItemStakeCooldownArgs)]
+pub struct EndItemStakeCooldown<'info> {
+    #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    item: Account<'info, Item>,
+    #[account(mut, seeds=[PREFIX.as_bytes(),args.item_class_mint.as_ref(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump=args.item_intermediary_staking_bump)]
+    item_intermediary_staking_account: Account<'info, TokenAccount>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=item_intermediary_staking_counter.bump)]
+    item_intermediary_staking_counter: Account<'info, StakingCounter>,
+    #[account(mut, constraint=staking_account.mint == args.staking_mint)]
+    staking_account: Account<'info, TokenAccount>,
+    payer: Signer<'info>,
+    token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
@@ -1759,13 +1993,14 @@ pub struct ItemClassData {
     update_permissiveness: Option<Vec<Permissiveness>>,
     build_permissiveness: Option<Vec<Permissiveness>>,
     staking_permissiveness: Option<Vec<Permissiveness>>,
+    // if not set, assumed to use staking permissiveness
+    unstaking_permissiveness: Option<Vec<Permissiveness>>,
     child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
     // The roots are merkle roots, used to keep things cheap on chain (optional)
     // Tried to combine roots and vec into a single Option to keep it simple
     // but this led to a proliferation of trait code and dyn statements and I couldnt
     // get it to work. Sorry!
     usage_root: Option<Root>,
-    staking_root: Option<Root>,
     // Used to seed the root for new items
     usage_state_root: Option<Root>,
     component_root: Option<Root>,
@@ -1810,7 +2045,8 @@ pub struct CraftItemCounter {
 #[account]
 pub struct StakingCounter {
     bump: u8,
-    staking_start: i64,
+    event_start: i64,
+    event_type: u8,
 }
 
 // can make this super cheap
@@ -1943,4 +2179,8 @@ pub enum ErrorCode {
     NotEmptied,
     #[msg("You do not need to provide this many of this component to make your recipe")]
     GivingTooMuch,
+    #[msg("Attempting to use a staking counter going in the wrong direction")]
+    IncorrectStakingCounterType,
+    #[msg("Staking cooldown not finished")]
+    StakingCooldownNotFinished,
 }

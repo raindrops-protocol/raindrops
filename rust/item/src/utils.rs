@@ -513,9 +513,10 @@ pub fn update_item_class_with_inherited_information(
                             child_items: &item.data.staking_permissiveness,
                             overridable: update_perm.overridable,
                         });
-                        item.data.staking_root = propagate_parent(PropagateParentArgs {
-                            parent: &parent_item_data.staking_root,
-                            child: &item.data.staking_root,
+
+                        item.data.unstaking_permissiveness = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.unstaking_permissiveness,
+                            child_items: &item.data.unstaking_permissiveness,
                             overridable: update_perm.overridable,
                         });
                     }
