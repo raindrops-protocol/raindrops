@@ -29,6 +29,7 @@ use {
 
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
+pub const PREFIX: &str = "player";
 #[program]
 pub mod player {
     use super::*;

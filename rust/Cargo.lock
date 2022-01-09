@@ -896,6 +896,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "raindrops-staking"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "arrayref",
+ "metaplex-token-metadata",
+ "raindrops-item",
+ "raindrops-namespace",
+ "raindrops-player",
+ "spl-associated-token-account",
+ "spl-token",
+]
+
+[[package]]
 name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
