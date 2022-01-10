@@ -1,9 +1,8 @@
 use {
     crate::{
-        ChildUpdatePropagationPermissiveness, ChildUpdatePropagationPermissivenessType, Component,
-        CraftUsageInfo, DefaultItemCategory, ErrorCode, InheritanceState, Inherited, Item,
-        ItemClass, ItemClassData, ItemClassType, ItemClassUsageType, ItemEscrow, ItemType,
-        ItemUsage, ItemUsageState, ItemUsageType, Permissiveness, PermissivenessType, Root, PREFIX,
+        ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
+        InheritanceState, Inherited, Item, ItemClass, ItemClassData, ItemClassType, ItemEscrow,
+        ItemUsageState, ItemUsageType, Permissiveness, PermissivenessType, PREFIX,
     },
     anchor_lang::{
         prelude::{
@@ -507,13 +506,6 @@ pub fn update_item_class_with_inherited_information(
         Some(cupp) => {
             for update_perm in cupp {
                 match update_perm.child_update_propagation_permissiveness_type {
-                    ChildUpdatePropagationPermissivenessType::DefaultItemCategory => {
-                        item.data.default_category = propagate_parent(PropagateParentArgs {
-                            parent: &parent_item_data.default_category,
-                            child: &item.data.default_category,
-                            overridable: update_perm.overridable,
-                        })
-                    }
                     ChildUpdatePropagationPermissivenessType::Usages => {
                         item.data.usages = propagate_parent_array(PropagateParentArrayArgs {
                             parent_items: &parent_item_data.usages,
@@ -562,14 +554,6 @@ pub fn update_item_class_with_inherited_information(
                             propagate_parent_array(PropagateParentArrayArgs {
                                 parent_items: &parent_item_data.update_permissiveness,
                                 child_items: &item.data.update_permissiveness,
-                                overridable: update_perm.overridable,
-                            });
-                    }
-                    ChildUpdatePropagationPermissivenessType::UsagePermissiveness => {
-                        item.data.usage_permissiveness =
-                            propagate_parent_array(PropagateParentArrayArgs {
-                                parent_items: &parent_item_data.usage_permissiveness,
-                                child_items: &item.data.usage_permissiveness,
                                 overridable: update_perm.overridable,
                             });
                     }
@@ -642,7 +626,7 @@ pub fn assert_valid_item_settings_for_edition_type(
                 match &usage.item_class_type {
                     ItemClassType::Consumable {
                         max_uses,
-                        item_class_usage_type,
+                        item_usage_type,
                         cooldown_duration,
                         ..
                     } => {
@@ -657,8 +641,8 @@ pub fn assert_valid_item_settings_for_edition_type(
                             return Err(ErrorCode::InvalidConfigForFungibleMints.into());
                         }
 
-                        if item_class_usage_type != &ItemClassUsageType::Destruction
-                            && item_class_usage_type != &ItemClassUsageType::Infinite
+                        if item_usage_type != &ItemUsageType::Destruction
+                            && item_usage_type != &ItemUsageType::Infinite
                         {
                             return Err(ErrorCode::InvalidConfigForFungibleMints.into());
                         }
@@ -947,14 +931,10 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
 
-        let mut found = false;
-        for cat in &craft_usage.category {
-            if cat == &chosen_component.use_category {
-                found = true;
-                break;
-            }
-        }
-        require!(found, UnableToFindValidCooldownState);
+        require!(
+            craft_usage.index == chosen_component.use_usage_index,
+            UnableToFindValidCooldownState
+        );
 
         if let Some(activated_at) = craft_usage_state.activated_at {
             return Ok(());
@@ -962,15 +942,13 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
     } else if let Some(usages) = &craft_item_class.data.usages {
         for i in 0..usages.len() {
             let usage = &usages[i];
-            for cat in &usage.category {
-                if cat == &chosen_component.use_category {
-                    if let Some(states) = &craft_item.data.usage_states {
-                        if let Some(activated_at) = states[i].activated_at {
-                            return Ok(());
-                        }
-                    } else {
-                        break;
+            if usage.index == chosen_component.use_usage_index {
+                if let Some(states) = &craft_item.data.usage_states {
+                    if let Some(activated_at) = states[i].activated_at {
+                        return Ok(());
                     }
+                } else {
+                    break;
                 }
             }
         }
@@ -1074,29 +1052,11 @@ pub fn propagate_item_class_data_fields_to_item_data(
         }
 
         for usage in item_usage {
-            match &usage.item_class_type {
-                ItemClassType::Wearable { .. } => new_states.push(ItemUsageState {
-                    item_type: ItemType::Wearable,
-                    uses: existing_values[usage.index as usize].1,
-                    activated_at: existing_values[usage.index as usize].0,
-                    index: usage.index,
-                }),
-                ItemClassType::Consumable {
-                    item_class_usage_type,
-                    ..
-                } => new_states.push(ItemUsageState {
-                    uses: existing_values[usage.index as usize].1,
-                    activated_at: existing_values[usage.index as usize].0,
-                    item_type: ItemType::Consumable {
-                        item_usage_type: match item_class_usage_type {
-                            ItemClassUsageType::Exhaustion => ItemUsageType::Exhaustion,
-                            ItemClassUsageType::Destruction => ItemUsageType::Destruction,
-                            ItemClassUsageType::Infinite => ItemUsageType::Infinite,
-                        },
-                    },
-                    index: usage.index,
-                }),
-            };
+            new_states.push(ItemUsageState {
+                uses: existing_values[usage.index as usize].1,
+                activated_at: existing_values[usage.index as usize].0,
+                index: usage.index,
+            })
         }
 
         item.data.usage_states = Some(new_states);

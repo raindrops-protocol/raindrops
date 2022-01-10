@@ -185,8 +185,14 @@ pub struct RemoveCraftItemFromEscrowArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BeginItemActivationArgs {
     item_activation_bump: u8,
+    class_index: u64,
     index: u64,
     item_class_mint: Pubkey,
+    usage_permissiveness_to_use: Option<Permissiveness>,
+    category_to_use: String,
+    // These required if using roots
+    usage_proof: Option<Vec<[u8; 32]>>,
+    usage: Option<ItemUsage>,
 }
 
 #[program]
@@ -1030,6 +1036,40 @@ pub mod item {
 
         Ok(())
     }
+
+    pub fn begin_item_activation<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, BeginItemActivation<'info>>,
+        args: BeginItemActivationArgs,
+    ) -> ProgramResult {
+        let item_class = &ctx.accounts.item_class;
+        let item = &ctx.accounts.item;
+        let item_account = &ctx.accounts.item_account;
+        let item_mint = &ctx.accounts.item_mint;
+        let item_transfer_authority = &ctx.accounts.item_transfer_authority;
+        let item_activation_marker = &ctx.accounts.item_activation_marker;
+
+        let BeginItemActivationArgs {
+            usage_permissiveness_to_use,
+            item_activation_bump,
+            index,
+            ..
+        } = args;
+
+        require!(item_account.amount > 0, InsufficientBalance);
+
+        item_activation_marker.data.borrow_mut()[0] = item_activation_bump;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &usage_permissiveness_to_use,
+            permissiveness_array: &item_class.data.usage_permissiveness,
+            index,
+            account_mint: Some(&item_mint.key()),
+        })?;
+        Ok(())
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
@@ -1261,13 +1301,18 @@ pub struct DrainItem<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(item_activation_bump: u8, index: u64, item_class_mint: Pubkey)]
+#[instruction(args: BeginItemActivationArgs)]
 pub struct BeginItemActivation<'info> {
-    #[account( seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(),item_mint.key().as_ref(), &index.to_le_bytes()], bump=item.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_bump, space=9, payer=payer)]
-    item_activation_marker: UncheckedAccount<'info>,
     item_mint: Account<'info, Mint>,
+    #[account(mut, constraint=item_mint.key() == item_account.mint)]
+    item_account: Account<'info, TokenAccount>,
+    item_transfer_authority: Signer<'info>,
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=1, payer=payer)]
+    item_activation_marker: UncheckedAccount<'info>,
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
     payer: Signer<'info>,
@@ -1295,7 +1340,6 @@ pub struct Callback(pub Pubkey, pub u64);
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemUsage {
     index: u16,
-    category: Vec<String>,
     basic_item_effects: Option<Vec<BasicItemEffect>>,
     usage_permissiveness: Vec<PermissivenessType>,
     inherited: InheritanceState,
@@ -1313,7 +1357,7 @@ pub enum ItemClassType {
         max_uses: Option<u64>,
         // If none, is assumed to be 1 (to save space)
         max_players_per_use: Option<u64>,
-        item_class_usage_type: ItemClassUsageType,
+        item_usage_type: ItemUsageType,
         consumption_callback: Option<Callback>,
         cooldown_duration: Option<i64>,
     },
@@ -1322,27 +1366,12 @@ pub enum ItemClassType {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemUsageState {
     index: u16,
-    item_type: ItemType,
     uses: u64,
     activated_at: Option<i64>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ItemType {
-    Wearable,
-    Consumable { item_usage_type: ItemUsageType },
-}
-
-pub const ITEM_USAGE_TYPE_SIZE: usize = 9;
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum ItemClassUsageType {
-    Exhaustion,
-    Destruction,
-    Infinite,
-}
-
 pub const ITEM_USAGE_TYPE_STATE_SIZE: usize = 9;
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum ItemUsageType {
     Exhaustion,
     Destruction,
@@ -1395,7 +1424,7 @@ pub struct Component {
     component_scope: String,
     // used to find a valid cooldown state to check for cooldown status on the
     // crafting item
-    use_category: String,
+    use_usage_index: u16,
     condition: ComponentCondition,
     inherited: InheritanceState,
 }
@@ -1423,7 +1452,6 @@ pub struct ChildUpdatePropagationPermissiveness {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ChildUpdatePropagationPermissivenessType {
-    DefaultItemCategory,
     Usages,
     Components,
     UpdatePermissiveness,
@@ -1433,7 +1461,6 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
-    UsagePermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
@@ -1441,12 +1468,6 @@ pub enum InheritanceState {
     NotInherited,
     Inherited,
     Overridden,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct DefaultItemCategory {
-    category: String,
-    inherited: InheritanceState,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1460,7 +1481,6 @@ pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 1 + // mint
 1 + // metadata
 1 + // edition
-1 + // default item category
 4 + // number of namespaces
 1 + // children must be editions
 1 + // build permissiveness bool
@@ -1481,12 +1501,6 @@ pub trait Inherited: Clone {
 }
 
 impl Inherited for Root {
-    fn set_inherited(&mut self, i: InheritanceState) {
-        self.inherited = i;
-    }
-}
-
-impl Inherited for DefaultItemCategory {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
     }
@@ -1557,8 +1571,6 @@ pub struct ItemClassData {
     // if not set, assumed to use staking permissiveness
     unstaking_permissiveness: Option<Vec<Permissiveness>>,
     child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
-    usage_permissiveness: Option<Vec<Permissiveness>>,
-    default_category: Option<DefaultItemCategory>,
     // The roots are merkle roots, used to keep things cheap on chain (optional)
     // Tried to combine roots and vec into a single Option to keep it simple
     // but this led to a proliferation of trait code and dyn statements and I couldnt

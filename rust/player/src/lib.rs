@@ -68,7 +68,6 @@ pub const MAX_NAMESPACES: usize = 10;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ChildUpdatePropagationPermissiveness {
-    DefaultItemCategory,
     Usages,
     Components,
     UpdatePermissiveness,
@@ -78,7 +77,6 @@ pub enum ChildUpdatePropagationPermissiveness {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
-    UsagePermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
