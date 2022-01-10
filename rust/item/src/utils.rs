@@ -249,10 +249,9 @@ pub fn assert_builder_must_be_holder_check(
     new_item_token_holder: &UncheckedAccount,
 ) -> ProgramResult {
     if let Some(b) = &item_class.data.builder_must_be_holder {
-        require!(
-            b.boolean && !new_item_token_holder.is_signer,
-            MustBeHolderToBuild
-        )
+        if b.boolean {
+            require!(new_item_token_holder.is_signer, MustBeHolderToBuild)
+        }
     }
 
     return Ok(());
@@ -311,7 +310,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                             &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
                         )?;
                     }
-                    PermissivenessType::ClassHolder => {
+                    PermissivenessType::ParentTokenHolder => {
                         // parent class token_account [readable]
                         // parent class token_holder [signer]
                         // parent class [readable]

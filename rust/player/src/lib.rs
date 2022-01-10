@@ -59,7 +59,7 @@ pub struct EquippedItem {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum Permissiveness {
     TokenHolder { inherited: InheritanceState },
-    PlayerClassHolder { inherited: InheritanceState },
+    PlayerParentTokenHolder { inherited: InheritanceState },
     UpdateAuthority { inherited: InheritanceState },
     Anybody { inherited: InheritanceState },
 }

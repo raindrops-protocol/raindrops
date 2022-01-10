@@ -510,7 +510,7 @@ pub struct Permissiveness {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum PermissivenessType {
     TokenHolder,
-    ClassHolder,
+    ParentTokenHolder,
     UpdateAuthority,
     Anybody,
 }

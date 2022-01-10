@@ -190,7 +190,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                             &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
                         )?;
                     }
-                    PermissivenessType::ClassHolder => {
+                    PermissivenessType::ParentTokenHolder => {
                         // parent class token_account [readable]
                         // parent class token_holder [signer]
                         // parent class [readable]

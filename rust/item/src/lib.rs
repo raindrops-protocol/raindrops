@@ -182,6 +182,12 @@ pub struct RemoveCraftItemFromEscrowArgs {
     component_proof: Option<Vec<[u8; 32]>>,
     component: Option<Component>,
 }
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BeginItemActivationArgs {
+    item_activation_bump: u8,
+    index: u64,
+    item_class_mint: Pubkey,
+}
 
 #[program]
 pub mod item {
@@ -1399,7 +1405,7 @@ pub struct Permissiveness {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum PermissivenessType {
     TokenHolder,
-    ClassHolder,
+    ParentTokenHolder,
     UpdateAuthority,
     Anybody,
 }
