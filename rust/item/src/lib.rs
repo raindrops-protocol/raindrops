@@ -182,17 +182,28 @@ pub struct RemoveCraftItemFromEscrowArgs {
     component_proof: Option<Vec<[u8; 32]>>,
     component: Option<Component>,
 }
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BeginItemActivationArgs {
     item_activation_bump: u8,
     class_index: u64,
     index: u64,
     item_class_mint: Pubkey,
+    // How much space to use for the item marker
+    // max of 8+1+1+2+2+2+32, min of 8+1+1
+    item_marker_space: u8,
     usage_permissiveness_to_use: Option<Permissiveness>,
-    category_to_use: String,
-    // These required if using roots
-    usage_proof: Option<Vec<[u8; 32]>>,
-    usage: Option<ItemUsage>,
+    // Use this if using on chain usages
+    usage_index: Option<u16>,
+    // Use this if using roots
+    usage_info: Option<UsageInfo>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ProveNewStateValidArgs {
+    usage_state_proofs: Vec<Vec<[u8; 32]>>,
+    usage_states: Vec<ItemUsageState>,
+    item_mint: Pubkey,
 }
 
 #[program]
@@ -566,6 +577,7 @@ pub mod item {
         let system_program = &ctx.accounts.system_program;
         let rent = &ctx.accounts.rent;
         let payer = &ctx.accounts.payer;
+        let clock = &ctx.accounts.clock;
 
         let AddCraftItemToEscrowArgs {
             class_index,
@@ -646,6 +658,7 @@ pub mod item {
                 craft_item_class,
                 craft_item,
                 chosen_component: &chosen_component,
+                unix_timestamp: clock.unix_timestamp,
             })?;
         }
 
@@ -1042,7 +1055,7 @@ pub mod item {
         args: BeginItemActivationArgs,
     ) -> ProgramResult {
         let item_class = &ctx.accounts.item_class;
-        let item = &ctx.accounts.item;
+        let mut item = &ctx.accounts.item;
         let item_account = &ctx.accounts.item_account;
         let item_mint = &ctx.accounts.item_mint;
         let item_transfer_authority = &ctx.accounts.item_transfer_authority;
@@ -1052,19 +1065,23 @@ pub mod item {
             usage_permissiveness_to_use,
             item_activation_bump,
             index,
+            usage_info,
+            usage_index,
             ..
         } = args;
 
         require!(item_account.amount > 0, InsufficientBalance);
 
-        item_activation_marker.data.borrow_mut()[0] = item_activation_bump;
+        item_activation_marker.bump = item_activation_bump;
+
+        let usage = verify_usage_and_verify_first_mutation()?;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &usage_permissiveness_to_use,
-            permissiveness_array: &item_class.data.usage_permissiveness,
+            permissiveness_array: &usage.usage_permissiveness,
             index,
             account_mint: Some(&item_mint.key()),
         })?;
@@ -1181,6 +1198,7 @@ pub struct AddCraftItemToEscrow<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
+    clock: Sysvar<'info, Clock>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -1311,8 +1329,8 @@ pub struct BeginItemActivation<'info> {
     #[account(mut, constraint=item_mint.key() == item_account.mint)]
     item_account: Account<'info, TokenAccount>,
     item_transfer_authority: Signer<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=1, payer=payer)]
-    item_activation_marker: UncheckedAccount<'info>,
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1 && args.item_marker_space <= 8+1+1+2+2+2+32, payer=payer)]
+    item_activation_marker: Account<'info, ItemActivationMarker>,
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
     payer: Signer<'info>,
@@ -1320,6 +1338,15 @@ pub struct BeginItemActivation<'info> {
     player_program: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
+}
+
+#[derive(Accounts)]
+#[instruction(args: ProveNewStateValidArgs)]
+pub struct ProveNewStateValid<'info> {
+    #[account(mut,  seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    item: Account<'info, Item>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    item_activation_marker: Account<'info, ItemActivationMarker>,
 }
 
 #[derive(Accounts)]
@@ -1344,6 +1371,8 @@ pub struct ItemUsage {
     usage_permissiveness: Vec<PermissivenessType>,
     inherited: InheritanceState,
     item_class_type: ItemClassType,
+    callback: Option<Callback>,
+    validation: Option<Callback>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1351,14 +1380,12 @@ pub enum ItemClassType {
     Wearable {
         body_part: Vec<String>,
         limit_per_part: Option<u64>,
-        wearable_callback: Option<Callback>,
     },
     Consumable {
         max_uses: Option<u64>,
         // If none, is assumed to be 1 (to save space)
         max_players_per_use: Option<u64>,
         item_usage_type: ItemUsageType,
-        consumption_callback: Option<Callback>,
         cooldown_duration: Option<i64>,
     },
 }
@@ -1615,6 +1642,24 @@ pub struct CraftItemCounter {
     amount_loaded: u64,
 }
 
+#[account]
+pub struct ItemActivationMarker {
+    bump: u8,
+    proof_counter: Option<ItemActivationMarkerProofCounter>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ItemActivationMarkerProofCounter {
+    // Only need to do re-prove of new state proof
+    // if using proofs.
+    step_proven: u16,
+    steps_required: u16,
+    // The one index already proven (the one being used)
+    ignore_index: u16,
+    // Will replace the old state proof in end item activation call.
+    new_state_proof: Vec<[u8; 32]>,
+}
+
 // can make this super cheap
 pub const MIN_ITEM_SIZE: usize = 8 + // key
 1 + // mint
@@ -1640,6 +1685,16 @@ pub struct CraftUsageInfo {
     pub craft_usage_state: ItemUsageState,
     pub craft_usage_proof: Vec<[u8; 32]>,
     pub craft_usage: ItemUsage,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UsageInfo {
+    // These required if using roots instead
+    usage_proof: Vec<[u8; 32]>,
+    usage: ItemUsage,
+    // These required if using roots instead
+    usage_state_proof: Vec<[u8; 32]>,
+    usage_state: ItemUsageState,
 }
 
 #[account]

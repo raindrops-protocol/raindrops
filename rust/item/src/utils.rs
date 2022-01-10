@@ -1,8 +1,9 @@
 use {
     crate::{
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
-        InheritanceState, Inherited, Item, ItemClass, ItemClassData, ItemClassType, ItemEscrow,
-        ItemUsageState, ItemUsageType, Permissiveness, PermissivenessType, PREFIX,
+        InheritanceState, Inherited, Item, ItemActivationMarker, ItemClass, ItemClassData,
+        ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType, Permissiveness,
+        PermissivenessType, UsageInfo, PREFIX,
     },
     anchor_lang::{
         prelude::{
@@ -883,6 +884,7 @@ pub struct VerifyCooldownArgs<'a, 'info> {
     pub craft_item_class: &'a Account<'info, ItemClass>,
     pub craft_item: &'a Account<'info, Item>,
     pub chosen_component: &'a Component,
+    pub unix_timestamp: i64
 }
 
 pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> ProgramResult {
@@ -891,6 +893,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
         craft_item_class,
         craft_item,
         chosen_component,
+        unix_timestamp
     } = args;
 
     if let Some(csi) = craft_usage_info {
@@ -936,7 +939,27 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
             UnableToFindValidCooldownState
         );
 
+        require!(
+            craft_usage_state.index == chosen_component.use_usage_index,
+            UnableToFindValidCooldownState
+        );
+
         if let Some(activated_at) = craft_usage_state.activated_at {
+            match craft_usage.item_class_type {
+                ItemClassType::Wearable { .. } => {
+                    return Ok(())
+                },
+                ItemClassType::Consumable { cooldown_duration, .. } => {
+                    if let Some(cooldown) = cooldown_duration {
+                        let cooldown_over = activated_at.checked_add(craft_usage.duration).ok_or(ErrorCode::NumericalOverflowError)?;
+                        if cooldown_over < unix_timestamp {
+                            return Err(ErrorCode::UnableToFindValidCooldownState.into());
+                        }
+                    } else {
+                        return Err(ErrorCode::UnableToFindValidCooldownState.into());
+                    }
+                },
+            }
             return Ok(());
         }
     } else if let Some(usages) = &craft_item_class.data.usages {
@@ -1134,4 +1157,26 @@ pub fn close_token_account<'a>(
     )?;
 
     Ok(())
+}
+
+pub struct GetAndVerifyUsageArgs<'a, 'info> {
+    item: &'a Account<'info, Item>,
+    item_class: &'a Account<'info, ItemClass>,
+    item_activation_marker: &'a Account<'info, ItemActivationMarker>,
+    usage_index: Option<u16>,
+    usage_info: Option<UsageInfo>,
+}
+
+pub fn verify_usage_and_verify_first_mutation<'a, 'info>(
+    args: GetAndVerifyUsageArgs,
+) -> Result<ItemUsage, ProgramError> {
+    let GetAndVerifyUsageArgs {
+        item,
+        item_class,
+        item_activation_marker,
+        usage_index,
+        usage_info,
+    } = args;
+
+    if let Some()
 }
