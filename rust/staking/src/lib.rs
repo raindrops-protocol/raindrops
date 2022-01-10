@@ -534,6 +534,7 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
+    UsagePermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]

@@ -1034,19 +1034,23 @@ pub mod item {
 
 // [COMMON REMAINING ACCOUNTS]
 // Most actions require certain remainingAccounts based on their permissioned setup
+// You get to choose which permission you want to use, the object just needs to have
+// that permissiveness set in it' array.
+//
 // if you see common remaining accounts label, use the following as your rubric:
-// If update/usage permissiveness is token holder can update:
+// If the permissiveness array is not set, is assumed to be just token holder.
+// If permissiveness is token holder:
 // token_account [readable]
 // token_holder [signer]
-// If update/usage permissiveness is class holder can update
+// If permissiveness is parent holder
 // class token_account [readable]
 // class token_holder [signer]
 // class [readable]
 // class mint [readable]
-// If update/usage permissiveness is update authority can update
+// If permissiveness is update authority
 // metadata_update_authority [signer]
 // metadata [readable]
-// If update permissiveness is anybody can update, nothing further is required.
+// If permissiveness is anybody can, nothing further is required.
 
 #[derive(Accounts)]
 #[instruction(args: CreateItemClassArgs)]
@@ -1429,6 +1433,7 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
+    UsagePermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
@@ -1538,6 +1543,11 @@ pub struct Boolean {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemClassData {
     children_must_be_editions: Option<Boolean>,
+    // What is this? Well, when you are checking build_permissiveness
+    // to build an item, the permissiveness is RELATIVE TO THE ITEM CLASS. So TokenHolder
+    // implies you are the token holder of the item class, not the item you are trying to build.
+    // Setting this to true requires that to do a build of an item class, the person doing
+    // the building MUST ALSO HOLD the new token being built.
     builder_must_be_holder: Option<Boolean>,
     update_permissiveness: Option<Vec<Permissiveness>>,
     build_permissiveness: Option<Vec<Permissiveness>>,
@@ -1547,6 +1557,7 @@ pub struct ItemClassData {
     // if not set, assumed to use staking permissiveness
     unstaking_permissiveness: Option<Vec<Permissiveness>>,
     child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
+    usage_permissiveness: Option<Vec<Permissiveness>>,
     default_category: Option<DefaultItemCategory>,
     // The roots are merkle roots, used to keep things cheap on chain (optional)
     // Tried to combine roots and vec into a single Option to keep it simple

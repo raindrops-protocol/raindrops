@@ -68,14 +68,17 @@ pub const MAX_NAMESPACES: usize = 10;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ChildUpdatePropagationPermissiveness {
-    Class { overridable: bool },
-    Usages { overridable: bool },
-    Components { overridable: bool },
-    Permissiveness { overridable: bool },
-    ChildUpdatePropagationPermissiveness { overridable: bool },
-    ChildrenMustBeEditionsPermissiveness { overridable: bool },
-    BuilderMustBeHolderPermissiveness { overridable: bool },
-    Uri { overridable: bool },
+    DefaultItemCategory,
+    Usages,
+    Components,
+    UpdatePermissiveness,
+    BuildPermissiveness,
+    ChildUpdatePropagationPermissiveness,
+    ChildrenMustBeEditionsPermissiveness,
+    BuilderMustBeHolderPermissiveness,
+    StakingPermissiveness,
+    Namespaces,
+    UsagePermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

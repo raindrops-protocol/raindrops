@@ -370,6 +370,32 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                         // nothing
                     }
                 }
+            } else {
+                // Default is token holder.
+                //  token_account [readable]
+                //  token_holder [signer]
+                //  mint [readable] OR none if already present in the main array
+                let token_account = &remaining_accounts[0];
+                let token_holder = &remaining_accounts[1];
+                let mint = if let Some(m) = account_mint {
+                    *m
+                } else {
+                    remaining_accounts[2].key()
+                };
+
+                assert_signer(token_holder)?;
+
+                let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+
+                if acct.amount == 0 {
+                    return Err(ErrorCode::InsufficientBalance.into());
+                }
+
+                assert_derivation(
+                    program_id,
+                    given_account,
+                    &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
+                )?;
             }
         }
         None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
@@ -536,6 +562,14 @@ pub fn update_item_class_with_inherited_information(
                             propagate_parent_array(PropagateParentArrayArgs {
                                 parent_items: &parent_item_data.update_permissiveness,
                                 child_items: &item.data.update_permissiveness,
+                                overridable: update_perm.overridable,
+                            });
+                    }
+                    ChildUpdatePropagationPermissivenessType::UsagePermissiveness => {
+                        item.data.usage_permissiveness =
+                            propagate_parent_array(PropagateParentArrayArgs {
+                                parent_items: &parent_item_data.usage_permissiveness,
+                                child_items: &item.data.usage_permissiveness,
                                 overridable: update_perm.overridable,
                             });
                     }
