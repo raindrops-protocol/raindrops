@@ -1205,7 +1205,7 @@ pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
     item_activation_marker: &'a mut Account<'info, ItemActivationMarker>,
     usage_index: u16,
     usage_info: Option<UsageInfo>,
-    clock: &'a Sysvar<'info, Clock>,
+    unix_timestamp: i64,
 }
 
 pub fn verify_and_affect_item_state_update<'a, 'info>(
@@ -1217,7 +1217,7 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
         item_activation_marker,
         usage_index,
         usage_info,
-        clock,
+        unix_timestamp,
     } = args;
 
     let item_usage = if let Some(usage_root) = &item_class.data.usage_root {
@@ -1267,6 +1267,7 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 new_usage_state_root,
                 new_usage_state_proof,
                 total_states_proof,
+                new_total_states_proof,
                 total_states,
                 ..
             } = us_info;
@@ -1290,11 +1291,11 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
             );
 
             require!(
-                verify(total_states_proof, new_usage_state_root, node.0),
+                verify(new_total_states_proof, new_usage_state_root, node.0),
                 InvalidProof
             );
 
-            enact_valid_state_change(&mut usage_state, item_usage, clock.unix_timestamp)?;
+            enact_valid_state_change(&mut usage_state, item_usage, unix_timestamp)?;
 
             let node = anchor_lang::solana_program::keccak::hashv(&[
                 &[0x00],
@@ -1310,6 +1311,7 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 states_required: total_states,
                 ignore_index: usage_state.index,
                 new_state_root: new_usage_state_root,
+                unix_timestamp,
             });
             &usage_state
         } else {
@@ -1326,7 +1328,7 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                     break;
                 }
             }
-            enact_valid_state_change(&mut usage_state, item_usage, clock.unix_timestamp)?;
+            enact_valid_state_change(&mut usage_state, item_usage, unix_timestamp)?;
             usage_state
         }
     } else {

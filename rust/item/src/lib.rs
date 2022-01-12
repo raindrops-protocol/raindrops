@@ -202,10 +202,21 @@ pub struct BeginItemActivationArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProveNewStateValidArgs {
     usage_state_proofs: Vec<Vec<[u8; 32]>>,
+    new_usage_state_proofs: Vec<Vec<[u8; 32]>>,
     usage_states: Vec<ItemUsageState>,
     item_mint: Pubkey,
     index: u64,
     usage_index: u16,
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ResetStateValidationForActivationArgs {
+    replacement_new_usage_state_root: [u8; 32],
+    item_mint: Pubkey,
+    index: u64,
+    usage_index: u16,
+    class_index: u64,
+    item_class_mint: Pubkey,
+    usage_info: Option<UsageInfo>,
 }
 
 #[program]
@@ -1085,7 +1096,7 @@ pub mod item {
                 item_activation_marker,
                 usage_index,
                 usage_info,
-                clock,
+                unix_timestamp: clock.unix_timestamp,
             })?;
 
         let perm_array = vec![];
@@ -1131,6 +1142,39 @@ pub mod item {
         Ok(())
     }
 
+    pub fn reset_state_validation_for_activation<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ResetStateValidationForActivation<'info>>,
+        args: ResetStateValidationForActivationArgs,
+    ) -> ProgramResult {
+        // You f-ed up and used the wrong new state root. Can reset here with some
+        // validation. Basically starts from scratch again the proving process.
+
+        let item = &mut ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
+        let item_activation_marker = &mut ctx.accounts.item_activation_marker;
+
+        let ResetStateValidationForActivationArgs {
+            replacement_new_usage_state_root,
+            usage_index,
+            usage_info,
+            ..
+        } = args;
+
+        if let Some(pc) = item_activation_marker.proof_counter {
+            verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
+                item,
+                item_class,
+                item_activation_marker,
+                usage_index,
+                usage_info,
+                unix_timestamp: pc.unix_timestamp,
+            })?;
+        } else {
+            return Err(ErrorCode::ProvingNewStateNotRequired.into());
+        }
+        Ok(())
+    }
+
     pub fn prove_new_state_valid<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, BeginItemActivation<'info>>,
         args: ProveNewStateValidArgs,
@@ -1141,6 +1185,7 @@ pub mod item {
         let ProveNewStateValidArgs {
             usage_state_proofs,
             usage_states,
+            new_usage_state_proofs,
             ..
         } = args;
 
@@ -1150,6 +1195,7 @@ pub mod item {
                 for index in 0..usage_states.len() {
                     let state = &usage_states[index];
                     let proof = usage_state_proofs[index];
+                    let new_proof = new_usage_state_proofs[index];
                     if state.index != pc.states_proven {
                         return Err(ErrorCode::MustSubmitStatesInOrder.into());
                     }
@@ -1160,7 +1206,7 @@ pub mod item {
                         ]);
                         // Since these states were not altered by activation, they should be in both.
                         require!(verify(proof, usage_state_root.root, node.0), InvalidProof);
-                        require!(verify(proof, new_root, node.0), InvalidProof);
+                        require!(verify(new_proof, new_root, node.0), InvalidProof);
 
                         if state
                             .index
@@ -1439,7 +1485,7 @@ pub struct BeginItemActivation<'info> {
     #[account(mut, constraint=item_mint.key() == item_account.mint)]
     item_account: Account<'info, TokenAccount>,
     item_transfer_authority: Signer<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1 && args.item_marker_space <= 8+1+1+2+2+2+32, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1 && args.item_marker_space <= 8+1+1+2+2+2+32+8, payer=payer)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
@@ -1457,6 +1503,17 @@ pub struct BeginItemActivation<'info> {
 pub struct ProveNewStateValid<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    item_activation_marker: Account<'info, ItemActivationMarker>,
+}
+
+#[derive(Accounts)]
+#[instruction(args: ResetStateValidationForActivationArgs)]
+pub struct ResetStateValidationForActivation<'info> {
+    #[account(seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    item: Account<'info, Item>,
+    #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
 }
@@ -1770,6 +1827,9 @@ pub struct ItemActivationMarkerProofCounter {
     ignore_index: u16,
     // Will replace the old state proof in end item activation call.
     new_state_root: [u8; 32],
+    // In the case we need to reset root, we want to use
+    // timestamp from original activation
+    unix_timestamp: i64,
 }
 
 // can make this super cheap
@@ -1811,6 +1871,7 @@ pub struct UsageInfo {
     new_usage_state_root: [u8; 32],
     total_states: u16,
     total_states_proof: Vec<[u8; 32]>,
+    new_total_states_proof: Vec<[u8; 32]>,
 }
 
 #[account]
