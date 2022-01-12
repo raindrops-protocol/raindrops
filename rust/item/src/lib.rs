@@ -194,8 +194,7 @@ pub struct BeginItemActivationArgs {
     // max of 8+1+1+2+2+2+32, min of 8+1+1
     item_marker_space: u8,
     usage_permissiveness_to_use: Option<Permissiveness>,
-    // Use this if using on chain usages
-    usage_index: Option<u16>,
+    usage_index: u16,
     // Use this if using roots
     usage_info: Option<UsageInfo>,
 }
@@ -205,6 +204,8 @@ pub struct ProveNewStateValidArgs {
     usage_state_proofs: Vec<Vec<[u8; 32]>>,
     usage_states: Vec<ItemUsageState>,
     item_mint: Pubkey,
+    index: u64,
+    usage_index: u16,
 }
 
 #[program]
@@ -1129,6 +1130,73 @@ pub mod item {
 
         Ok(())
     }
+
+    pub fn prove_new_state_valid<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, BeginItemActivation<'info>>,
+        args: ProveNewStateValidArgs,
+    ) -> ProgramResult {
+        let item = &mut ctx.accounts.item;
+        let item_activation_marker = &mut ctx.accounts.item_activation_marker;
+
+        let ProveNewStateValidArgs {
+            usage_state_proofs,
+            usage_states,
+            ..
+        } = args;
+
+        if let Some(usage_state_root) = item.data.usage_state_root {
+            if let Some(pc) = item_activation_marker.proof_counter {
+                let new_root = pc.new_state_root;
+                for index in 0..usage_states.len() {
+                    let state = &usage_states[index];
+                    let proof = usage_state_proofs[index];
+                    if state.index != pc.states_proven {
+                        return Err(ErrorCode::MustSubmitStatesInOrder.into());
+                    }
+                    if state.index != pc.ignore_index {
+                        let node = anchor_lang::solana_program::keccak::hashv(&[
+                            &[0x00],
+                            &AnchorSerialize::try_to_vec(&state)?,
+                        ]);
+                        // Since these states were not altered by activation, they should be in both.
+                        require!(verify(proof, usage_state_root.root, node.0), InvalidProof);
+                        require!(verify(proof, new_root, node.0), InvalidProof);
+
+                        if state
+                            .index
+                            .checked_add(1)
+                            .ok_or(ErrorCode::NumericalOverflowError)?
+                            == pc.ignore_index
+                        {
+                            // Skip the ignore index.
+                            pc.states_proven = pc
+                                .states_proven
+                                .checked_add(2)
+                                .ok_or(ErrorCode::NumericalOverflowError)?;
+                        } else {
+                            pc.states_proven = pc
+                                .states_proven
+                                .checked_add(1)
+                                .ok_or(ErrorCode::NumericalOverflowError)?;
+                        }
+                    }
+                }
+
+                if pc.states_proven >= pc.states_required {
+                    item.data.usage_state_root = Some(Root {
+                        inherited: usage_state_root.inherited,
+                        root: pc.new_state_root,
+                    });
+                }
+            } else {
+                return Err(ErrorCode::ProvingNewStateNotRequired.into());
+            }
+        } else {
+            return Err(ErrorCode::ProvingNewStateNotRequired.into());
+        }
+
+        Ok(())
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
@@ -1371,7 +1439,7 @@ pub struct BeginItemActivation<'info> {
     #[account(mut, constraint=item_mint.key() == item_account.mint)]
     item_account: Account<'info, TokenAccount>,
     item_transfer_authority: Signer<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1 && args.item_marker_space <= 8+1+1+2+2+2+32, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1 && args.item_marker_space <= 8+1+1+2+2+2+32, payer=payer)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
@@ -1387,9 +1455,9 @@ pub struct BeginItemActivation<'info> {
 #[derive(Accounts)]
 #[instruction(args: ProveNewStateValidArgs)]
 pub struct ProveNewStateValid<'info> {
-    #[account(mut,  seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    #[account(seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
 }
 
@@ -1399,7 +1467,7 @@ pub struct EndItemActivation<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(),item_mint.key().as_ref(), &index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
     // funds from this will be drained to the signer in common remaining accounts for safety
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.data.borrow_mut()[0])]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.data.borrow_mut()[0])]
     item_activation_marker: UncheckedAccount<'info>,
     item_mint: Account<'info, Mint>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -1862,4 +1930,10 @@ pub enum ErrorCode {
     CooldownNotOver,
     #[msg("Cannot use wearable")]
     CannotUseWearable,
+    #[msg("Usage index mismatch")]
+    UsageIndexMismatch,
+    #[msg("Proving new state not required")]
+    ProvingNewStateNotRequired,
+    #[msg("You must submit proofs in order to revalidate the new state.")]
+    MustSubmitStatesInOrder,
 }

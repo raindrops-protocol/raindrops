@@ -1203,7 +1203,7 @@ pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
     item: &'a mut Account<'info, Item>,
     item_class: &'a Account<'info, ItemClass>,
     item_activation_marker: &'a mut Account<'info, ItemActivationMarker>,
-    usage_index: Option<u16>,
+    usage_index: u16,
     usage_info: Option<UsageInfo>,
     clock: &'a Sysvar<'info, Clock>,
 }
@@ -1231,27 +1231,24 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 &[0x00],
                 &AnchorSerialize::try_to_vec(&usage)?,
             ]);
+            require!(usage.index == usage_index, UsageIndexMismatch);
             require!(verify(usage_proof, usage_root.root, node.0), InvalidProof);
             &usage
         } else {
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
     } else if let Some(usages) = &item_class.data.usages {
-        if let Some(us_index) = usage_index {
-            if usages.len() == 0 {
-                return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
-            } else {
-                let mut usage = &usages[0];
-                for n in 0..usages.len() {
-                    if usages[n].index == us_index {
-                        usage = &usages[n];
-                        break;
-                    }
-                }
-                usage
-            }
+        if usages.len() == 0 {
+            return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
         } else {
-            return Err(ErrorCode::MustProvideUsageIndex.into());
+            let mut usage = &usages[0];
+            for n in 0..usages.len() {
+                if usages[n].index == usage_index {
+                    usage = &usages[n];
+                    break;
+                }
+            }
+            usage
         }
     } else {
         return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
@@ -1283,11 +1280,17 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 verify(usage_state_proof, usage_state_root.root, node.0),
                 InvalidProof
             );
+            require!(usage_state.index == usage_index, UsageIndexMismatch);
 
             let node =
                 anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total_states.to_le_bytes()]);
             require!(
                 verify(total_states_proof, usage_state_root.root, node.0),
+                InvalidProof
+            );
+
+            require!(
+                verify(total_states_proof, new_usage_state_root, node.0),
                 InvalidProof
             );
 
@@ -1313,22 +1316,18 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
     } else if let Some(usage_states) = &item.data.usage_states {
-        if let Some(us_index) = usage_index {
-            if usage_states.len() == 0 {
-                return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
-            } else {
-                let mut usage_state = &usage_states[0];
-                for n in 0..usage_states.len() {
-                    if usage_states[n].index == us_index {
-                        usage_state = &usage_states[n];
-                        break;
-                    }
-                }
-                enact_valid_state_change(&mut usage_state, item_usage, clock.unix_timestamp)?;
-                usage_state
-            }
+        if usage_states.len() == 0 {
+            return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
         } else {
-            return Err(ErrorCode::MustProvideUsageIndex.into());
+            let mut usage_state = &usage_states[0];
+            for n in 0..usage_states.len() {
+                if usage_states[n].index == usage_index {
+                    usage_state = &usage_states[n];
+                    break;
+                }
+            }
+            enact_valid_state_change(&mut usage_state, item_usage, clock.unix_timestamp)?;
+            usage_state
         }
     } else {
         return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
