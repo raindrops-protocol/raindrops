@@ -1,14 +1,14 @@
 use {
     crate::{
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
-        InheritanceState, Inherited, Item, ItemActivationMarker, ItemClass, ItemClassData,
-        ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType, Permissiveness,
-        PermissivenessType, UsageInfo, PREFIX,
+        InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
+        ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState,
+        ItemUsageType, Permissiveness, PermissivenessType, Root, UsageInfo, PREFIX,
     },
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, AnchorSerialize, Program, ProgramError, ProgramResult,
-            Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
+            msg, Account, AccountInfo, AnchorSerialize, Clock, Program, ProgramError,
+            ProgramResult, Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{
@@ -884,7 +884,7 @@ pub struct VerifyCooldownArgs<'a, 'info> {
     pub craft_item_class: &'a Account<'info, ItemClass>,
     pub craft_item: &'a Account<'info, Item>,
     pub chosen_component: &'a Component,
-    pub unix_timestamp: i64
+    pub unix_timestamp: i64,
 }
 
 pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> ProgramResult {
@@ -893,7 +893,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
         craft_item_class,
         craft_item,
         chosen_component,
-        unix_timestamp
+        unix_timestamp,
     } = args;
 
     if let Some(csi) = craft_usage_info {
@@ -946,19 +946,21 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
 
         if let Some(activated_at) = craft_usage_state.activated_at {
             match craft_usage.item_class_type {
-                ItemClassType::Wearable { .. } => {
-                    return Ok(())
-                },
-                ItemClassType::Consumable { cooldown_duration, .. } => {
+                ItemClassType::Wearable { .. } => return Ok(()),
+                ItemClassType::Consumable {
+                    cooldown_duration, ..
+                } => {
                     if let Some(cooldown) = cooldown_duration {
-                        let cooldown_over = activated_at.checked_add(craft_usage.duration).ok_or(ErrorCode::NumericalOverflowError)?;
+                        let cooldown_over = activated_at
+                            .checked_add(cooldown)
+                            .ok_or(ErrorCode::NumericalOverflowError)?;
                         if cooldown_over < unix_timestamp {
                             return Err(ErrorCode::UnableToFindValidCooldownState.into());
                         }
                     } else {
                         return Err(ErrorCode::UnableToFindValidCooldownState.into());
                     }
-                },
+                }
             }
             return Ok(());
         }
@@ -1159,24 +1161,178 @@ pub fn close_token_account<'a>(
     Ok(())
 }
 
-pub struct GetAndVerifyUsageArgs<'a, 'info> {
-    item: &'a Account<'info, Item>,
-    item_class: &'a Account<'info, ItemClass>,
-    item_activation_marker: &'a Account<'info, ItemActivationMarker>,
-    usage_index: Option<u16>,
-    usage_info: Option<UsageInfo>,
+pub fn enact_valid_state_change(
+    item_usage_state: &mut ItemUsageState,
+    item_usage: &ItemUsage,
+    unix_timestamp: i64,
+) -> ProgramResult {
+    item_usage_state.uses = item_usage_state
+        .uses
+        .checked_add(1)
+        .ok_or(ErrorCode::NumericalOverflowError)?;
+    match item_usage.item_class_type {
+        ItemClassType::Consumable {
+            max_uses,
+            cooldown_duration,
+            ..
+        } => {
+            if let Some(max) = max_uses {
+                require!(item_usage_state.uses <= max, MaxUsesReached)
+            }
+
+            if let Some(duration) = cooldown_duration {
+                if let Some(activated_at) = item_usage_state.activated_at {
+                    let cooldown_ends = activated_at
+                        .checked_add(duration)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+                    if unix_timestamp < cooldown_ends {
+                        return Err(ErrorCode::CooldownNotOver.into());
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
+    item_usage_state.activated_at = Some(unix_timestamp);
+
+    Ok(())
 }
 
-pub fn verify_usage_and_verify_first_mutation<'a, 'info>(
-    args: GetAndVerifyUsageArgs,
-) -> Result<ItemUsage, ProgramError> {
-    let GetAndVerifyUsageArgs {
+pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
+    item: &'a mut Account<'info, Item>,
+    item_class: &'a Account<'info, ItemClass>,
+    item_activation_marker: &'a mut Account<'info, ItemActivationMarker>,
+    usage_index: Option<u16>,
+    usage_info: Option<UsageInfo>,
+    clock: &'a Sysvar<'info, Clock>,
+}
+
+pub fn verify_and_affect_item_state_update<'a, 'info>(
+    args: VerifyAndAffectItemStateUpdateArgs,
+) -> Result<(&'a ItemUsage, &'a ItemUsageState), ProgramError> {
+    let VerifyAndAffectItemStateUpdateArgs {
         item,
         item_class,
         item_activation_marker,
         usage_index,
         usage_info,
+        clock,
     } = args;
 
-    if let Some()
+    let item_usage = if let Some(usage_root) = &item_class.data.usage_root {
+        if let Some(us_info) = usage_info {
+            let UsageInfo {
+                usage_proof, usage, ..
+            } = us_info;
+
+            // Verify the merkle proof.
+            let node = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x00],
+                &AnchorSerialize::try_to_vec(&usage)?,
+            ]);
+            require!(verify(usage_proof, usage_root.root, node.0), InvalidProof);
+            &usage
+        } else {
+            return Err(ErrorCode::MissingMerkleInfo.into());
+        }
+    } else if let Some(usages) = &item_class.data.usages {
+        if let Some(us_index) = usage_index {
+            if usages.len() == 0 {
+                return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+            } else {
+                let mut usage = &usages[0];
+                for n in 0..usages.len() {
+                    if usages[n].index == us_index {
+                        usage = &usages[n];
+                        break;
+                    }
+                }
+                usage
+            }
+        } else {
+            return Err(ErrorCode::MustProvideUsageIndex.into());
+        }
+    } else {
+        return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+    };
+
+    match &item_usage.item_class_type {
+        ItemClassType::Wearable { .. } => return Err(ErrorCode::CannotUseWearable.into()),
+        _ => {}
+    };
+
+    let usage_state = if let Some(usage_state_root) = &item.data.usage_state_root {
+        if let Some(us_info) = usage_info {
+            let UsageInfo {
+                usage_state_proof,
+                usage_state,
+                new_usage_state_root,
+                new_usage_state_proof,
+                total_states_proof,
+                total_states,
+                ..
+            } = us_info;
+
+            // Verify the merkle proof.
+            let node = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x00],
+                &AnchorSerialize::try_to_vec(&usage_state)?,
+            ]);
+            require!(
+                verify(usage_state_proof, usage_state_root.root, node.0),
+                InvalidProof
+            );
+
+            let node =
+                anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total_states.to_le_bytes()]);
+            require!(
+                verify(total_states_proof, usage_state_root.root, node.0),
+                InvalidProof
+            );
+
+            enact_valid_state_change(&mut usage_state, item_usage, clock.unix_timestamp)?;
+
+            let node = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x00],
+                &AnchorSerialize::try_to_vec(&usage_state)?,
+            ]);
+            require!(
+                verify(new_usage_state_proof, new_usage_state_root, node.0),
+                InvalidProof
+            );
+
+            item_activation_marker.proof_counter = Some(ItemActivationMarkerProofCounter {
+                states_proven: 0,
+                states_required: total_states,
+                ignore_index: usage_state.index,
+                new_state_root: new_usage_state_root,
+            });
+            &usage_state
+        } else {
+            return Err(ErrorCode::MissingMerkleInfo.into());
+        }
+    } else if let Some(usage_states) = &item.data.usage_states {
+        if let Some(us_index) = usage_index {
+            if usage_states.len() == 0 {
+                return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+            } else {
+                let mut usage_state = &usage_states[0];
+                for n in 0..usage_states.len() {
+                    if usage_states[n].index == us_index {
+                        usage_state = &usage_states[n];
+                        break;
+                    }
+                }
+                enact_valid_state_change(&mut usage_state, item_usage, clock.unix_timestamp)?;
+                usage_state
+            }
+        } else {
+            return Err(ErrorCode::MustProvideUsageIndex.into());
+        }
+    } else {
+        return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+    };
+
+    Ok((item_usage, usage_state))
 }

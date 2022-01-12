@@ -9,9 +9,10 @@ use {
         create_or_allocate_account_raw, create_program_token_account_if_not_present,
         get_mask_and_index_for_seq, propagate_item_class_data_fields_to_item_data, spl_token_burn,
         spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
-        update_item_class_with_inherited_information, verify, verify_component, verify_cooldown,
-        AssertPermissivenessAccessArgs, TokenBurnParams, TokenTransferParams,
-        TransferMintAuthorityArgs, VerifyComponentArgs, VerifyCooldownArgs,
+        update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
+        verify_component, verify_cooldown, AssertPermissivenessAccessArgs, TokenBurnParams,
+        TokenTransferParams, TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs,
+        VerifyComponentArgs, VerifyCooldownArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -1055,11 +1056,13 @@ pub mod item {
         args: BeginItemActivationArgs,
     ) -> ProgramResult {
         let item_class = &ctx.accounts.item_class;
-        let mut item = &ctx.accounts.item;
+        let item = &mut ctx.accounts.item;
         let item_account = &ctx.accounts.item_account;
         let item_mint = &ctx.accounts.item_mint;
         let item_transfer_authority = &ctx.accounts.item_transfer_authority;
-        let item_activation_marker = &ctx.accounts.item_activation_marker;
+        let item_activation_marker = &mut ctx.accounts.item_activation_marker;
+        let clock = &ctx.accounts.clock;
+        let token_program = &ctx.accounts.token_program;
 
         let BeginItemActivationArgs {
             usage_permissiveness_to_use,
@@ -1074,17 +1077,56 @@ pub mod item {
 
         item_activation_marker.bump = item_activation_bump;
 
-        let usage = verify_usage_and_verify_first_mutation()?;
+        let (usage, usage_state) =
+            verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
+                item,
+                item_class,
+                item_activation_marker,
+                usage_index,
+                usage_info,
+                clock,
+            })?;
+
+        let perm_array = vec![];
+        for permissiveness in usage.usage_permissiveness {
+            perm_array.push(Permissiveness {
+                inherited: InheritanceState::NotInherited,
+                permissiveness_type: permissiveness,
+            })
+        }
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &usage_permissiveness_to_use,
-            permissiveness_array: &usage.usage_permissiveness,
+            permissiveness_array: &Some(perm_array),
             index,
             account_mint: Some(&item_mint.key()),
         })?;
+
+        match usage.item_class_type {
+            ItemClassType::Consumable {
+                max_uses,
+                item_usage_type,
+                ..
+            } => {
+                if let Some(max) = max_uses {
+                    if max <= usage_state.uses && item_usage_type == ItemUsageType::Destruction {
+                        spl_token_burn(TokenBurnParams {
+                            mint: item_mint.to_account_info(),
+                            source: item_account.to_account_info(),
+                            amount: 1,
+                            authority: item_transfer_authority.to_account_info(),
+                            authority_signer_seeds: None,
+                            token_program: token_program.to_account_info(),
+                        })?;
+                    }
+                }
+            }
+            _ => {}
+        };
+
         Ok(())
     }
 }
@@ -1337,6 +1379,8 @@ pub struct BeginItemActivation<'info> {
     #[account(constraint = player_program.key() == Pubkey::from_str(PLAYER_ID).unwrap())]
     player_program: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+    clock: Sysvar<'info, Clock>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -1652,12 +1696,12 @@ pub struct ItemActivationMarker {
 pub struct ItemActivationMarkerProofCounter {
     // Only need to do re-prove of new state proof
     // if using proofs.
-    step_proven: u16,
-    steps_required: u16,
+    states_proven: u16,
+    states_required: u16,
     // The one index already proven (the one being used)
     ignore_index: u16,
     // Will replace the old state proof in end item activation call.
-    new_state_proof: Vec<[u8; 32]>,
+    new_state_root: [u8; 32],
 }
 
 // can make this super cheap
@@ -1695,6 +1739,10 @@ pub struct UsageInfo {
     // These required if using roots instead
     usage_state_proof: Vec<[u8; 32]>,
     usage_state: ItemUsageState,
+    new_usage_state_proof: Vec<[u8; 32]>,
+    new_usage_state_root: [u8; 32],
+    total_states: u16,
+    total_states_proof: Vec<[u8; 32]>,
 }
 
 #[account]
@@ -1804,4 +1852,14 @@ pub enum ErrorCode {
     IncorrectStakingCounterType,
     #[msg("Staking cooldown not finished")]
     StakingCooldownNotFinished,
+    #[msg("Must provide usage index")]
+    MustProvideUsageIndex,
+    #[msg("An item and item class must either use usage roots or merkles, if neither are present, item is unusable")]
+    CannotUseItemWithoutUsageOrMerkle,
+    #[msg("Max uses reached")]
+    MaxUsesReached,
+    #[msg("Cooldown not finished")]
+    CooldownNotOver,
+    #[msg("Cannot use wearable")]
+    CannotUseWearable,
 }
