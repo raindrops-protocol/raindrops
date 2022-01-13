@@ -17,9 +17,7 @@ use {
     anchor_lang::{
         prelude::*,
         solana_program::{
-            program::{invoke, invoke_signed},
-            program_option::COption,
-            program_pack::Pack,
+            instruction::Instruction, program::invoke, program_option::COption, program_pack::Pack,
             system_instruction, system_program,
         },
         AnchorDeserialize, AnchorSerialize,
@@ -193,6 +191,17 @@ pub struct BeginItemActivationArgs {
     // How much space to use for the item marker
     // max of 8+1+1+2+2+2+32, min of 8+1+1
     item_marker_space: u8,
+    usage_permissiveness_to_use: Option<Permissiveness>,
+    usage_index: u16,
+    // Use this if using roots
+    usage_info: Option<UsageInfo>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ValidationArgs {
+    class_index: u64,
+    index: u64,
+    item_class_mint: Pubkey,
     usage_permissiveness_to_use: Option<Permissiveness>,
     usage_index: u16,
     // Use this if using roots
@@ -1094,6 +1103,8 @@ pub mod item {
             index,
             mut usage_info,
             usage_index,
+            class_index,
+            item_class_mint,
             ..
         } = args;
 
@@ -1110,6 +1121,35 @@ pub mod item {
                 usage_info: &mut usage_info,
                 unix_timestamp: clock.unix_timestamp,
             })?;
+
+        if let Some(validation) = usage.validation {
+            let item_class_info = item_class.to_account_info();
+            let item_info = item.to_account_info();
+            let item_account_info = item_account.to_account_info();
+            let accounts = vec![item_class_info, item_info, item_account_info];
+
+            let keys = vec![
+                AccountMeta::new_readonly(item_class.key(), false),
+                AccountMeta::new_readonly(item.key(), false),
+                AccountMeta::new_readonly(item_account.key(), false),
+            ];
+
+            invoke(
+                &Instruction {
+                    program_id: validation.0,
+                    accounts: keys,
+                    data: AnchorSerialize::try_to_vec(&ValidationArgs {
+                        usage_permissiveness_to_use: usage_permissiveness_to_use.clone(),
+                        index,
+                        usage_info,
+                        usage_index,
+                        class_index,
+                        item_class_mint,
+                    })?,
+                },
+                &accounts,
+            )?;
+        }
 
         let mut perm_array = vec![];
         for permissiveness in &usage.usage_permissiveness {
@@ -1150,6 +1190,25 @@ pub mod item {
             }
             _ => {}
         };
+
+        Ok(())
+    }
+
+    pub fn end_item_activation<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, EndItemActivation<'info>>,
+        args: EndItemActivationArgs,
+    ) -> ProgramResult {
+        let item_class = &ctx.accounts.item_class;
+        let item = &mut ctx.accounts.item;
+        let item_activation_marker = &mut ctx.accounts.item_activation_marker;
+        let clock = &mut ctx.accounts.clock;
+
+        let EndItemActivationArgs {
+            usage_permissiveness_to_use,
+            index,
+            usage_index,
+            ..
+        } = args;
 
         Ok(())
     }
@@ -1540,6 +1599,7 @@ pub struct EndItemActivation<'info> {
     // funds from this will be drained to the signer in common remaining accounts for safety
     #[account(mut, seeds=[PREFIX.as_bytes(), &args.item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.data.borrow_mut()[0])]
     item_activation_marker: UncheckedAccount<'info>,
+    clock: Sysvar<'info, Clock>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -1569,6 +1629,7 @@ pub enum ItemClassType {
         max_players_per_use: Option<u64>,
         item_usage_type: ItemUsageType,
         cooldown_duration: Option<i64>,
+        warmup_duration: Option<i64>,
     },
 }
 
