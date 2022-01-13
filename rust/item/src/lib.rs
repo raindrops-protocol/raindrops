@@ -210,13 +210,22 @@ pub struct ProveNewStateValidArgs {
 }
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ResetStateValidationForActivationArgs {
-    replacement_new_usage_state_root: [u8; 32],
     item_mint: Pubkey,
     index: u64,
     usage_index: u16,
     class_index: u64,
     item_class_mint: Pubkey,
     usage_info: Option<UsageInfo>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct EndItemActivationArgs {
+    item_class_mint: Pubkey,
+    item_mint: Pubkey,
+    usage_permissiveness_to_use: Option<Permissiveness>,
+    usage_index: u16,
+    index: u64,
+    class_index: u64,
 }
 
 #[program]
@@ -886,7 +895,10 @@ pub mod item {
                     ]);
                     // Proof that the component root has as a leaf the number of steps,
                     // and that the one you sent up matches that
-                    require!(verify(en_proof, component_root.root, node.0), InvalidProof);
+                    require!(
+                        verify(&en_proof, &component_root.root, node.0),
+                        InvalidProof
+                    );
                     require!(total_s == item_escrow.step, StillMissingComponents);
                 } else {
                     return Err(ErrorCode::MissingMerkleInfo.into());
@@ -1080,7 +1092,7 @@ pub mod item {
             usage_permissiveness_to_use,
             item_activation_bump,
             index,
-            usage_info,
+            mut usage_info,
             usage_index,
             ..
         } = args;
@@ -1095,15 +1107,15 @@ pub mod item {
                 item_class,
                 item_activation_marker,
                 usage_index,
-                usage_info,
+                usage_info: &mut usage_info,
                 unix_timestamp: clock.unix_timestamp,
             })?;
 
-        let perm_array = vec![];
-        for permissiveness in usage.usage_permissiveness {
+        let mut perm_array = vec![];
+        for permissiveness in &usage.usage_permissiveness {
             perm_array.push(Permissiveness {
                 inherited: InheritanceState::NotInherited,
-                permissiveness_type: permissiveness,
+                permissiveness_type: permissiveness.clone(),
             })
         }
 
@@ -1117,14 +1129,14 @@ pub mod item {
             account_mint: Some(&item_mint.key()),
         })?;
 
-        match usage.item_class_type {
+        match &usage.item_class_type {
             ItemClassType::Consumable {
                 max_uses,
                 item_usage_type,
                 ..
             } => {
                 if let Some(max) = max_uses {
-                    if max <= usage_state.uses && item_usage_type == ItemUsageType::Destruction {
+                    if max <= &usage_state.uses && item_usage_type == &ItemUsageType::Destruction {
                         spl_token_burn(TokenBurnParams {
                             mint: item_mint.to_account_info(),
                             source: item_account.to_account_info(),
@@ -1154,20 +1166,20 @@ pub mod item {
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
 
         let ResetStateValidationForActivationArgs {
-            replacement_new_usage_state_root,
             usage_index,
-            usage_info,
+            mut usage_info,
             ..
         } = args;
 
-        if let Some(pc) = item_activation_marker.proof_counter {
+        if let Some(pc) = &item_activation_marker.proof_counter {
+            let unix_timestamp = pc.unix_timestamp.clone();
             verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
                 item,
                 item_class,
                 item_activation_marker,
                 usage_index,
-                usage_info,
-                unix_timestamp: pc.unix_timestamp,
+                usage_info: &mut usage_info,
+                unix_timestamp,
             })?;
         } else {
             return Err(ErrorCode::ProvingNewStateNotRequired.into());
@@ -1189,13 +1201,13 @@ pub mod item {
             ..
         } = args;
 
-        if let Some(usage_state_root) = item.data.usage_state_root {
-            if let Some(pc) = item_activation_marker.proof_counter {
+        if let Some(usage_state_root) = &item.data.usage_state_root {
+            if let Some(pc) = &mut item_activation_marker.proof_counter {
                 let new_root = pc.new_state_root;
                 for index in 0..usage_states.len() {
                     let state = &usage_states[index];
-                    let proof = usage_state_proofs[index];
-                    let new_proof = new_usage_state_proofs[index];
+                    let proof = &usage_state_proofs[index];
+                    let new_proof = &new_usage_state_proofs[index];
                     if state.index != pc.states_proven {
                         return Err(ErrorCode::MustSubmitStatesInOrder.into());
                     }
@@ -1205,8 +1217,8 @@ pub mod item {
                             &AnchorSerialize::try_to_vec(&state)?,
                         ]);
                         // Since these states were not altered by activation, they should be in both.
-                        require!(verify(proof, usage_state_root.root, node.0), InvalidProof);
-                        require!(verify(new_proof, new_root, node.0), InvalidProof);
+                        require!(verify(proof, &usage_state_root.root, node.0), InvalidProof);
+                        require!(verify(new_proof, &new_root, node.0), InvalidProof);
 
                         if state
                             .index
@@ -1230,7 +1242,7 @@ pub mod item {
 
                 if pc.states_proven >= pc.states_required {
                     item.data.usage_state_root = Some(Root {
-                        inherited: usage_state_root.inherited,
+                        inherited: usage_state_root.inherited.clone(),
                         root: pc.new_state_root,
                     });
                 }
@@ -1457,7 +1469,7 @@ pub struct UpdateItemClass<'info> {
 pub struct DrainItemClass<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    #[account(mut)]
+    #[account(constraint=item_class.parent.unwrap() == parent_class.key(), mut)]
     parent_class: UncheckedAccount<'info>,
     receiver: Signer<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -1468,7 +1480,7 @@ pub struct DrainItemClass<'info> {
 pub struct DrainItem<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(constraint=item.parent == item_class.key(), mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     receiver: Signer<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -1477,7 +1489,7 @@ pub struct DrainItem<'info> {
 #[derive(Accounts)]
 #[instruction(args: BeginItemActivationArgs)]
 pub struct BeginItemActivation<'info> {
-    #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
@@ -1512,21 +1524,22 @@ pub struct ProveNewStateValid<'info> {
 pub struct ResetStateValidationForActivation<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
-    #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
+    #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
 }
 
 #[derive(Accounts)]
-#[instruction(item_activation_bump: u8, index: u64, item_class_mint: Pubkey)]
+#[instruction(args: EndItemActivationArgs)]
 pub struct EndItemActivation<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_class_mint.as_ref(),item_mint.key().as_ref(), &index.to_le_bytes()], bump=item.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), &args.item_class_mint.as_ref(),&args.item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
+    #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
     // funds from this will be drained to the signer in common remaining accounts for safety
-    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.data.borrow_mut()[0])]
+    #[account(mut, seeds=[PREFIX.as_bytes(), &args.item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.data.borrow_mut()[0])]
     item_activation_marker: UncheckedAccount<'info>,
-    item_mint: Account<'info, Mint>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -1566,7 +1579,6 @@ pub struct ItemUsageState {
     activated_at: Option<i64>,
 }
 
-pub const ITEM_USAGE_TYPE_STATE_SIZE: usize = 9;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum ItemUsageType {
     Exhaustion,

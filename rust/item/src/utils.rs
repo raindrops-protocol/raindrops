@@ -854,29 +854,29 @@ pub fn transfer_mint_authority<'b, 'info>(
 /// defined by `root`. For this, a `proof` must be provided, containing
 /// sibling hashes on the branch from the leaf to the root of the tree. Each
 /// pair of leaves and each pair of pre-images are assumed to be sorted.
-pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
+pub fn verify(proof: &Vec<[u8; 32]>, root: &[u8; 32], leaf: [u8; 32]) -> bool {
     let mut computed_hash = leaf;
     for proof_element in proof.into_iter() {
-        if computed_hash <= proof_element {
+        if computed_hash <= *proof_element {
             // Hash(current computed hash + current element of the proof)
             computed_hash = anchor_lang::solana_program::keccak::hashv(&[
                 &[0x01],
                 &computed_hash,
-                &proof_element,
+                proof_element,
             ])
             .0;
         } else {
             // Hash(current element of the proof + current computed hash)
             computed_hash = anchor_lang::solana_program::keccak::hashv(&[
                 &[0x01],
-                &proof_element,
+                proof_element,
                 &computed_hash,
             ])
             .0;
         }
     }
     // Check if the computed hash (root) is equal to the provided root
-    computed_hash == root
+    computed_hash == *root
 }
 
 pub struct VerifyCooldownArgs<'a, 'info> {
@@ -912,7 +912,11 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
         ]);
         if let Some(craft_usage_state_root) = &craft_item.data.usage_state_root {
             require!(
-                verify(craft_usage_state_proof, craft_usage_state_root.root, node.0),
+                verify(
+                    &craft_usage_state_proof,
+                    &craft_usage_state_root.root,
+                    node.0
+                ),
                 InvalidProof
             );
         } else {
@@ -927,7 +931,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
 
         if let Some(craft_usage_root) = &craft_item_class.data.usage_root {
             require!(
-                verify(craft_usage_proof, craft_usage_root.root, class_node.0),
+                verify(&craft_usage_proof, &craft_usage_root.root, class_node.0),
                 InvalidProof
             );
         } else {
@@ -1016,7 +1020,7 @@ pub fn verify_component<'a, 'info>(
                     &craft_item_token_mint.to_bytes(),
                     &AnchorSerialize::try_to_vec(&c)?,
                 ]);
-                require!(verify(p, component_root.root, node.0), InvalidProof);
+                require!(verify(&p, &component_root.root, node.0), InvalidProof);
                 c
             } else {
                 return Err(ErrorCode::MissingMerkleInfo.into());
@@ -1200,17 +1204,17 @@ pub fn enact_valid_state_change(
 }
 
 pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
-    item: &'a mut Account<'info, Item>,
-    item_class: &'a Account<'info, ItemClass>,
-    item_activation_marker: &'a mut Account<'info, ItemActivationMarker>,
-    usage_index: u16,
-    usage_info: Option<UsageInfo>,
-    unix_timestamp: i64,
+    pub item: &'a mut Account<'info, Item>,
+    pub item_class: &'a Account<'info, ItemClass>,
+    pub item_activation_marker: &'a mut Account<'info, ItemActivationMarker>,
+    pub usage_index: u16,
+    pub usage_info: &'a mut Option<UsageInfo>,
+    pub unix_timestamp: i64,
 }
 
 pub fn verify_and_affect_item_state_update<'a, 'info>(
     args: VerifyAndAffectItemStateUpdateArgs,
-) -> Result<(&'a ItemUsage, &'a ItemUsageState), ProgramError> {
+) -> Result<(ItemUsage, ItemUsageState), ProgramError> {
     let VerifyAndAffectItemStateUpdateArgs {
         item,
         item_class,
@@ -1221,7 +1225,7 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
     } = args;
 
     let item_usage = if let Some(usage_root) = &item_class.data.usage_root {
-        if let Some(us_info) = usage_info {
+        if let Some(us_info) = &usage_info {
             let UsageInfo {
                 usage_proof, usage, ..
             } = us_info;
@@ -1232,8 +1236,8 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 &AnchorSerialize::try_to_vec(&usage)?,
             ]);
             require!(usage.index == usage_index, UsageIndexMismatch);
-            require!(verify(usage_proof, usage_root.root, node.0), InvalidProof);
-            &usage
+            require!(verify(usage_proof, &usage_root.root, node.0), InvalidProof);
+            usage
         } else {
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
@@ -1260,7 +1264,7 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
     };
 
     let usage_state = if let Some(usage_state_root) = &item.data.usage_state_root {
-        if let Some(us_info) = usage_info {
+        if let Some(us_info) = &usage_info {
             let UsageInfo {
                 usage_state_proof,
                 usage_state,
@@ -1272,21 +1276,30 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 ..
             } = us_info;
 
-            // Verify the merkle proof.
-            let node = anchor_lang::solana_program::keccak::hashv(&[
+            // Verify the new state and old state are both part of their respective trees
+            let chief_node = anchor_lang::solana_program::keccak::hashv(&[
                 &[0x00],
-                &AnchorSerialize::try_to_vec(&usage_state)?,
+                &AnchorSerialize::try_to_vec(usage_state)?,
             ]);
             require!(
-                verify(usage_state_proof, usage_state_root.root, node.0),
+                verify(usage_state_proof, &usage_state_root.root, chief_node.0),
                 InvalidProof
             );
+
+            require!(
+                verify(new_usage_state_proof, new_usage_state_root, chief_node.0),
+                InvalidProof
+            );
+
+            // Require that the index matches up to what you sent
+
             require!(usage_state.index == usage_index, UsageIndexMismatch);
 
+            // Check that both states have the same total states
             let node =
                 anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total_states.to_le_bytes()]);
             require!(
-                verify(total_states_proof, usage_state_root.root, node.0),
+                verify(total_states_proof, &usage_state_root.root, node.0),
                 InvalidProof
             );
 
@@ -1295,45 +1308,53 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 InvalidProof
             );
 
-            enact_valid_state_change(&mut usage_state, item_usage, unix_timestamp)?;
+            // Now mutate the usage ourselves to verify that it works out to the same
+            // thing they sent up
+            let verify_new_usage_state = &mut usage_state.clone();
+            enact_valid_state_change(verify_new_usage_state, &item_usage, unix_timestamp)?;
 
             let node = anchor_lang::solana_program::keccak::hashv(&[
                 &[0x00],
-                &AnchorSerialize::try_to_vec(&usage_state)?,
+                &AnchorSerialize::try_to_vec(verify_new_usage_state)?,
             ]);
             require!(
                 verify(new_usage_state_proof, new_usage_state_root, node.0),
                 InvalidProof
             );
-
             item_activation_marker.proof_counter = Some(ItemActivationMarkerProofCounter {
                 states_proven: 0,
-                states_required: total_states,
+                states_required: *total_states,
                 ignore_index: usage_state.index,
-                new_state_root: new_usage_state_root,
+                new_state_root: *new_usage_state_root,
                 unix_timestamp,
             });
-            &usage_state
+            usage_state
         } else {
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
-    } else if let Some(usage_states) = &item.data.usage_states {
+    } else if let Some(usage_states) = &mut item.data.usage_states {
         if usage_states.len() == 0 {
             return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
         } else {
-            let mut usage_state = &usage_states[0];
+            let mut usage_state: Option<&mut ItemUsageState> = None;
             for n in 0..usage_states.len() {
                 if usage_states[n].index == usage_index {
-                    usage_state = &usage_states[n];
+                    let unwrapped_usage_state = &mut usage_states[n];
+                    enact_valid_state_change(unwrapped_usage_state, &item_usage, unix_timestamp)?;
+                    usage_state = Some(unwrapped_usage_state);
                     break;
                 }
             }
-            enact_valid_state_change(&mut usage_state, item_usage, unix_timestamp)?;
-            usage_state
+
+            if usage_state.is_some() {
+                usage_state.unwrap()
+            } else {
+                return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+            }
         }
     } else {
         return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
     };
 
-    Ok((item_usage, usage_state))
+    Ok((item_usage.clone(), usage_state.clone()))
 }
