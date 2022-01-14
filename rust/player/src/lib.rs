@@ -142,6 +142,7 @@ pub struct Player {
     category: Option<PlayerCategory>,
     update_permissiveness: Option<Vec<Permissiveness>>,
     equipped_items: Vec<EquippedItem>,
+    activated_items: Vec<Pubkey>,
     basic_stats: Vec<BasicStat>,
     body_parts: Vec<BodyPart>,
 }

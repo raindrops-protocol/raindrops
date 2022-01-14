@@ -1741,6 +1741,15 @@ pub struct ItemUsage {
     item_class_type: ItemClassType,
     callback: Option<Callback>,
     validation: Option<Callback>,
+    // Cheaper way to say "this NFT potion cannot be used on the same person 2x"
+    // if the potion is an NFT and not a FT
+    // Note: Only checks against parent class of item,
+    // not all the way up the class tree.
+    // Must be enforced by enclosing contract.
+    do_not_pair_with_self: bool,
+    // List of class keys this item cannot be paired with
+    // Must be enforced by enclosing contract (usually Player)
+    dnp: Option<Vec<Pubkey>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
