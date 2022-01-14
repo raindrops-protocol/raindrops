@@ -219,6 +219,9 @@ pub struct ProveNewStateValidArgs {
     item_mint: Pubkey,
     index: u64,
     usage_index: u16,
+    // Required if using roots
+    usage_proof: Option<Vec<[u8; 32]>>,
+    usage: Option<ItemUsage>,
 }
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ResetStateValidationForActivationArgs {
@@ -1316,7 +1319,6 @@ pub mod item {
         // You had a warmup you needed to get through.
         // Now it's passed, so you want to permissionlessly update
         // item activation marker.
-        let item = &mut ctx.accounts.item;
         let item_class = &ctx.accounts.item_class;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
         let clock = &ctx.accounts.clock;
@@ -1356,22 +1358,42 @@ pub mod item {
                 }
             }
         };
+
+        if let Some(pc) = item_activation_marker.proof_counter {
+            if pc.states_proven < pc.states_required {
+                item_activation_marker.valid_for_use = false;
+            }
+        }
         Ok(())
     }
 
     pub fn prove_new_state_valid<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, BeginItemActivation<'info>>,
+        ctx: Context<'a, 'b, 'c, 'info, ProveNewStateValid<'info>>,
         args: ProveNewStateValidArgs,
     ) -> ProgramResult {
         let item = &mut ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
+        let clock = &ctx.accounts.clock;
 
         let ProveNewStateValidArgs {
             usage_state_proofs,
             usage_states,
             new_usage_state_proofs,
+            usage_index,
+            usage,
+            usage_proof,
             ..
         } = args;
+
+        let get_item_args = GetItemUsageArgs {
+            item_class,
+            usage_index,
+            usage,
+            usage_proof,
+        };
+
+        let item_usage = get_item_usage(get_item_args)?;
 
         if let Some(usage_state_root) = &item.data.usage_state_root {
             if let Some(pc) = &mut item_activation_marker.proof_counter {
@@ -1417,6 +1439,27 @@ pub mod item {
                         inherited: usage_state_root.inherited.clone(),
                         root: pc.new_state_root,
                     });
+
+                    match &item_usage.item_class_type {
+                        ItemClassType::Wearable { .. } => {
+                            return Err(ErrorCode::CannotUseWearable.into())
+                        }
+                        ItemClassType::Consumable {
+                            warmup_duration, ..
+                        } => {
+                            if let Some(warmup) = warmup_duration {
+                                let threshold = item_activation_marker
+                                    .unix_timestamp
+                                    .checked_add(*warmup)
+                                    .ok_or(ErrorCode::NumericalOverflowError)?;
+                                if clock.unix_timestamp > threshold {
+                                    item_activation_marker.valid_for_use = true;
+                                }
+                            } else {
+                                item_activation_marker.valid_for_use = true;
+                            }
+                        }
+                    };
                 }
             } else {
                 return Err(ErrorCode::ProvingNewStateNotRequired.into());
@@ -1687,8 +1730,11 @@ pub struct BeginItemActivation<'info> {
 pub struct ProveNewStateValid<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
+    #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
+    clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]
