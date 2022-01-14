@@ -222,6 +222,8 @@ pub struct ProveNewStateValidArgs {
     // Required if using roots
     usage_proof: Option<Vec<[u8; 32]>>,
     usage: Option<ItemUsage>,
+    class_index: u64,
+    item_class_mint: Pubkey,
 }
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ResetStateValidationForActivationArgs {
