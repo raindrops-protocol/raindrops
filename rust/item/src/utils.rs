@@ -974,7 +974,25 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
             if usage.index == chosen_component.use_usage_index {
                 if let Some(states) = &craft_item.data.usage_states {
                     if let Some(activated_at) = states[i].activated_at {
-                        return Ok(());
+                        match usage.item_class_type {
+                            ItemClassType::Wearable { .. } => return Ok(()),
+                            ItemClassType::Consumable {
+                                cooldown_duration, ..
+                            } => {
+                                if let Some(cooldown) = cooldown_duration {
+                                    let cooldown_over = activated_at
+                                        .checked_add(cooldown)
+                                        .ok_or(ErrorCode::NumericalOverflowError)?;
+                                    if cooldown_over < unix_timestamp {
+                                        return Err(
+                                            ErrorCode::UnableToFindValidCooldownState.into()
+                                        );
+                                    }
+                                } else {
+                                    return Err(ErrorCode::UnableToFindValidCooldownState.into());
+                                }
+                            }
+                        }
                     }
                 } else {
                     break;
@@ -988,6 +1006,14 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
     };
 
     Ok(())
+}
+
+pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
+    let preimage = format!("{}:{}", namespace, name);
+
+    let mut sighash = [0u8; 8];
+    sighash.copy_from_slice(&anchor_syn::hash::hash(preimage.as_bytes()).to_bytes()[..8]);
+    sighash
 }
 
 pub struct VerifyComponentArgs<'a, 'info> {
@@ -1224,43 +1250,30 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
         unix_timestamp,
     } = args;
 
-    let item_usage = if let Some(usage_root) = &item_class.data.usage_root {
-        if let Some(us_info) = &usage_info {
-            let UsageInfo {
-                usage_proof, usage, ..
-            } = us_info;
-
-            // Verify the merkle proof.
-            let node = anchor_lang::solana_program::keccak::hashv(&[
-                &[0x00],
-                &AnchorSerialize::try_to_vec(&usage)?,
-            ]);
-            require!(usage.index == usage_index, UsageIndexMismatch);
-            require!(verify(usage_proof, &usage_root.root, node.0), InvalidProof);
-            usage
-        } else {
-            return Err(ErrorCode::MissingMerkleInfo.into());
-        }
-    } else if let Some(usages) = &item_class.data.usages {
-        if usages.len() == 0 {
-            return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
-        } else {
-            let mut usage = &usages[0];
-            for n in 0..usages.len() {
-                if usages[n].index == usage_index {
-                    usage = &usages[n];
-                    break;
-                }
-            }
-            usage
-        }
-    } else {
-        return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+    let mut get_item_args = GetItemUsageArgs {
+        item_class,
+        usage_index,
+        usage: None,
+        usage_proof: None,
     };
+
+    if let Some(us_info) = usage_info {
+        get_item_args.usage = Some(us_info.usage.clone());
+        get_item_args.usage_proof = Some(us_info.usage_proof.clone())
+    }
+
+    let item_usage = get_item_usage(get_item_args)?;
+    item_activation_marker.unix_timestamp = unix_timestamp;
 
     match &item_usage.item_class_type {
         ItemClassType::Wearable { .. } => return Err(ErrorCode::CannotUseWearable.into()),
-        _ => {}
+        ItemClassType::Consumable {
+            warmup_duration, ..
+        } => {
+            if usage_info.is_none() && warmup_duration.is_none() {
+                item_activation_marker.valid_for_use = true;
+            }
+        }
     };
 
     let usage_state = if let Some(usage_state_root) = &item.data.usage_state_root {
@@ -1326,7 +1339,6 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
                 states_required: *total_states,
                 ignore_index: usage_state.index,
                 new_state_root: *new_usage_state_root,
-                unix_timestamp,
             });
             usage_state
         } else {
@@ -1357,4 +1369,58 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
     };
 
     Ok((item_usage.clone(), usage_state.clone()))
+}
+
+pub struct GetItemUsageArgs<'a, 'info> {
+    pub item_class: &'a Account<'info, ItemClass>,
+    pub usage_index: u16,
+    pub usage_proof: Option<Vec<[u8; 32]>>,
+    pub usage: Option<ItemUsage>,
+}
+
+pub fn get_item_usage<'a, 'info>(
+    args: GetItemUsageArgs<'a, 'info>,
+) -> Result<ItemUsage, ProgramError> {
+    let GetItemUsageArgs {
+        item_class,
+        usage_index,
+        usage_proof,
+        usage,
+    } = args;
+
+    let item_usage = if let Some(usage_root) = &item_class.data.usage_root {
+        if let Some(usage_proof) = &usage_proof {
+            if let Some(us) = &usage {
+                // Verify the merkle proof.
+                let node = anchor_lang::solana_program::keccak::hashv(&[
+                    &[0x00],
+                    &AnchorSerialize::try_to_vec(&usage)?,
+                ]);
+                require!(us.index == usage_index, UsageIndexMismatch);
+                require!(verify(usage_proof, &usage_root.root, node.0), InvalidProof);
+                us.clone()
+            } else {
+                return Err(ErrorCode::MissingMerkleInfo.into());
+            }
+        } else {
+            return Err(ErrorCode::MissingMerkleInfo.into());
+        }
+    } else if let Some(usages) = &item_class.data.usages {
+        if usages.len() == 0 {
+            return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+        } else {
+            let mut usage = &usages[0];
+            for n in 0..usages.len() {
+                if usages[n].index == usage_index {
+                    usage = &usages[n];
+                    break;
+                }
+            }
+            usage.clone()
+        }
+    } else {
+        return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+    };
+
+    Ok(item_usage)
 }

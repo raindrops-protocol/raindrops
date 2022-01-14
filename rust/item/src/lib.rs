@@ -7,12 +7,12 @@ use {
         assert_owned_by, assert_part_of_namespace, assert_permissiveness_access, assert_signer,
         assert_valid_item_settings_for_edition_type, close_token_account,
         create_or_allocate_account_raw, create_program_token_account_if_not_present,
-        get_mask_and_index_for_seq, propagate_item_class_data_fields_to_item_data, spl_token_burn,
-        spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+        get_item_usage, get_mask_and_index_for_seq, propagate_item_class_data_fields_to_item_data,
+        sighash, spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
         update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
-        verify_component, verify_cooldown, AssertPermissivenessAccessArgs, TokenBurnParams,
-        TokenTransferParams, TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs,
-        VerifyComponentArgs, VerifyCooldownArgs,
+        verify_component, verify_cooldown, AssertPermissivenessAccessArgs, GetItemUsageArgs,
+        TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
+        VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -199,6 +199,9 @@ pub struct BeginItemActivationArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ValidationArgs {
+    // For enum detection on the other end.
+    instruction: [u8; 8],
+    extra_identifier: u64,
     class_index: u64,
     index: u64,
     item_class_mint: Pubkey,
@@ -228,6 +231,18 @@ pub struct ResetStateValidationForActivationArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UpdateValidForUseIfWarmupPassedArgs {
+    item_mint: Pubkey,
+    index: u64,
+    usage_index: u16,
+    class_index: u64,
+    item_class_mint: Pubkey,
+    // Required if using roots
+    usage_proof: Option<Vec<[u8; 32]>>,
+    usage: Option<ItemUsage>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EndItemActivationArgs {
     item_class_mint: Pubkey,
     item_mint: Pubkey,
@@ -235,6 +250,9 @@ pub struct EndItemActivationArgs {
     usage_index: u16,
     index: u64,
     class_index: u64,
+    // Required if using roots
+    usage_proof: Option<Vec<[u8; 32]>>,
+    usage: Option<ItemUsage>,
 }
 
 #[program]
@@ -1139,6 +1157,8 @@ pub mod item {
                     program_id: validation.0,
                     accounts: keys,
                     data: AnchorSerialize::try_to_vec(&ValidationArgs {
+                        instruction: sighash("global", "item_validation"),
+                        extra_identifier: validation.1,
                         usage_permissiveness_to_use: usage_permissiveness_to_use.clone(),
                         index,
                         usage_info,
@@ -1201,14 +1221,57 @@ pub mod item {
         let item_class = &ctx.accounts.item_class;
         let item = &mut ctx.accounts.item;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
-        let clock = &mut ctx.accounts.clock;
+        let receiver = &mut ctx.accounts.receiver;
+
+        require!(
+            item_activation_marker.valid_for_use,
+            ItemActivationNotValidYet
+        );
 
         let EndItemActivationArgs {
             usage_permissiveness_to_use,
             index,
             usage_index,
+            usage_proof,
+            usage,
+            item_mint,
             ..
         } = args;
+
+        let item_usage = get_item_usage(GetItemUsageArgs {
+            item_class,
+            usage_index,
+            usage_proof,
+            usage,
+        })?;
+
+        let mut perm_array = vec![];
+        for permissiveness in &item_usage.usage_permissiveness {
+            perm_array.push(Permissiveness {
+                inherited: InheritanceState::NotInherited,
+                permissiveness_type: permissiveness.clone(),
+            })
+        }
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &item.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &usage_permissiveness_to_use,
+            permissiveness_array: &Some(perm_array),
+            index,
+            account_mint: Some(&item_mint),
+        })?;
+
+        let item_activation_marker_info = item_activation_marker.to_account_info();
+        let snapshot: u64 = item_activation_marker_info.lamports();
+
+        **item_activation_marker_info.lamports.borrow_mut() = 0;
+
+        **receiver.lamports.borrow_mut() = receiver
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         Ok(())
     }
@@ -1231,7 +1294,7 @@ pub mod item {
         } = args;
 
         if let Some(pc) = &item_activation_marker.proof_counter {
-            let unix_timestamp = pc.unix_timestamp.clone();
+            let unix_timestamp = item_activation_marker.unix_timestamp;
             verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
                 item,
                 item_class,
@@ -1243,6 +1306,56 @@ pub mod item {
         } else {
             return Err(ErrorCode::ProvingNewStateNotRequired.into());
         }
+        Ok(())
+    }
+
+    pub fn update_valid_for_use_if_warmup_passed<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdateValidForUseIfWarmupPassed<'info>>,
+        args: UpdateValidForUseIfWarmupPassedArgs,
+    ) -> ProgramResult {
+        // You had a warmup you needed to get through.
+        // Now it's passed, so you want to permissionlessly update
+        // item activation marker.
+        let item = &mut ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
+        let item_activation_marker = &mut ctx.accounts.item_activation_marker;
+        let clock = &ctx.accounts.clock;
+
+        let UpdateValidForUseIfWarmupPassedArgs {
+            usage_proof,
+            usage,
+            usage_index,
+            ..
+        } = args;
+
+        let get_item_args = GetItemUsageArgs {
+            item_class,
+            usage_index,
+            usage,
+            usage_proof,
+        };
+
+        let item_usage = get_item_usage(get_item_args)?;
+        match &item_usage.item_class_type {
+            ItemClassType::Wearable { .. } => return Err(ErrorCode::CannotUseWearable.into()),
+            ItemClassType::Consumable {
+                warmup_duration, ..
+            } => {
+                if let Some(warmup) = warmup_duration {
+                    let threshold = item_activation_marker
+                        .unix_timestamp
+                        .checked_add(*warmup)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+                    if clock.unix_timestamp > threshold {
+                        item_activation_marker.valid_for_use = true;
+                    } else {
+                        return Err(ErrorCode::WarmupNotFinished.into());
+                    }
+                } else {
+                    item_activation_marker.valid_for_use = true;
+                }
+            }
+        };
         Ok(())
     }
 
@@ -1556,7 +1669,7 @@ pub struct BeginItemActivation<'info> {
     #[account(mut, constraint=item_mint.key() == item_account.mint)]
     item_account: Account<'info, TokenAccount>,
     item_transfer_authority: Signer<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1 && args.item_marker_space <= 8+1+1+2+2+2+32+8, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1+1+8 && args.item_marker_space <= 8+1+1+1+8+2+2+2+32, payer=payer)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
@@ -1590,6 +1703,18 @@ pub struct ResetStateValidationForActivation<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(args: UpdateValidForUseIfWarmupPassedArgs)]
+pub struct UpdateValidForUseIfWarmupPassed<'info> {
+    #[account(seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    item: Account<'info, Item>,
+    #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    item_activation_marker: Account<'info, ItemActivationMarker>,
+    clock: Sysvar<'info, Clock>,
+}
+
+#[derive(Accounts)]
 #[instruction(args: EndItemActivationArgs)]
 pub struct EndItemActivation<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), &args.item_class_mint.as_ref(),&args.item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
@@ -1597,9 +1722,10 @@ pub struct EndItemActivation<'info> {
     #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     // funds from this will be drained to the signer in common remaining accounts for safety
-    #[account(mut, seeds=[PREFIX.as_bytes(), &args.item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.data.borrow_mut()[0])]
-    item_activation_marker: UncheckedAccount<'info>,
-    clock: Sysvar<'info, Clock>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), &args.item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    item_activation_marker: Account<'info, ItemActivationMarker>,
+    #[account(mut)]
+    receiver: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -1887,6 +2013,10 @@ pub struct CraftItemCounter {
 #[account]
 pub struct ItemActivationMarker {
     bump: u8,
+    valid_for_use: bool,
+    // In the case we need to reset root, we want to use
+    // timestamp from original activation
+    unix_timestamp: i64,
     proof_counter: Option<ItemActivationMarkerProofCounter>,
 }
 
@@ -1900,9 +2030,6 @@ pub struct ItemActivationMarkerProofCounter {
     ignore_index: u16,
     // Will replace the old state proof in end item activation call.
     new_state_root: [u8; 32],
-    // In the case we need to reset root, we want to use
-    // timestamp from original activation
-    unix_timestamp: i64,
 }
 
 // can make this super cheap
@@ -2034,10 +2161,6 @@ pub enum ErrorCode {
     BuildPhaseAlreadyStarted,
     #[msg("You havent added all components to the escrow")]
     StillMissingComponents,
-    #[msg("You havent started staking yet")]
-    StakingWarmupNotStarted,
-    #[msg("You havent finished your warm up period")]
-    StakingWarmupNotFinished,
     #[msg("You cannot delete this class until all children are deleted")]
     ChildrenStillExist,
     #[msg("An item cannot be destroyed until all its staked tokens are unstaked")]
@@ -2050,10 +2173,6 @@ pub enum ErrorCode {
     NotEmptied,
     #[msg("You do not need to provide this many of this component to make your recipe")]
     GivingTooMuch,
-    #[msg("Attempting to use a staking counter going in the wrong direction")]
-    IncorrectStakingCounterType,
-    #[msg("Staking cooldown not finished")]
-    StakingCooldownNotFinished,
     #[msg("Must provide usage index")]
     MustProvideUsageIndex,
     #[msg("An item and item class must either use usage roots or merkles, if neither are present, item is unusable")]
@@ -2070,4 +2189,8 @@ pub enum ErrorCode {
     ProvingNewStateNotRequired,
     #[msg("You must submit proofs in order to revalidate the new state.")]
     MustSubmitStatesInOrder,
+    #[msg("Item activation marker not valid yet")]
+    ItemActivationNotValidYet,
+    #[msg("Warmup not finished")]
+    WarmupNotFinished,
 }
