@@ -238,7 +238,7 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
     pub program_id: &'a Pubkey,
     pub given_account: &'b AccountInfo<'info>,
     pub remaining_accounts: &'c [AccountInfo<'info>],
-    pub permissiveness_to_use: &'a Option<Permissiveness>,
+    pub permissiveness_to_use: &'a Option<PermissivenessType>,
     pub permissiveness_array: &'a Option<Vec<Permissiveness>>,
     pub index: u64,
     pub account_mint: Option<&'b Pubkey>,
@@ -273,7 +273,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
             if let Some(permissiveness_arr) = permissiveness_array {
                 let mut found = false;
                 for entry in permissiveness_arr {
-                    if entry == perm_to_use {
+                    if entry.permissiveness_type == *perm_to_use {
                         found = true;
                         break;
                     }
@@ -283,7 +283,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                     return Err(ErrorCode::PermissivenessNotFound.into());
                 }
 
-                match perm_to_use.permissiveness_type {
+                match perm_to_use {
                     PermissivenessType::TokenHolder => {
                         //  token_account [readable]
                         //  token_holder [signer]

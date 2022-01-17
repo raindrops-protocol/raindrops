@@ -2,36 +2,23 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_builder_must_be_holder_check, assert_derivation, assert_initialized, assert_is_ata,
-        assert_keys_equal, assert_metadata_valid, assert_mint_authority_matches_mint,
-        assert_owned_by, assert_part_of_namespace, assert_permissiveness_access, assert_signer,
+        assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal,
+        assert_metadata_valid, assert_mint_authority_matches_mint, assert_permissiveness_access,
         assert_valid_item_settings_for_edition_type, close_token_account,
-        create_or_allocate_account_raw, create_program_token_account_if_not_present,
-        get_item_usage, get_mask_and_index_for_seq, propagate_item_class_data_fields_to_item_data,
-        sighash, spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
-        update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
-        verify_component, verify_cooldown, AssertPermissivenessAccessArgs, GetItemUsageArgs,
-        TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
-        VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
+        create_or_allocate_account_raw, get_item_usage,
+        propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
+        spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
+        verify, verify_and_affect_item_state_update, verify_component, verify_cooldown,
+        AssertPermissivenessAccessArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
+        TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
+        VerifyCooldownArgs,
     },
     anchor_lang::{
         prelude::*,
-        solana_program::{
-            instruction::Instruction, program::invoke, program_option::COption, program_pack::Pack,
-            system_instruction, system_program,
-        },
+        solana_program::{instruction::Instruction, program::invoke, program_option::COption},
         AnchorDeserialize, AnchorSerialize,
     },
     anchor_spl::token::{Mint, Token, TokenAccount},
-    arrayref::array_ref,
-    metaplex_token_metadata::{
-        instruction::{
-            create_master_edition, create_metadata_accounts,
-            mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
-        },
-        state::Metadata,
-    },
-    spl_token::instruction::{initialize_account2, mint_to},
     std::str::FromStr,
 };
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
@@ -47,7 +34,7 @@ pub struct CreateItemClassArgs {
     parent_class_index: Option<u64>,
     space: usize,
     desired_namespace_array_size: usize,
-    update_permissiveness_to_use: Option<Permissiveness>,
+    update_permissiveness_to_use: Option<PermissivenessType>,
     store_mint: bool,
     store_metadata_fields: bool,
     item_class_data: ItemClassData,
@@ -56,14 +43,14 @@ pub struct CreateItemClassArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainItemClassArgs {
     class_index: u64,
-    update_permissiveness_to_use: Option<Permissiveness>,
+    update_permissiveness_to_use: Option<PermissivenessType>,
     item_class_mint: Pubkey,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct UpdateItemClassArgs {
     class_index: u64,
-    update_permissiveness_to_use: Option<Permissiveness>,
+    update_permissiveness_to_use: Option<PermissivenessType>,
     item_class_data: Option<ItemClassData>,
 }
 
@@ -73,7 +60,7 @@ pub struct DrainItemArgs {
     class_index: u64,
     item_mint: Pubkey,
     item_class_mint: Pubkey,
-    update_permissiveness_to_use: Option<Permissiveness>,
+    update_permissiveness_to_use: Option<PermissivenessType>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -85,7 +72,7 @@ pub struct CreateItemEscrowArgs {
     amount_to_make: u64,
     namespace_index: Option<u64>,
     item_class_mint: Pubkey,
-    build_permissiveness_to_use: Option<Permissiveness>,
+    build_permissiveness_to_use: Option<PermissivenessType>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -101,7 +88,7 @@ pub struct AddCraftItemToEscrowArgs {
     item_class_mint: Pubkey,
     new_item_mint: Pubkey,
     originator: Pubkey,
-    build_permissiveness_to_use: Option<Permissiveness>,
+    build_permissiveness_to_use: Option<PermissivenessType>,
     // These required if using roots
     component_proof: Option<Vec<[u8; 32]>>,
     component: Option<Component>,
@@ -117,7 +104,7 @@ pub struct StartItemEscrowBuildPhaseArgs {
     item_class_mint: Pubkey,
     originator: Pubkey,
     new_item_mint: Pubkey,
-    build_permissiveness_to_use: Option<Permissiveness>,
+    build_permissiveness_to_use: Option<PermissivenessType>,
     // The following fields are optional for use with component roots.
     // Proof containing information on the total number of steps in the proof
     end_node_proof: Option<Vec<[u8; 32]>>,
@@ -137,7 +124,7 @@ pub struct CompleteItemEscrowBuildPhaseArgs {
     space: u64,
     item_class_mint: Pubkey,
     originator: Pubkey,
-    build_permissiveness_to_use: Option<Permissiveness>,
+    build_permissiveness_to_use: Option<PermissivenessType>,
     store_mint: bool,
     store_metadata_fields: bool,
 }
@@ -176,7 +163,7 @@ pub struct RemoveCraftItemFromEscrowArgs {
     new_item_mint: Pubkey,
     originator: Pubkey,
     craft_item_token_mint: Pubkey,
-    build_permissiveness_to_use: Option<Permissiveness>,
+    build_permissiveness_to_use: Option<PermissivenessType>,
     // These required if using roots
     component_proof: Option<Vec<[u8; 32]>>,
     component: Option<Component>,
@@ -191,7 +178,7 @@ pub struct BeginItemActivationArgs {
     // How much space to use for the item marker
     // max of 8+1+1+2+2+2+32, min of 8+1+1
     item_marker_space: u8,
-    usage_permissiveness_to_use: Option<Permissiveness>,
+    usage_permissiveness_to_use: Option<PermissivenessType>,
     usage_index: u16,
     // Use this if using roots
     usage_info: Option<UsageInfo>,
@@ -205,7 +192,7 @@ pub struct ValidationArgs {
     class_index: u64,
     index: u64,
     item_class_mint: Pubkey,
-    usage_permissiveness_to_use: Option<Permissiveness>,
+    usage_permissiveness_to_use: Option<PermissivenessType>,
     usage_index: u16,
     // Use this if using roots
     usage_info: Option<UsageInfo>,
@@ -251,7 +238,7 @@ pub struct UpdateValidForUseIfWarmupPassedArgs {
 pub struct EndItemActivationArgs {
     item_class_mint: Pubkey,
     item_mint: Pubkey,
-    usage_permissiveness_to_use: Option<Permissiveness>,
+    usage_permissiveness_to_use: Option<PermissivenessType>,
     usage_index: u16,
     index: u64,
     class_index: u64,
@@ -344,10 +331,7 @@ pub mod item {
                 program_id: ctx.program_id,
                 given_account: &item_class_info,
                 remaining_accounts: ctx.remaining_accounts,
-                permissiveness_to_use: &Some(Permissiveness {
-                    permissiveness_type: PermissivenessType::UpdateAuthority,
-                    inherited: InheritanceState::NotInherited,
-                }),
+                permissiveness_to_use: &Some(PermissivenessType::UpdateAuthority),
                 permissiveness_array: &Some(vec![Permissiveness {
                     permissiveness_type: PermissivenessType::UpdateAuthority,
                     inherited: InheritanceState::NotInherited,
@@ -1361,7 +1345,7 @@ pub mod item {
             }
         };
 
-        if let Some(pc) = item_activation_marker.proof_counter {
+        if let Some(pc) = &item_activation_marker.proof_counter {
             if pc.states_proven < pc.states_required {
                 item_activation_marker.valid_for_use = false;
             }
@@ -1517,7 +1501,7 @@ pub struct CreateItemClass<'info> {
     // parent token_account [readable]
     // parent token_holder [signer]
     // parent mint [readable]
-    // If parent is set, and update permissiveness is class holder can update
+    // If parent is set, and update permissiveness is parent holder can update
     // parent's class token_account [readable]
     // parent's class token_holder [signer]
     // parent's class [readable]

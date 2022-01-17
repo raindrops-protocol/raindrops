@@ -1,0 +1,27 @@
+{
+  "data": {
+    "childrenMustBeEditions": false,
+    "builderMustBeHolder": false,
+    "updatePermissiveness": null,
+    "buildPermissiveness": null,
+    "stakingWarmUpDuration": null,
+    "stakingCooldownDuration": null,
+    "stakingPermissiveness": null,
+    "unstakingPermissiveness": null,
+    "childUpdatePropagationPermissiveness": null,
+    "usageRoot": null,
+    "usageStateRoot": null,
+    "componentRoot": null,
+    "usages": null,
+    "components": null
+  },
+  "metadataUpdateAuthority": null,
+  "storeMint": false,
+  "storeMetadataFields": false,
+  "mint": null,
+  "index": 0,
+  "parent": null,
+  "updatePermissivenessToUse": null,
+  "namespaceRequirement": 5,
+  "totalSpaceBytes": 200
+}
