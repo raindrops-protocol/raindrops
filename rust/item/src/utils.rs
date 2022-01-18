@@ -3,15 +3,16 @@ use {
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
         InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
         ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState,
-        ItemUsageType, Permissiveness, PermissivenessType, Root, UsageInfo, PREFIX,
+        ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, PREFIX,
     },
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, AnchorSerialize, Clock, Program, ProgramError,
-            ProgramResult, Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
+            msg, Account, AccountInfo, AnchorSerialize, Program, ProgramError, ProgramResult,
+            Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{
+            hash,
             program::{invoke, invoke_signed},
             program_option::COption,
             program_pack::{IsInitialized, Pack},
@@ -1012,7 +1013,7 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     let preimage = format!("{}:{}", namespace, name);
 
     let mut sighash = [0u8; 8];
-    sighash.copy_from_slice(&anchor_syn::hash::hash(preimage.as_bytes()).to_bytes()[..8]);
+    sighash.copy_from_slice(&hash::hash(preimage.as_bytes()).to_bytes()[..8]);
     sighash
 }
 

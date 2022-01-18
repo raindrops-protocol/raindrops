@@ -22,7 +22,6 @@ spl-associated-token-account = { version="1.0.3", features = [ "no-entrypoint" ]
 spl-token = { version="3.1.1", features = [ "no-entrypoint" ] }
 metaplex-token-metadata = { version="0.0.1", features = [ "no-entrypoint" ] }
 raindrops-namespace = { features = [ "no-entrypoint" ], path = "../namespace" }
-anchor-syn = { version = "0.20.1", features = ["hash"] }
 solana-logger="1.8"
 solana-sdk-macro="1.8"
 termcolor="1.0"
