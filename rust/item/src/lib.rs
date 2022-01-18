@@ -21,7 +21,7 @@ use {
     anchor_spl::token::{Mint, Token, TokenAccount},
     std::str::FromStr,
 };
-anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
 pub const PREFIX: &str = "item";
 pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";
