@@ -898,11 +898,8 @@ dependencies = [
  "arrayref",
  "metaplex-token-metadata",
  "raindrops-namespace",
- "solana-logger",
- "solana-sdk-macro",
  "spl-associated-token-account",
  "spl-token",
- "termcolor",
 ]
 
 [[package]]

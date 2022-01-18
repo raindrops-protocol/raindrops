@@ -1,7 +1,7 @@
 use {
     crate::{
-        ErrorCode, Filter, InheritanceState, Namespace, NamespaceAndIndex, NamespaceGatekeeper,
-        Permissiveness, NAMESPACE_AND_INDEX_SIZE,
+        ErrorCode, Filter, Namespace, NamespaceAndIndex, NamespaceGatekeeper, Permissiveness,
+        NAMESPACE_AND_INDEX_SIZE,
     },
     anchor_lang::{
         prelude::{
