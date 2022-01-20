@@ -18,10 +18,10 @@
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
-  "mint": null,
+  "mint": "3Y9MbHdSD62qXZ7zfKKmAaUnZeZDfL84MrttesiQFvoy",
   "index": 0,
   "parent": null,
   "updatePermissivenessToUse": null,
-  "namespaceRequirement": 5,
+  "namespaceRequirement": 1,
   "totalSpaceBytes": 200
 }

@@ -1,6 +1,8 @@
 import { web3 } from "@project-serum/anchor";
 
-export const ITEM_ID = new web3.PublicKey("item");
+export const ITEM_ID = new web3.PublicKey(
+  "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
+);
 export const WRAPPED_SOL_MINT = new web3.PublicKey(
   "So11111111111111111111111111111111111111112"
 );

@@ -3,12 +3,12 @@ use {
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
         InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
         ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState,
-        ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, PREFIX,
+        ItemUsageType, Permissiveness, PermissivenessType, Root, UsageInfo, PREFIX,
     },
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, AnchorSerialize, Program, ProgramError, ProgramResult,
-            Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
+            msg, Account, AccountInfo, AnchorSerialize, Clock, Program, ProgramError,
+            ProgramResult, Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{

@@ -24,6 +24,6 @@ export interface Root {
 }
 
 export interface Callback {
-  program: web3.PublicKey;
-  enum: BN;
+  key: web3.PublicKey;
+  code: BN;
 }

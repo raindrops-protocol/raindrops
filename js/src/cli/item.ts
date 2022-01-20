@@ -1,15 +1,12 @@
 #!/usr/bin/env ts-node
 import * as fs from "fs";
-import * as path from "path";
 import { program } from "commander";
 import log from "loglevel";
 import { loadWalletKey } from "../utils/file";
 import { getItemProgram } from "../contract/item";
-import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 import { ItemClassData } from "../state/item";
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
-import { NAMESPACE_AND_INDEX_SIZE } from "../constants/common";
 import { getItemPDA } from "../utils/pda";
 
 programCommand("create_item_class")
@@ -17,7 +14,7 @@ programCommand("create_item_class")
     "-cp, --config-path <string>",
     "JSON file with item class settings"
   )
-  .action(async (files: string[], options, cmd) => {
+  .action(async (files: string[], cmd) => {
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
@@ -34,12 +31,10 @@ programCommand("create_item_class")
     await anchorProgram.createItemClass(
       {
         itemClassBump: null,
-        classIndex: config.index || 0,
+        classIndex: new BN(config.index || 0),
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
         space: new BN(config.totalSpaceBytes),
-        desiredNamespaceArraySize: new BN(
-          NAMESPACE_AND_INDEX_SIZE * config.namespaceRequirement
-        ),
+        desiredNamespaceArraySize: config.namespaceRequirement,
         updatePermissivenessToUse: config.updatePermissivenessToUse,
         storeMint: config.storeMint,
         storeMetadataFields: config.storeMetadataFields,

@@ -32,8 +32,8 @@ pub struct CreateItemClassArgs {
     item_class_bump: u8,
     class_index: u64,
     parent_class_index: Option<u64>,
-    space: usize,
-    desired_namespace_array_size: usize,
+    space: u64,
+    desired_namespace_array_size: u16,
     update_permissiveness_to_use: Option<PermissivenessType>,
     store_mint: bool,
     store_metadata_fields: bool,
@@ -274,7 +274,7 @@ pub mod item {
         let edition = &ctx.accounts.edition;
         let parent = &ctx.accounts.parent;
         let ed = edition.to_account_info();
-
+        msg!("1");
         let edition_option = if edition.data_len() > 0 {
             Some(&ed)
         } else {
@@ -293,16 +293,19 @@ pub mod item {
             }
             None
         };
-
+        msg!("2");
         assert_valid_item_settings_for_edition_type(edition_option, &item_class_data)?;
-
+        msg!("3");
         assert_metadata_valid(
             &metadata.to_account_info(),
             edition_option,
             &item_mint.key(),
         )?;
-
-        if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
+        msg!("4");
+        if !parent.data_is_empty()
+            && parent.to_account_info().owner == ctx.program_id
+            && parent.key() != item_class.key()
+        {
             let mut parent_deserialized: Account<'_, ItemClass> =
                 Account::try_from(&parent.to_account_info())?;
 
@@ -338,7 +341,7 @@ pub mod item {
                 account_mint: Some(&item_mint.key()),
             })?;
         }
-
+        msg!("5");
         item_class.data = item_class_data;
         item_class.bump = item_class_bump;
         if store_metadata_fields {
@@ -349,7 +352,7 @@ pub mod item {
                 None
             }
         }
-
+        msg!("6");
         if store_mint {
             item_class.mint = Some(item_mint.key());
         }
@@ -368,7 +371,7 @@ pub mod item {
         } else {
             item_class.namespaces = None
         }
-
+        msg!("7");
         Ok(())
     }
 
@@ -1141,11 +1144,11 @@ pub mod item {
 
             invoke(
                 &Instruction {
-                    program_id: validation.0,
+                    program_id: validation.key,
                     accounts: keys,
                     data: AnchorSerialize::try_to_vec(&ValidationArgs {
                         instruction: sighash("global", "item_validation"),
-                        extra_identifier: validation.1,
+                        extra_identifier: validation.code,
                         usage_permissiveness_to_use: usage_permissiveness_to_use.clone(),
                         index,
                         usage_info,
@@ -1481,12 +1484,12 @@ pub mod item {
 pub struct CreateItemClass<'info> {
     // parent determines who can create this (if present) so need to add all classes and check who is the signer...
     // perhaps do this via optional additional accounts to save space.
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump=args.item_class_bump, space=args.space, payer=payer, constraint=args.space >= MIN_ITEM_CLASS_SIZE)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump=args.item_class_bump, space=args.space as usize, payer=payer, constraint=args.space as usize >= MIN_ITEM_CLASS_SIZE)]
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
     edition: UncheckedAccount<'info>,
-    // is the parent item class (if there is one.) Otherwise use system.
+    // is the parent item class (if there is one.) Otherwise use same item class.
     #[account(mut)]
     parent: UncheckedAccount<'info>,
     payer: Signer<'info>,
@@ -1760,7 +1763,10 @@ pub struct EndItemActivation<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Callback(pub Pubkey, pub u64);
+pub struct Callback {
+    pub key: Pubkey,
+    pub code: u64,
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemUsage {

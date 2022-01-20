@@ -25,7 +25,7 @@ export interface CreateItemClassArgs {
   classIndex: BN;
   parentClassIndex: null | BN;
   space: BN;
-  desiredNamespaceArraySize: BN;
+  desiredNamespaceArraySize: number;
   updatePermissivenessToUse: null | PermissivenessType;
   storeMint: boolean;
   storeMetadataFields: boolean;
@@ -94,7 +94,7 @@ export class ItemProgram {
         itemMint: accounts.itemMint,
         metadata: await getMetadata(accounts.itemMint),
         edition: await getEdition(accounts.itemMint),
-        parent: accounts.parent || SystemProgram.programId,
+        parent: accounts.parent || itemClassKey,
         payer: this.program.provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
