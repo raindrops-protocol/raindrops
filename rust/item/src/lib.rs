@@ -8,7 +8,7 @@ use {
         create_or_allocate_account_raw, get_item_usage,
         propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
         spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
-        verify, verify_and_affect_item_state_update, verify_component, verify_cooldown,
+        verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
         AssertPermissivenessAccessArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
         TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
         VerifyCooldownArgs,
@@ -37,7 +37,8 @@ pub struct CreateItemClassArgs {
     update_permissiveness_to_use: Option<PermissivenessType>,
     store_mint: bool,
     store_metadata_fields: bool,
-    item_class_data: ItemClassData,
+    settings: ItemClassSettings,
+    config: ItemClassConfig,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -51,7 +52,8 @@ pub struct DrainItemClassArgs {
 pub struct UpdateItemClassArgs {
     class_index: u64,
     update_permissiveness_to_use: Option<PermissivenessType>,
-    item_class_data: Option<ItemClassData>,
+    settings: Option<ItemClassSettings>,
+    config: Option<ItemClassConfig>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -250,6 +252,8 @@ pub struct EndItemActivationArgs {
 #[program]
 pub mod item {
 
+    use std::borrow::Borrow;
+
     use super::*;
 
     pub fn create_item_class<'a, 'b, 'c, 'info>(
@@ -264,7 +268,8 @@ pub mod item {
             update_permissiveness_to_use,
             store_mint,
             store_metadata_fields,
-            item_class_data,
+            mut item_class_data_settings,
+            mut item_class_data_config,
             ..
         } = args;
         let mut item_class = &mut ctx.accounts.item_class;
@@ -302,19 +307,22 @@ pub mod item {
             &item_mint.key(),
         )?;
         msg!("4");
+        let parent_info = parent.to_account_info();
         if !parent.data_is_empty()
-            && parent.to_account_info().owner == ctx.program_id
+            && parent_info.owner == ctx.program_id
             && parent.key() != item_class.key()
         {
-            let mut parent_deserialized: Account<'_, ItemClass> =
-                Account::try_from(&parent.to_account_info())?;
+            let mut parent_deserialized: Account<'_, ItemClass> = Account::try_from(&parent_info)?;
 
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: parent,
                 remaining_accounts: ctx.remaining_accounts,
                 permissiveness_to_use: &update_permissiveness_to_use,
-                permissiveness_array: &parent_deserialized.data.update_permissiveness,
+                permissiveness_array: &parent_deserialized
+                    .item_class_data(parent_info.data.borrow())?
+                    .settings
+                    .update_permissiveness,
                 index: parent_class_index.unwrap(),
                 account_mint: None,
             })?;
@@ -325,8 +333,14 @@ pub mod item {
                 .existing_children
                 .checked_add(1)
                 .ok_or(ErrorCode::NumericalOverflowError)?;
-
-            update_item_class_with_inherited_information(&mut item_class, &parent_deserialized);
+            let parent_item_class_data =
+                parent_deserialized.item_class_data(&parent.to_account_info().data.borrow())?;
+            update_item_class_with_inherited_information(
+                &mut item_class,
+                &mut item_class_data,
+                &parent_deserialized,
+                &parent_item_class_data,
+            );
         } else {
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
@@ -342,7 +356,9 @@ pub mod item {
             })?;
         }
         msg!("5");
-        item_class.data = item_class_data;
+        item_class.settings = item_class_data.settings;
+        item_class.config = item_class_data.config;
+        //  write_data(item_class, &item_class_data)?;
         item_class.bump = item_class_bump;
         if store_metadata_fields {
             item_class.metadata = Some(metadata.key());
@@ -387,6 +403,23 @@ pub mod item {
 
         let item_class = &mut ctx.accounts.item_class;
         let item_mint = &ctx.accounts.item_mint;
+        let original_item_class_data =
+            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
+        let mut new_item_class_data = if let Some(icd) = item_class_data {
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: &item_class.to_account_info(),
+                remaining_accounts: ctx.remaining_accounts,
+                permissiveness_to_use: &update_permissiveness_to_use,
+                permissiveness_array: &original_item_class_data.settings.update_permissiveness,
+                index: class_index,
+                account_mint: Some(&item_mint.key()),
+            })?;
+            icd
+        } else {
+            original_item_class_data
+        };
+
         // The only case where only one account is passed in is when you are just
         // requesting a permissionless inheritance update.
         if ctx.remaining_accounts.len() == 1 {
@@ -396,22 +429,18 @@ pub mod item {
             } else {
                 return Err(ErrorCode::NoParentPresent.into());
             }
+            let parent_data = &*parent.data;
             let parent_deserialized: Account<'_, ItemClass> = Account::try_from(parent)?;
-
-            update_item_class_with_inherited_information(item_class, &parent_deserialized);
-        } else if let Some(icd) = item_class_data {
-            assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                program_id: ctx.program_id,
-                given_account: &item_class.to_account_info(),
-                remaining_accounts: ctx.remaining_accounts,
-                permissiveness_to_use: &update_permissiveness_to_use,
-                permissiveness_array: &item_class.data.update_permissiveness,
-                index: class_index,
-                account_mint: Some(&item_mint.key()),
-            })?;
-
-            item_class.data = icd;
+            let parent_item_class_data = parent_deserialized.item_class_data(&parent_data)?;
+            update_item_class_with_inherited_information(
+                item_class,
+                &mut new_item_class_data,
+                &parent_deserialized,
+                &parent_item_class_data,
+            );
         }
+
+        write_data(item_class, &new_item_class_data)?;
         Ok(())
     }
 
@@ -433,7 +462,10 @@ pub mod item {
             given_account: &item_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &update_permissiveness_to_use,
-            permissiveness_array: &item_class.data.update_permissiveness,
+            permissiveness_array: &item_class
+                .item_class_data(&item_class.to_account_info().data.borrow())?
+                .settings
+                .update_permissiveness,
             index: class_index,
             account_mint: Some(&item_class_mint.key()),
         })?;
@@ -483,7 +515,10 @@ pub mod item {
             given_account: &item_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &update_permissiveness_to_use,
-            permissiveness_array: &item_class.data.update_permissiveness,
+            permissiveness_array: &item_class
+                .item_class_data(&item_class.to_account_info().data.borrow())?
+                .settings
+                .update_permissiveness,
             index: class_index,
             account_mint: Some(&item_class_mint.key()),
         })?;
@@ -520,6 +555,8 @@ pub mod item {
         let new_item_token = &ctx.accounts.new_item_token;
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
         let ed = new_item_edition.to_account_info();
+        let item_class_info = item_class.to_account_info();
+        let item_class_data = item_class.item_class_data(&item_class_info.data.borrow())?;
 
         let CreateItemEscrowArgs {
             craft_bump,
@@ -535,7 +572,7 @@ pub mod item {
             return Err(ErrorCode::CannotMakeZero.into());
         }
 
-        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
+        assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
 
         assert_is_ata(
             &new_item_token.to_account_info(),
@@ -563,7 +600,7 @@ pub mod item {
             if mint_authority_info.key != &item_class.key() {
                 transfer_mint_authority(TransferMintAuthorityArgs {
                     item_class_key: &item_class.key(),
-                    item_class_info: &item_class.to_account_info(),
+                    item_class_info: &item_class_info,
                     mint_authority_info,
                     token_program_info: token_program_info,
                     mint: new_item_mint,
@@ -591,7 +628,7 @@ pub mod item {
             given_account: &item_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &build_permissiveness_to_use,
-            permissiveness_array: &item_class.data.build_permissiveness,
+            permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
@@ -655,15 +692,17 @@ pub mod item {
                 &craft_item_seeds,
             )?;
         }
+        let item_class_data =
+            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
 
-        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
+        assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &build_permissiveness_to_use,
-            permissiveness_array: &item_class.data.build_permissiveness,
+            permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
@@ -790,14 +829,17 @@ pub mod item {
             ..
         } = args;
 
-        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
+        let item_class_data =
+            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
+
+        assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &build_permissiveness_to_use,
-            permissiveness_array: &item_class.data.build_permissiveness,
+            permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
@@ -881,14 +923,17 @@ pub mod item {
             ..
         } = args;
 
-        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
+        let item_class_data =
+            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
+
+        assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &build_permissiveness_to_use,
-            permissiveness_array: &item_class.data.build_permissiveness,
+            permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
@@ -897,12 +942,12 @@ pub mod item {
 
         require!(!item_escrow.build_began.is_some(), BuildPhaseAlreadyStarted);
 
-        if let Some(components) = &item_class.data.components {
+        if let Some(components) = &item_class_data.config.components {
             require!(
                 components.len() == item_escrow.step as usize,
                 StillMissingComponents
             );
-        } else if let Some(component_root) = &item_class.data.component_root {
+        } else if let Some(component_root) = &item_class_data.config.component_root {
             if let Some(en_proof) = end_node_proof {
                 if let Some(total_s) = total_steps {
                     // Verify the merkle proof.
@@ -970,14 +1015,17 @@ pub mod item {
             &new_item_mint.key(),
         )?;
 
-        assert_builder_must_be_holder_check(item_class, new_item_token_holder)?;
+        let item_class_data =
+            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
+
+        assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &build_permissiveness_to_use,
-            permissiveness_array: &item_class.data.build_permissiveness,
+            permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
@@ -1018,7 +1066,7 @@ pub mod item {
             };
         }
 
-        propagate_item_class_data_fields_to_item_data(new_item, item_class);
+        propagate_item_class_data_fields_to_item_data(new_item, item_class, &item_class_data);
 
         if new_item_mint.supply <= 1 {
             item_class.existing_children = item_class
@@ -1995,7 +2043,7 @@ pub struct Boolean {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ItemClassData {
+pub struct ItemClassSettings {
     children_must_be_editions: Option<Boolean>,
     // What is this? Well, when you are checking build_permissiveness
     // to build an item, the permissiveness is RELATIVE TO THE ITEM CLASS. So TokenHolder
@@ -2011,6 +2059,10 @@ pub struct ItemClassData {
     // if not set, assumed to use staking permissiveness
     unstaking_permissiveness: Option<Vec<Permissiveness>>,
     child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ItemClassConfig {
     // The roots are merkle roots, used to keep things cheap on chain (optional)
     // Tried to combine roots and vec into a single Option to keep it simple
     // but this led to a proliferation of trait code and dyn statements and I couldnt
@@ -2037,7 +2089,10 @@ pub struct ItemClass {
     edition: Option<Pubkey>,
     bump: u8,
     existing_children: u64,
-    data: ItemClassData,
+    // these two structs only exist because having all fields in one was too big
+    // and cased it to explode even when we are writing manually.
+    settings: ItemClassSettings,
+    config: ItemClassConfig,
 }
 
 #[account]

@@ -1,24 +1,28 @@
 {
   "data": {
-    "childrenMustBeEditions": false,
-    "builderMustBeHolder": false,
-    "updatePermissiveness": null,
-    "buildPermissiveness": null,
-    "stakingWarmUpDuration": null,
-    "stakingCooldownDuration": null,
-    "stakingPermissiveness": null,
-    "unstakingPermissiveness": null,
-    "childUpdatePropagationPermissiveness": null,
-    "usageRoot": null,
-    "usageStateRoot": null,
-    "componentRoot": null,
-    "usages": null,
-    "components": null
+    "settings": {
+      "childrenMustBeEditions": false,
+      "builderMustBeHolder": false,
+      "updatePermissiveness": null,
+      "buildPermissiveness": null,
+      "stakingWarmUpDuration": null,
+      "stakingCooldownDuration": null,
+      "stakingPermissiveness": null,
+      "unstakingPermissiveness": null,
+      "childUpdatePropagationPermissiveness": null
+    },
+    "config": {
+      "usageRoot": null,
+      "usageStateRoot": null,
+      "componentRoot": null,
+      "usages": null,
+      "components": null
+    }
   },
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
-  "mint": "3Y9MbHdSD62qXZ7zfKKmAaUnZeZDfL84MrttesiQFvoy",
+  "mint": "FeyJCSwcdzrZgsmf5R7Tom69sJrvQBikGCF3DqodhT1c",
   "index": 0,
   "parent": null,
   "updatePermissivenessToUse": null,

@@ -3,11 +3,11 @@ use {
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
         InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
         ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState,
-        ItemUsageType, Permissiveness, PermissivenessType, Root, UsageInfo, PREFIX,
+        ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, PREFIX,
     },
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, AnchorSerialize, Clock, Program, ProgramError,
+            msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
             ProgramResult, Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
         },
         require,
@@ -24,8 +24,23 @@ use {
     arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
     spl_token::instruction::{close_account, initialize_account2, set_authority, AuthorityType},
+    std::cell::RefCell,
     std::convert::TryInto,
 };
+
+impl ItemClass {
+    pub fn item_class_data(
+        &self,
+        data: &RefCell<&mut [u8]>,
+    ) -> Result<ItemClassData, ProgramError> {
+        let ctr = get_class_write_offset(self) as usize;
+
+        let item_class_data: ItemClassData =
+            AnchorDeserialize::try_from_slice(&data.borrow()[ctr..])?;
+
+        Ok(item_class_data)
+    }
+}
 
 pub fn assert_initialized<T: Pack + IsInitialized>(
     account_info: &AccountInfo,
@@ -59,6 +74,65 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
     pub authority_signer_seeds: &'b [&'b [u8]],
     /// token_program
     pub token_program: AccountInfo<'a>,
+}
+
+pub fn get_class_write_offset(item_class: &ItemClass) -> u64 {
+    let mut ctr: u64 = 8;
+    if let Some(ns) = &item_class.namespaces {
+        ctr += 1 + 34 * ns.len() as u64;
+    } else {
+        ctr += 1;
+    }
+
+    if item_class.parent.is_some() {
+        ctr += 33;
+    } else {
+        ctr += 1;
+    }
+
+    if item_class.mint.is_some() {
+        ctr += 33;
+    } else {
+        ctr += 1;
+    }
+
+    if item_class.metadata.is_some() {
+        ctr += 33;
+    } else {
+        ctr += 1;
+    }
+
+    if item_class.edition.is_some() {
+        ctr += 33;
+    } else {
+        ctr += 1;
+    }
+
+    ctr += 9; // bump and existing childern (1 + 8)
+
+    return ctr;
+}
+
+pub fn write_data(
+    item_class: &mut Account<ItemClass>,
+    item_class_data: &ItemClassData,
+) -> ProgramResult {
+    let ctr = get_class_write_offset(item_class);
+    msg!("5.1");
+    let item_class_info = item_class.to_account_info();
+    msg!("5.2");
+    let mut data = item_class_info.try_borrow_mut_data()?;
+    msg!("5.3");
+    let dst: &mut [u8] = &mut data;
+    let mut cursor = std::io::Cursor::new(dst);
+    msg!("5.4");
+    cursor.set_position(ctr);
+    msg!("5.5");
+    AnchorSerialize::serialize(&item_class_data.settings, &mut cursor)?;
+    msg!("5.55");
+    AnchorSerialize::serialize(&item_class_data.config, &mut cursor)?;
+    msg!("5.6");
+    Ok(())
 }
 
 #[inline(always)]
@@ -246,10 +320,10 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
 }
 
 pub fn assert_builder_must_be_holder_check(
-    item_class: &Account<ItemClass>,
+    item_class_data: &ItemClassData,
     new_item_token_holder: &UncheckedAccount,
 ) -> ProgramResult {
-    if let Some(b) = &item_class.data.builder_must_be_holder {
+    if let Some(b) = &item_class_data.settings.builder_must_be_holder {
         if b.boolean {
             require!(new_item_token_holder.is_signer, MustBeHolderToBuild)
         }
@@ -501,91 +575,95 @@ pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T>
 
 pub fn update_item_class_with_inherited_information(
     item: &mut Account<ItemClass>,
+    item_class_data: &mut ItemClassData,
     parent_item: &Account<ItemClass>,
+    parent_item_data: &ItemClassData,
 ) {
-    let parent_item_data = &parent_item.data;
-    match &parent_item_data.child_update_propagation_permissiveness {
+    match &parent_item_data
+        .settings
+        .child_update_propagation_permissiveness
+    {
         Some(cupp) => {
             for update_perm in cupp {
                 match update_perm.child_update_propagation_permissiveness_type {
                     ChildUpdatePropagationPermissivenessType::Usages => {
-                        item.data.usages = propagate_parent_array(PropagateParentArrayArgs {
-                            parent_items: &parent_item_data.usages,
-                            child_items: &item.data.usages,
+                        item_class_data.config.usages = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.config.usages,
+                            child_items: &item_class_data.config.usages,
                             overridable: update_perm.overridable,
                         });
-                        item.data.usage_root = propagate_parent(PropagateParentArgs {
-                            parent: &parent_item_data.usage_root,
-                            child: &item.data.usage_root,
+                        item_class_data.config.usage_root = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.config.usage_root,
+                            child: &item_class_data.config.usage_root,
                             overridable: update_perm.overridable,
                         });
 
-                        item.data.usage_state_root = propagate_parent(PropagateParentArgs {
-                            parent: &parent_item_data.usage_state_root,
-                            child: &item.data.usage_state_root,
+                        item_class_data.config.usage_state_root = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.config.usage_state_root,
+                            child: &item_class_data.config.usage_state_root,
                             overridable: update_perm.overridable,
                         });
                     }
                     ChildUpdatePropagationPermissivenessType::StakingPermissiveness => {
-                        item.data.staking_permissiveness = propagate_parent_array(PropagateParentArrayArgs {
-                            parent_items: &parent_item_data.staking_permissiveness,
-                            child_items: &item.data.staking_permissiveness,
+                        item_class_data.settings.staking_permissiveness = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.settings.staking_permissiveness,
+                            child_items: &item_class_data.settings.staking_permissiveness,
                             overridable: update_perm.overridable,
                         });
 
-                        item.data.unstaking_permissiveness = propagate_parent_array(PropagateParentArrayArgs {
-                            parent_items: &parent_item_data.unstaking_permissiveness,
-                            child_items: &item.data.unstaking_permissiveness,
+                        item_class_data.settings.unstaking_permissiveness = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.settings.unstaking_permissiveness,
+                            child_items: &item_class_data.settings.unstaking_permissiveness,
                             overridable: update_perm.overridable,
                         });
                     }
                     ChildUpdatePropagationPermissivenessType::Components => {
-                        item.data.components = propagate_parent_array(PropagateParentArrayArgs {
-                            parent_items: &parent_item_data.components,
-                            child_items: &item.data.components,
+                        item_class_data.config.components = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.config.components,
+                            child_items: &item_class_data.config.components,
                             overridable: update_perm.overridable,
                         });
-                        item.data.component_root = propagate_parent(PropagateParentArgs {
-                            parent: &parent_item_data.component_root,
-                            child: &item.data.component_root,
+                        item_class_data.config.component_root = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.config.component_root,
+                            child: &item_class_data.config.component_root,
                             overridable: update_perm.overridable,
                         });
                     }
                     ChildUpdatePropagationPermissivenessType::UpdatePermissiveness => {
-                        item.data.update_permissiveness =
+                        item_class_data.settings.update_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
-                                parent_items: &parent_item_data.update_permissiveness,
-                                child_items: &item.data.update_permissiveness,
+                                parent_items: &parent_item_data.settings.update_permissiveness,
+                                child_items: &item_class_data.settings.update_permissiveness,
                                 overridable: update_perm.overridable,
                             });
                     }
                     ChildUpdatePropagationPermissivenessType::BuildPermissiveness => {
-                        item.data.build_permissiveness =
+                        item_class_data.settings.build_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
-                                parent_items: &parent_item_data.build_permissiveness,
-                                child_items: &item.data.build_permissiveness,
+                                parent_items: &parent_item_data.settings.build_permissiveness,
+                                child_items: &item_class_data.settings.build_permissiveness,
                                 overridable: update_perm.overridable,
                             });
                     }
                     ChildUpdatePropagationPermissivenessType::ChildUpdatePropagationPermissiveness => {
-                        item.data.child_update_propagation_permissiveness =
+                        item_class_data.settings.child_update_propagation_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
-                                parent_items: &parent_item_data.child_update_propagation_permissiveness,
-                                child_items: &item.data.child_update_propagation_permissiveness,
+                                parent_items: &parent_item_data.settings.child_update_propagation_permissiveness,
+                                child_items: &item_class_data.settings.child_update_propagation_permissiveness,
                                 overridable: update_perm.overridable,
                             });
                     }
                     ChildUpdatePropagationPermissivenessType::ChildrenMustBeEditionsPermissiveness => {
-                        item.data.children_must_be_editions = propagate_parent(PropagateParentArgs {
-                            parent: &parent_item_data.children_must_be_editions,
-                            child: &item.data.children_must_be_editions,
+                        item_class_data.settings.children_must_be_editions = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.settings.children_must_be_editions,
+                            child: &item_class_data.settings.children_must_be_editions,
                             overridable: update_perm.overridable,
                         });
                     }
                     ChildUpdatePropagationPermissivenessType::BuilderMustBeHolderPermissiveness => {
-                        item.data.builder_must_be_holder = propagate_parent(PropagateParentArgs {
-                            parent: &parent_item_data.builder_must_be_holder,
-                            child: &item.data.builder_must_be_holder,
+                        item_class_data.settings.builder_must_be_holder = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.settings.builder_must_be_holder,
+                            child: &item_class_data.settings.builder_must_be_holder,
                             overridable: update_perm.overridable,
                         });
                     },
@@ -610,7 +688,7 @@ pub fn assert_valid_item_settings_for_edition_type(
     item_data: &ItemClassData,
 ) -> ProgramResult {
     if edition.is_none() {
-        if let Some(usages) = &item_data.usages {
+        if let Some(usages) = &item_data.config.usages {
             for usage in usages {
                 if let Some(basic_item_effects) = &usage.basic_item_effects {
                     for item_effects in basic_item_effects {
@@ -897,6 +975,9 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
         unix_timestamp,
     } = args;
 
+    let craft_item_class_data =
+        craft_item_class.item_class_data(&craft_item_class.to_account_info().data)?;
+
     if let Some(csi) = craft_usage_info {
         let CraftUsageInfo {
             craft_usage_state_proof,
@@ -930,7 +1011,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
             &AnchorSerialize::try_to_vec(&craft_usage)?,
         ]);
 
-        if let Some(craft_usage_root) = &craft_item_class.data.usage_root {
+        if let Some(craft_usage_root) = &craft_item_class_data.config.usage_root {
             require!(
                 verify(&craft_usage_proof, &craft_usage_root.root, class_node.0),
                 InvalidProof
@@ -969,7 +1050,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
             }
             return Ok(());
         }
-    } else if let Some(usages) = &craft_item_class.data.usages {
+    } else if let Some(usages) = &craft_item_class_data.config.usages {
         for i in 0..usages.len() {
             let usage = &usages[i];
             if usage.index == chosen_component.use_usage_index {
@@ -1037,7 +1118,9 @@ pub fn verify_component<'a, 'info>(
         craft_item_token_mint,
         component_scope,
     } = args;
-    let chosen_component = if let Some(component_root) = &item_class.data.component_root {
+
+    let item_class_data = item_class.item_class_data(&item_class.to_account_info().data)?;
+    let chosen_component = if let Some(component_root) = &item_class_data.config.component_root {
         if let Some(p) = component_proof {
             if let Some(c) = component {
                 // Verify the merkle proof.
@@ -1055,7 +1138,7 @@ pub fn verify_component<'a, 'info>(
         } else {
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
-    } else if let Some(components) = &item_class.data.components {
+    } else if let Some(components) = &item_class_data.config.components {
         let mut counter = 0;
         for c in component {
             if c.component_scope == component_scope {
@@ -1084,12 +1167,13 @@ pub fn verify_component<'a, 'info>(
 pub fn propagate_item_class_data_fields_to_item_data(
     item: &mut Account<Item>,
     item_class: &Account<ItemClass>,
+    item_class_data: &ItemClassData,
 ) {
     item.namespaces = item_class.namespaces.clone();
 
-    item.data.usage_state_root = item_class.data.usage_state_root.clone();
+    item.data.usage_state_root = item_class_data.config.usage_state_root.clone();
 
-    if let Some(item_usage) = &item_class.data.usages {
+    if let Some(item_usage) = &item_class_data.config.usages {
         let mut new_states: Vec<ItemUsageState> = vec![];
 
         let mut states_length = 0;
@@ -1389,7 +1473,8 @@ pub fn get_item_usage<'a, 'info>(
         usage,
     } = args;
 
-    let item_usage = if let Some(usage_root) = &item_class.data.usage_root {
+    let item_class_data = item_class.item_class_data(&item_class.to_account_info().data)?;
+    let item_usage = if let Some(usage_root) = &item_class_data.config.usage_root {
         if let Some(usage_proof) = &usage_proof {
             if let Some(us) = &usage {
                 // Verify the merkle proof.
@@ -1406,7 +1491,7 @@ pub fn get_item_usage<'a, 'info>(
         } else {
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
-    } else if let Some(usages) = &item_class.data.usages {
+    } else if let Some(usages) = &item_class_data.config.usages {
         if usages.len() == 0 {
             return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
         } else {
