@@ -37,8 +37,7 @@ pub struct CreateItemClassArgs {
     update_permissiveness_to_use: Option<PermissivenessType>,
     store_mint: bool,
     store_metadata_fields: bool,
-    settings: ItemClassSettings,
-    config: ItemClassConfig,
+    item_class_data: ItemClassData,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -52,8 +51,7 @@ pub struct DrainItemClassArgs {
 pub struct UpdateItemClassArgs {
     class_index: u64,
     update_permissiveness_to_use: Option<PermissivenessType>,
-    settings: Option<ItemClassSettings>,
-    config: Option<ItemClassConfig>,
+    item_class_data: Option<ItemClassData>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -268,8 +266,7 @@ pub mod item {
             update_permissiveness_to_use,
             store_mint,
             store_metadata_fields,
-            mut item_class_data_settings,
-            mut item_class_data_config,
+            mut item_class_data,
             ..
         } = args;
         let mut item_class = &mut ctx.accounts.item_class;
@@ -356,9 +353,8 @@ pub mod item {
             })?;
         }
         msg!("5");
-        item_class.settings = item_class_data.settings;
-        item_class.config = item_class_data.config;
-        //  write_data(item_class, &item_class_data)?;
+
+        write_data(item_class, &item_class_data)?;
         item_class.bump = item_class_bump;
         if store_metadata_fields {
             item_class.metadata = Some(metadata.key());
@@ -2077,6 +2073,12 @@ pub struct ItemClassConfig {
     components: Option<Vec<Component>>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ItemClassData {
+    settings: ItemClassSettings,
+    config: ItemClassConfig,
+}
+
 #[account]
 pub struct ItemClass {
     namespaces: Option<Vec<NamespaceAndIndex>>,
@@ -2089,10 +2091,7 @@ pub struct ItemClass {
     edition: Option<Pubkey>,
     bump: u8,
     existing_children: u64,
-    // these two structs only exist because having all fields in one was too big
-    // and cased it to explode even when we are writing manually.
-    settings: ItemClassSettings,
-    config: ItemClassConfig,
+    // item class data is after this, but we cant serialize or deserialize because it blows stacks
 }
 
 #[account]
