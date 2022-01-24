@@ -6,7 +6,10 @@ import { ITEM_ID } from "../constants/programIds";
 import { PermissivenessType } from "../state/common";
 import { ItemClassData } from "../state/item";
 import { getEdition, getItemPDA, getMetadata } from "../utils/pda";
-import { generateRemainingAccountsForCreateClass } from "./common";
+import {
+  generateRemainingAccountsForCreateClass,
+  generateRemainingAccountsGivenPermissivenessToUse,
+} from "./common";
 import log from "loglevel";
 import { getCluster } from "../utils/connection";
 
@@ -32,6 +35,12 @@ export interface CreateItemClassArgs {
   itemClassData: ItemClassData;
 }
 
+export interface UpdateItemClassArgs {
+  classIndex: BN;
+  updatePermissivenessToUse: null | PermissivenessType;
+  itemClassData: ItemClassData | null;
+}
+
 export interface CreateItemClassAccounts {
   itemMint: web3.PublicKey;
   parent: web3.PublicKey | null;
@@ -41,8 +50,19 @@ export interface CreateItemClassAccounts {
   parentUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface UpdateItemClassAccounts {
+  itemMint: web3.PublicKey;
+  parent: web3.PublicKey | null;
+  parentMint: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
 export interface CreateItemClassAdditionalArgs {
   parentOfParentClassIndex: BN | null;
+}
+
+export interface UpdateItemClassAdditionalArgs {
+  parentClassIndex: BN | null;
 }
 
 export class ItemProgram {
@@ -98,6 +118,39 @@ export class ItemProgram {
         payer: this.program.provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+      remainingAccounts:
+        remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
+
+    return itemClassKey;
+  }
+
+  async updateItemClass(
+    args: UpdateItemClassArgs,
+    accounts: UpdateItemClassAccounts,
+    additionalArgs: UpdateItemClassAdditionalArgs
+  ): Promise<web3.PublicKey> {
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.updatePermissivenessToUse,
+        tokenMint: accounts.itemMint,
+        parentMint: accounts.parentMint,
+        parentIndex: additionalArgs.parentClassIndex,
+        parent: accounts.parent,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program,
+      });
+
+    const [itemClassKey, itemClassBump] = await getItemPDA(
+      accounts.itemMint,
+      args.classIndex
+    );
+
+    await this.program.rpc.updateItemClass(args, {
+      accounts: {
+        itemClass: itemClassKey,
+        itemMint: accounts.itemMint,
       },
       remainingAccounts:
         remainingAccounts.length > 0 ? remainingAccounts : undefined,
