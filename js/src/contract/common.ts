@@ -27,10 +27,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
     isWritable: boolean;
     isSigner: boolean;
   }[] = [];
-  if (
-    permissivenessToUse == PermissivenessType.TokenHolder ||
-    !permissivenessToUse
-  ) {
+  if (permissivenessToUse.tokenHolder || !permissivenessToUse) {
     const tokenAccount = (
       await getAtaForMint(tokenMint, program.provider.wallet.publicKey)
     )[0];
@@ -45,7 +42,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
       isWritable: false,
       isSigner: true,
     });
-  } else if (permissivenessToUse == PermissivenessType.ParentTokenHolder) {
+  } else if (permissivenessToUse.parentTokenHolder) {
     const parentToken = (
       await getAtaForMint(parentMint, program.provider.wallet.publicKey)
     )[0];
@@ -72,7 +69,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
       isWritable: false,
       isSigner: false,
     });
-  } else if (permissivenessToUse == PermissivenessType.UpdateAuthority) {
+  } else if (permissivenessToUse.updateAuthority) {
     remainingAccounts.push({
       pubkey: metadataUpdateAuthority || program.provider.wallet.publicKey,
       isWritable: false,
@@ -137,7 +134,7 @@ export async function generateRemainingAccountsForCreateClass(args: {
       isWritable: false,
       isSigner: false,
     });
-  } else if (permissivenessToUse == PermissivenessType.TokenHolder) {
+  } else if (permissivenessToUse.tokenHolder) {
     const tokenAccount = (
       await getAtaForMint(parentMint, program.provider.wallet.publicKey)
     )[0];
@@ -157,7 +154,7 @@ export async function generateRemainingAccountsForCreateClass(args: {
       isWritable: false,
       isSigner: false,
     });
-  } else if (permissivenessToUse == PermissivenessType.ParentTokenHolder) {
+  } else if (permissivenessToUse.parentTokenHolder) {
     const parentToken = (
       await getAtaForMint(
         parentOfParentClassMint,
@@ -188,7 +185,7 @@ export async function generateRemainingAccountsForCreateClass(args: {
       isWritable: false,
       isSigner: false,
     });
-  } else if (permissivenessToUse == PermissivenessType.UpdateAuthority) {
+  } else if (permissivenessToUse.updateAuthority) {
     remainingAccounts.push({
       pubkey: parentUpdateAuthority || program.provider.wallet.publicKey,
       isWritable: false,

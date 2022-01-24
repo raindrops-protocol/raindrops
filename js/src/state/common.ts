@@ -5,11 +5,11 @@ export interface Permissiveness {
   permissivenessType: PermissivenessType;
 }
 
-export enum PermissivenessType {
-  TokenHolder,
-  ParentTokenHolder,
-  UpdateAuthority,
-  Anybody,
+export interface PermissivenessType {
+  tokenHolder?: boolean;
+  parentTokenHolder?: boolean;
+  updateAuthority?: boolean;
+  anybody?: boolean;
 }
 
 export enum InheritanceState {

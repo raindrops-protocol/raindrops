@@ -33,10 +33,11 @@ impl ItemClass {
         &self,
         data: &RefCell<&mut [u8]>,
     ) -> Result<ItemClassData, ProgramError> {
-        let ctr = get_class_write_offset(self) as usize;
+        let (ctr, end_ctr) = get_class_write_offsets(self, data);
 
+        // msg!("Ctr {}->{} {:?}", ctr, end_ctr, &data.borrow());
         let item_class_data: ItemClassData =
-            AnchorDeserialize::try_from_slice(&data.borrow()[ctr..])?;
+            AnchorDeserialize::try_from_slice(&data.borrow()[ctr as usize..end_ctr as usize])?;
 
         Ok(item_class_data)
     }
@@ -76,10 +77,14 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
     pub token_program: AccountInfo<'a>,
 }
 
-pub fn get_class_write_offset(item_class: &ItemClass) -> u64 {
-    let mut ctr: u64 = 8;
+pub fn get_class_write_offsets(
+    item_class: &ItemClass,
+    item_data: &RefCell<&mut [u8]>,
+) -> (u64, u64) {
+    let mut ctr: usize = 8;
+    let data = item_data.borrow();
     if let Some(ns) = &item_class.namespaces {
-        ctr += 1 + 34 * ns.len() as u64;
+        ctr += 1 + 4 + 34 * ns.len();
     } else {
         ctr += 1;
     }
@@ -110,28 +115,301 @@ pub fn get_class_write_offset(item_class: &ItemClass) -> u64 {
 
     ctr += 9; // bump and existing childern (1 + 8)
 
-    return ctr;
+    let mut end_ctr = ctr;
+
+    // Item Class Settings
+    // children_must_be_editions
+    if data[end_ctr] == 1 {
+        end_ctr += 3
+    } else {
+        end_ctr += 1;
+    }
+
+    // builder_must_be_holder
+    if data[end_ctr] == 1 {
+        end_ctr += 3
+    } else {
+        end_ctr += 1;
+    }
+
+    // update_permissiveness
+    if data[end_ctr] == 1 {
+        let sub = &data[end_ctr + 1..end_ctr + 5];
+        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+    } else {
+        end_ctr += 1;
+    }
+
+    // build_permissiveness
+    if data[end_ctr] == 1 {
+        let sub = &data[end_ctr + 1..end_ctr + 5];
+        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+    } else {
+        end_ctr += 1;
+    }
+
+    // staking_warm_up_duration
+    if data[end_ctr] == 1 {
+        end_ctr += 8;
+    } else {
+        end_ctr += 1;
+    }
+
+    // staking_cooldown_duration
+    if data[end_ctr] == 1 {
+        end_ctr += 8;
+    } else {
+        end_ctr += 1;
+    }
+
+    // staking_permissiveness
+    if data[end_ctr] == 1 {
+        let sub = &data[end_ctr + 1..end_ctr + 5];
+        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+    } else {
+        end_ctr += 1;
+    }
+
+    // unstaking_permissiveness
+    if data[end_ctr] == 1 {
+        let sub = &data[end_ctr + 1..end_ctr + 5];
+        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+    } else {
+        end_ctr += 1;
+    }
+
+    // child_update_propagation_permissiveness
+    if data[end_ctr] == 1 {
+        let sub = &data[end_ctr + 1..end_ctr + 5];
+        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 3;
+    } else {
+        end_ctr += 1;
+    }
+
+    // ItemClassConfig
+    // usage_root
+    if data[end_ctr] == 1 {
+        end_ctr += 33;
+    } else {
+        end_ctr += 1;
+    }
+
+    // usage_state_root
+    if data[end_ctr] == 1 {
+        end_ctr += 33;
+    } else {
+        end_ctr += 1;
+    }
+
+    // component_root
+    if data[end_ctr] == 1 {
+        end_ctr += 33;
+    } else {
+        end_ctr += 1;
+    }
+
+    //usages
+    if data[end_ctr] == 1 {
+        let sub = &data[end_ctr + 1..end_ctr + 5];
+        let num_of_usages = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+        end_ctr += 4;
+        for _ in 0..num_of_usages {
+            end_ctr += 2; // index
+
+            // basic_item_effects
+            if data[end_ctr] == 1 {
+                let sub = &data[end_ctr + 1..end_ctr + 5];
+                let num_of_effects = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+                end_ctr += 4;
+                for _ in 0..num_of_effects {
+                    end_ctr += 8; // amount
+
+                    // stat string
+                    let sub = &data[end_ctr..end_ctr + 4];
+                    let stat_length = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+                    end_ctr += 4 + stat_length as usize;
+                    // item_effect_type
+                    end_ctr += 1;
+
+                    //active_duration
+                    if data[end_ctr] == 1 {
+                        end_ctr += 8;
+                    } else {
+                        end_ctr += 1;
+                    }
+
+                    //staking_amount_numerator
+                    if data[end_ctr] == 1 {
+                        end_ctr += 8;
+                    } else {
+                        end_ctr += 1;
+                    }
+
+                    //staking_amount_divisor
+                    if data[end_ctr] == 1 {
+                        end_ctr += 8;
+                    } else {
+                        end_ctr += 1;
+                    }
+
+                    //staking_duration_numerator
+                    if data[end_ctr] == 1 {
+                        end_ctr += 8;
+                    } else {
+                        end_ctr += 1;
+                    }
+
+                    //staking_duration_divisor
+                    if data[end_ctr] == 1 {
+                        end_ctr += 8;
+                    } else {
+                        end_ctr += 1;
+                    }
+
+                    //max_uses
+                    if data[end_ctr] == 1 {
+                        end_ctr += 8;
+                    } else {
+                        end_ctr += 1;
+                    }
+                }
+            } else {
+                end_ctr += 1;
+            }
+
+            // usage_permissiveness
+            let sub = &data[end_ctr + 1..end_ctr + 5];
+            end_ctr = 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+
+            //inherited
+            end_ctr += 1;
+
+            // item_class_type
+            if data[end_ctr] == 0 {
+                // wearable
+                let sub = &data[end_ctr + 1..end_ctr + 5];
+                let num_of_body_parts = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+                end_ctr += 4;
+                for _ in 0..num_of_body_parts {
+                    // body part string
+                    let sub = &data[end_ctr..end_ctr + 4];
+                    let body_part_length = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+                    end_ctr += 4 + body_part_length as usize;
+                }
+
+                // limit_per_part
+                if data[end_ctr] == 1 {
+                    end_ctr += 8;
+                } else {
+                    end_ctr += 1;
+                }
+            } else if data[end_ctr] == 1 {
+                // consumable
+                // max_uses
+                if data[end_ctr] == 1 {
+                    end_ctr += 8;
+                } else {
+                    end_ctr += 1;
+                }
+
+                // max_players_per_use
+                if data[end_ctr] == 1 {
+                    end_ctr += 8;
+                } else {
+                    end_ctr += 1;
+                }
+
+                // item_usage_type
+                end_ctr += 1;
+
+                // cooldown_duration
+                if data[end_ctr] == 1 {
+                    end_ctr += 8;
+                } else {
+                    end_ctr += 1;
+                }
+
+                // warmup_duration
+                if data[end_ctr] == 1 {
+                    end_ctr += 8;
+                } else {
+                    end_ctr += 1;
+                }
+            }
+
+            // callback
+            if data[end_ctr] == 1 {
+                end_ctr += 40;
+            } else {
+                end_ctr += 1;
+            }
+
+            // validation
+            if data[end_ctr] == 1 {
+                end_ctr += 40;
+            } else {
+                end_ctr += 1;
+            }
+
+            // do_not_pair_with_self
+            end_ctr += 1;
+
+            // dnp
+            if data[end_ctr] == 1 {
+                let sub = &data[end_ctr + 1..end_ctr + 5];
+                let num_of_pubkeys = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+
+                end_ctr += 4 + num_of_pubkeys as usize * 32;
+            } else {
+                end_ctr += 1;
+            }
+        }
+    } else {
+        end_ctr += 1;
+    }
+
+    // Components
+    if data[end_ctr] == 1 {
+        let sub = &data[end_ctr + 1..end_ctr + 5];
+        let num_of_components = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+        end_ctr += 4;
+        for _ in 0..num_of_components {
+            // mint + amount
+            end_ctr += 40;
+            // time_to_build
+            if data[end_ctr] == 1 {
+                end_ctr += 8;
+            } else {
+                end_ctr += 1;
+            }
+
+            // component_scope string
+            let sub = &data[end_ctr + 1..end_ctr + 5];
+            let scope_length = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
+            end_ctr += 4 + scope_length as usize;
+
+            // use_usage_index + condition + inherited
+            end_ctr += 4;
+        }
+    } else {
+        end_ctr += 1;
+    }
+
+    return (ctr as u64, end_ctr as u64);
 }
 
 pub fn write_data(
     item_class: &mut Account<ItemClass>,
     item_class_data: &ItemClassData,
 ) -> ProgramResult {
-    let ctr = get_class_write_offset(item_class);
-    msg!("5.1");
     let item_class_info = item_class.to_account_info();
-    msg!("5.2");
+    let (ctr, _) = get_class_write_offsets(item_class, &item_class_info.data);
     let mut data = item_class_info.try_borrow_mut_data()?;
-    msg!("5.3");
     let dst: &mut [u8] = &mut data;
     let mut cursor = std::io::Cursor::new(dst);
-    msg!("5.4");
     cursor.set_position(ctr);
-    msg!("5.5");
     AnchorSerialize::serialize(&item_class_data.settings, &mut cursor)?;
-    msg!("5.55");
     AnchorSerialize::serialize(&item_class_data.config, &mut cursor)?;
-    msg!("5.6");
     Ok(())
 }
 

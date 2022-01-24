@@ -399,8 +399,10 @@ pub mod item {
 
         let item_class = &mut ctx.accounts.item_class;
         let item_mint = &ctx.accounts.item_mint;
+        msg!("1");
         let original_item_class_data =
             item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
+        msg!("2");
         let mut new_item_class_data = if let Some(icd) = item_class_data {
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
@@ -2206,7 +2208,7 @@ pub enum ErrorCode {
     TokenBurnFailed,
     #[msg("Derived key is invalid")]
     DerivedKeyInvalid,
-    #[msg("Update authority for metadata expected as signer")]
+    #[msg("Must specify permissiveness type")]
     MustSpecifyPermissivenessType,
     #[msg("Permissiveness not found in array")]
     PermissivenessNotFound,
