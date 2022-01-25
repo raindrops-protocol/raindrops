@@ -1,9 +1,9 @@
-import { PermissivenessType } from "../state/common";
+import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
 import { Program, web3, BN } from "@project-serum/anchor";
 import { getAtaForMint, getItemPDA, getMetadata } from "../utils/pda";
 
 export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
-  permissivenessToUse: PermissivenessType | null;
+  permissivenessToUse: AnchorPermissivenessType | null;
   tokenMint: web3.PublicKey;
   parentMint: web3.PublicKey | null;
   parentIndex: BN | null;
@@ -27,7 +27,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
     isWritable: boolean;
     isSigner: boolean;
   }[] = [];
-  if (permissivenessToUse.tokenHolder || !permissivenessToUse) {
+  if (permissivenessToUse.tokenHolder) {
     const tokenAccount = (
       await getAtaForMint(tokenMint, program.provider.wallet.publicKey)
     )[0];
@@ -69,7 +69,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
       isWritable: false,
       isSigner: false,
     });
-  } else if (permissivenessToUse.updateAuthority) {
+  } else if (permissivenessToUse.updateAuthority || !permissivenessToUse) {
     remainingAccounts.push({
       pubkey: metadataUpdateAuthority || program.provider.wallet.publicKey,
       isWritable: false,
@@ -89,7 +89,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
 // produces slightly different remainingAccounts. So this method is used instead for class creation.
 // If parent is set, defaults to using update authority as a permissiveness to make the new token class.
 export async function generateRemainingAccountsForCreateClass(args: {
-  permissivenessToUse: PermissivenessType | null;
+  permissivenessToUse: AnchorPermissivenessType | null;
   // Token is going to be a new Class
   tokenMint: web3.PublicKey;
   // The parent of the new class (if needed)

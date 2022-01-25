@@ -22,10 +22,10 @@
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
-  "mint": "65bWLE3zFUTUcinuGJdg5HJqAeJgRELswKHFgrgfQYYN",
+  "mint": "CgBASFsf6N2rFi9N9Nbivvwo3eF7fjwUZM1WStL6imka",
   "index": 0,
   "parent": null,
-  "updatePermissivenessToUse": { "tokenHolder": true },
+  "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,
   "totalSpaceBytes": 200
 }

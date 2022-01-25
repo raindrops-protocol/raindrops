@@ -1511,7 +1511,7 @@ pub mod item {
 // that permissiveness set in it' array.
 //
 // if you see common remaining accounts label, use the following as your rubric:
-// If the permissiveness array is not set, is assumed to be just token holder.
+// If the permissiveness array is not set, is assumed to be just update authority.
 // If permissiveness is token holder:
 // token_account [readable]
 // token_holder [signer]
@@ -1828,10 +1828,10 @@ pub struct ItemUsage {
     // Note: Only checks against parent class of item,
     // not all the way up the class tree.
     // Must be enforced by enclosing contract.
-    do_not_pair_with_self: bool,
+    do_not_pair_with_self: Boolean,
     // List of class keys this item cannot be paired with
     // Must be enforced by enclosing contract (usually Player)
-    dnp: Option<Vec<Pubkey>>,
+    dnp: Option<Vec<DNPItem>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1960,6 +1960,12 @@ pub enum InheritanceState {
 pub struct NamespaceAndIndex {
     namespace: Pubkey,
     indexed: bool,
+    inherited: InheritanceState,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DNPItem {
+    key: Pubkey,
     inherited: InheritanceState,
 }
 

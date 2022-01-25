@@ -352,14 +352,14 @@ pub fn get_class_write_offsets(
             }
 
             // do_not_pair_with_self
-            end_ctr += 1;
+            end_ctr += 2;
 
             // dnp
             if data[end_ctr] == 1 {
                 let sub = &data[end_ctr + 1..end_ctr + 5];
                 let num_of_pubkeys = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
 
-                end_ctr += 4 + num_of_pubkeys as usize * 32;
+                end_ctr += 4 + num_of_pubkeys as usize * 33;
             } else {
                 end_ctr += 1;
             }
@@ -724,31 +724,26 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                     }
                 }
             } else {
-                // Default is token holder.
-                //  token_account [readable]
-                //  token_holder [signer]
-                //  mint [readable] OR none if already present in the main array
-                let token_account = &remaining_accounts[0];
-                let token_holder = &remaining_accounts[1];
+                // Default is metadata update authority.
+                // metadata_update_authority [signer]
+                // metadata [readable]
+                // mint [readable] OR none if already present in the main array
+
+                let metadata_update_authority = &remaining_accounts[0];
+                let metadata = &remaining_accounts[1];
                 let mint = if let Some(m) = account_mint {
                     *m
                 } else {
                     remaining_accounts[2].key()
                 };
 
-                assert_signer(token_holder)?;
+                assert_signer(metadata_update_authority)?;
 
-                let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+                assert_metadata_valid(metadata, None, &mint)?;
 
-                if acct.amount == 0 {
-                    return Err(ErrorCode::InsufficientBalance.into());
-                }
+                let update_authority = grab_update_authority(metadata)?;
 
-                assert_derivation(
-                    program_id,
-                    given_account,
-                    &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
-                )?;
+                assert_keys_equal(update_authority, *metadata_update_authority.key)?;
             }
         }
         None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),

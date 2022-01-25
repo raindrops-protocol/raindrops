@@ -3,8 +3,8 @@ import { SystemProgram } from "@solana/web3.js";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { ITEM_ID } from "../constants/programIds";
-import { PermissivenessType } from "../state/common";
-import { ItemClassData } from "../state/item";
+import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
+import { decodeItemClass, ItemClass, ItemClassData } from "../state/item";
 import { getEdition, getItemPDA, getMetadata } from "../utils/pda";
 import {
   generateRemainingAccountsForCreateClass,
@@ -13,14 +13,11 @@ import {
 import log from "loglevel";
 import { getCluster } from "../utils/connection";
 
-export class ItemClass {
+export interface ObjectWrapper<T> {
   program: Program;
-  state: any; // Todo replace with interface
-}
-
-export class Item {
-  program: Program;
-  state: any; // Todo replace with interface
+  key: web3.PublicKey;
+  object: T;
+  data: Buffer;
 }
 
 export interface CreateItemClassArgs {
@@ -29,16 +26,16 @@ export interface CreateItemClassArgs {
   parentClassIndex: null | BN;
   space: BN;
   desiredNamespaceArraySize: number;
-  updatePermissivenessToUse: null | PermissivenessType;
+  updatePermissivenessToUse: null | AnchorPermissivenessType;
   storeMint: boolean;
   storeMetadataFields: boolean;
-  itemClassData: ItemClassData;
+  itemClassData: any;
 }
 
 export interface UpdateItemClassArgs {
   classIndex: BN;
-  updatePermissivenessToUse: null | PermissivenessType;
-  itemClassData: ItemClassData | null;
+  updatePermissivenessToUse: null | AnchorPermissivenessType;
+  itemClassData: any | null;
 }
 
 export interface CreateItemClassAccounts {
@@ -72,6 +69,28 @@ export class ItemProgram {
   constructor(args: { id: web3.PublicKey; program: Program }) {
     this.id = args.id;
     this.program = args.program;
+  }
+
+  async fetchItemClass(
+    mint: web3.PublicKey,
+    index: BN
+  ): Promise<ObjectWrapper<ItemClass>> {
+    let itemClass = (await getItemPDA(mint, index))[0];
+
+    // Need a manual deserializer due to our hack we had to do.
+    let itemClassObj = await this.program.provider.connection.getAccountInfo(
+      itemClass
+    );
+
+    const ic = decodeItemClass(itemClassObj.data);
+    ic.program = this.program;
+
+    return {
+      program: this.program,
+      key: itemClass,
+      data: itemClassObj.data,
+      object: ic,
+    };
   }
 
   async createItemClass(
