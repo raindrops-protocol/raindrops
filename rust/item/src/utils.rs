@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use {
     crate::{
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
@@ -359,7 +361,7 @@ pub fn get_class_write_offsets(
             }
 
             // do_not_pair_with_self
-            end_ctr += 2;
+            end_ctr += 1;
 
             // dnp
             if data[end_ctr] == 1 {
@@ -414,9 +416,11 @@ pub fn write_data(
     let mut data = item_class_info.try_borrow_mut_data()?;
     let dst: &mut [u8] = &mut data;
     let mut cursor = std::io::Cursor::new(dst);
+    msg!("Cursor is at {}", ctr);
     cursor.set_position(ctr);
     AnchorSerialize::serialize(&item_class_data.settings, &mut cursor)?;
     AnchorSerialize::serialize(&item_class_data.config, &mut cursor)?;
+
     Ok(())
 }
 

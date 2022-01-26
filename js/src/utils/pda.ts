@@ -27,6 +27,30 @@ export const getItemPDA = async (
   );
 };
 
+export const getItemEscrow = async (args: {
+  itemClassMint: web3.PublicKey;
+  payer: web3.PublicKey;
+  newItemMint: web3.PublicKey;
+  newItemToken: web3.PublicKey;
+  amountToMake: BN;
+  componentScope: String;
+  index: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(ITEM_PREFIX),
+      args.itemClassMint.toBuffer(),
+      args.payer.toBuffer(),
+      args.newItemMint.toBuffer(),
+      args.newItemToken.toBuffer(),
+      args.index.toBuffer("le", 8),
+      args.amountToMake.toBuffer("le", 8),
+      Buffer.from(args.componentScope),
+    ],
+    ITEM_ID
+  );
+};
+
 export const getMetadata = async (
   mint: web3.PublicKey
 ): Promise<web3.PublicKey> => {

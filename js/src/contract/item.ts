@@ -5,19 +5,38 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { ITEM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
 import { decodeItemClass, ItemClass, ItemClassData } from "../state/item";
-import { getEdition, getItemPDA, getMetadata } from "../utils/pda";
+import {
+  getAtaForMint,
+  getEdition,
+  getItemEscrow,
+  getItemPDA,
+  getMetadata,
+} from "../utils/pda";
 import {
   generateRemainingAccountsForCreateClass,
   generateRemainingAccountsGivenPermissivenessToUse,
+  ObjectWrapper,
 } from "./common";
 import log from "loglevel";
 import { getCluster } from "../utils/connection";
 
-export interface ObjectWrapper<T> {
+export class ItemClassWrapper implements ObjectWrapper<ItemClass> {
   program: Program;
   key: web3.PublicKey;
-  object: T;
+  object: ItemClass;
   data: Buffer;
+
+  constructor(args: {
+    program: Program;
+    key: web3.PublicKey;
+    object: ItemClass;
+    data: Buffer;
+  }) {
+    this.program = args.program;
+    this.key = args.key;
+    this.object = args.object;
+    this.data = args.data;
+  }
 }
 
 export interface CreateItemClassArgs {
@@ -30,6 +49,17 @@ export interface CreateItemClassArgs {
   storeMint: boolean;
   storeMetadataFields: boolean;
   itemClassData: any;
+}
+
+export interface CreateItemEscrowArgs {
+  craftBump: number | null;
+  classIndex: BN;
+  index: BN;
+  componentScope: String;
+  amountToMake: BN;
+  namespaceIndex: BN | null;
+  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  itemClassMint: web3.PublicKey;
 }
 
 export interface UpdateItemClassArgs {
@@ -47,6 +77,15 @@ export interface CreateItemClassAccounts {
   parentUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface CreateItemEscrowAccounts {
+  itemClassMint: web3.PublicKey;
+  newItemMint: web3.PublicKey;
+  newItemToken: web3.PublicKey | null;
+  newItemTokenHolder: web3.PublicKey | null;
+  parentMint: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
 export interface UpdateItemClassAccounts {
   itemMint: web3.PublicKey;
   parent: web3.PublicKey | null;
@@ -62,6 +101,10 @@ export interface UpdateItemClassAdditionalArgs {
   parentClassIndex: BN | null;
 }
 
+export interface CreateItemEscrowAdditionalArgs {
+  parentClassIndex: BN | null;
+}
+
 export class ItemProgram {
   id: web3.PublicKey;
   program: Program;
@@ -74,7 +117,7 @@ export class ItemProgram {
   async fetchItemClass(
     mint: web3.PublicKey,
     index: BN
-  ): Promise<ObjectWrapper<ItemClass>> {
+  ): Promise<ItemClassWrapper> {
     let itemClass = (await getItemPDA(mint, index))[0];
 
     // Need a manual deserializer due to our hack we had to do.
@@ -85,12 +128,85 @@ export class ItemProgram {
     const ic = decodeItemClass(itemClassObj.data);
     ic.program = this.program;
 
-    return {
+    return new ItemClassWrapper({
       program: this.program,
       key: itemClass,
       data: itemClassObj.data,
       object: ic,
-    };
+    });
+  }
+
+  async createItemEscrow(
+    args: CreateItemEscrowArgs,
+    accounts: CreateItemEscrowAccounts,
+    additionalArgs: CreateItemEscrowAdditionalArgs
+  ) {
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.buildPermissivenessToUse,
+        tokenMint: accounts.itemClassMint,
+        parentMint: accounts.parentMint,
+        parentIndex: additionalArgs.parentClassIndex,
+        parent: accounts.parentMint
+          ? (
+              await getItemPDA(
+                accounts.parentMint,
+                additionalArgs.parentClassIndex
+              )
+            )[0]
+          : null,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program,
+      });
+
+    const itemClassKey = (
+      await getItemPDA(accounts.itemClassMint, args.classIndex)
+    )[0];
+
+    const [itemEscrow, itemEscrowBump] = await getItemEscrow({
+      itemClassMint: accounts.itemClassMint,
+      index: args.index,
+      newItemMint: accounts.newItemMint,
+      newItemToken:
+        accounts.newItemToken ||
+        (
+          await getAtaForMint(
+            accounts.newItemMint,
+            this.program.provider.wallet.publicKey
+          )
+        )[0],
+      payer: this.program.provider.wallet.publicKey,
+      amountToMake: args.amountToMake,
+      componentScope: args.componentScope,
+    });
+
+    args.craftBump = itemEscrowBump;
+    console.log("acct", itemClassKey.toBase58());
+    await this.program.rpc.createItemEscrow(args, {
+      accounts: {
+        itemClass: itemClassKey,
+        itemClassMetadata: await getMetadata(accounts.itemClassMint),
+        newItemMint: accounts.newItemMint,
+        newItemMetadata: await getMetadata(accounts.newItemMint),
+        newItemEdition: await getEdition(accounts.newItemMint),
+        itemEscrow,
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              accounts.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        newItemTokenHolder:
+          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
+        payer: this.program.provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+      remainingAccounts:
+        remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
   }
 
   async createItemClass(

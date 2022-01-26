@@ -76,6 +76,59 @@ programCommand("create_item_class")
     );
   });
 
+programCommand("create_item_escrow")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.createItemEscrow(
+      {
+        craftBump: null,
+        classIndex: new BN(config.classIndex || 0),
+        index: new BN(config.index || 0),
+        componentScope: config.componentScope || "none",
+        buildPermissivenessToUse: config.buildPermissivenessToUse,
+        namespaceIndex: config.namespaceIndex
+          ? new BN(config.namespaceIndex)
+          : null,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amountToMake: new BN(config.amountToMake || 1),
+      },
+      {
+        newItemMint: new web3.PublicKey(config.newItemMint),
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : null,
+        newItemTokenHolder: config.newItemTokenHolder
+          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          : null,
+        parentMint: config.parent
+          ? new web3.PublicKey(config.parent.mint)
+          : null,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        metadataUpdateAuthority:
+          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+      },
+      {
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+      }
+    );
+  });
+
 programCommand("show_item_class")
   .option("-cp, --config-path <string>", "JSON file with item class settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
@@ -132,6 +185,10 @@ programCommand("show_item_class")
 
     log.info("--> Item Class Settings:");
 
+    log.info(
+      "----> Can use free build:",
+      settings.freeBuild ? settings.freeBuild.boolean : "Not Set"
+    );
     log.info(
       "----> Children must be editions:",
       settings.childrenMustBeEditions

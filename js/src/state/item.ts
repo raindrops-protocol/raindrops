@@ -14,6 +14,7 @@ import {
 extendBorsh();
 
 export const decodeItemClass = (buffer: Buffer): ItemClass => {
+  console.log("buffer", new Uint8Array(buffer));
   const metadata = deserializeUnchecked(
     ITEM_SCHEMA,
     ItemClass,
@@ -23,6 +24,7 @@ export const decodeItemClass = (buffer: Buffer): ItemClass => {
 };
 
 export class ItemClassSettings {
+  freeBuild: null | InheritedBoolean;
   childrenMustBeEditions: null | InheritedBoolean;
   builderMustBeHolder: null | InheritedBoolean;
   updatePermissiveness: null | Permissiveness[];
@@ -36,6 +38,7 @@ export class ItemClassSettings {
     | ChildUpdatePropagationPermissiveness[];
 
   constructor(args: {
+    freeBuild: null | InheritedBoolean;
     childrenMustBeEditions: null | InheritedBoolean;
     builderMustBeHolder: null | InheritedBoolean;
     updatePermissiveness: null | Permissiveness[];
@@ -48,6 +51,7 @@ export class ItemClassSettings {
       | null
       | ChildUpdatePropagationPermissiveness[];
   }) {
+    this.freeBuild = args.freeBuild;
     this.childrenMustBeEditions = args.childrenMustBeEditions;
     this.builderMustBeHolder = args.builderMustBeHolder;
     this.updatePermissiveness = args.updatePermissiveness;
@@ -304,6 +308,7 @@ export enum ChildUpdatePropagationPermissivenessType {
   BuilderMustBeHolderPermissiveness,
   StakingPermissiveness,
   Namespaces,
+  FreeBuildPermissiveness,
 }
 
 export const ITEM_SCHEMA = new Map<any, any>([
@@ -487,6 +492,7 @@ export const ITEM_SCHEMA = new Map<any, any>([
     {
       kind: "struct",
       fields: [
+        ["freeBuild", { kind: "option", type: InheritedBoolean }],
         ["childrenMustBeEditions", { kind: "option", type: InheritedBoolean }],
         ["builderMustBeHolder", { kind: "option", type: InheritedBoolean }],
         ["updatePermissiveness", { kind: "option", type: [Permissiveness] }],

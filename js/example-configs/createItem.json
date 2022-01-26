@@ -1,0 +1,11 @@
+{
+  "newItemMint": "sYndwCoAHnfUZAn1EW9ujYtyu2QSja2jVBrS4g84Y82",
+  "itemClassMint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "amountToMake": 1,
+  "namespaceIndex": null,
+  "buildPermissivenessToUse": { "updateAuthority": true },
+  "classIndex": 5,
+  "componentScope": null,
+  "parent": null,
+  "index": 0
+}

@@ -2,6 +2,13 @@ import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
 import { Program, web3, BN } from "@project-serum/anchor";
 import { getAtaForMint, getItemPDA, getMetadata } from "../utils/pda";
 
+export interface ObjectWrapper<T> {
+  program: Program;
+  key: web3.PublicKey;
+  object: T;
+  data: Buffer;
+}
+
 export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
   permissivenessToUse: AnchorPermissivenessType | null;
   tokenMint: web3.PublicKey;

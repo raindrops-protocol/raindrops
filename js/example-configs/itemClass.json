@@ -1,8 +1,12 @@
 {
   "data": {
     "settings": {
-      "childrenMustBeEditions": false,
-      "builderMustBeHolder": false,
+      "freeBuild": {
+        "inherited": { "notInherited": true },
+        "boolean": true
+      },
+      "childrenMustBeEditions": null,
+      "builderMustBeHolder": null,
       "updatePermissiveness": null,
       "buildPermissiveness": null,
       "stakingWarmUpDuration": null,
@@ -22,8 +26,8 @@
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
-  "mint": "CgBASFsf6N2rFi9N9Nbivvwo3eF7fjwUZM1WStL6imka",
-  "index": 0,
+  "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "index": 5,
   "parent": null,
   "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,

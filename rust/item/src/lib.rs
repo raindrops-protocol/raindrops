@@ -270,6 +270,7 @@ pub mod item {
             mut item_class_data,
             ..
         } = args;
+
         let mut item_class = &mut ctx.accounts.item_class;
         let item_class_info = item_class.to_account_info();
         let item_mint = &ctx.accounts.item_mint;
@@ -355,7 +356,6 @@ pub mod item {
         }
         msg!("5");
 
-        write_data(item_class, &item_class_data)?;
         item_class.bump = item_class_bump;
         if store_metadata_fields {
             item_class.metadata = Some(metadata.key());
@@ -385,6 +385,8 @@ pub mod item {
             item_class.namespaces = None
         }
         msg!("7");
+        write_data(item_class, &item_class_data)?;
+
         Ok(())
     }
 
@@ -546,6 +548,7 @@ pub mod item {
         ctx: Context<'a, 'b, 'c, 'info, CreateItemEscrow<'info>>,
         args: CreateItemEscrowArgs,
     ) -> ProgramResult {
+        msg!("0");
         let item_class = &ctx.accounts.item_class;
         let item_class_metadata = &ctx.accounts.item_class_metadata;
         let item_escrow = &mut ctx.accounts.item_escrow;
@@ -556,8 +559,9 @@ pub mod item {
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
         let ed = new_item_edition.to_account_info();
         let item_class_info = item_class.to_account_info();
+        msg!("1");
         let item_class_data = item_class.item_class_data(&item_class_info.data.borrow())?;
-
+        msg!("2");
         let CreateItemEscrowArgs {
             craft_bump,
             class_index,
@@ -572,7 +576,7 @@ pub mod item {
         if amount_to_make == 0 {
             return Err(ErrorCode::CannotMakeZero.into());
         }
-
+        msg!("3");
         assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
 
         assert_is_ata(
@@ -580,13 +584,14 @@ pub mod item {
             &new_item_token_holder.key(),
             &new_item_mint.key(),
         )?;
-
+        msg!("4");
         let edition_option = if new_item_edition.data_len() > 0 {
             // we know already new item token holder is above 0, this is edition, so supply = 1.
             // amount to make better = 1.
             if amount_to_make != 1 || new_item_token.amount != 1 {
                 return Err(ErrorCode::InsufficientBalance.into());
             }
+            msg!("4.1");
             if let Some(c) = item_class_data.settings.children_must_be_editions {
                 if c.boolean {
                     let mut borrowed_data = ed.data.borrow_mut();
@@ -626,7 +631,7 @@ pub mod item {
             }
             None
         };
-
+        msg!("5");
         assert_metadata_valid(new_item_metadata, edition_option, &new_item_mint.key())?;
 
         item_escrow.bump = craft_bump;
@@ -640,7 +645,7 @@ pub mod item {
                 }]);
             }
         }
-
+        msg!("6");
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item_class.to_account_info(),
@@ -650,6 +655,8 @@ pub mod item {
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
+        msg!("7");
+
         Ok(())
     }
 
@@ -1615,7 +1622,7 @@ pub struct CreateItemEscrow<'info> {
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.craft_bump, space=if args.namespace_index.is_none() { 18 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 18} , payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.craft_bump, space=if args.namespace_index.is_none() { 35 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 35} , payer=payer)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
@@ -1957,13 +1964,13 @@ pub struct Component {
     inherited: InheritanceState,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
 pub struct Permissiveness {
     inherited: InheritanceState,
     permissiveness_type: PermissivenessType,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
 pub enum PermissivenessType {
     TokenHolder,
     ParentTokenHolder,
@@ -1971,14 +1978,14 @@ pub enum PermissivenessType {
     Anybody,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ChildUpdatePropagationPermissiveness {
     overridable: bool,
     inherited: InheritanceState,
     child_update_propagation_permissiveness_type: ChildUpdatePropagationPermissivenessType,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum ChildUpdatePropagationPermissivenessType {
     Usages,
     Components,
@@ -1992,7 +1999,7 @@ pub enum ChildUpdatePropagationPermissivenessType {
     FreeBuildPermissiveness,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,
@@ -2084,13 +2091,13 @@ pub struct Root {
     root: [u8; 32],
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Boolean {
     inherited: InheritanceState,
     boolean: bool,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ItemClassSettings {
     free_build: Option<Boolean>,
     children_must_be_editions: Option<Boolean>,
