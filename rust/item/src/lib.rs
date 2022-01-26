@@ -938,6 +938,7 @@ pub mod item {
             build_permissiveness_to_use,
             end_node_proof,
             total_steps,
+            component_scope,
             ..
         } = args;
 
@@ -961,25 +962,45 @@ pub mod item {
         require!(!item_escrow.build_began.is_some(), BuildPhaseAlreadyStarted);
 
         if let Some(components) = &item_class_data.config.components {
-            require!(
-                components.len() == item_escrow.step as usize,
-                StillMissingComponents
-            );
+            let mut counter = 0;
+            for c in components {
+                if c.component_scope == component_scope {
+                    counter += 1;
+                }
+            }
+
+            if counter == 0 {
+                if let Some(c) = item_class_data.settings.free_build {
+                    if !c.boolean {
+                        return Err(ErrorCode::MustUseRealScope.into());
+                    }
+                }
+            } else {
+                require!(counter == item_escrow.step as usize, StillMissingComponents);
+            }
         } else if let Some(component_root) = &item_class_data.config.component_root {
             if let Some(en_proof) = end_node_proof {
                 if let Some(total_s) = total_steps {
-                    // Verify the merkle proof.
-                    let node = anchor_lang::solana_program::keccak::hashv(&[
-                        &[0x00],
-                        &total_s.to_le_bytes(),
-                    ]);
-                    // Proof that the component root has as a leaf the number of steps,
-                    // and that the one you sent up matches that
-                    require!(
-                        verify(&en_proof, &component_root.root, node.0),
-                        InvalidProof
-                    );
-                    require!(total_s == item_escrow.step, StillMissingComponents);
+                    if total_s == 0 {
+                        if let Some(c) = item_class_data.settings.free_build {
+                            if !c.boolean {
+                                return Err(ErrorCode::MustUseRealScope.into());
+                            }
+                        }
+                    } else {
+                        // Verify the merkle proof.
+                        let node = anchor_lang::solana_program::keccak::hashv(&[
+                            &[0x00],
+                            &total_s.to_le_bytes(),
+                        ]);
+                        // Proof that the component root has as a leaf the number of steps,
+                        // and that the one you sent up matches that
+                        require!(
+                            verify(&en_proof, &component_root.root, node.0),
+                            InvalidProof
+                        );
+                        require!(total_s == item_escrow.step, StillMissingComponents);
+                    }
                 } else {
                     return Err(ErrorCode::MissingMerkleInfo.into());
                 }
@@ -2326,4 +2347,6 @@ pub enum ErrorCode {
     WarmupNotFinished,
     #[msg("Must be a child edition")]
     MustBeChild,
+    #[msg("Must use real scope to build")]
+    MustUseRealScope,
 }
