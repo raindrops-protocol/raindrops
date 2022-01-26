@@ -118,6 +118,13 @@ pub fn get_class_write_offsets(
     let mut end_ctr = ctr;
 
     // Item Class Settings
+    // free_build
+    if data[end_ctr] == 1 {
+        end_ctr += 3
+    } else {
+        end_ctr += 1;
+    }
+
     // children_must_be_editions
     if data[end_ctr] == 1 {
         end_ctr += 3
@@ -468,6 +475,30 @@ pub fn assert_derivation(
         return Err(ErrorCode::DerivedKeyInvalid.into());
     }
     Ok(bump)
+}
+
+pub fn assert_derivation_by_key(
+    program_id: &Pubkey,
+    account: &Pubkey,
+    path: &[&[u8]],
+) -> Result<u8, ProgramError> {
+    let (key, bump) = Pubkey::find_program_address(&path, program_id);
+    if key != *account {
+        return Err(ErrorCode::DerivedKeyInvalid.into());
+    }
+    Ok(bump)
+}
+
+pub fn assert_derivation_with_bump(
+    program_id: &Pubkey,
+    account: &AccountInfo,
+    path: &[&[u8]],
+) -> ProgramResult {
+    let key = Pubkey::create_program_address(&path, program_id)?;
+    if key != *account.key {
+        return Err(ErrorCode::DerivedKeyInvalid.into());
+    }
+    Ok(())
 }
 
 /// Create account almost from scratch, lifted from
@@ -925,6 +956,13 @@ pub fn update_item_class_with_inherited_information(
                                 child_items: &item_class_data.settings.child_update_propagation_permissiveness,
                                 overridable: update_perm.overridable,
                             });
+                    }
+                    ChildUpdatePropagationPermissivenessType::FreeBuildPermissiveness => {
+                        item_class_data.settings.free_build = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.settings.free_build,
+                            child: &item_class_data.settings.free_build,
+                            overridable: update_perm.overridable,
+                        });
                     }
                     ChildUpdatePropagationPermissivenessType::ChildrenMustBeEditionsPermissiveness => {
                         item_class_data.settings.children_must_be_editions = propagate_parent(PropagateParentArgs {

@@ -2,7 +2,7 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal,
+        assert_builder_must_be_holder_check, assert_derivation, assert_is_ata, assert_keys_equal,
         assert_metadata_valid, assert_mint_authority_matches_mint, assert_permissiveness_access,
         assert_valid_item_settings_for_edition_type, close_token_account,
         create_or_allocate_account_raw, get_item_usage,
@@ -19,6 +19,7 @@ use {
         AnchorDeserialize, AnchorSerialize,
     },
     anchor_spl::token::{Mint, Token, TokenAccount},
+    arrayref::array_ref,
     std::str::FromStr,
 };
 anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
@@ -546,6 +547,7 @@ pub mod item {
         args: CreateItemEscrowArgs,
     ) -> ProgramResult {
         let item_class = &ctx.accounts.item_class;
+        let item_class_metadata = &ctx.accounts.item_class_metadata;
         let item_escrow = &mut ctx.accounts.item_escrow;
         let new_item_mint = &ctx.accounts.new_item_mint;
         let new_item_metadata = &ctx.accounts.new_item_metadata;
@@ -562,6 +564,7 @@ pub mod item {
             amount_to_make,
             namespace_index,
             item_class_mint,
+
             build_permissiveness_to_use,
             ..
         } = args;
@@ -583,6 +586,23 @@ pub mod item {
             // amount to make better = 1.
             if amount_to_make != 1 || new_item_token.amount != 1 {
                 return Err(ErrorCode::InsufficientBalance.into());
+            }
+            if let Some(c) = item_class_data.settings.children_must_be_editions {
+                if c.boolean {
+                    let mut borrowed_data = ed.data.borrow_mut();
+                    let data: &mut [u8] = *borrowed_data;
+                    require!(
+                        data[0] == metaplex_token_metadata::state::Key::EditionV1 as u8,
+                        MustBeChild
+                    );
+                    let parent = array_ref![data, 1, 32];
+                    let parent_key = Pubkey::new_from_array(*parent);
+
+                    require!(parent_key == item_class_metadata.key(), MustBeChild);
+
+                    // Make sure they arent lying about the metadata
+                    assert_metadata_valid(item_class_metadata, None, &item_class_mint)?;
+                }
             }
             Some(&ed)
         } else {
@@ -1570,6 +1590,7 @@ pub struct CreateItemClass<'info> {
 pub struct CreateItemEscrow<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Box<Account<'info, ItemClass>>,
+    item_class_metadata: UncheckedAccount<'info>,
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
@@ -1828,7 +1849,7 @@ pub struct ItemUsage {
     // Note: Only checks against parent class of item,
     // not all the way up the class tree.
     // Must be enforced by enclosing contract.
-    do_not_pair_with_self: Boolean,
+    do_not_pair_with_self: bool,
     // List of class keys this item cannot be paired with
     // Must be enforced by enclosing contract (usually Player)
     dnp: Option<Vec<DNPItem>>,
@@ -1947,6 +1968,7 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
+    FreeBuildPermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
@@ -1974,6 +1996,7 @@ pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 1 + // metadata
 1 + // edition
 4 + // number of namespaces
+1 + // free build
 1 + // children must be editions
 1 + // build permissiveness bool
 1 + // staking permissiveness bool
@@ -1982,7 +2005,7 @@ pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 1 + // child update propagation opt
 1 + // parent
 1 + // number of usages
-1 +  // number of components
+1 + // number of components
 4 + // roots
 2 + // staking durations
 8 + // existing children
@@ -2048,6 +2071,7 @@ pub struct Boolean {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemClassSettings {
+    free_build: Option<Boolean>,
     children_must_be_editions: Option<Boolean>,
     // What is this? Well, when you are checking build_permissiveness
     // to build an item, the permissiveness is RELATIVE TO THE ITEM CLASS. So TokenHolder
@@ -2300,4 +2324,6 @@ pub enum ErrorCode {
     ItemActivationNotValidYet,
     #[msg("Warmup not finished")]
     WarmupNotFinished,
+    #[msg("Must be a child edition")]
+    MustBeChild,
 }
