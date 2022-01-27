@@ -2,8 +2,8 @@ import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
 import { Program, web3, BN } from "@project-serum/anchor";
 import { getAtaForMint, getItemPDA, getMetadata } from "../utils/pda";
 
-export interface ObjectWrapper<T> {
-  program: Program;
+export interface ObjectWrapper<T, V> {
+  program: V;
   key: web3.PublicKey;
   object: T;
   data: Buffer;

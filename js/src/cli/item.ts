@@ -15,7 +15,13 @@ import {
 } from "../state/item";
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
-import { getEdition, getItemPDA, getMetadata } from "../utils/pda";
+import {
+  getAtaForMint,
+  getEdition,
+  getItemEscrow,
+  getItemPDA,
+  getMetadata,
+} from "../utils/pda";
 import { InheritanceState, PermissivenessType } from "../state/common";
 
 programCommand("create_item_class")
@@ -129,6 +135,113 @@ programCommand("create_item_escrow")
     );
   });
 
+programCommand("start_item_escrow_build_phase")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.startItemEscrowBuildPhase(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        index: new BN(config.index || 0),
+        componentScope: config.componentScope || "none",
+        buildPermissivenessToUse: config.buildPermissivenessToUse,
+        newItemMint: new web3.PublicKey(config.newItemMint),
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amountToMake: new BN(config.amountToMake || 1),
+        originator: config.originator || walletKeyPair.publicKey,
+        totalSteps: config.merkleInfo ? config.merkleInfo.totalSteps : null,
+        endNodeProof: config.merkleInfo
+          ? new web3.PublicKey(config.merkleInfo.endNodeProof)
+          : null,
+      },
+      {
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : null,
+        newItemTokenHolder: config.newItemTokenHolder
+          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          : null,
+        parentMint: config.parent
+          ? new web3.PublicKey(config.parent.mint)
+          : null,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        metadataUpdateAuthority:
+          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+      },
+      {
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+      }
+    );
+  });
+
+programCommand("show_item_build")
+  .option("-cp, --config-path <string>", "JSON file with item class settings")
+
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    const configString = fs.readFileSync(configPath);
+    //@ts-ignore
+    const config = JSON.parse(configString);
+    const itemClassMint = new web3.PublicKey(config.itemClassMint);
+    const classIndex = new BN(config.classIndex);
+    const newItemMint = new web3.PublicKey(config.newItemMint);
+    const index = new BN(config.index);
+
+    const itemEscrowKey = (
+      await getItemEscrow({
+        itemClassMint,
+        classIndex,
+        index,
+        newItemMint,
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : (
+              await getAtaForMint(newItemMint, walletKeyPair.publicKey)
+            )[0],
+        payer: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
+        amountToMake: new BN(config.amountToMake),
+        componentScope: config.componentScope || "none",
+      })
+    )[0];
+
+    const itemEscrow = await anchorProgram.program.account.itemEscrow.fetch(
+      itemEscrowKey
+    );
+    log.setLevel("info");
+
+    log.info("Build status:");
+    log.info("Deactivated:", itemEscrow.deactivated);
+    log.info("Build Step:", itemEscrow.step.toNumber());
+    log.info("Time to build:", itemEscrow.timeToBuild);
+    log.info(
+      "Build Began:",
+      itemEscrow.buildBegan
+        ? new Date(itemEscrow.buildBegan.toNumber() * 1000)
+        : "Still assembling components"
+    );
+  });
+
 programCommand("show_item_class")
   .option("-cp, --config-path <string>", "JSON file with item class settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
@@ -159,6 +272,8 @@ programCommand("show_item_class")
       actualMint,
       actualIndex
     );
+
+    log.setLevel("info");
 
     log.info("Item Class", itemClass.key.toBase58());
     log.info(

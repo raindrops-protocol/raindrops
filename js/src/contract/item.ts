@@ -20,14 +20,15 @@ import {
 import log from "loglevel";
 import { getCluster } from "../utils/connection";
 
-export class ItemClassWrapper implements ObjectWrapper<ItemClass> {
-  program: Program;
+export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
+  program: ItemProgram;
   key: web3.PublicKey;
   object: ItemClass;
   data: Buffer;
+  classIndex: number;
 
   constructor(args: {
-    program: Program;
+    program: ItemProgram;
     key: web3.PublicKey;
     object: ItemClass;
     data: Buffer;
@@ -62,6 +63,19 @@ export interface CreateItemEscrowArgs {
   itemClassMint: web3.PublicKey;
 }
 
+export interface StartItemEscrowBuildPhaseArgs {
+  classIndex: BN;
+  index: BN;
+  componentScope: String;
+  amountToMake: BN;
+  itemClassMint: web3.PublicKey;
+  originator: web3.PublicKey;
+  newItemMint: web3.PublicKey;
+  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  endNodeProof: web3.PublicKey | null;
+  totalSteps: BN | null;
+}
+
 export interface UpdateItemClassArgs {
   classIndex: BN;
   updatePermissivenessToUse: null | AnchorPermissivenessType;
@@ -93,6 +107,14 @@ export interface UpdateItemClassAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface StartItemEscrowBuildPhaseAccounts {
+  itemClassMint: web3.PublicKey;
+  newItemToken: web3.PublicKey | null;
+  newItemTokenHolder: web3.PublicKey | null;
+  parentMint: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
 export interface CreateItemClassAdditionalArgs {
   parentOfParentClassIndex: BN | null;
 }
@@ -102,6 +124,10 @@ export interface UpdateItemClassAdditionalArgs {
 }
 
 export interface CreateItemEscrowAdditionalArgs {
+  parentClassIndex: BN | null;
+}
+
+export interface StartItemEscrowBuildPhaseAdditionalArgs {
   parentClassIndex: BN | null;
 }
 
@@ -129,7 +155,7 @@ export class ItemProgram {
     ic.program = this.program;
 
     return new ItemClassWrapper({
-      program: this.program,
+      program: this,
       key: itemClass,
       data: itemClassObj.data,
       object: ic,
@@ -166,6 +192,7 @@ export class ItemProgram {
     const [itemEscrow, itemEscrowBump] = await getItemEscrow({
       itemClassMint: accounts.itemClassMint,
       index: args.index,
+      classIndex: args.classIndex,
       newItemMint: accounts.newItemMint,
       newItemToken:
         accounts.newItemToken ||
@@ -203,6 +230,74 @@ export class ItemProgram {
         payer: this.program.provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+      remainingAccounts:
+        remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
+  }
+
+  async startItemEscrowBuildPhase(
+    args: StartItemEscrowBuildPhaseArgs,
+    accounts: StartItemEscrowBuildPhaseAccounts,
+    additionalArgs: StartItemEscrowBuildPhaseAdditionalArgs
+  ) {
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.buildPermissivenessToUse,
+        tokenMint: accounts.itemClassMint,
+        parentMint: accounts.parentMint,
+        parentIndex: additionalArgs.parentClassIndex,
+        parent: accounts.parentMint
+          ? (
+              await getItemPDA(
+                accounts.parentMint,
+                additionalArgs.parentClassIndex
+              )
+            )[0]
+          : null,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program,
+      });
+
+    const itemClassKey = (
+      await getItemPDA(accounts.itemClassMint, args.classIndex)
+    )[0];
+
+    const itemEscrow = (
+      await getItemEscrow({
+        itemClassMint: accounts.itemClassMint,
+        classIndex: args.classIndex,
+        index: args.index,
+        newItemMint: args.newItemMint,
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              args.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        payer: this.program.provider.wallet.publicKey,
+        amountToMake: args.amountToMake,
+        componentScope: args.componentScope,
+      })
+    )[0];
+
+    await this.program.rpc.startItemEscrowBuildPhase(args, {
+      accounts: {
+        itemClass: itemClassKey,
+        itemEscrow,
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              args.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        newItemTokenHolder:
+          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
       },
       remainingAccounts:
         remainingAccounts.length > 0 ? remainingAccounts : undefined,

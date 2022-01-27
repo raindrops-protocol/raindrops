@@ -5,7 +5,10 @@
   "namespaceIndex": null,
   "buildPermissivenessToUse": { "updateAuthority": true },
   "classIndex": 5,
+  "newItemIndex": 0,
   "componentScope": null,
   "parent": null,
-  "index": 0
+  "index": 0,
+  "originator": null,
+  "merkleInfo": null
 }

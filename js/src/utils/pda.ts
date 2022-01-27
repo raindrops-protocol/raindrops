@@ -35,11 +35,13 @@ export const getItemEscrow = async (args: {
   amountToMake: BN;
   componentScope: String;
   index: BN;
+  classIndex: BN;
 }): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
     [
       Buffer.from(ITEM_PREFIX),
       args.itemClassMint.toBuffer(),
+      args.classIndex.toBuffer("le", 8),
       args.payer.toBuffer(),
       args.newItemMint.toBuffer(),
       args.newItemToken.toBuffer(),
