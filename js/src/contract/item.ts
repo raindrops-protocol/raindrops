@@ -2,7 +2,7 @@ import { web3, Program, BN, Provider, Wallet } from "@project-serum/anchor";
 import { SystemProgram } from "@solana/web3.js";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
-import { ITEM_ID } from "../constants/programIds";
+import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
 import { decodeItemClass, ItemClass, ItemClassData } from "../state/item";
 import {
@@ -76,6 +76,21 @@ export interface StartItemEscrowBuildPhaseArgs {
   totalSteps: BN | null;
 }
 
+export interface CompleteItemEscrowBuildPhaseArgs {
+  classIndex: BN;
+  newItemBump: number;
+  newItemIndex: BN;
+  index: BN;
+  componentScope: String;
+  amountToMake: BN;
+  space: BN;
+  itemClassMint: web3.PublicKey;
+  originator: web3.PublicKey;
+  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  storeMint: boolean;
+  storeMetadataFields: boolean;
+}
+
 export interface UpdateItemClassArgs {
   classIndex: BN;
   updatePermissivenessToUse: null | AnchorPermissivenessType;
@@ -92,6 +107,15 @@ export interface CreateItemClassAccounts {
 }
 
 export interface CreateItemEscrowAccounts {
+  itemClassMint: web3.PublicKey;
+  newItemMint: web3.PublicKey;
+  newItemToken: web3.PublicKey | null;
+  newItemTokenHolder: web3.PublicKey | null;
+  parentMint: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
+export interface CompleteItemEscrowBuildPhaseAccounts {
   itemClassMint: web3.PublicKey;
   newItemMint: web3.PublicKey;
   newItemToken: web3.PublicKey | null;
@@ -128,6 +152,9 @@ export interface CreateItemEscrowAdditionalArgs {
 }
 
 export interface StartItemEscrowBuildPhaseAdditionalArgs {
+  parentClassIndex: BN | null;
+}
+export interface CompleteItemEscrowBuildPhaseAdditionalArgs {
   parentClassIndex: BN | null;
 }
 
@@ -230,6 +257,89 @@ export class ItemProgram {
         payer: this.program.provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+      remainingAccounts:
+        remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
+  }
+
+  async completeItemEscrowBuildPhase(
+    args: CompleteItemEscrowBuildPhaseArgs,
+    accounts: CompleteItemEscrowBuildPhaseAccounts,
+    additionalArgs: CompleteItemEscrowBuildPhaseAdditionalArgs
+  ) {
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.buildPermissivenessToUse,
+        tokenMint: accounts.itemClassMint,
+        parentMint: accounts.parentMint,
+        parentIndex: additionalArgs.parentClassIndex,
+        parent: accounts.parentMint
+          ? (
+              await getItemPDA(
+                accounts.parentMint,
+                additionalArgs.parentClassIndex
+              )
+            )[0]
+          : null,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program,
+      });
+
+    const itemClassKey = (
+      await getItemPDA(accounts.itemClassMint, args.classIndex)
+    )[0];
+
+    const [newItem, newItemBump] = await getItemPDA(
+      accounts.newItemMint,
+      args.newItemIndex
+    );
+
+    args.newItemBump = newItemBump;
+
+    const itemEscrow = (
+      await getItemEscrow({
+        itemClassMint: accounts.itemClassMint,
+        classIndex: args.classIndex,
+        index: args.index,
+        newItemMint: accounts.newItemMint,
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              accounts.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        payer: this.program.provider.wallet.publicKey,
+        amountToMake: args.amountToMake,
+        componentScope: args.componentScope,
+      })
+    )[0];
+
+    await this.program.rpc.completeItemEscrowBuildPhase(args, {
+      accounts: {
+        itemClass: itemClassKey,
+        itemEscrow,
+        newItem,
+        newItemMint: accounts.newItemMint,
+        newItemMetadata: await getMetadata(accounts.newItemMint),
+        newItemEdition: await getEdition(accounts.newItemMint),
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              accounts.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        newItemTokenHolder:
+          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
+        payer: this.program.provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
       },
       remainingAccounts:
         remainingAccounts.length > 0 ? remainingAccounts : undefined,

@@ -119,6 +119,7 @@ pub struct StartItemEscrowBuildPhaseArgs {
 pub struct CompleteItemEscrowBuildPhaseArgs {
     new_item_bump: u8,
     class_index: u64,
+    new_item_index: u64,
     index: u64,
     component_scope: String,
     amount_to_make: u64,
@@ -1739,7 +1740,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     // perhaps do this via optional additional accounts to save space.
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Box<Account<'info, ItemClass>>,
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), new_item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=args.new_item_bump, payer=payer, space=args.space as usize, constraint= args.space as usize >= MIN_ITEM_SIZE)]
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), new_item_mint.key().as_ref(), &args.new_item_index.to_le_bytes()], bump=args.new_item_bump, payer=payer, space=args.space as usize, constraint= args.space as usize >= MIN_ITEM_SIZE)]
     new_item: Box<Account<'info, Item>>,
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,

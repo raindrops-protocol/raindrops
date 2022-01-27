@@ -189,6 +189,61 @@ programCommand("start_item_escrow_build_phase")
     );
   });
 
+programCommand("complete_item_escrow_build_phase")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.completeItemEscrowBuildPhase(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        newItemIndex: new BN(config.newItemIndex || 0),
+        index: new BN(config.index || 0),
+        componentScope: config.componentScope || "none",
+        buildPermissivenessToUse: config.buildPermissivenessToUse,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amountToMake: new BN(config.amountToMake || 1),
+        originator: config.originator || walletKeyPair.publicKey,
+        space: new BN(config.totalSpaceBytes),
+        storeMetadataFields: !!config.storeMetadataFields,
+        storeMint: !!config.storeMint,
+        newItemBump: null,
+      },
+      {
+        newItemMint: new web3.PublicKey(config.newItemMint),
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : null,
+        newItemTokenHolder: config.newItemTokenHolder
+          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          : null,
+        parentMint: config.parent
+          ? new web3.PublicKey(config.parent.mint)
+          : null,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        metadataUpdateAuthority:
+          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+      },
+      {
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+      }
+    );
+  });
+
 programCommand("show_item_build")
   .option("-cp, --config-path <string>", "JSON file with item class settings")
 

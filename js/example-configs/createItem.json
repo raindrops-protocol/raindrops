@@ -10,5 +10,8 @@
   "parent": null,
   "index": 0,
   "originator": null,
-  "merkleInfo": null
+  "merkleInfo": null,
+  "totalSpaceBytes": 200,
+  "storeMetadataFields": false,
+  "storeMint": false
 }
