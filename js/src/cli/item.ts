@@ -217,7 +217,9 @@ programCommand("complete_item_escrow_build_phase")
         buildPermissivenessToUse: config.buildPermissivenessToUse,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         amountToMake: new BN(config.amountToMake || 1),
-        originator: config.originator || walletKeyPair.publicKey,
+        originator: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
         space: new BN(config.totalSpaceBytes),
         storeMetadataFields: !!config.storeMetadataFields,
         storeMint: !!config.storeMint,
@@ -240,6 +242,45 @@ programCommand("complete_item_escrow_build_phase")
       },
       {
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+      }
+    );
+  });
+
+programCommand("drain_item_escrow")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.drainItemEscrow(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        index: new BN(config.index || 0),
+        componentScope: config.componentScope || "none",
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amountToMake: new BN(config.amountToMake || 1),
+        newItemMint: new web3.PublicKey(config.newItemMint),
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : null,
+      },
+      {
+        originator: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
       }
     );
   });

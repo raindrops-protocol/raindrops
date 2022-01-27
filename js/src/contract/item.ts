@@ -91,6 +91,16 @@ export interface CompleteItemEscrowBuildPhaseArgs {
   storeMetadataFields: boolean;
 }
 
+export interface DrainItemEscrowArgs {
+  classIndex: BN;
+  index: BN;
+  componentScope: String;
+  amountToMake: BN;
+  itemClassMint: web3.PublicKey;
+  newItemMint: web3.PublicKey;
+  newItemToken: web3.PublicKey;
+}
+
 export interface UpdateItemClassArgs {
   classIndex: BN;
   updatePermissivenessToUse: null | AnchorPermissivenessType;
@@ -122,6 +132,10 @@ export interface CompleteItemEscrowBuildPhaseAccounts {
   newItemTokenHolder: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+}
+
+export interface DrainItemEscrowAccounts {
+  originator: web3.PublicKey | null;
 }
 
 export interface UpdateItemClassAccounts {
@@ -157,6 +171,8 @@ export interface StartItemEscrowBuildPhaseAdditionalArgs {
 export interface CompleteItemEscrowBuildPhaseAdditionalArgs {
   parentClassIndex: BN | null;
 }
+
+export interface DrainItemEscrowAdditionalArgs {}
 
 export class ItemProgram {
   id: web3.PublicKey;
@@ -343,6 +359,45 @@ export class ItemProgram {
       },
       remainingAccounts:
         remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
+  }
+
+  async drainItemEscrow(
+    args: DrainItemEscrowArgs,
+    accounts: DrainItemEscrowAccounts,
+    _additionalArgs: DrainItemEscrowAdditionalArgs = {}
+  ) {
+    const itemClassKey = (
+      await getItemPDA(args.itemClassMint, args.classIndex)
+    )[0];
+
+    if (!args.newItemToken) {
+      args.newItemToken = (
+        await getAtaForMint(
+          args.newItemMint,
+          this.program.provider.wallet.publicKey
+        )
+      )[0];
+    }
+
+    const itemEscrow = (
+      await getItemEscrow({
+        itemClassMint: args.itemClassMint,
+        classIndex: args.classIndex,
+        index: args.index,
+        newItemMint: args.newItemMint,
+        newItemToken: args.newItemToken,
+        payer: this.program.provider.wallet.publicKey,
+        amountToMake: args.amountToMake,
+        componentScope: args.componentScope,
+      })
+    )[0];
+
+    await this.program.rpc.drainItemEscrow(args, {
+      accounts: {
+        itemEscrow,
+        originator: accounts.originator,
+      },
     });
   }
 
