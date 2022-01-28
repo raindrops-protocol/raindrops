@@ -45,6 +45,15 @@ programCommand("create_item_class")
     //@ts-ignore
     const config = JSON.parse(configString);
 
+    if (config.data.config.components)
+      config.data.config.components = config.data.config.components.map(
+        (c) => ({
+          ...c,
+          mint: new web3.PublicKey(c.mint),
+          amount: new BN(c.amount),
+        })
+      );
+
     await anchorProgram.createItemClass(
       {
         itemClassBump: null,
@@ -802,6 +811,15 @@ programCommand("update_item_class")
 
     //@ts-ignore
     const config = JSON.parse(configString);
+
+    if (config.data.config.components)
+      config.data.config.components = config.data.config.components.map(
+        (c) => ({
+          ...c,
+          mint: new web3.PublicKey(c.mint),
+          amount: new BN(c.amount),
+        })
+      );
 
     await anchorProgram.updateItemClass(
       {

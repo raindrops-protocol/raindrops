@@ -20,7 +20,17 @@
       "usageStateRoot": null,
       "componentRoot": null,
       "usages": null,
-      "components": null
+      "components": [
+        {
+          "mint": "6dwpqSumAiXWWWXSLAcscauNrqijBQdR8DDQgTuBs8v4",
+          "amount": 1,
+          "timeToBuild": null,
+          "componentScope": "set1",
+          "useUsageIndex": 0,
+          "condition": { "presence": true },
+          "inherited": { "notInherited": true }
+        }
+      ]
     }
   },
   "metadataUpdateAuthority": null,
