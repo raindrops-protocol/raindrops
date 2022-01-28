@@ -3,6 +3,8 @@ import * as fs from "fs";
 import { program } from "commander";
 import log from "loglevel";
 import { loadWalletKey } from "../utils/file";
+import { SystemProgram } from "@solana/web3.js";
+
 import { getItemProgram } from "../contract/item";
 import {
   BasicItemEffectType,
@@ -338,6 +340,87 @@ programCommand("show_item_build")
     );
   });
 
+programCommand("show_item")
+  .option("-cp, --config-path <string>", "JSON file with item class settings")
+  .option("-m, --mint <string>", "If no json file, provide mint directly")
+  .option(
+    "-i, --index <string>",
+    "Class index. Normally is 0, defaults to 0. Allows for more than one item class def per nft."
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, mint, index } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    let actualMint: web3.PublicKey, actualIndex: BN;
+
+    if (configPath === undefined) {
+      actualMint = new web3.PublicKey(mint);
+      actualIndex = new BN(index);
+    } else {
+      const configString = fs.readFileSync(configPath);
+      //@ts-ignore
+      const config = JSON.parse(configString);
+      actualMint = new web3.PublicKey(config.mint || config.newItemMint);
+      actualIndex = new BN(config.index || config.newItemIndex);
+    }
+
+    const itemKey = (await getItemPDA(actualMint, actualIndex))[0];
+
+    const item = await anchorProgram.program.account.item.fetch(itemKey);
+    log.setLevel("info");
+    log.info("Item", itemKey.toBase58());
+    log.info(
+      "Namespaces:",
+      item.namespaces
+        ? item.namespaces.map((u) => {
+            if (!u.namespace.equals(SystemProgram.programId))
+              log.info(
+                `--> ${
+                  InheritanceState[u.inherited]
+                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+              );
+          })
+        : "Not Set"
+    );
+    log.info("Parent:", item.parent.toBase58());
+    log.info(
+      "Mint:",
+      item.mint ? item.mint.toBase58() : "Not cached on object"
+    );
+    log.info(
+      "Metadata:",
+      item.metadata ? item.metadata.toBase58() : "Not cached on object"
+    );
+    log.info(
+      "Edition:",
+      item.edition ? item.edition.toBase58() : "Not cached on object"
+    );
+    log.info("tokensStaked:", item.tokensStaked.toNumber());
+
+    log.info("Item Data:");
+    log.info(
+      "--> Usage State Root:",
+      item.data.usageStateRoot
+        ? `(${
+            InheritanceState[item.data.usageStateRoot.inherited]
+          }) ${item.data.usageStateRoot.root.toBase58()}`
+        : "Not Set"
+    );
+    log.info("--> Usage States:");
+    if (item.data.usageStates)
+      item.data.usageStates.map((u) => {
+        log.info("----> Index:", u.index);
+        log.info("----> Uses Remaining:", u.uses);
+        log.info(
+          "----> Activated At:",
+          u.activated_at
+            ? new Date(u.buildactivated_atBegan.toNumber() * 1000)
+            : "Not Active"
+        );
+      });
+  });
 programCommand("show_item_class")
   .option("-cp, --config-path <string>", "JSON file with item class settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
@@ -372,6 +455,19 @@ programCommand("show_item_class")
     log.setLevel("info");
 
     log.info("Item Class", itemClass.key.toBase58());
+    log.info(
+      "Namespaces:",
+      itemClass.object.namespaces
+        ? itemClass.object.namespaces.map((u) => {
+            if (!u.namespace.equals(SystemProgram.programId))
+              log.info(
+                `--> ${
+                  InheritanceState[u.inherited]
+                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+              );
+          })
+        : "Not Set"
+    );
     log.info(
       "Parent:",
       itemClass.object.parent ? itemClass.object.parent.toBase58() : "None"
