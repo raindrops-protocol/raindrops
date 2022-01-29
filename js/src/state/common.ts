@@ -49,6 +49,12 @@ export enum InheritanceState {
   Overridden,
 }
 
+export interface AnchorInheritanceState {
+  notInherited?: boolean;
+  inherited?: boolean;
+  overridden?: boolean;
+}
+
 export class Root {
   inherited: InheritanceState;
   root: web3.PublicKey;

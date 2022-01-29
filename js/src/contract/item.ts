@@ -3,10 +3,12 @@ import { SystemProgram } from "@solana/web3.js";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
-import { decodeItemClass, ItemClass, ItemClassData } from "../state/item";
+import { AnchorPermissivenessType } from "../state/common";
+import { decodeItemClass, ItemClass } from "../state/item";
 import {
   getAtaForMint,
+  getCraftItemCounter,
+  getCraftItemEscrow,
   getEdition,
   getItemEscrow,
   getItemPDA,
@@ -19,6 +21,8 @@ import {
 } from "./common";
 import log from "loglevel";
 import { getCluster } from "../utils/connection";
+import { Token } from "@solana/spl-token";
+import { sendTransactionWithRetry } from "../utils/transactions";
 
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
   program: ItemProgram;
@@ -61,6 +65,37 @@ export interface CreateItemEscrowArgs {
   namespaceIndex: BN | null;
   buildPermissivenessToUse: null | AnchorPermissivenessType;
   itemClassMint: web3.PublicKey;
+}
+
+export interface AddCraftItemToEscrowArgs {
+  tokenBump: number | null;
+  classIndex: BN;
+  craftItemIndex: BN;
+  craftItemCounterBump: number | null;
+  index: BN;
+  componentScope: String;
+  amountToMake: BN;
+  amountToContributeFromThisContributor: BN;
+  newItemMint: web3.PublicKey;
+  originator: web3.PublicKey;
+  namespaceIndex: BN | null;
+  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  itemClassMint: web3.PublicKey;
+  componentProof: web3.PublicKey | null;
+  // we use any bcause of the enum changes required
+  // means redefining all these interfaces for anchor
+  // too lazy
+  component: any | null;
+  craftUsageInfo: {
+    craftUsageStateProof: web3.PublicKey;
+    craftUsageState: {
+      index: number;
+      uses: BN;
+      activatedAt: BN | null;
+    };
+    craftUsageProof: web3.PublicKey;
+    craftUsage: any;
+  } | null;
 }
 
 export interface StartItemEscrowBuildPhaseArgs {
@@ -125,6 +160,15 @@ export interface CreateItemEscrowAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface AddCraftItemToEscrowAccounts {
+  itemClassMint: web3.PublicKey;
+  newItemToken: web3.PublicKey | null;
+  newItemTokenHolder: web3.PublicKey | null;
+  craftItemTokenMint: web3.PublicKey | null;
+  parentMint: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
 export interface CompleteItemEscrowBuildPhaseAccounts {
   itemClassMint: web3.PublicKey;
   newItemMint: web3.PublicKey;
@@ -169,6 +213,10 @@ export interface StartItemEscrowBuildPhaseAdditionalArgs {
   parentClassIndex: BN | null;
 }
 export interface CompleteItemEscrowBuildPhaseAdditionalArgs {
+  parentClassIndex: BN | null;
+}
+
+export interface AddCraftItemToEscrowAdditionalArgs {
   parentClassIndex: BN | null;
 }
 
@@ -360,6 +408,158 @@ export class ItemProgram {
       remainingAccounts:
         remainingAccounts.length > 0 ? remainingAccounts : undefined,
     });
+  }
+
+  async addCraftItemToEscrow(
+    args: AddCraftItemToEscrowArgs,
+    accounts: AddCraftItemToEscrowAccounts,
+    additionalArgs: AddCraftItemToEscrowAdditionalArgs
+  ) {
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.buildPermissivenessToUse,
+        tokenMint: accounts.itemClassMint,
+        parentMint: accounts.parentMint,
+        parentIndex: additionalArgs.parentClassIndex,
+        parent: accounts.parentMint
+          ? (
+              await getItemPDA(
+                accounts.parentMint,
+                additionalArgs.parentClassIndex
+              )
+            )[0]
+          : null,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program,
+      });
+
+    const itemClassKey = (
+      await getItemPDA(accounts.itemClassMint, args.classIndex)
+    )[0];
+
+    const [craftItemEscrow, itemEscrowBump] = await getCraftItemEscrow({
+      itemClassMint: accounts.itemClassMint,
+      classIndex: args.classIndex,
+      index: args.index,
+      newItemMint: args.newItemMint,
+      craftItemMint: accounts.craftItemTokenMint,
+      craftItemToken: (
+        await getAtaForMint(
+          accounts.craftItemTokenMint,
+          this.program.provider.wallet.publicKey
+        )
+      )[0],
+      payer: this.program.provider.wallet.publicKey,
+      amountToMake: args.amountToMake,
+      amountToContributeFromThisContributor:
+        args.amountToContributeFromThisContributor,
+      componentScope: args.componentScope,
+    });
+
+    const [craftItemCounter, craftBump] = await getCraftItemCounter({
+      itemClassMint: accounts.itemClassMint,
+      classIndex: args.classIndex,
+      index: args.index,
+      newItemMint: args.newItemMint,
+      craftItemMint: accounts.craftItemTokenMint,
+      componentScope: args.componentScope,
+    });
+
+    args.tokenBump = itemEscrowBump;
+    args.craftItemCounterBump = craftBump;
+
+    const itemEscrow = (
+      await getItemEscrow({
+        itemClassMint: accounts.itemClassMint,
+        classIndex: args.classIndex,
+        index: args.index,
+        newItemMint: args.newItemMint,
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              args.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        payer: this.program.provider.wallet.publicKey,
+        amountToMake: args.amountToMake,
+        componentScope: args.componentScope,
+      })
+    )[0];
+
+    const craftItem = (
+      await getItemPDA(accounts.craftItemTokenMint, args.craftItemIndex)
+    )[0];
+    const craftItemObj = await this.program.account.item.fetch(craftItem);
+    const instructions = [],
+      signers = [];
+    const craftItemTransferAuthority = web3.Keypair.generate();
+    signers.push(craftItemTransferAuthority);
+    instructions.push(
+      Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        accounts.craftItemTokenMint,
+        craftItemTransferAuthority.publicKey,
+        this.program.provider.wallet.publicKey,
+        [],
+        args.amountToContributeFromThisContributor
+      )
+    );
+    instructions.push(
+      await this.program.instruction.addCraftItemToEscrow(args, {
+        accounts: {
+          itemClass: itemClassKey,
+          itemEscrow,
+          craftItemCounter,
+          newItemToken:
+            accounts.newItemToken ||
+            (
+              await getAtaForMint(
+                args.newItemMint,
+                this.program.provider.wallet.publicKey
+              )
+            )[0],
+          newItemTokenHolder:
+            accounts.newItemTokenHolder ||
+            this.program.provider.wallet.publicKey,
+          craftItemTokenAccountEscrow: craftItemEscrow,
+          craftItemTokenMint: accounts.craftItemTokenMint,
+          craftItemTokenAccount: (
+            await getAtaForMint(
+              accounts.craftItemTokenMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+          craftItem,
+          craftItemClass: craftItemObj.parent,
+          //craftItemTransferAuthority:
+          payer: this.program.provider.wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          clock: web3.SYSVAR_CLOCK_PUBKEY,
+        },
+        remainingAccounts:
+          remainingAccounts.length > 0 ? remainingAccounts : undefined,
+      })
+    );
+
+    instructions.push(
+      Token.createRevokeInstruction(
+        TOKEN_PROGRAM_ID,
+        craftItemTransferAuthority.publicKey,
+        this.program.provider.wallet.publicKey,
+        []
+      )
+    );
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      []
+    );
   }
 
   async drainItemEscrow(

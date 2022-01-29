@@ -37,7 +37,7 @@
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
-  "index": 5,
+  "index": 6,
   "parent": null,
   "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,

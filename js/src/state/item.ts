@@ -98,6 +98,7 @@ export class ItemClassConfig {
 
 export class Component {
   mint: web3.PublicKey;
+  classIndex: BN;
   amount: BN;
   timeToBuild: null | BN;
   componentScope: string;
@@ -130,6 +131,14 @@ export enum ComponentCondition {
   Absence,
   Cooldown,
   CooldownAndConsume,
+}
+
+export interface AnchorComponentCondition {
+  consumed?: boolean;
+  presence?: boolean;
+  absence?: boolean;
+  cooldown?: boolean;
+  cooldownAndConsume?: boolean;
 }
 
 export class ChildUpdatePropagationPermissiveness {
@@ -448,6 +457,7 @@ export const ITEM_SCHEMA = new Map<any, any>([
       kind: "struct",
       fields: [
         ["mint", "pubkey"],
+        ["classIndex", "u64"],
         ["amount", "u64"],
         ["timeToBuild", { kind: "option", type: "u64" }],
         ["componentScope", "string"],

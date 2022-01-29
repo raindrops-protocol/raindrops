@@ -383,8 +383,8 @@ pub fn get_class_write_offsets(
         let num_of_components = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
         end_ctr += 4;
         for _ in 0..num_of_components {
-            // mint + amount
-            end_ctr += 40;
+            // mint + amount + class index
+            end_ctr += 48;
             // time_to_build
             if data[end_ctr] == 1 {
                 end_ctr += 8;
@@ -1454,9 +1454,14 @@ pub fn verify_component<'a, 'info>(
             return Err(ErrorCode::MissingMerkleInfo.into());
         }
     } else if let Some(components) = &item_class_data.config.components {
-        let mut counter = 0;
-        for c in component {
+        let mut counter: usize = 0;
+        let mut comp = components[0].clone();
+        let step = item_escrow.step as usize;
+        for c in components {
             if c.component_scope == component_scope {
+                if counter == step {
+                    comp = c.clone();
+                }
                 counter += 1;
             }
         }
@@ -1466,7 +1471,7 @@ pub fn verify_component<'a, 'info>(
             ErrorCode::ItemReadyForCompletion
         );
 
-        components[item_escrow.step as usize].clone()
+        comp
     } else {
         return Err(ErrorCode::MustUseMerkleOrComponentList.into());
     };

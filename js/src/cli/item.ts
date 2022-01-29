@@ -25,6 +25,7 @@ import {
   getMetadata,
 } from "../utils/pda";
 import { InheritanceState, PermissivenessType } from "../state/common";
+import { overArgs } from "lodash";
 
 programCommand("create_item_class")
   .requiredOption(
@@ -136,6 +137,84 @@ programCommand("create_item_escrow")
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
           : null,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        metadataUpdateAuthority:
+          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+      },
+      {
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+      }
+    );
+  });
+
+programCommand("add_craft_item_to_escrow")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .requiredOption("-i, --index <string>", "component index to add (0 based)")
+  .option("-a, --amount <string>", "How much to give")
+
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, index, amount } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    const actualIndex = parseInt(index);
+    const amountToContribute = parseInt(amount);
+
+    const itemClass = await anchorProgram.fetchItemClass(
+      config.itemClassMint,
+      config.classIndex
+    );
+
+    const component = itemClass.object.itemClassData.config.components.filter(
+      (c) => c.componentScope == config.componentScope
+    )[actualIndex];
+
+    await anchorProgram.addCraftItemToEscrow(
+      {
+        tokenBump: null,
+        craftItemCounterBump: null,
+        newItemMint: config.newItemMint,
+        originator: config.originator || walletKeyPair.publicKey,
+        component: null,
+        componentProof: null,
+        craftUsageInfo: null,
+        craftItemIndex: component.classIndex,
+        classIndex: new BN(config.classIndex || 0),
+        index: new BN(config.index || 0),
+        componentScope: config.componentScope || "none",
+        buildPermissivenessToUse: config.buildPermissivenessToUse,
+        namespaceIndex: config.namespaceIndex
+          ? new BN(config.namespaceIndex)
+          : null,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amountToMake: new BN(config.amountToMake || 1),
+        amountToContributeFromThisContributor: new BN(
+          config.amountToMake || amountToContribute
+        ),
+      },
+      {
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : null,
+        newItemTokenHolder: config.newItemTokenHolder
+          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          : null,
+        parentMint: config.parent
+          ? new web3.PublicKey(config.parent.mint)
+          : null,
+        craftItemTokenMint: component.mint,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         metadataUpdateAuthority:
           config.metadataUpdateAuthority || walletKeyPair.publicKey,
