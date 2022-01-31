@@ -51,6 +51,7 @@ programCommand("create_item_class")
         (c) => ({
           ...c,
           mint: new web3.PublicKey(c.mint),
+          classIndex: new BN(c.classIndex),
           amount: new BN(c.amount),
         })
       );
@@ -117,7 +118,7 @@ programCommand("create_item_escrow")
       {
         craftBump: null,
         classIndex: new BN(config.classIndex || 0),
-        index: new BN(config.index || 0),
+        craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         componentScope: config.componentScope || "none",
         buildPermissivenessToUse: config.buildPermissivenessToUse,
         namespaceIndex: config.namespaceIndex
@@ -153,6 +154,7 @@ programCommand("add_craft_item_to_escrow")
     "JSON file with item class settings"
   )
   .requiredOption("-i, --index <string>", "component index to add (0 based)")
+
   .option("-a, --amount <string>", "How much to give")
 
   .action(async (files: string[], cmd) => {
@@ -170,29 +172,35 @@ programCommand("add_craft_item_to_escrow")
     const config = JSON.parse(configString);
 
     const actualIndex = parseInt(index);
-    const amountToContribute = parseInt(amount);
 
     const itemClass = await anchorProgram.fetchItemClass(
-      config.itemClassMint,
-      config.classIndex
+      new web3.PublicKey(config.itemClassMint),
+      new BN(config.classIndex)
     );
 
     const component = itemClass.object.itemClassData.config.components.filter(
       (c) => c.componentScope == config.componentScope
     )[actualIndex];
 
+    const amountToContribute = amount
+      ? parseInt(amount)
+      : component.amount.toNumber();
+
     await anchorProgram.addCraftItemToEscrow(
       {
         tokenBump: null,
         craftItemCounterBump: null,
-        newItemMint: config.newItemMint,
-        originator: config.originator || walletKeyPair.publicKey,
+        newItemMint: new web3.PublicKey(config.newItemMint),
+        originator: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
         component: null,
         componentProof: null,
         craftUsageInfo: null,
-        craftItemIndex: component.classIndex,
+        craftItemIndex: new BN(config.craftItemIndex || 0),
+        craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         classIndex: new BN(config.classIndex || 0),
-        index: new BN(config.index || 0),
+        index: new BN(config.newItemIndex || 0),
         componentScope: config.componentScope || "none",
         buildPermissivenessToUse: config.buildPermissivenessToUse,
         namespaceIndex: config.namespaceIndex
@@ -203,6 +211,8 @@ programCommand("add_craft_item_to_escrow")
         amountToContributeFromThisContributor: new BN(
           config.amountToMake || amountToContribute
         ),
+        craftItemClassIndex: new BN(component.classIndex),
+        craftItemClassMint: component.mint,
       },
       {
         newItemToken: config.newItemToken
@@ -214,10 +224,13 @@ programCommand("add_craft_item_to_escrow")
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
           : null,
-        craftItemTokenMint: component.mint,
+        craftItemTokenMint: new web3.PublicKey(
+          config.components[actualIndex].mint
+        ),
         itemClassMint: new web3.PublicKey(config.itemClassMint),
-        metadataUpdateAuthority:
-          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : walletKeyPair.publicKey,
       },
       {
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
@@ -247,7 +260,7 @@ programCommand("start_item_escrow_build_phase")
     await anchorProgram.startItemEscrowBuildPhase(
       {
         classIndex: new BN(config.classIndex || 0),
-        index: new BN(config.index || 0),
+        craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         componentScope: config.componentScope || "none",
         buildPermissivenessToUse: config.buildPermissivenessToUse,
         newItemMint: new web3.PublicKey(config.newItemMint),
@@ -302,7 +315,7 @@ programCommand("complete_item_escrow_build_phase")
       {
         classIndex: new BN(config.classIndex || 0),
         newItemIndex: new BN(config.newItemIndex || 0),
-        index: new BN(config.index || 0),
+        craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         componentScope: config.componentScope || "none",
         buildPermissivenessToUse: config.buildPermissivenessToUse,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
@@ -358,7 +371,7 @@ programCommand("drain_item_escrow")
     await anchorProgram.drainItemEscrow(
       {
         classIndex: new BN(config.classIndex || 0),
-        index: new BN(config.index || 0),
+        craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         componentScope: config.componentScope || "none",
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         amountToMake: new BN(config.amountToMake || 1),
@@ -390,13 +403,13 @@ programCommand("show_item_build")
     const itemClassMint = new web3.PublicKey(config.itemClassMint);
     const classIndex = new BN(config.classIndex);
     const newItemMint = new web3.PublicKey(config.newItemMint);
-    const index = new BN(config.index);
+    const craftEscrowIndex = new BN(config.craftEscrowIndex);
 
     const itemEscrowKey = (
       await getItemEscrow({
         itemClassMint,
         classIndex,
-        index,
+        craftEscrowIndex,
         newItemMint,
         newItemToken: config.newItemToken
           ? new web3.PublicKey(config.newItemToken)
@@ -472,7 +485,12 @@ programCommand("show_item")
           })
         : "Not Set"
     );
-    log.info("Parent:", item.parent.toBase58());
+    log.info(
+      "Parent:",
+      item.parent.toBase58(),
+      "Index:",
+      item.classIndex.toNumber()
+    );
     log.info(
       "Mint:",
       item.mint ? item.mint.toBase58() : "Not cached on object"
@@ -896,6 +914,7 @@ programCommand("update_item_class")
         (c) => ({
           ...c,
           mint: new web3.PublicKey(c.mint),
+          classIndex: new BN(c.classIndex),
           amount: new BN(c.amount),
         })
       );

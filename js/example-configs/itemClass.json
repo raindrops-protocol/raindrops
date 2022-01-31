@@ -24,6 +24,7 @@
         {
           "mint": "6dwpqSumAiXWWWXSLAcscauNrqijBQdR8DDQgTuBs8v4",
           "amount": 1,
+          "classIndex": 0,
           "timeToBuild": null,
           "componentScope": "set1",
           "useUsageIndex": 0,
@@ -37,7 +38,7 @@
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
-  "index": 6,
+  "index": 8,
   "parent": null,
   "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,

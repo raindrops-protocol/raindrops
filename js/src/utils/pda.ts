@@ -32,7 +32,8 @@ export const getCraftItemCounter = async (args: {
   newItemMint: web3.PublicKey;
   craftItemMint: web3.PublicKey;
   componentScope: String;
-  index: BN;
+  craftItemIndex: BN;
+  craftEscrowIndex: BN;
   classIndex: BN;
 }): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
@@ -41,7 +42,8 @@ export const getCraftItemCounter = async (args: {
       args.itemClassMint.toBuffer(),
       args.classIndex.toBuffer("le", 8),
       args.newItemMint.toBuffer(),
-      args.index.toBuffer("le", 8),
+      args.craftEscrowIndex.toBuffer("le", 8),
+      args.craftItemIndex.toBuffer("le", 8),
       args.craftItemMint.toBuffer(),
       Buffer.from(args.componentScope),
     ],
@@ -58,8 +60,9 @@ export const getCraftItemEscrow = async (args: {
   amountToMake: BN;
   amountToContributeFromThisContributor: BN;
   componentScope: String;
-  index: BN;
+  craftIndex: BN;
   classIndex: BN;
+  craftEscrowIndex: BN;
 }): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
     [
@@ -69,7 +72,8 @@ export const getCraftItemEscrow = async (args: {
       args.payer.toBuffer(),
       args.newItemMint.toBuffer(),
       args.craftItemToken.toBuffer(),
-      args.index.toBuffer("le", 8),
+      args.craftEscrowIndex.toBuffer("le", 8),
+      args.craftIndex.toBuffer("le", 8),
       args.craftItemMint.toBuffer(),
       args.amountToMake.toBuffer("le", 8),
       args.amountToContributeFromThisContributor.toBuffer("le", 8),
@@ -86,7 +90,7 @@ export const getItemEscrow = async (args: {
   newItemToken: web3.PublicKey;
   amountToMake: BN;
   componentScope: String;
-  index: BN;
+  craftEscrowIndex: BN;
   classIndex: BN;
 }): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
@@ -97,7 +101,7 @@ export const getItemEscrow = async (args: {
       args.payer.toBuffer(),
       args.newItemMint.toBuffer(),
       args.newItemToken.toBuffer(),
-      args.index.toBuffer("le", 8),
+      args.craftEscrowIndex.toBuffer("le", 8),
       args.amountToMake.toBuffer("le", 8),
       Buffer.from(args.componentScope),
     ],

@@ -59,7 +59,7 @@ export interface CreateItemClassArgs {
 export interface CreateItemEscrowArgs {
   craftBump: number | null;
   classIndex: BN;
-  index: BN;
+  craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
   namespaceIndex: BN | null;
@@ -71,6 +71,9 @@ export interface AddCraftItemToEscrowArgs {
   tokenBump: number | null;
   classIndex: BN;
   craftItemIndex: BN;
+  craftEscrowIndex: BN;
+  craftItemClassIndex: BN;
+  craftItemClassMint: web3.PublicKey;
   craftItemCounterBump: number | null;
   index: BN;
   componentScope: String;
@@ -100,7 +103,7 @@ export interface AddCraftItemToEscrowArgs {
 
 export interface StartItemEscrowBuildPhaseArgs {
   classIndex: BN;
-  index: BN;
+  craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
   itemClassMint: web3.PublicKey;
@@ -115,7 +118,7 @@ export interface CompleteItemEscrowBuildPhaseArgs {
   classIndex: BN;
   newItemBump: number;
   newItemIndex: BN;
-  index: BN;
+  craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
   space: BN;
@@ -128,7 +131,7 @@ export interface CompleteItemEscrowBuildPhaseArgs {
 
 export interface DrainItemEscrowArgs {
   classIndex: BN;
-  index: BN;
+  craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
   itemClassMint: web3.PublicKey;
@@ -282,7 +285,7 @@ export class ItemProgram {
 
     const [itemEscrow, itemEscrowBump] = await getItemEscrow({
       itemClassMint: accounts.itemClassMint,
-      index: args.index,
+      craftEscrowIndex: args.craftEscrowIndex,
       classIndex: args.classIndex,
       newItemMint: accounts.newItemMint,
       newItemToken:
@@ -365,7 +368,7 @@ export class ItemProgram {
       await getItemEscrow({
         itemClassMint: accounts.itemClassMint,
         classIndex: args.classIndex,
-        index: args.index,
+        craftEscrowIndex: args.craftEscrowIndex,
         newItemMint: accounts.newItemMint,
         newItemToken:
           accounts.newItemToken ||
@@ -436,19 +439,21 @@ export class ItemProgram {
     const itemClassKey = (
       await getItemPDA(accounts.itemClassMint, args.classIndex)
     )[0];
+    const craftItemTokenAccount = (
+      await getAtaForMint(
+        accounts.craftItemTokenMint,
+        this.program.provider.wallet.publicKey
+      )
+    )[0];
 
     const [craftItemEscrow, itemEscrowBump] = await getCraftItemEscrow({
       itemClassMint: accounts.itemClassMint,
       classIndex: args.classIndex,
-      index: args.index,
+      craftIndex: args.craftItemIndex,
+      craftEscrowIndex: args.craftEscrowIndex,
       newItemMint: args.newItemMint,
       craftItemMint: accounts.craftItemTokenMint,
-      craftItemToken: (
-        await getAtaForMint(
-          accounts.craftItemTokenMint,
-          this.program.provider.wallet.publicKey
-        )
-      )[0],
+      craftItemToken: craftItemTokenAccount,
       payer: this.program.provider.wallet.publicKey,
       amountToMake: args.amountToMake,
       amountToContributeFromThisContributor:
@@ -459,7 +464,8 @@ export class ItemProgram {
     const [craftItemCounter, craftBump] = await getCraftItemCounter({
       itemClassMint: accounts.itemClassMint,
       classIndex: args.classIndex,
-      index: args.index,
+      craftItemIndex: args.craftItemIndex,
+      craftEscrowIndex: args.craftEscrowIndex,
       newItemMint: args.newItemMint,
       craftItemMint: accounts.craftItemTokenMint,
       componentScope: args.componentScope,
@@ -472,7 +478,7 @@ export class ItemProgram {
       await getItemEscrow({
         itemClassMint: accounts.itemClassMint,
         classIndex: args.classIndex,
-        index: args.index,
+        craftEscrowIndex: args.craftEscrowIndex,
         newItemMint: args.newItemMint,
         newItemToken:
           accounts.newItemToken ||
@@ -495,15 +501,16 @@ export class ItemProgram {
     const instructions = [],
       signers = [];
     const craftItemTransferAuthority = web3.Keypair.generate();
+
     signers.push(craftItemTransferAuthority);
     instructions.push(
       Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
-        accounts.craftItemTokenMint,
+        craftItemTokenAccount,
         craftItemTransferAuthority.publicKey,
         this.program.provider.wallet.publicKey,
         [],
-        args.amountToContributeFromThisContributor
+        args.amountToContributeFromThisContributor.toNumber()
       )
     );
     instructions.push(
@@ -525,15 +532,10 @@ export class ItemProgram {
             this.program.provider.wallet.publicKey,
           craftItemTokenAccountEscrow: craftItemEscrow,
           craftItemTokenMint: accounts.craftItemTokenMint,
-          craftItemTokenAccount: (
-            await getAtaForMint(
-              accounts.craftItemTokenMint,
-              this.program.provider.wallet.publicKey
-            )
-          )[0],
+          craftItemTokenAccount,
           craftItem,
           craftItemClass: craftItemObj.parent,
-          //craftItemTransferAuthority:
+          craftItemTransferAuthority: craftItemTransferAuthority.publicKey,
           payer: this.program.provider.wallet.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -558,7 +560,7 @@ export class ItemProgram {
       this.program.provider.connection,
       this.program.provider.wallet,
       instructions,
-      []
+      signers
     );
   }
 
@@ -584,7 +586,7 @@ export class ItemProgram {
       await getItemEscrow({
         itemClassMint: args.itemClassMint,
         classIndex: args.classIndex,
-        index: args.index,
+        craftEscrowIndex: args.craftEscrowIndex,
         newItemMint: args.newItemMint,
         newItemToken: args.newItemToken,
         payer: this.program.provider.wallet.publicKey,
@@ -632,7 +634,7 @@ export class ItemProgram {
       await getItemEscrow({
         itemClassMint: accounts.itemClassMint,
         classIndex: args.classIndex,
-        index: args.index,
+        craftEscrowIndex: args.craftEscrowIndex,
         newItemMint: args.newItemMint,
         newItemToken:
           accounts.newItemToken ||

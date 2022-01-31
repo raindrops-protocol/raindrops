@@ -68,7 +68,7 @@ pub struct DrainItemArgs {
 pub struct CreateItemEscrowArgs {
     craft_bump: u8,
     class_index: u64,
-    index: u64,
+    craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
     namespace_index: Option<u64>,
@@ -82,6 +82,9 @@ pub struct AddCraftItemToEscrowArgs {
     craft_item_counter_bump: u8,
     class_index: u64,
     craft_item_index: u64,
+    craft_item_class_index: u64,
+    craft_item_class_mint: Pubkey,
+    craft_escrow_index: u64,
     index: u64,
     component_scope: String,
     amount_to_make: u64,
@@ -99,7 +102,7 @@ pub struct AddCraftItemToEscrowArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct StartItemEscrowBuildPhaseArgs {
     class_index: u64,
-    index: u64,
+    craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
     item_class_mint: Pubkey,
@@ -120,7 +123,7 @@ pub struct CompleteItemEscrowBuildPhaseArgs {
     new_item_bump: u8,
     class_index: u64,
     new_item_index: u64,
-    index: u64,
+    craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
     space: u64,
@@ -133,8 +136,8 @@ pub struct CompleteItemEscrowBuildPhaseArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DeactivateItemEscrowArgs {
-    index: u64,
     class_index: u64,
+    craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
     item_class_mint: Pubkey,
@@ -144,8 +147,8 @@ pub struct DeactivateItemEscrowArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainItemEscrowArgs {
-    index: u64,
     class_index: u64,
+    craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
     item_class_mint: Pubkey,
@@ -159,7 +162,7 @@ pub struct RemoveCraftItemFromEscrowArgs {
     craft_item_counter_bump: u8,
     class_index: u64,
     craft_item_index: u64,
-    index: u64,
+    craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
     amount_contributed_from_this_contributor: u64,
@@ -679,7 +682,7 @@ pub mod item {
         let craft_item_counter = &mut ctx.accounts.craft_item_counter;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
-
+        msg!("1");
         let AddCraftItemToEscrowArgs {
             class_index,
             component_scope,
@@ -1084,6 +1087,7 @@ pub mod item {
         }
 
         new_item.bump = new_item_bump;
+        new_item.class_index = class_index;
         new_item.parent = item_class.key();
 
         if store_mint {
@@ -1609,7 +1613,7 @@ pub struct CreateItemEscrow<'info> {
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.craft_bump, space=if args.namespace_index.is_none() { 35 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 35} , payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.craft_bump, space=if args.namespace_index.is_none() { 35 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 35} , payer=payer)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
@@ -1627,23 +1631,44 @@ pub struct AddCraftItemToEscrow<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Box<Account<'info, ItemClass>>,
     // payer is in seed so that draining funds can only be done by original payer
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(),args.originator.as_ref(), args.new_item_mint.as_ref(), new_item_token.key().as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(),args.originator.as_ref(), args.new_item_mint.as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.new_item_mint.as_ref(), &args.index.to_le_bytes(), craft_item_token_account.mint.as_ref()], bump=args.craft_item_counter_bump, space=16, payer=payer)]
+    #[account(mut, seeds=[
+        PREFIX.as_bytes(), 
+        args.item_class_mint.as_ref(), 
+        &args.class_index.to_le_bytes(), 
+        args.new_item_mint.as_ref(), 
+        &args.craft_escrow_index.to_le_bytes(), 
+        &args.craft_item_index.to_le_bytes(), 
+        craft_item_token_account.mint.as_ref(),
+        &args.component_scope.as_bytes()
+    ], bump=args.craft_item_counter_bump, space=16, payer=payer)]
     craft_item_counter: Box<Account<'info, CraftItemCounter>>,
     #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), payer.key().as_ref(), args.new_item_mint.as_ref(), craft_item_token_account.key().as_ref(), &args.index.to_le_bytes(), craft_item_token_account.mint.as_ref(), &args.amount_to_make.to_le_bytes(),  &args.amount_to_contribute_from_this_contributor.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.token_bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
+    #[account(init, seeds=[
+        PREFIX.as_bytes(), 
+        args.item_class_mint.as_ref(), 
+        &args.class_index.to_le_bytes(), 
+        payer.key().as_ref(), 
+        args.new_item_mint.as_ref(), 
+        craft_item_token_account.key().as_ref(),
+        &args.craft_escrow_index.to_le_bytes(),  
+        &args.craft_item_index.to_le_bytes(), 
+        craft_item_token_account.mint.as_ref(), 
+        &args.amount_to_make.to_le_bytes(),  
+        &args.amount_to_contribute_from_this_contributor.to_le_bytes(), 
+        &args.component_scope.as_bytes()], bump=args.token_bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
     craft_item_token_account_escrow: Box<Account<'info, TokenAccount>>,
     craft_item_token_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint=craft_item_token_account.mint == craft_item_token_mint.key())]
     craft_item_token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds=[PREFIX.as_bytes(), craft_item_token_mint.key().as_ref(), &args.craft_item_index.to_le_bytes()], bump=craft_item.bump)]
     craft_item: Box<Account<'info, Item>>,
-    #[account(constraint=craft_item.parent == craft_item_class.key())]
+    #[account(constraint=craft_item.parent == craft_item_class.key() && craft_item.class_index == args.craft_item_class_index, seeds=[PREFIX.as_bytes(), args.craft_item_class_mint.as_ref(), &args.craft_item_class_index.to_le_bytes()], bump=craft_item_class.bump)]
     craft_item_class: Box<Account<'info, ItemClass>>,
     craft_item_transfer_authority: Signer<'info>,
     payer: Signer<'info>,
@@ -1659,16 +1684,24 @@ pub struct AddCraftItemToEscrow<'info> {
 pub struct RemoveCraftItemFromEscrow<'info> {
     #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Box<Account<'info, ItemClass>>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), args.originator.as_ref(), args.new_item_mint.as_ref(), new_item_token.key().as_ref(),&args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), args.originator.as_ref(), args.new_item_mint.as_ref(), new_item_token.key().as_ref(),&args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.new_item_mint.as_ref(), &args.index.to_le_bytes(), craft_item_token_account.mint.as_ref()], bump=args.craft_item_counter_bump)]
+    #[account(mut, seeds=[
+        PREFIX.as_bytes(), 
+        args.item_class_mint.as_ref(), 
+        &args.class_index.to_le_bytes(), 
+        args.new_item_mint.as_ref(),
+        &args.craft_escrow_index.to_le_bytes(), 
+        &args.craft_item_index.to_le_bytes(), 
+        craft_item_token_account.mint.as_ref()], 
+        bump=args.craft_item_counter_bump)]
     craft_item_counter: Box<Account<'info, CraftItemCounter>>,
     #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), receiver.key().as_ref(), args.new_item_mint.as_ref(), craft_item_token_account.key().as_ref(), &args.index.to_le_bytes(), craft_item_token_account.mint.as_ref(), &args.amount_to_make.to_le_bytes(),  &args.amount_contributed_from_this_contributor.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.token_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), receiver.key().as_ref(), args.new_item_mint.as_ref(), craft_item_token_account.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(), &args.amount_to_make.to_le_bytes(),  &args.amount_contributed_from_this_contributor.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.token_bump)]
     craft_item_token_account_escrow: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     craft_item_token_account: Box<Account<'info, TokenAccount>>,
@@ -1682,14 +1715,14 @@ pub struct RemoveCraftItemFromEscrow<'info> {
 #[derive(Accounts)]
 #[instruction(args: DeactivateItemEscrowArgs)]
 pub struct DeactivateItemEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(),originator.key().as_ref(), args.new_item_mint.as_ref(),args.new_item_token.as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(),originator.key().as_ref(), args.new_item_mint.as_ref(),args.new_item_token.as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     originator: Signer<'info>,
 }
 #[derive(Accounts)]
 #[instruction(args: DrainItemEscrowArgs)]
 pub struct DrainItemEscrow<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(),originator.key().as_ref(), args.new_item_mint.as_ref(),args.new_item_token.as_ref(), &args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(),originator.key().as_ref(), args.new_item_mint.as_ref(),args.new_item_token.as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     originator: Signer<'info>,
 }
@@ -1701,7 +1734,7 @@ pub struct StartItemEscrowBuildPhase<'info> {
     // perhaps do this via optional additional accounts to save space.
     #[account(seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.originator.as_ref(), args.new_item_mint.key().as_ref(), new_item_token.key().as_ref(),&args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.originator.as_ref(), args.new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Account<'info, ItemEscrow>,
     #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Account<'info, TokenAccount>,
@@ -1723,7 +1756,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.originator.as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(),&args.index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.originator.as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
@@ -2184,6 +2217,7 @@ pub const MIN_ITEM_SIZE: usize = 8 + // key
 1 + // mint
 1 + // metadata
 32 + // parent
+8 + // class index
 1 + // edition
 1 + // item usage states
 1 + // root
@@ -2225,6 +2259,7 @@ pub struct UsageInfo {
 pub struct Item {
     namespaces: Option<Vec<NamespaceAndIndex>>,
     parent: Pubkey,
+    class_index: u64,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,
     /// If not present, only Destruction/Infinite consumption types are allowed,

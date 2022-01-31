@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use {
     crate::{
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
@@ -144,7 +142,7 @@ pub fn get_class_write_offsets(
     // update_permissiveness
     if data[end_ctr] == 1 {
         let sub = &data[end_ctr + 1..end_ctr + 5];
-        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+        end_ctr += 1 + 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
     } else {
         end_ctr += 1;
     }
@@ -152,21 +150,21 @@ pub fn get_class_write_offsets(
     // build_permissiveness
     if data[end_ctr] == 1 {
         let sub = &data[end_ctr + 1..end_ctr + 5];
-        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+        end_ctr += 1 + 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
     } else {
         end_ctr += 1;
     }
 
     // staking_warm_up_duration
     if data[end_ctr] == 1 {
-        end_ctr += 8;
+        end_ctr += 9;
     } else {
         end_ctr += 1;
     }
 
     // staking_cooldown_duration
     if data[end_ctr] == 1 {
-        end_ctr += 8;
+        end_ctr += 9;
     } else {
         end_ctr += 1;
     }
@@ -174,7 +172,7 @@ pub fn get_class_write_offsets(
     // staking_permissiveness
     if data[end_ctr] == 1 {
         let sub = &data[end_ctr + 1..end_ctr + 5];
-        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+        end_ctr += 1 + 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
     } else {
         end_ctr += 1;
     }
@@ -182,7 +180,7 @@ pub fn get_class_write_offsets(
     // unstaking_permissiveness
     if data[end_ctr] == 1 {
         let sub = &data[end_ctr + 1..end_ctr + 5];
-        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+        end_ctr += 1 + 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
     } else {
         end_ctr += 1;
     }
@@ -190,7 +188,7 @@ pub fn get_class_write_offsets(
     // child_update_propagation_permissiveness
     if data[end_ctr] == 1 {
         let sub = &data[end_ctr + 1..end_ctr + 5];
-        end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 3;
+        end_ctr += 1 + 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 3;
     } else {
         end_ctr += 1;
     }
@@ -221,7 +219,7 @@ pub fn get_class_write_offsets(
     if data[end_ctr] == 1 {
         let sub = &data[end_ctr + 1..end_ctr + 5];
         let num_of_usages = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
-        end_ctr += 4;
+        end_ctr += 5;
         for _ in 0..num_of_usages {
             end_ctr += 2; // index
 
@@ -229,7 +227,7 @@ pub fn get_class_write_offsets(
             if data[end_ctr] == 1 {
                 let sub = &data[end_ctr + 1..end_ctr + 5];
                 let num_of_effects = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
-                end_ctr += 4;
+                end_ctr += 5;
                 for _ in 0..num_of_effects {
                     end_ctr += 8; // amount
 
@@ -242,42 +240,42 @@ pub fn get_class_write_offsets(
 
                     //active_duration
                     if data[end_ctr] == 1 {
-                        end_ctr += 8;
+                        end_ctr += 9;
                     } else {
                         end_ctr += 1;
                     }
 
                     //staking_amount_numerator
                     if data[end_ctr] == 1 {
-                        end_ctr += 8;
+                        end_ctr += 9;
                     } else {
                         end_ctr += 1;
                     }
 
                     //staking_amount_divisor
                     if data[end_ctr] == 1 {
-                        end_ctr += 8;
+                        end_ctr += 9;
                     } else {
                         end_ctr += 1;
                     }
 
                     //staking_duration_numerator
                     if data[end_ctr] == 1 {
-                        end_ctr += 8;
+                        end_ctr += 9;
                     } else {
                         end_ctr += 1;
                     }
 
                     //staking_duration_divisor
                     if data[end_ctr] == 1 {
-                        end_ctr += 8;
+                        end_ctr += 9;
                     } else {
                         end_ctr += 1;
                     }
 
                     //max_uses
                     if data[end_ctr] == 1 {
-                        end_ctr += 8;
+                        end_ctr += 9;
                     } else {
                         end_ctr += 1;
                     }
@@ -287,7 +285,7 @@ pub fn get_class_write_offsets(
             }
 
             // usage_permissiveness
-            let sub = &data[end_ctr + 1..end_ctr + 5];
+            let sub = &data[end_ctr..end_ctr + 4];
             end_ctr = 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
 
             //inherited
@@ -308,7 +306,7 @@ pub fn get_class_write_offsets(
 
                 // limit_per_part
                 if data[end_ctr] == 1 {
-                    end_ctr += 8;
+                    end_ctr += 9;
                 } else {
                     end_ctr += 1;
                 }
@@ -316,14 +314,14 @@ pub fn get_class_write_offsets(
                 // consumable
                 // max_uses
                 if data[end_ctr] == 1 {
-                    end_ctr += 8;
+                    end_ctr += 9;
                 } else {
                     end_ctr += 1;
                 }
 
                 // max_players_per_use
                 if data[end_ctr] == 1 {
-                    end_ctr += 8;
+                    end_ctr += 9;
                 } else {
                     end_ctr += 1;
                 }
@@ -333,14 +331,14 @@ pub fn get_class_write_offsets(
 
                 // cooldown_duration
                 if data[end_ctr] == 1 {
-                    end_ctr += 8;
+                    end_ctr += 9;
                 } else {
                     end_ctr += 1;
                 }
 
                 // warmup_duration
                 if data[end_ctr] == 1 {
-                    end_ctr += 8;
+                    end_ctr += 9;
                 } else {
                     end_ctr += 1;
                 }
@@ -348,14 +346,14 @@ pub fn get_class_write_offsets(
 
             // callback
             if data[end_ctr] == 1 {
-                end_ctr += 40;
+                end_ctr += 41;
             } else {
                 end_ctr += 1;
             }
 
             // validation
             if data[end_ctr] == 1 {
-                end_ctr += 40;
+                end_ctr += 41;
             } else {
                 end_ctr += 1;
             }
@@ -368,7 +366,7 @@ pub fn get_class_write_offsets(
                 let sub = &data[end_ctr + 1..end_ctr + 5];
                 let num_of_pubkeys = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
 
-                end_ctr += 4 + num_of_pubkeys as usize * 33;
+                end_ctr += 1 + 4 + num_of_pubkeys as usize * 33;
             } else {
                 end_ctr += 1;
             }
@@ -381,19 +379,19 @@ pub fn get_class_write_offsets(
     if data[end_ctr] == 1 {
         let sub = &data[end_ctr + 1..end_ctr + 5];
         let num_of_components = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
-        end_ctr += 4;
+        end_ctr += 5;
         for _ in 0..num_of_components {
             // mint + amount + class index
             end_ctr += 48;
             // time_to_build
             if data[end_ctr] == 1 {
-                end_ctr += 8;
+                end_ctr += 9;
             } else {
                 end_ctr += 1;
             }
 
             // component_scope string
-            let sub = &data[end_ctr + 1..end_ctr + 5];
+            let sub = &data[end_ctr..end_ctr + 4];
             let scope_length = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
             end_ctr += 4 + scope_length as usize;
 

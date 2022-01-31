@@ -1,0 +1,17 @@
+{
+  "newItemMint": "GisU2V16MCAUuYCZtKU1xGDGSptCXXRjQpYXEqmPtP4e",
+  "itemClassMint": "6dwpqSumAiXWWWXSLAcscauNrqijBQdR8DDQgTuBs8v4",
+  "amountToMake": 1,
+  "namespaceIndex": null,
+  "buildPermissivenessToUse": { "updateAuthority": true },
+  "classIndex": 0,
+  "newItemIndex": 1,
+  "componentScope": null,
+  "parent": null,
+  "craftItemIndex": 0,
+  "originator": null,
+  "merkleInfo": null,
+  "totalSpaceBytes": 200,
+  "storeMetadataFields": false,
+  "storeMint": false
+}

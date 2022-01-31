@@ -4,14 +4,21 @@
   "amountToMake": 1,
   "namespaceIndex": null,
   "buildPermissivenessToUse": { "updateAuthority": true },
-  "classIndex": 5,
-  "newItemIndex": 0,
-  "componentScope": null,
+  "classIndex": 8,
+  "newItemIndex": 2,
+  "craftEscrowIndex": 3,
+  "componentScope": "set1",
   "parent": null,
-  "index": 0,
+  "craftItemIndex": 0,
   "originator": null,
   "merkleInfo": null,
   "totalSpaceBytes": 200,
   "storeMetadataFields": false,
-  "storeMint": false
+  "storeMint": false,
+  "components": [
+    {
+      "mint": "GisU2V16MCAUuYCZtKU1xGDGSptCXXRjQpYXEqmPtP4e",
+      "index": 0
+    }
+  ]
 }
