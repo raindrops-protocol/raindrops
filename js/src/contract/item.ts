@@ -550,7 +550,7 @@ export class ItemProgram {
     instructions.push(
       Token.createRevokeInstruction(
         TOKEN_PROGRAM_ID,
-        craftItemTransferAuthority.publicKey,
+        craftItemTokenAccount,
         this.program.provider.wallet.publicKey,
         []
       )

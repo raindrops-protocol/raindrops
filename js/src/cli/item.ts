@@ -197,7 +197,7 @@ programCommand("add_craft_item_to_escrow")
         component: null,
         componentProof: null,
         craftUsageInfo: null,
-        craftItemIndex: new BN(config.craftItemIndex || 0),
+        craftItemIndex: new BN(config.components[actualIndex].index || 0),
         craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         classIndex: new BN(config.classIndex || 0),
         index: new BN(config.newItemIndex || 0),

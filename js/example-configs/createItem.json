@@ -9,7 +9,6 @@
   "craftEscrowIndex": 3,
   "componentScope": "set1",
   "parent": null,
-  "craftItemIndex": 0,
   "originator": null,
   "merkleInfo": null,
   "totalSpaceBytes": 200,
@@ -18,7 +17,7 @@
   "components": [
     {
       "mint": "GisU2V16MCAUuYCZtKU1xGDGSptCXXRjQpYXEqmPtP4e",
-      "index": 0
+      "index": 1
     }
   ]
 }
