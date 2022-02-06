@@ -75,7 +75,6 @@ export interface AddCraftItemToEscrowArgs {
   craftItemClassIndex: BN;
   craftItemClassMint: web3.PublicKey;
   craftItemCounterBump: number | null;
-  index: BN;
   componentScope: String;
   amountToMake: BN;
   amountToContributeFromThisContributor: BN;
@@ -99,6 +98,30 @@ export interface AddCraftItemToEscrowArgs {
     craftUsageProof: web3.PublicKey;
     craftUsage: any;
   } | null;
+}
+
+export interface RemoveCraftItemFromEscrowArgs {
+  tokenBump: number | null;
+  craftItemTokenMint: web3.PublicKey;
+  classIndex: BN;
+  craftItemIndex: BN;
+  craftEscrowIndex: BN;
+  craftItemCounterBump: number | null;
+  craftItemClassIndex: BN;
+  craftItemClassMint: web3.PublicKey;
+  componentScope: String;
+  amountToMake: BN;
+  amountContributedFromThisContributor: BN;
+  newItemMint: web3.PublicKey;
+  originator: web3.PublicKey;
+  namespaceIndex: BN | null;
+  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  itemClassMint: web3.PublicKey;
+  componentProof: web3.PublicKey | null;
+  // we use any bcause of the enum changes required
+  // means redefining all these interfaces for anchor
+  // too lazy
+  component: any | null;
 }
 
 export interface StartItemEscrowBuildPhaseArgs {
@@ -171,6 +194,13 @@ export interface AddCraftItemToEscrowAccounts {
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
+export interface RemoveCraftItemFromEscrowAccounts {
+  itemClassMint: web3.PublicKey;
+  newItemToken: web3.PublicKey | null;
+  newItemTokenHolder: web3.PublicKey | null;
+  parentMint: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
 
 export interface CompleteItemEscrowBuildPhaseAccounts {
   itemClassMint: web3.PublicKey;
@@ -220,6 +250,9 @@ export interface CompleteItemEscrowBuildPhaseAdditionalArgs {
 }
 
 export interface AddCraftItemToEscrowAdditionalArgs {
+  parentClassIndex: BN | null;
+}
+export interface RemoveCraftItemFromEscrowAdditionalArgs {
   parentClassIndex: BN | null;
 }
 
@@ -562,6 +595,119 @@ export class ItemProgram {
       instructions,
       signers
     );
+  }
+
+  async removeCraftItemFromEscrow(
+    args: RemoveCraftItemFromEscrowArgs,
+    accounts: RemoveCraftItemFromEscrowAccounts,
+    additionalArgs: RemoveCraftItemFromEscrowAdditionalArgs
+  ) {
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.buildPermissivenessToUse,
+        tokenMint: accounts.itemClassMint,
+        parentMint: accounts.parentMint,
+        parentIndex: additionalArgs.parentClassIndex,
+        parent: accounts.parentMint
+          ? (
+              await getItemPDA(
+                accounts.parentMint,
+                additionalArgs.parentClassIndex
+              )
+            )[0]
+          : null,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program,
+      });
+
+    const itemClassKey = (
+      await getItemPDA(accounts.itemClassMint, args.classIndex)
+    )[0];
+    const craftItemTokenAccount = (
+      await getAtaForMint(
+        args.craftItemTokenMint,
+        this.program.provider.wallet.publicKey
+      )
+    )[0];
+
+    const [craftItemEscrow, itemEscrowBump] = await getCraftItemEscrow({
+      itemClassMint: accounts.itemClassMint,
+      classIndex: args.classIndex,
+      craftIndex: args.craftItemIndex,
+      craftEscrowIndex: args.craftEscrowIndex,
+      newItemMint: args.newItemMint,
+      craftItemMint: args.craftItemTokenMint,
+      craftItemToken: craftItemTokenAccount,
+      payer: this.program.provider.wallet.publicKey,
+      amountToMake: args.amountToMake,
+      amountToContributeFromThisContributor:
+        args.amountContributedFromThisContributor,
+      componentScope: args.componentScope,
+    });
+
+    const [craftItemCounter, craftBump] = await getCraftItemCounter({
+      itemClassMint: accounts.itemClassMint,
+      classIndex: args.classIndex,
+      craftItemIndex: args.craftItemIndex,
+      craftEscrowIndex: args.craftEscrowIndex,
+      newItemMint: args.newItemMint,
+      craftItemMint: args.craftItemTokenMint,
+      componentScope: args.componentScope,
+    });
+
+    args.tokenBump = itemEscrowBump;
+    args.craftItemCounterBump = craftBump;
+
+    const itemEscrow = (
+      await getItemEscrow({
+        itemClassMint: accounts.itemClassMint,
+        classIndex: args.classIndex,
+        craftEscrowIndex: args.craftEscrowIndex,
+        newItemMint: args.newItemMint,
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              args.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        payer: this.program.provider.wallet.publicKey,
+        amountToMake: args.amountToMake,
+        componentScope: args.componentScope,
+      })
+    )[0];
+
+    await this.program.rpc.removeCraftItemFromEscrow(args, {
+      accounts: {
+        itemClass: itemClassKey,
+        itemEscrow,
+        craftItemCounter,
+        newItemToken:
+          accounts.newItemToken ||
+          (
+            await getAtaForMint(
+              args.newItemMint,
+              this.program.provider.wallet.publicKey
+            )
+          )[0],
+        newItemTokenHolder:
+          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
+        craftItemTokenAccountEscrow: craftItemEscrow,
+        craftItemTokenAccount,
+        craftItem: (
+          await getItemPDA(args.craftItemTokenMint, args.craftItemIndex)
+        )[0],
+        craftItemClass: (
+          await getItemPDA(args.craftItemClassMint, args.craftItemClassIndex)
+        )[0],
+        receiver: this.program.provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+      remainingAccounts:
+        remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
   }
 
   async drainItemEscrow(

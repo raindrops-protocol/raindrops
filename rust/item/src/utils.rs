@@ -1418,6 +1418,7 @@ pub struct VerifyComponentArgs<'a, 'info> {
     pub item_escrow: &'a Account<'info, ItemEscrow>,
     pub craft_item_token_mint: &'a Pubkey,
     pub component_scope: String,
+    pub count_check: bool,
 }
 
 pub fn verify_component<'a, 'info>(
@@ -1430,6 +1431,7 @@ pub fn verify_component<'a, 'info>(
         item_escrow,
         craft_item_token_mint,
         component_scope,
+        count_check,
     } = args;
 
     let item_class_data = item_class.item_class_data(&item_class.to_account_info().data)?;
@@ -1464,10 +1466,12 @@ pub fn verify_component<'a, 'info>(
             }
         }
 
-        require!(
-            item_escrow.step as usize != counter,
-            ErrorCode::ItemReadyForCompletion
-        );
+        if count_check {
+            require!(
+                item_escrow.step as usize >= counter,
+                ErrorCode::ItemReadyForCompletion
+            );
+        }
 
         comp
     } else {

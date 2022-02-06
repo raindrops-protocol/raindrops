@@ -200,7 +200,6 @@ programCommand("add_craft_item_to_escrow")
         craftItemIndex: new BN(config.components[actualIndex].index || 0),
         craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         classIndex: new BN(config.classIndex || 0),
-        index: new BN(config.newItemIndex || 0),
         componentScope: config.componentScope || "none",
         buildPermissivenessToUse: config.buildPermissivenessToUse,
         namespaceIndex: config.namespaceIndex
@@ -227,6 +226,94 @@ programCommand("add_craft_item_to_escrow")
         craftItemTokenMint: new web3.PublicKey(
           config.components[actualIndex].mint
         ),
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : walletKeyPair.publicKey,
+      },
+      {
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+      }
+    );
+  });
+
+programCommand("remove_craft_item_from_escrow")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .requiredOption("-i, --index <string>", "component index to add (0 based)")
+
+  .option("-a, --amount <string>", "How much to remove")
+
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, index, amount } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    const actualIndex = parseInt(index);
+
+    const itemClass = await anchorProgram.fetchItemClass(
+      new web3.PublicKey(config.itemClassMint),
+      new BN(config.classIndex)
+    );
+
+    const component = itemClass.object.itemClassData.config.components.filter(
+      (c) => c.componentScope == config.componentScope
+    )[actualIndex];
+
+    const amountToContribute = amount
+      ? parseInt(amount)
+      : component.amount.toNumber();
+
+    await anchorProgram.removeCraftItemFromEscrow(
+      {
+        tokenBump: null,
+        craftItemCounterBump: null,
+        newItemMint: new web3.PublicKey(config.newItemMint),
+        originator: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
+        component: null,
+        componentProof: null,
+        craftItemIndex: new BN(config.components[actualIndex].index || 0),
+        craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
+        classIndex: new BN(config.classIndex || 0),
+        componentScope: config.componentScope || "none",
+        buildPermissivenessToUse: config.buildPermissivenessToUse,
+        namespaceIndex: config.namespaceIndex
+          ? new BN(config.namespaceIndex)
+          : null,
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amountToMake: new BN(config.amountToMake || 1),
+        amountContributedFromThisContributor: new BN(
+          config.amountToMake || amountToContribute
+        ),
+        craftItemClassMint: component.mint,
+        craftItemClassIndex: component.classIndex,
+        craftItemTokenMint: new web3.PublicKey(
+          config.components[actualIndex].mint
+        ),
+      },
+      {
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : null,
+        newItemTokenHolder: config.newItemTokenHolder
+          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          : null,
+        parentMint: config.parent
+          ? new web3.PublicKey(config.parent.mint)
+          : null,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         metadataUpdateAuthority: config.metadataUpdateAuthority
           ? new web3.PublicKey(config.metadataUpdateAuthority)

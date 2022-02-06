@@ -108,6 +108,7 @@ export class Component {
 
   constructor(args: {
     mint: web3.PublicKey;
+    classIndex: BN;
     amount: BN;
     timeToBuild: null | BN;
     componentScope: string;
@@ -115,6 +116,7 @@ export class Component {
     condition: ComponentCondition;
     inherited: InheritanceState;
   }) {
+    this.classIndex = args.classIndex;
     this.mint = args.mint;
     this.amount = args.amount;
     this.timeToBuild = args.timeToBuild;

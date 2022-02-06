@@ -64,6 +64,7 @@ export const getCraftItemEscrow = async (args: {
   classIndex: BN;
   craftEscrowIndex: BN;
 }): Promise<[web3.PublicKey, number]> => {
+  console.log("Args", args);
   return await web3.PublicKey.findProgramAddress(
     [
       Buffer.from(ITEM_PREFIX),
