@@ -81,8 +81,9 @@ programCommand("create_item_class")
         parentOfParentClassMint: config.parent?.parent
           ? new web3.PublicKey(config.parent.parent.mint)
           : null,
-        metadataUpdateAuthority:
-          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : walletKeyPair.publicKey,
         parentUpdateAuthority: config.parent
           ? config.parent.metadataUpdateAuthority
           : null,
@@ -139,8 +140,9 @@ programCommand("create_item_escrow")
           ? new web3.PublicKey(config.parent.mint)
           : null,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
-        metadataUpdateAuthority:
-          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : walletKeyPair.publicKey,
       },
       {
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
@@ -207,9 +209,7 @@ programCommand("add_craft_item_to_escrow")
           : null,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         amountToMake: new BN(config.amountToMake || 1),
-        amountToContributeFromThisContributor: new BN(
-          config.amountToMake || amountToContribute
-        ),
+        amountToContributeFromThisContributor: new BN(amountToContribute),
         craftItemClassIndex: new BN(component.classIndex),
         craftItemClassMint: component.mint,
       },
@@ -295,9 +295,7 @@ programCommand("remove_craft_item_from_escrow")
           : null,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         amountToMake: new BN(config.amountToMake || 1),
-        amountContributedFromThisContributor: new BN(
-          config.amountToMake || amountToContribute
-        ),
+        amountContributedFromThisContributor: new BN(amountToContribute),
         craftItemClassMint: component.mint,
         craftItemClassIndex: component.classIndex,
         craftItemTokenMint: new web3.PublicKey(
@@ -353,7 +351,9 @@ programCommand("start_item_escrow_build_phase")
         newItemMint: new web3.PublicKey(config.newItemMint),
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         amountToMake: new BN(config.amountToMake || 1),
-        originator: config.originator || walletKeyPair.publicKey,
+        originator: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
         totalSteps: config.merkleInfo ? config.merkleInfo.totalSteps : null,
         endNodeProof: config.merkleInfo
           ? new web3.PublicKey(config.merkleInfo.endNodeProof)
@@ -370,8 +370,9 @@ programCommand("start_item_escrow_build_phase")
           ? new web3.PublicKey(config.parent.mint)
           : null,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
-        metadataUpdateAuthority:
-          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : walletKeyPair.publicKey,
       },
       {
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
@@ -427,8 +428,9 @@ programCommand("complete_item_escrow_build_phase")
           ? new web3.PublicKey(config.parent.mint)
           : null,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
-        metadataUpdateAuthority:
-          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : walletKeyPair.publicKey,
       },
       {
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
@@ -501,7 +503,12 @@ programCommand("show_item_build")
         newItemToken: config.newItemToken
           ? new web3.PublicKey(config.newItemToken)
           : (
-              await getAtaForMint(newItemMint, walletKeyPair.publicKey)
+              await getAtaForMint(
+                newItemMint,
+                config.originator
+                  ? new web3.PublicKey(config.originator)
+                  : walletKeyPair.publicKey
+              )
             )[0],
         payer: config.originator
           ? new web3.PublicKey(config.originator)
@@ -716,34 +723,30 @@ programCommand("show_item_class")
         : "Not Set"
     );
 
-    log.info(
-      "----> Update Permissiveness:",
-      settings.updatePermissiveness
-        ? settings.updatePermissiveness.map((u) => {
-            log.info(
-              `------> ${InheritanceState[u.inherited]} ${
-                PermissivenessType[u.permissivenessType]
-              }`
-            );
-          })
-        : "Default to Update Authority on Metadata"
-    );
-    log.info(
-      "----> Build Permissiveness:",
-      settings.buildPermissiveness
-        ? settings.buildPermissiveness.map((u) => {
-            log.info(
-              `------> ${InheritanceState[u.inherited]} ${
-                PermissivenessType[u.permissivenessType]
-              }`
-            );
-          })
-        : "Not Set"
-    );
+    log.info("----> Update Permissiveness:");
+    settings.updatePermissiveness
+      ? settings.updatePermissiveness.forEach((u) => {
+          log.info(
+            `------> ${InheritanceState[u.inherited]} ${
+              PermissivenessType[u.permissivenessType]
+            }`
+          );
+        })
+      : "Default to Update Authority on Metadata";
+    log.info("----> Build Permissiveness:");
+    settings.buildPermissiveness
+      ? settings.buildPermissiveness.forEach((u) => {
+          log.info(
+            `------> (${InheritanceState[u.inherited]}) ${
+              PermissivenessType[u.permissivenessType]
+            }`
+          );
+        })
+      : "Not Set";
     log.info(
       "----> Staking Permissiveness:",
       settings.stakingPermissiveness
-        ? settings.stakingPermissiveness.map((u) => {
+        ? settings.stakingPermissiveness.forEach((u) => {
             log.info(
               `------> ${InheritanceState[u.inherited]} ${
                 PermissivenessType[u.permissivenessType]
@@ -752,34 +755,29 @@ programCommand("show_item_class")
           })
         : "Not Set"
     );
-    log.info(
-      "----> Unstaking Permissiveness:",
-      settings.unstakingPermissiveness
-        ? settings.unstakingPermissiveness.map((u) => {
-            log.info(
-              `------> ${InheritanceState[u.inherited]} ${
-                PermissivenessType[u.permissivenessType]
-              }`
-            );
-          })
-        : "Not Set"
-    );
+    log.info("----> Unstaking Permissiveness:");
+    settings.unstakingPermissiveness
+      ? settings.unstakingPermissiveness.forEach((u) => {
+          log.info(
+            `------> ${InheritanceState[u.inherited]} ${
+              PermissivenessType[u.permissivenessType]
+            }`
+          );
+        })
+      : "Not Set";
 
-    log.info(
-      "----> Child Update Propagation Permissiveness:",
-      settings.childUpdatePropagationPermissiveness
-        ? settings.childUpdatePropagationPermissiveness.map((u) => {
-            log.info(
-              `------> ${InheritanceState[u.inherited]} ${
-                ChildUpdatePropagationPermissivenessType[
-                  u.childUpdatePropagationPermissivenessType
-                ]
-              } - is overridable? ${u.overridable}`
-            );
-          })
-        : "Not Set"
-    );
-
+    log.info("----> Child Update Propagation Permissiveness:");
+    settings.childUpdatePropagationPermissiveness
+      ? settings.childUpdatePropagationPermissiveness.map((u) => {
+          log.info(
+            `------> ${InheritanceState[u.inherited]} ${
+              ChildUpdatePropagationPermissivenessType[
+                u.childUpdatePropagationPermissivenessType
+              ]
+            } - is overridable? ${u.overridable}`
+          );
+        })
+      : "Not Set";
     log.info("--> Item Class Config:");
 
     log.info(
@@ -1022,8 +1020,9 @@ programCommand("update_item_class")
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
           : null,
-        metadataUpdateAuthority:
-          config.metadataUpdateAuthority || walletKeyPair.publicKey,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : walletKeyPair.publicKey,
       },
       {
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,

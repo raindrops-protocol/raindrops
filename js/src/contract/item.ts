@@ -408,10 +408,10 @@ export class ItemProgram {
           (
             await getAtaForMint(
               accounts.newItemMint,
-              this.program.provider.wallet.publicKey
+              args.originator || this.program.provider.wallet.publicKey
             )
           )[0],
-        payer: this.program.provider.wallet.publicKey,
+        payer: args.originator || this.program.provider.wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
@@ -430,11 +430,13 @@ export class ItemProgram {
           (
             await getAtaForMint(
               accounts.newItemMint,
-              this.program.provider.wallet.publicKey
+              args.originator || this.program.provider.wallet.publicKey
             )
           )[0],
         newItemTokenHolder:
-          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
+          accounts.newItemTokenHolder ||
+          args.originator ||
+          this.program.provider.wallet.publicKey,
         payer: this.program.provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -518,10 +520,10 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              this.program.provider.wallet.publicKey
+              args.originator || this.program.provider.wallet.publicKey
             )
           )[0],
-        payer: this.program.provider.wallet.publicKey,
+        payer: args.originator || this.program.provider.wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
@@ -557,11 +559,12 @@ export class ItemProgram {
             (
               await getAtaForMint(
                 args.newItemMint,
-                this.program.provider.wallet.publicKey
+                args.originator || this.program.provider.wallet.publicKey
               )
             )[0],
           newItemTokenHolder:
             accounts.newItemTokenHolder ||
+            args.originator ||
             this.program.provider.wallet.publicKey,
           craftItemTokenAccountEscrow: craftItemEscrow,
           craftItemTokenMint: accounts.craftItemTokenMint,
@@ -669,10 +672,10 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              this.program.provider.wallet.publicKey
+              args.originator || this.program.provider.wallet.publicKey
             )
           )[0],
-        payer: this.program.provider.wallet.publicKey,
+        payer: args.originator || this.program.provider.wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
@@ -688,11 +691,13 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              this.program.provider.wallet.publicKey
+              args.originator || this.program.provider.wallet.publicKey
             )
           )[0],
         newItemTokenHolder:
-          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
+          accounts.newItemTokenHolder ||
+          args.originator ||
+          this.program.provider.wallet.publicKey,
         craftItemTokenAccountEscrow: craftItemEscrow,
         craftItemTokenAccount,
         craftItem: (
@@ -787,10 +792,10 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              this.program.provider.wallet.publicKey
+              args.originator || this.program.provider.wallet.publicKey
             )
           )[0],
-        payer: this.program.provider.wallet.publicKey,
+        payer: args.originator || this.program.provider.wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
@@ -805,11 +810,13 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              this.program.provider.wallet.publicKey
+              args.originator || this.program.provider.wallet.publicKey
             )
           )[0],
         newItemTokenHolder:
-          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
+          accounts.newItemTokenHolder ||
+          args.originator ||
+          this.program.provider.wallet.publicKey,
         clock: web3.SYSVAR_CLOCK_PUBKEY,
       },
       remainingAccounts:

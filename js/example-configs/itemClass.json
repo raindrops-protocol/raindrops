@@ -8,7 +8,12 @@
       "childrenMustBeEditions": null,
       "builderMustBeHolder": null,
       "updatePermissiveness": null,
-      "buildPermissiveness": null,
+      "buildPermissiveness": [
+        {
+          "permissivenessType": { "anybody": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
       "stakingWarmUpDuration": null,
       "stakingCooldownDuration": null,
       "stakingPermissiveness": null,
@@ -23,12 +28,12 @@
       "components": [
         {
           "mint": "6dwpqSumAiXWWWXSLAcscauNrqijBQdR8DDQgTuBs8v4",
-          "amount": 1,
+          "amount": 0,
           "classIndex": 0,
           "timeToBuild": null,
           "componentScope": "set1",
           "useUsageIndex": 0,
-          "condition": { "presence": true },
+          "condition": { "absence": true },
           "inherited": { "notInherited": true }
         }
       ]

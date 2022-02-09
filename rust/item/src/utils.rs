@@ -761,7 +761,6 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 // metadata_update_authority [signer]
                 // metadata [readable]
                 // mint [readable] OR none if already present in the main array
-
                 let metadata_update_authority = &remaining_accounts[0];
                 let metadata = &remaining_accounts[1];
                 let mint = if let Some(m) = account_mint {
@@ -1468,7 +1467,7 @@ pub fn verify_component<'a, 'info>(
 
         if count_check {
             require!(
-                item_escrow.step as usize >= counter,
+                (item_escrow.step as usize) < counter,
                 ErrorCode::ItemReadyForCompletion
             );
         }

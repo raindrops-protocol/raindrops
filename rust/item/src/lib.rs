@@ -703,7 +703,7 @@ pub mod item {
             item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
 
         assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
-
+        
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item_class.to_account_info(),
@@ -713,7 +713,6 @@ pub mod item {
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
-
         require!(!item_escrow.deactivated, DeactivatedItemEscrow);
 
         require!(!item_escrow.build_began.is_some(), BuildPhaseAlreadyStarted);
@@ -800,6 +799,7 @@ pub mod item {
             // Absence works specifically as overall supply being 0 - only way
             // to truly make it work and avoid workarounds. This means while you can technically have a fungible
             // be absence, the user must find and burn all tokens to get this condition satisfied.
+
             require!(craft_item_token_mint.supply == 0, BalanceNeedsToBeZero);
             require!(
                 amount_to_contribute_from_this_contributor == 0,
