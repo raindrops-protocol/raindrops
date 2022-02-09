@@ -152,6 +152,16 @@ export interface CompleteItemEscrowBuildPhaseArgs {
   storeMetadataFields: boolean;
 }
 
+export interface DeactivateItemEscrowArgs {
+  classIndex: BN;
+  craftEscrowIndex: BN;
+  componentScope: String;
+  amountToMake: BN;
+  itemClassMint: web3.PublicKey;
+  newItemMint: web3.PublicKey;
+  newItemToken: web3.PublicKey;
+}
+
 export interface DrainItemEscrowArgs {
   classIndex: BN;
   craftEscrowIndex: BN;
@@ -211,6 +221,8 @@ export interface CompleteItemEscrowBuildPhaseAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface DeactivateItemEscrowAccounts {}
+
 export interface DrainItemEscrowAccounts {
   originator: web3.PublicKey | null;
 }
@@ -255,6 +267,8 @@ export interface AddCraftItemToEscrowAdditionalArgs {
 export interface RemoveCraftItemFromEscrowAdditionalArgs {
   parentClassIndex: BN | null;
 }
+
+export interface DeactivateItemEscrowAdditionalArgs {}
 
 export interface DrainItemEscrowAdditionalArgs {}
 
@@ -335,7 +349,6 @@ export class ItemProgram {
     });
 
     args.craftBump = itemEscrowBump;
-    console.log("acct", itemClassKey.toBase58());
     await this.program.rpc.createItemEscrow(args, {
       accounts: {
         itemClass: itemClassKey,
@@ -445,6 +458,40 @@ export class ItemProgram {
       },
       remainingAccounts:
         remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
+  }
+
+  async deactivateItemEscrow(
+    args: DeactivateItemEscrowArgs,
+    _accounts: DeactivateItemEscrowAccounts,
+    _additionalArgs: DeactivateItemEscrowAdditionalArgs
+  ) {
+    args.newItemToken =
+      args.newItemToken ||
+      (
+        await getAtaForMint(
+          args.newItemMint,
+          this.program.provider.wallet.publicKey
+        )
+      )[0];
+    const itemEscrow = (
+      await getItemEscrow({
+        itemClassMint: args.itemClassMint,
+        classIndex: args.classIndex,
+        craftEscrowIndex: args.craftEscrowIndex,
+        newItemMint: args.newItemMint,
+        newItemToken: args.newItemToken,
+        payer: this.program.provider.wallet.publicKey,
+        amountToMake: args.amountToMake,
+        componentScope: args.componentScope,
+      })
+    )[0];
+
+    await this.program.rpc.deactivateItemEscrow(args, {
+      accounts: {
+        itemEscrow,
+        originator: this.program.provider.wallet.publicKey,
+      },
     });
   }
 

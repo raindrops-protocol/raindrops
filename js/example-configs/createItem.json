@@ -4,9 +4,9 @@
   "amountToMake": 1,
   "namespaceIndex": null,
   "buildPermissivenessToUse": { "anybody": true },
-  "classIndex": 8,
-  "newItemIndex": 2,
-  "craftEscrowIndex": 3,
+  "classIndex": 9,
+  "newItemIndex": 3,
+  "craftEscrowIndex": 0,
   "componentScope": "set1",
   "parent": null,
   "originator": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
@@ -19,6 +19,18 @@
     {
       "mint": "GisU2V16MCAUuYCZtKU1xGDGSptCXXRjQpYXEqmPtP4e",
       "index": 1
+    },
+    {
+      "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
+      "index": 3
+    },
+    {
+      "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
+      "index": 4
+    },
+    {
+      "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
+      "index": 5
     }
   ]
 }

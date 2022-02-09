@@ -35,6 +35,26 @@
           "useUsageIndex": 0,
           "condition": { "absence": true },
           "inherited": { "notInherited": true }
+        },
+        {
+          "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
+          "amount": 1,
+          "classIndex": 1,
+          "timeToBuild": null,
+          "componentScope": "set1",
+          "useUsageIndex": 0,
+          "condition": { "presence": true },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
+          "amount": 2,
+          "classIndex": 2,
+          "timeToBuild": null,
+          "componentScope": "set1",
+          "useUsageIndex": 0,
+          "condition": { "presence": true },
+          "inherited": { "notInherited": true }
         }
       ]
     }
@@ -43,9 +63,9 @@
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
-  "index": 8,
+  "index": 9,
   "parent": null,
   "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,
-  "totalSpaceBytes": 200
+  "totalSpaceBytes": 300
 }

@@ -150,6 +150,44 @@ programCommand("create_item_escrow")
     );
   });
 
+programCommand("deactivate_item_escrow")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.deactivateItemEscrow(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
+        componentScope: config.componentScope || "none",
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amountToMake: new BN(config.amountToMake || 1),
+        newItemMint: new web3.PublicKey(config.newItemMint),
+        newItemToken: config.newItemToken
+          ? new web3.PublicKey(config.newItemToken)
+          : null,
+      },
+      {},
+      {
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+      }
+    );
+  });
+
 programCommand("add_craft_item_to_escrow")
   .requiredOption(
     "-cp, --config-path <string>",
