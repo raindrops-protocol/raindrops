@@ -2,7 +2,7 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_builder_must_be_holder_check, assert_derivation, assert_is_ata, assert_keys_equal,
+        assert_builder_must_be_holder_check, assert_initialized, assert_is_ata, assert_keys_equal,
         assert_metadata_valid, assert_mint_authority_matches_mint, assert_permissiveness_access,
         assert_valid_item_settings_for_edition_type, close_token_account,
         create_or_allocate_account_raw, get_item_usage,
@@ -258,7 +258,7 @@ pub struct EndItemActivationArgs {
 #[program]
 pub mod item {
 
-    use std::borrow::Borrow;
+    use std::{borrow::Borrow};
 
     use super::*;
 
@@ -847,7 +847,7 @@ pub mod item {
             item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
 
         assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
-
+        msg!("1");
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item_class.to_account_info(),
@@ -857,7 +857,7 @@ pub mod item {
             index: class_index,
             account_mint: Some(&item_class_mint),
         })?;
-
+        msg!("2");
         require!(item_escrow.deactivated, NotDeactivated);
 
         let chosen_component = verify_component(VerifyComponentArgs {
@@ -869,53 +869,65 @@ pub mod item {
             component_scope,
             count_check: false
         })?;
-
+        msg!("3 {} {}", chosen_component.mint, craft_item_class_mint);
         assert_keys_equal(chosen_component.mint, craft_item_class_mint)?;
+        msg!("4");
 
-        let item_class_seeds = [
-            PREFIX.as_bytes(),
-            item_class_mint.as_ref(),
-            &class_index.to_le_bytes(),
-            &[item_class.bump],
-        ];
-        // Give back any in the escrow. Any that should have been burned will have been.
-        spl_token_transfer(TokenTransferParams {
-            source: craft_item_token_account_escrow.to_account_info(),
-            destination: craft_item_token_account.to_account_info(),
-            amount: amount_contributed_from_this_contributor,
-            authority: item_class.to_account_info(),
-            authority_signer_seeds: &item_class_seeds,
-            token_program: token_program.to_account_info(),
-        })?;
+        let mut amount_loaded = 0;
 
-        craft_item_counter.amount_loaded = craft_item_counter
-            .amount_loaded
-            .checked_sub(amount_contributed_from_this_contributor)
-            .ok_or(ErrorCode::NumericalOverflowError)?;
+        if !craft_item_token_account_escrow.data_is_empty() {
+            let item_class_seeds = [
+                PREFIX.as_bytes(),
+                item_class_mint.as_ref(),
+                &class_index.to_le_bytes(),
+                &[item_class.bump],
+            ];
+            // Give back any in the escrow. Any that should have been burned will have been.
+            spl_token_transfer(TokenTransferParams {
+                source: craft_item_token_account_escrow.to_account_info(),
+                destination: craft_item_token_account.to_account_info(),
+                amount: amount_contributed_from_this_contributor,
+                authority: item_class.to_account_info(),
+                authority_signer_seeds: &item_class_seeds,
+                token_program: token_program.to_account_info(),
+            })?;
 
-        close_token_account(
-            craft_item_token_account_escrow,
-            receiver,
-            token_program,
-            &item_class.to_account_info(),
-            &item_class_seeds,
-        )?;
+            let mut craft_item_acct: Account<CraftItemCounter> = Account::try_from(&craft_item_counter.to_account_info())?;
 
-        if craft_item_counter.amount_loaded == 0 {
-            item_escrow.step = item_escrow
-                .step
-                .checked_sub(1)
+            craft_item_acct.amount_loaded = craft_item_acct
+                .amount_loaded
+                .checked_sub(amount_contributed_from_this_contributor)
                 .ok_or(ErrorCode::NumericalOverflowError)?;
 
-            let craft_item_counter_info = craft_item_counter.to_account_info();
-            let snapshot: u64 = craft_item_counter_info.lamports();
+                amount_loaded = craft_item_acct.amount_loaded;
+            close_token_account(
+                craft_item_token_account_escrow,
+                receiver,
+                token_program,
+                &item_class.to_account_info(),
+                &item_class_seeds,
+            )?;
+        }
 
-            **craft_item_counter_info.lamports.borrow_mut() = 0;
+        if amount_loaded == 0 {
+            if item_escrow.step > 0 {
+                item_escrow.step = item_escrow
+                    .step
+                    .checked_sub(1)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+            }
 
-            **receiver.lamports.borrow_mut() = receiver
-                .lamports()
-                .checked_add(snapshot)
-                .ok_or(ErrorCode::NumericalOverflowError)?;
+            if !craft_item_counter.data_is_empty() {
+                let craft_item_counter_info = craft_item_counter.to_account_info();
+                let snapshot: u64 = craft_item_counter_info.lamports();
+
+                **craft_item_counter_info.lamports.borrow_mut() = 0;
+
+                **receiver.lamports.borrow_mut() = receiver
+                    .lamports()
+                    .checked_add(snapshot)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+            }
         }
         Ok(())
     }
@@ -1711,7 +1723,7 @@ pub struct RemoveCraftItemFromEscrow<'info> {
         craft_item_token_account.mint.as_ref(),
         &args.component_scope.as_bytes()], 
         bump=args.craft_item_counter_bump)]
-    craft_item_counter: Box<Account<'info, CraftItemCounter>>,
+    craft_item_counter: UncheckedAccount<'info>,
     #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
@@ -1730,7 +1742,7 @@ pub struct RemoveCraftItemFromEscrow<'info> {
         &args.amount_to_make.to_le_bytes(),  
         &args.amount_contributed_from_this_contributor.to_le_bytes(), 
         &args.component_scope.as_bytes()], bump=args.token_bump)]
-    craft_item_token_account_escrow: Box<Account<'info, TokenAccount>>,
+    craft_item_token_account_escrow: UncheckedAccount<'info>,
     #[account(mut)]
     craft_item_token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds=[PREFIX.as_bytes(), craft_item_token_account.mint.key().as_ref(), &args.craft_item_index.to_le_bytes()], bump=craft_item.bump)]

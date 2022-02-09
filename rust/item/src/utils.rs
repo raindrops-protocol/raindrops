@@ -1570,7 +1570,7 @@ pub fn create_program_token_account_if_not_present<'a>(
 }
 
 pub fn close_token_account<'a>(
-    program_account: &Account<'a, TokenAccount>,
+    program_account: &AccountInfo<'a>,
     fee_payer: &AccountInfo<'a>,
     token_program: &Program<'a, Token>,
     owner: &AccountInfo<'a>,
