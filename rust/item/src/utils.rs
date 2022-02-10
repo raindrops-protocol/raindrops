@@ -20,7 +20,7 @@ use {
         },
         Key, System, ToAccountInfo,
     },
-    anchor_spl::token::{Mint, Token, TokenAccount},
+    anchor_spl::token::{Mint, Token},
     arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
     spl_token::instruction::{close_account, initialize_account2, set_authority, AuthorityType},
@@ -35,7 +35,7 @@ impl ItemClass {
     ) -> Result<ItemClassData, ProgramError> {
         let (ctr, end_ctr) = get_class_write_offsets(self, data);
 
-        // msg!("Ctr {}->{} {:?}", ctr, end_ctr, &data.borrow());
+        //  msg!("Ctr {}->{} {:?}", ctr, end_ctr, &data.borrow());
         let item_class_data: ItemClassData =
             AnchorDeserialize::try_from_slice(&data.borrow()[ctr as usize..end_ctr as usize])?;
 
@@ -220,6 +220,7 @@ pub fn get_class_write_offsets(
         let sub = &data[end_ctr + 1..end_ctr + 5];
         let num_of_usages = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
         end_ctr += 5;
+
         for _ in 0..num_of_usages {
             end_ctr += 2; // index
 
@@ -228,6 +229,7 @@ pub fn get_class_write_offsets(
                 let sub = &data[end_ctr + 1..end_ctr + 5];
                 let num_of_effects = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
                 end_ctr += 5;
+
                 for _ in 0..num_of_effects {
                     end_ctr += 8; // amount
 
@@ -284,9 +286,10 @@ pub fn get_class_write_offsets(
                 end_ctr += 1;
             }
 
-            // usage_permissiveness
+            // usage_permissiveness type
             let sub = &data[end_ctr..end_ctr + 4];
-            end_ctr = 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize * 2;
+
+            end_ctr += 4 + u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]) as usize;
 
             //inherited
             end_ctr += 1;
@@ -311,7 +314,9 @@ pub fn get_class_write_offsets(
                     end_ctr += 1;
                 }
             } else if data[end_ctr] == 1 {
+                end_ctr += 1;
                 // consumable
+
                 // max_uses
                 if data[end_ctr] == 1 {
                     end_ctr += 9;
@@ -1275,7 +1280,7 @@ pub struct VerifyCooldownArgs<'a, 'info> {
     pub craft_item_class: &'a Account<'info, ItemClass>,
     pub craft_item: &'a Account<'info, Item>,
     pub chosen_component: &'a Component,
-    pub unix_timestamp: i64,
+    pub unix_timestamp: u64,
 }
 
 pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> ProgramResult {
@@ -1502,7 +1507,7 @@ pub fn propagate_item_class_data_fields_to_item_data(
             states_length = states.len();
         }
 
-        let mut existing_values: Vec<(Option<i64>, u64)> =
+        let mut existing_values: Vec<(Option<u64>, u64)> =
             vec![(None, 0); std::cmp::max(item_usage.len(), states_length)];
 
         if let Some(states) = &item.data.usage_states {
@@ -1600,7 +1605,7 @@ pub fn close_token_account<'a>(
 pub fn enact_valid_state_change(
     item_usage_state: &mut ItemUsageState,
     item_usage: &ItemUsage,
-    unix_timestamp: i64,
+    unix_timestamp: u64,
 ) -> ProgramResult {
     item_usage_state.uses = item_usage_state
         .uses
@@ -1641,7 +1646,7 @@ pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
     pub item_activation_marker: &'a mut Account<'info, ItemActivationMarker>,
     pub usage_index: u16,
     pub usage_info: &'a mut Option<UsageInfo>,
-    pub unix_timestamp: i64,
+    pub unix_timestamp: u64,
 }
 
 pub fn verify_and_affect_item_state_update<'a, 'info>(

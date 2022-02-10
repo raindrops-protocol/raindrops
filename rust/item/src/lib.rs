@@ -743,7 +743,7 @@ pub mod item {
                 craft_item_class,
                 craft_item,
                 chosen_component: &chosen_component,
-                unix_timestamp: clock.unix_timestamp,
+                unix_timestamp: clock.unix_timestamp as u64,
             })?;
         }
 
@@ -1034,7 +1034,7 @@ pub mod item {
             item_escrow.step = item_escrow.step.checked_sub(1).ok_or(ErrorCode::NumericalOverflowError)?;
         }
 
-        item_escrow.build_began = Some(clock.unix_timestamp);
+        item_escrow.build_began = Some(clock.unix_timestamp as u64);
 
         Ok(())
     }
@@ -1097,7 +1097,7 @@ pub mod item {
         if let Some(build_began) = item_escrow.build_began {
             if let Some(time_to_build) = item_escrow.time_to_build {
                 let finish = (build_began)
-                    .checked_add(time_to_build as i64)
+                    .checked_add(time_to_build)
                     .ok_or(ErrorCode::NumericalOverflowError)?;
                 if clock.unix_timestamp < finish as i64 {
                     msg!(
@@ -1243,7 +1243,7 @@ pub mod item {
                 item_activation_marker,
                 usage_index,
                 usage_info: &mut usage_info,
-                unix_timestamp: clock.unix_timestamp,
+                unix_timestamp: clock.unix_timestamp as u64,
             })?;
 
         if let Some(validation) = usage.validation {
@@ -1451,7 +1451,7 @@ pub mod item {
                         .unix_timestamp
                         .checked_add(*warmup)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
-                    if clock.unix_timestamp > threshold {
+                    if clock.unix_timestamp > threshold as i64 {
                         item_activation_marker.valid_for_use = true;
                     } else {
                         return Err(ErrorCode::WarmupNotFinished.into());
@@ -1555,7 +1555,7 @@ pub mod item {
                                     .unix_timestamp
                                     .checked_add(*warmup)
                                     .ok_or(ErrorCode::NumericalOverflowError)?;
-                                if clock.unix_timestamp > threshold {
+                                if clock.unix_timestamp > threshold as i64 {
                                     item_activation_marker.valid_for_use = true;
                                 }
                             } else {
@@ -1972,8 +1972,8 @@ pub enum ItemClassType {
         // If none, is assumed to be 1 (to save space)
         max_players_per_use: Option<u64>,
         item_usage_type: ItemUsageType,
-        cooldown_duration: Option<i64>,
-        warmup_duration: Option<i64>,
+        cooldown_duration: Option<u64>,
+        warmup_duration: Option<u64>,
     },
 }
 
@@ -1981,7 +1981,7 @@ pub enum ItemClassType {
 pub struct ItemUsageState {
     index: u16,
     uses: u64,
-    activated_at: Option<i64>,
+    activated_at: Option<u64>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
@@ -2006,7 +2006,7 @@ pub struct BasicItemEffect {
     amount: u64,
     stat: String,
     item_effect_type: BasicItemEffectType,
-    active_duration: Option<i64>,
+    active_duration: Option<u64>,
     staking_amount_numerator: Option<u64>,
     staking_amount_divisor: Option<u64>,
     staking_duration_numerator: Option<u64>,
@@ -2240,7 +2240,7 @@ pub struct ItemEscrow {
     deactivated: bool,
     step: u64,
     time_to_build: Option<u64>,
-    build_began: Option<i64>,
+    build_began: Option<u64>,
 }
 
 #[account]
@@ -2254,7 +2254,7 @@ pub struct ItemActivationMarker {
     valid_for_use: bool,
     // In the case we need to reset root, we want to use
     // timestamp from original activation
-    unix_timestamp: i64,
+    unix_timestamp: u64,
     proof_counter: Option<ItemActivationMarkerProofCounter>,
 }
 

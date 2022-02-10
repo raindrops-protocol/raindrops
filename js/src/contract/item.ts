@@ -24,6 +24,30 @@ import { getCluster } from "../utils/connection";
 import { Token } from "@solana/spl-token";
 import { sendTransactionWithRetry } from "../utils/transactions";
 
+function convertNumsToBNs(data: any) {
+  if (data.itemClassData) {
+    data.itemClassData.config.usages.forEach((k) => {
+      let u = k.itemClassType.consumable;
+      if (u) {
+        if (u.maxUses != null) u.maxUses = new BN(u.maxUses);
+        if (u.maxPlayersPerUse != null)
+          u.maxPlayersPerUse = new BN(u.maxPlayersPerUse);
+        if (u.warmupDuration != null)
+          u.warmupDuration = new BN(u.warmupDuration);
+        if (u.cooldownDuration != null) {
+          u.cooldownDuration = new BN(u.cooldownDuration);
+        }
+      }
+
+      u = k.itemClassType.wearable;
+      if (u) {
+        if (u.limitPerPart) {
+          u.limitPerPart = new BN(u.limitPerPart);
+        }
+      }
+    });
+  }
+}
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
   program: ItemProgram;
   key: web3.PublicKey;
@@ -898,6 +922,8 @@ export class ItemProgram {
       program: this.program,
     });
 
+    convertNumsToBNs(args);
+
     const [itemClassKey, itemClassBump] = await getItemPDA(
       accounts.itemMint,
       args.classIndex
@@ -939,10 +965,11 @@ export class ItemProgram {
         program: this.program,
       });
 
-    const [itemClassKey, itemClassBump] = await getItemPDA(
-      accounts.itemMint,
-      args.classIndex
-    );
+    convertNumsToBNs(args);
+
+    const itemClassKey = (
+      await getItemPDA(accounts.itemMint, args.classIndex)
+    )[0];
 
     await this.program.rpc.updateItemClass(args, {
       accounts: {
