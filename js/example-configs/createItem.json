@@ -5,7 +5,7 @@
   "namespaceIndex": null,
   "buildPermissivenessToUse": { "anybody": true },
   "classIndex": 9,
-  "newItemIndex": 3,
+  "newItemIndex": 4,
   "craftEscrowIndex": 1,
   "componentScope": "set1",
   "parent": null,
@@ -16,10 +16,6 @@
   "storeMint": false,
   "metadataUpdateAuthority": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
   "components": [
-    {
-      "mint": "GisU2V16MCAUuYCZtKU1xGDGSptCXXRjQpYXEqmPtP4e",
-      "index": 1
-    },
     {
       "mint": "DmjffAMpPWvBpy9sb5Hsd9V98X4x5tGRkZjHgqBkVVZU",
       "index": 2

@@ -882,15 +882,18 @@ pub mod item {
                 &class_index.to_le_bytes(),
                 &[item_class.bump],
             ];
-            // Give back any in the escrow. Any that should have been burned will have been.
-            spl_token_transfer(TokenTransferParams {
-                source: craft_item_token_account_escrow.to_account_info(),
-                destination: craft_item_token_account.to_account_info(),
-                amount: amount_contributed_from_this_contributor,
-                authority: item_class.to_account_info(),
-                authority_signer_seeds: &item_class_seeds,
-                token_program: token_program.to_account_info(),
-            })?;
+            
+            if chosen_component.condition != ComponentCondition::Consumed && chosen_component.condition != ComponentCondition::CooldownAndConsume {
+                // Give back any in the escrow. Any that should have been burned will have been.
+                spl_token_transfer(TokenTransferParams {
+                    source: craft_item_token_account_escrow.to_account_info(),
+                    destination: craft_item_token_account.to_account_info(),
+                    amount: amount_contributed_from_this_contributor,
+                    authority: item_class.to_account_info(),
+                    authority_signer_seeds: &item_class_seeds,
+                    token_program: token_program.to_account_info(),
+                })?;
+            }
 
             let mut craft_item_acct: Account<CraftItemCounter> = Account::try_from(&craft_item_counter.to_account_info())?;
 
@@ -1700,6 +1703,7 @@ pub struct AddCraftItemToEscrow<'info> {
         &args.amount_to_contribute_from_this_contributor.to_le_bytes(), 
         &args.component_scope.as_bytes()], bump=args.token_bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
     craft_item_token_account_escrow: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
     craft_item_token_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint=craft_item_token_account.mint == craft_item_token_mint.key())]
     craft_item_token_account: Box<Account<'info, TokenAccount>>,
