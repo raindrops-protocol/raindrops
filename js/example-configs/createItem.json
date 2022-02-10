@@ -6,7 +6,7 @@
   "buildPermissivenessToUse": { "anybody": true },
   "classIndex": 9,
   "newItemIndex": 3,
-  "craftEscrowIndex": 0,
+  "craftEscrowIndex": 1,
   "componentScope": "set1",
   "parent": null,
   "originator": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
@@ -21,16 +21,8 @@
       "index": 1
     },
     {
-      "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
-      "index": 3
-    },
-    {
-      "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
-      "index": 4
-    },
-    {
-      "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
-      "index": 5
+      "mint": "DmjffAMpPWvBpy9sb5Hsd9V98X4x5tGRkZjHgqBkVVZU",
+      "index": 2
     }
   ]
 }

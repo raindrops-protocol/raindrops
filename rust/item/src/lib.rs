@@ -1025,6 +1025,11 @@ pub mod item {
                 return Err(ErrorCode::MustUseMerkleOrComponentList.into());
             }
         };
+        
+        if item_escrow.step > 0 {
+            // It gets put up one higher than it can possibly be with last add.
+            item_escrow.step = item_escrow.step.checked_sub(1).ok_or(ErrorCode::NumericalOverflowError)?;
+        }
 
         item_escrow.build_began = Some(clock.unix_timestamp);
 
@@ -1164,6 +1169,11 @@ pub mod item {
         let item_escrow = &mut ctx.accounts.item_escrow;
 
         require!(!item_escrow.deactivated, AlreadyDeactivated);
+
+        if item_escrow.step > 0 && item_escrow.build_began.is_none() {
+            // It gets put up one higher than it can possibly be with last add.
+            item_escrow.step = item_escrow.step.checked_sub(1).ok_or(ErrorCode::NumericalOverflowError)?;
+        }
 
         item_escrow.build_began = None;
         item_escrow.deactivated = true;

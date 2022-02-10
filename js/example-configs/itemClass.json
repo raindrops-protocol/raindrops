@@ -37,19 +37,9 @@
           "inherited": { "notInherited": true }
         },
         {
-          "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
+          "mint": "DmjffAMpPWvBpy9sb5Hsd9V98X4x5tGRkZjHgqBkVVZU",
           "amount": 1,
           "classIndex": 1,
-          "timeToBuild": null,
-          "componentScope": "set1",
-          "useUsageIndex": 0,
-          "condition": { "presence": true },
-          "inherited": { "notInherited": true }
-        },
-        {
-          "mint": "BdSiymzEnoDiLwD4wDQd2fDzUWxQ84rJVrtPJH47XAg7",
-          "amount": 2,
-          "classIndex": 2,
           "timeToBuild": null,
           "componentScope": "set1",
           "useUsageIndex": 0,
