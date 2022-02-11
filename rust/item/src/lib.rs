@@ -134,6 +134,14 @@ pub struct CompleteItemEscrowBuildPhaseArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UpdateItemArgs {
+    class_index: u64,
+    index: u64,
+    item_mint: Pubkey,
+    item_class_mint: Pubkey,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DeactivateItemEscrowArgs {
     class_index: u64,
     craft_escrow_index: u64,
@@ -1171,6 +1179,21 @@ pub mod item {
         Ok(())
     }
 
+    pub fn update_item<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdateItem<'info>>,
+        _args: UpdateItemArgs,
+    ) -> ProgramResult {
+        let item_class = &mut ctx.accounts.item_class;
+        let item = &mut ctx.accounts.item;
+
+        let item_class_data =
+            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
+
+        propagate_item_class_data_fields_to_item_data(item, item_class, &item_class_data);
+
+        Ok(())
+    }
+
     pub fn deactivate_item_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DeactivateItemEscrow<'info>>,
         _args: DeactivateItemEscrowArgs,
@@ -1796,6 +1819,15 @@ pub struct UpdateItemClass<'info> {
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
     // also if you JUST pass up the parent key as the third account, with NO item data to update,
     // this command will permissionlessly enforce inheritance rules on the item class from it's parent.
+}
+
+#[derive(Accounts)]
+#[instruction(args: UpdateItemArgs)]
+pub struct UpdateItem<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
+    item_class: Account<'info, ItemClass>,
+    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item_class.bump)]
+    item: Account<'info, Item>,
 }
 
 #[derive(Accounts)]

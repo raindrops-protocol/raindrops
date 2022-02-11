@@ -26,7 +26,7 @@ import { sendTransactionWithRetry } from "../utils/transactions";
 
 function convertNumsToBNs(data: any) {
   if (data.itemClassData) {
-    data.itemClassData.config.usages.forEach((k) => {
+    data.itemClassData.config.usages?.forEach((k) => {
       let u = k.itemClassType.consumable;
       if (u) {
         if (u.maxUses != null) u.maxUses = new BN(u.maxUses);

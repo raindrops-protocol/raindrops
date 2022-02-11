@@ -899,14 +899,12 @@ programCommand("show_item_class")
             : "Not Set"
         );
 
-        log.info(
-          "------> Usage Permissiveness:",
-          u.usagePermissiveness
-            ? u.usagePermissiveness.map((d) => {
-                log.info(`--------> ${PermissivenessType[d]}`);
-              })
-            : "Not Set"
-        );
+        log.info("------> Usage Permissiveness:");
+        u.usagePermissiveness
+          ? u.usagePermissiveness.map((d) => {
+              log.info(`--------> ${PermissivenessType[d]}`);
+            })
+          : "Not Set";
 
         log.info("------> Basic Item Effects:");
         if (u.basicItemEffects) {
@@ -958,7 +956,7 @@ programCommand("show_item_class")
         }
 
         if ((u.itemClassType as any).bodyPart) {
-          const itemClassType = u.itemClassType as Wearable;
+          const itemClassType = u.itemClassType.wearable as Wearable;
           log.info("------> Wearable:");
           log.info(
             "--------> Limit Per Part:",
@@ -973,18 +971,12 @@ programCommand("show_item_class")
             })
           );
         } else {
-          const itemClassType = u.itemClassType as Consumable;
+          const itemClassType = u.itemClassType.consumable as Consumable;
 
           log.info("------> Consumable:");
           log.info(
             "--------> Max Uses:",
             itemClassType.maxUses ? itemClassType.maxUses.toNumber() : "Not Set"
-          );
-          log.info(
-            "--------> Max Players Per Use:",
-            itemClassType.maxPlayersPerUse
-              ? itemClassType.maxPlayersPerUse.toNumber()
-              : "Not Set"
           );
 
           log.info(
@@ -996,8 +988,9 @@ programCommand("show_item_class")
 
           log.info(
             "--------> Item Usage Type:",
-            ItemUsageType[itemClassType.itemUsageType]
+            ItemUsageType[itemClassType.itemUsageType.toString()]
           );
+
           log.info(
             "--------> Cooldown Duration:",
             itemClassType.cooldownDuration

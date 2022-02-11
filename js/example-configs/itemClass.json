@@ -8,7 +8,12 @@
       "childrenMustBeEditions": null,
       "builderMustBeHolder": null,
       "updatePermissiveness": null,
-      "buildPermissiveness": null,
+      "buildPermissiveness": [
+        {
+          "permissivenessType": { "anybody": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
       "stakingWarmUpDuration": null,
       "stakingCooldownDuration": null,
       "stakingPermissiveness": null,
@@ -19,31 +24,26 @@
       "usageRoot": null,
       "usageStateRoot": null,
       "componentRoot": null,
-      "usages": [
+      "usages": null,
+      "components": [
         {
-          "index": 0,
-          "basicItemEffects": null,
-          "usagePermissiveness": [{ "updateAuthority": true }],
-          "inherited": { "notInherited": true },
-          "itemClassType": {
-            "consumable": {
-              "maxUses": null,
-              "maxPlayersPerUse": null,
-              "itemUsageType": { "infinite": true },
-              "cooldownDuration": 500,
-              "warmupDuration": null
-            }
-          }
+          "mint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
+          "amount": 1,
+          "classIndex": 0,
+          "timeToBuild": null,
+          "componentScope": "set1",
+          "useUsageIndex": 0,
+          "condition": { "cooldownAndConsume": true },
+          "inherited": { "notInherited": true }
         }
-      ],
-      "components": null
+      ]
     }
   },
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
-  "mint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
-  "index": 0,
+  "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "index": 9,
   "parent": null,
   "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,

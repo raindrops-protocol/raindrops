@@ -175,7 +175,7 @@ export class ItemUsage {
   basicItemEffects: null | BasicItemEffect[];
   usagePermissiveness: PermissivenessType[];
   inherited: InheritanceState;
-  itemClassType: Wearable | Consumable;
+  itemClassType: ItemClassType;
   callback: null | Callback;
   validation: null | Callback;
   doNotPairWithSelf: InheritedBoolean;
@@ -186,7 +186,7 @@ export class ItemUsage {
     basicItemEffects: null | BasicItemEffect[];
     usagePermissiveness: PermissivenessType[];
     inherited: InheritanceState;
-    itemClassType: Wearable | Consumable;
+    itemClassType: ItemClassType;
     callback: null | Callback;
     validation: null | Callback;
     doNotPairWithSelf: InheritedBoolean;
@@ -239,25 +239,49 @@ export class ItemClass {
   }
 }
 
-export enum ItemClassType {
-  Wearable,
-  Consumable,
+export class ItemClassType {
+  wearable?: Wearable;
+  consumable?: Consumable;
+
+  constructor(args: { wearable?: Wearable; consumable?: Consumable }) {
+    this.wearable = args.wearable;
+    this.consumable = args.consumable;
+  }
 }
 
 export class Wearable {
-  itemClassType: ItemClassType = ItemClassType.Wearable;
   bodyPart: string[];
   limitPerPart: BN;
+
+  constructor(args: { bodyPart: string[]; limitPerPart: BN }) {
+    this.bodyPart = args.bodyPart;
+    this.limitPerPart = args.limitPerPart;
+  }
 }
 
 export class Consumable {
-  itemClassType: ItemClassType = ItemClassType.Consumable;
   maxUses: null | BN;
   // If none, is assumed to be 1 (to save space)
   maxPlayersPerUse: null | BN;
   itemUsageType: ItemUsageType;
   cooldownDuration: null | BN;
   warmupDuration: null | BN;
+
+  constructor(args: {
+    maxUses: null | BN;
+    // If none, is assumed to be 1 (to save space)
+    maxPlayersPerUse: null | BN;
+    itemUsageType: ItemUsageType;
+    cooldownDuration: null | BN;
+    warmupDuration: null | BN;
+  }) {
+    console.log("Fuck", args);
+    this.maxUses = args.maxUses;
+    this.maxPlayersPerUse = args.maxPlayersPerUse;
+    this.itemUsageType = args.itemUsageType;
+    this.cooldownDuration = args.cooldownDuration;
+    this.warmupDuration = args.warmupDuration;
+  }
 }
 
 export enum ItemUsageType {
@@ -437,14 +461,25 @@ export const ITEM_SCHEMA = new Map<any, any>([
     },
   ],
   [
+    ItemClassType,
+    {
+      kind: "enum",
+      values: [
+        ["wearable", Wearable],
+        ["consumable", Consumable],
+      ],
+    },
+  ],
+  [
     ItemUsage,
     {
       kind: "struct",
       fields: [
         ["index", "u16"],
         ["basicItemEffects", { kind: "option", type: [BasicItemEffect] }],
-        ["usagePermissiveness", { kind: "option", type: [PermissivenessType] }],
+        ["usagePermissiveness", ["u8"]],
         ["inherited", "u8"],
+        ["itemClassType", ItemClassType],
         ["callback", { kind: "option", type: Callback }],
         ["validation", { kind: "option", type: Callback }],
         ["doNotPairWithSelf", { kind: "option", type: InheritedBoolean }],
