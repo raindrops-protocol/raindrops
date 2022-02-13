@@ -1826,7 +1826,7 @@ pub struct UpdateItemClass<'info> {
 pub struct UpdateItem<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item_class.bump)]
+    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Account<'info, Item>,
 }
 

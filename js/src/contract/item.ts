@@ -202,6 +202,13 @@ export interface UpdateItemClassArgs {
   itemClassData: any | null;
 }
 
+export interface UpdateItemArgs {
+  classIndex: BN;
+  index: BN;
+  itemMint: web3.PublicKey;
+  itemClassMint: web3.PublicKey;
+}
+
 export interface CreateItemClassAccounts {
   itemMint: web3.PublicKey;
   parent: web3.PublicKey | null;
@@ -258,6 +265,8 @@ export interface UpdateItemClassAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface UpdateItemAccounts {}
+
 export interface StartItemEscrowBuildPhaseAccounts {
   itemClassMint: web3.PublicKey;
   newItemToken: web3.PublicKey | null;
@@ -285,6 +294,7 @@ export interface CompleteItemEscrowBuildPhaseAdditionalArgs {
   parentClassIndex: BN | null;
 }
 
+export interface UpdateItemAdditionalArgs {}
 export interface AddCraftItemToEscrowAdditionalArgs {
   parentClassIndex: BN | null;
 }
@@ -944,6 +954,27 @@ export class ItemProgram {
       },
       remainingAccounts:
         remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
+
+    return itemClassKey;
+  }
+
+  async updateItem(
+    args: UpdateItemArgs,
+    _accounts: UpdateItemAccounts,
+    _additionalArgs: UpdateItemAdditionalArgs
+  ): Promise<web3.PublicKey> {
+    const itemClassKey = (
+      await getItemPDA(args.itemClassMint, args.classIndex)
+    )[0];
+
+    const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
+
+    await this.program.rpc.updateItem(args, {
+      accounts: {
+        itemClass: itemClassKey,
+        item: itemKey,
+      },
     });
 
     return itemClassKey;

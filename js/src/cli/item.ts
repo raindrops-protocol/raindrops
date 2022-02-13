@@ -574,7 +574,6 @@ programCommand("show_item_build")
   });
 
 programCommand("show_item")
-  .option("-cp, --config-path <string>", "JSON file with item class settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
   .option(
     "-i, --index <string>",
@@ -588,16 +587,8 @@ programCommand("show_item")
 
     let actualMint: web3.PublicKey, actualIndex: BN;
 
-    if (configPath === undefined) {
-      actualMint = new web3.PublicKey(mint);
-      actualIndex = new BN(index);
-    } else {
-      const configString = fs.readFileSync(configPath);
-      //@ts-ignore
-      const config = JSON.parse(configString);
-      actualMint = new web3.PublicKey(config.mint || config.newItemMint);
-      actualIndex = new BN(config.index || config.newItemIndex);
-    }
+    actualMint = new web3.PublicKey(mint);
+    actualIndex = new BN(index);
 
     const itemKey = (await getItemPDA(actualMint, actualIndex))[0];
 
@@ -1058,6 +1049,35 @@ programCommand("update_item_class")
       {
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       }
+    );
+  });
+
+programCommand("update_item")
+  .requiredOption("-m, --item-mint <string>", "Item mint")
+  .requiredOption("-cm, --item-class-mint <string>", "Item Class mint")
+  .option("-i, --item-index <string>", "Item index")
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, rpcUrl, itemMint, itemIndex, itemClassMint } =
+      cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    const item = (
+      await getItemPDA(new web3.PublicKey(itemMint), new BN(itemIndex || 0))
+    )[0];
+
+    const itemObj = await anchorProgram.program.account.item.fetch(item);
+
+    await anchorProgram.updateItem(
+      {
+        index: new BN(itemIndex || 0),
+        classIndex: itemObj.classIndex,
+        itemMint: new web3.PublicKey(itemMint),
+        itemClassMint: new web3.PublicKey(itemClassMint),
+      },
+      {},
+      {}
     );
   });
 
