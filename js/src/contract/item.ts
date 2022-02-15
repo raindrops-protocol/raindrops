@@ -83,6 +83,19 @@ export interface BeginItemActivationArgs {
   usageInfo: null;
 }
 
+export interface EndItemActivationArgs {
+  itemActivationBump: number | null;
+  classIndex: BN;
+  index: BN;
+  itemMint: web3.PublicKey;
+  itemClassMint: web3.PublicKey;
+  usagePermissivenessToUse: null | AnchorPermissivenessType;
+  amount: BN;
+  usageIndex: number;
+  usageProof: null | web3.PublicKey[];
+  usage: null;
+}
+
 export interface CreateItemClassArgs {
   itemClassBump: number | null;
   classIndex: BN;
@@ -231,6 +244,11 @@ export interface BeginItemActivationAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface EndItemActivationAccounts {
+  originator: web3.PublicKey;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
 export interface CreateItemClassAccounts {
   itemMint: web3.PublicKey;
   parent: web3.PublicKey | null;
@@ -298,6 +316,8 @@ export interface StartItemEscrowBuildPhaseAccounts {
 }
 
 export interface BeginItemActivationAdditionalArgs {}
+
+export interface EndItemActivationAdditionalArgs {}
 
 export interface CreateItemClassAdditionalArgs {
   parentOfParentClassIndex: BN | null;
@@ -926,6 +946,48 @@ export class ItemProgram {
       instructions,
       signers
     );
+  }
+
+  async endItemActivation(
+    args: EndItemActivationArgs,
+    accounts: EndItemActivationAccounts,
+    _additionalArgs: EndItemActivationAdditionalArgs = {}
+  ) {
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.usagePermissivenessToUse,
+        tokenMint: args.itemMint,
+        parentMint: args.itemClassMint,
+        parentIndex: args.classIndex,
+        parent: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program,
+      });
+
+    const itemClassKey = (
+      await getItemPDA(args.itemClassMint, args.classIndex)
+    )[0];
+
+    const itemActivationMarker = (
+      await getItemActivationMarker({
+        itemMint: args.itemMint,
+        index: args.index,
+        usageIndex: new BN(args.usageIndex),
+        amount: args.amount,
+      })
+    )[0];
+
+    const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
+    await this.program.rpc.endItemActivation(args, {
+      accounts: {
+        itemClass: itemClassKey,
+        item: itemKey,
+        itemActivationMarker,
+        receiver: accounts.originator || this.program.provider.wallet.publicKey,
+      },
+      remainingAccounts:
+        remainingAccounts.length > 0 ? remainingAccounts : undefined,
+    });
   }
 
   async drainItemEscrow(

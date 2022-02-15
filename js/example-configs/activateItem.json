@@ -7,5 +7,6 @@
   "usagePermissivenessToUse": { "updateAuthority": true },
   "amount": 1,
   "usageIndex": 0,
+  "originator": null,
   "metadataUpdateAuthority": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97"
 }

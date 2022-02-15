@@ -1360,8 +1360,6 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
                         if cooldown_over < unix_timestamp {
                             return Err(ErrorCode::UnableToFindValidCooldownState.into());
                         }
-                    } else {
-                        return Err(ErrorCode::UnableToFindValidCooldownState.into());
                     }
                 }
             }
@@ -1387,8 +1385,6 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
                                             ErrorCode::UnableToFindValidCooldownState.into()
                                         );
                                     }
-                                } else {
-                                    return Err(ErrorCode::UnableToFindValidCooldownState.into());
                                 }
                             }
                         }

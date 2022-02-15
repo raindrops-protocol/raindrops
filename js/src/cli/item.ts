@@ -570,6 +570,47 @@ programCommand("begin_item_activation")
     );
   });
 
+programCommand("end_item_activation")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, transferAuthority } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.endItemActivation(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amount: new BN(config.amount || 1),
+        index: new BN(config.index),
+        usageIndex: config.usageIndex,
+        itemActivationBump: null,
+        itemMint: new web3.PublicKey(config.itemMint),
+        usageProof: null,
+        usage: null,
+        usagePermissivenessToUse: config.usagePermissivenessToUse,
+      },
+      {
+        originator: config.originator || walletKeyPair.publicKey,
+        metadataUpdateAuthority: new web3.PublicKey(
+          config.metadataUpdateAuthority
+        ),
+      }
+    );
+  });
+
 programCommand("show_item_build")
   .option("-cp, --config-path <string>", "JSON file with item class settings")
 
