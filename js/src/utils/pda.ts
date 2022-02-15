@@ -5,7 +5,7 @@ import {
   ITEM_ID,
   TOKEN_METADATA_PROGRAM_ID,
 } from "../constants/programIds";
-import { PREFIX as ITEM_PREFIX } from "../constants/item";
+import { PREFIX as ITEM_PREFIX, MARKER } from "../constants/item";
 
 export const getAtaForMint = async (
   mint: web3.PublicKey,
@@ -23,6 +23,25 @@ export const getItemPDA = async (
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
     [Buffer.from(ITEM_PREFIX), mint.toBuffer(), index.toBuffer("le", 8)],
+    ITEM_ID
+  );
+};
+
+export const getItemActivationMarker = async (args: {
+  itemMint: web3.PublicKey;
+  index: BN;
+  usageIndex: BN;
+  amount: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(ITEM_PREFIX),
+      args.itemMint.toBuffer(),
+      args.index.toBuffer("le", 8),
+      args.usageIndex.toBuffer("le", 8),
+      args.amount.toBuffer("le", 8),
+      Buffer.from(MARKER),
+    ],
     ITEM_ID
   );
 };

@@ -192,9 +192,9 @@ pub struct BeginItemActivationArgs {
     index: u64,
     item_class_mint: Pubkey,
     // How much space to use for the item marker
-    // max of 8+1+1+2+2+2+32, min of 8+1+1
     item_marker_space: u8,
     usage_permissiveness_to_use: Option<PermissivenessType>,
+    amount: u64,
     usage_index: u16,
     // Use this if using roots
     usage_info: Option<UsageInfo>,
@@ -208,6 +208,7 @@ pub struct ValidationArgs {
     class_index: u64,
     index: u64,
     item_class_mint: Pubkey,
+    amount: u64,
     usage_permissiveness_to_use: Option<PermissivenessType>,
     usage_index: u16,
     // Use this if using roots
@@ -222,6 +223,7 @@ pub struct ProveNewStateValidArgs {
     item_mint: Pubkey,
     index: u64,
     usage_index: u16,
+    amount: u64,
     // Required if using roots
     usage_proof: Option<Vec<[u8; 32]>>,
     usage: Option<ItemUsage>,
@@ -234,6 +236,7 @@ pub struct ResetStateValidationForActivationArgs {
     index: u64,
     usage_index: u16,
     class_index: u64,
+    amount: u64,
     item_class_mint: Pubkey,
     usage_info: Option<UsageInfo>,
 }
@@ -244,6 +247,7 @@ pub struct UpdateValidForUseIfWarmupPassedArgs {
     index: u64,
     usage_index: u16,
     class_index: u64,
+    amount: u64,
     item_class_mint: Pubkey,
     // Required if using roots
     usage_proof: Option<Vec<[u8; 32]>>,
@@ -258,6 +262,7 @@ pub struct EndItemActivationArgs {
     usage_index: u16,
     index: u64,
     class_index: u64,
+    amount: u64,
     // Required if using roots
     usage_proof: Option<Vec<[u8; 32]>>,
     usage: Option<ItemUsage>,
@@ -1261,12 +1266,18 @@ pub mod item {
             usage_index,
             class_index,
             item_class_mint,
+            amount,
             ..
         } = args;
 
-        require!(item_account.amount > 0, InsufficientBalance);
+        require!(amount > 0, MustBeGreaterThanZero);
+        require!(item_account.amount >= amount, InsufficientBalance);
 
         item_activation_marker.bump = item_activation_bump;
+
+        if amount > 1 {
+            item_activation_marker.amount = Some(amount);
+        }
 
         let (usage, usage_state) =
             verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
@@ -1299,6 +1310,7 @@ pub mod item {
                         extra_identifier: validation.code,
                         usage_permissiveness_to_use: usage_permissiveness_to_use.clone(),
                         index,
+                        amount,
                         usage_info,
                         usage_index,
                         class_index,
@@ -1338,7 +1350,7 @@ pub mod item {
                         spl_token_burn(TokenBurnParams {
                             mint: item_mint.to_account_info(),
                             source: item_account.to_account_info(),
-                            amount: 1,
+                            amount,
                             authority: item_transfer_authority.to_account_info(),
                             authority_signer_seeds: None,
                             token_program: token_program.to_account_info(),
@@ -1857,13 +1869,13 @@ pub struct DrainItem<'info> {
 pub struct BeginItemActivation<'info> {
     #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Box<Account<'info, ItemClass>>,
-    #[account(mut, constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes()], bump=item.bump)]
     item: Box<Account<'info, Item>>,
     item_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint=item_mint.key() == item_account.mint)]
     item_account: Box<Account<'info, TokenAccount>>,
     item_transfer_authority: Signer<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1+1+8 && args.item_marker_space <= 8+1+1+1+8+2+2+2+32, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &(args.usage_index as u64).to_le_bytes(), &args.amount.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1+1+8+1 && args.item_marker_space <= 8+1+1+1+8+2+2+2+32+9, payer=payer)]
     item_activation_marker: Box<Account<'info, ItemActivationMarker>>,
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
@@ -1873,6 +1885,7 @@ pub struct BeginItemActivation<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
+    rent: Sysvar<'info, Rent>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -1883,7 +1896,7 @@ pub struct ProveNewStateValid<'info> {
     item: Account<'info, Item>,
     #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &(args.usage_index as u64).to_le_bytes(), &args.amount.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     clock: Sysvar<'info, Clock>,
 }
@@ -1895,7 +1908,7 @@ pub struct ResetStateValidationForActivation<'info> {
     item: Account<'info, Item>,
     #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &(args.usage_index as u64).to_le_bytes(), &args.amount.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
 }
 
@@ -1906,7 +1919,7 @@ pub struct UpdateValidForUseIfWarmupPassed<'info> {
     item: Account<'info, Item>,
     #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &(args.usage_index as u64).to_le_bytes(), &args.amount.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     clock: Sysvar<'info, Clock>,
 }
@@ -1919,7 +1932,7 @@ pub struct EndItemActivation<'info> {
     #[account(constraint=item.parent == item_class.key(), seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),&args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     // funds from this will be drained to the signer in common remaining accounts for safety
-    #[account(mut, seeds=[PREFIX.as_bytes(), &args.item_mint.key().as_ref(), &args.index.to_le_bytes(), &args.usage_index.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_mint.as_ref(), &args.index.to_le_bytes(), &(args.usage_index as u64).to_le_bytes(), &args.amount.to_le_bytes(), MARKER.as_bytes()], bump=item_activation_marker.bump)]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
@@ -2243,6 +2256,7 @@ pub struct CraftItemCounter {
 pub struct ItemActivationMarker {
     bump: u8,
     valid_for_use: bool,
+    amount: Option<u64>,
     // In the case we need to reset root, we want to use
     // timestamp from original activation
     unix_timestamp: u64,
@@ -2430,4 +2444,6 @@ pub enum ErrorCode {
     MustUseRealScope,
     #[msg("The class index passed up does not match that on the component")]
     CraftClassIndexMismatch,
+    #[msg("Must use at least one of this item")]
+    MustBeGreaterThanZero,
 }

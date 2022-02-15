@@ -1,11 +1,11 @@
 {
-  "newItemMint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
+  "newItemMint": "9PqJKDVpiPzwnoQ5c7YLkJxzWMN62fRRmR7VNiJRtA5L",
   "itemClassMint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
   "amountToMake": 1,
   "namespaceIndex": null,
   "buildPermissivenessToUse": { "updateAuthority": true },
   "classIndex": 0,
-  "newItemIndex": 1,
+  "newItemIndex": 0,
   "componentScope": null,
   "parent": null,
   "craftItemIndex": 0,

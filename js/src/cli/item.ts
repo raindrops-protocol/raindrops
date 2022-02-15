@@ -515,6 +515,61 @@ programCommand("drain_item_escrow")
     );
   });
 
+programCommand("begin_item_activation")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .option(
+    "-ta, --transfer-authority",
+    "Keypair to use for tfer authority (if unset, defaults to you)"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, transferAuthority } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.beginItemActivation(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amount: new BN(config.amount || 1),
+        index: new BN(config.index),
+        itemMarkerSpace: config.itemMarkerSpace,
+        usageInfo: null,
+        usageIndex: config.usageIndex,
+        itemActivationBump: null,
+        usagePermissivenessToUse: config.usagePermissivenessToUse,
+      },
+      {
+        itemMint: new web3.PublicKey(config.itemMint),
+        itemAccount: config.itemAccount
+          ? new web3.PublicKey(config.itemAccount)
+          : (
+              await getAtaForMint(
+                new web3.PublicKey(config.itemMint),
+                walletKeyPair.publicKey
+              )
+            )[0],
+        itemTransferAuthority: transferAuthority
+          ? loadWalletKey(transferAuthority)
+          : null,
+        metadataUpdateAuthority: new web3.PublicKey(
+          config.metadataUpdateAuthority
+        ),
+      }
+    );
+  });
+
 programCommand("show_item_build")
   .option("-cp, --config-path <string>", "JSON file with item class settings")
 
@@ -641,11 +696,11 @@ programCommand("show_item")
     if (item.data.usageStates)
       item.data.usageStates.map((u) => {
         log.info("----> Index:", u.index);
-        log.info("----> Uses Remaining:", u.uses);
+        log.info("----> # Times Used:", u.uses);
         log.info(
           "----> Activated At:",
-          u.activated_at
-            ? new Date(u.buildactivated_atBegan.toNumber() * 1000)
+          u.activatedAt
+            ? new Date(u.activatedAt.toNumber() * 1000)
             : "Not Active"
         );
       });
