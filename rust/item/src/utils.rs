@@ -1384,6 +1384,8 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
                                         return Err(
                                             ErrorCode::UnableToFindValidCooldownState.into()
                                         );
+                                    } else {
+                                        return Ok(());
                                     }
                                 }
                             }

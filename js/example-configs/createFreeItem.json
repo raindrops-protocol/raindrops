@@ -1,9 +1,9 @@
 {
-  "newItemMint": "9PqJKDVpiPzwnoQ5c7YLkJxzWMN62fRRmR7VNiJRtA5L",
+  "newItemMint": "5VDCnw9NADV4Bwr2x6wXcyNXU5EuWWksfceUtk7nxubm",
   "itemClassMint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
   "amountToMake": 1,
   "namespaceIndex": null,
-  "buildPermissivenessToUse": { "updateAuthority": true },
+  "buildPermissivenessToUse": { "anybody": true },
   "classIndex": 0,
   "newItemIndex": 0,
   "componentScope": null,

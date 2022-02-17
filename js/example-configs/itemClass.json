@@ -33,7 +33,7 @@
           "timeToBuild": null,
           "componentScope": "set1",
           "useUsageIndex": 0,
-          "condition": { "cooldownAndConsume": true },
+          "condition": { "cooldown": true },
           "inherited": { "notInherited": true }
         }
       ]
