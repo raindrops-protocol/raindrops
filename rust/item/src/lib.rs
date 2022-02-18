@@ -1688,7 +1688,7 @@ pub struct CreateItemEscrow<'info> {
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.craft_bump, space=if args.namespace_index.is_none() { 35 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 35} , payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.craft_bump, space=if args.namespace_index.is_none() { 37 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 36} , payer=payer)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,

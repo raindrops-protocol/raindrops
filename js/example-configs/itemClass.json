@@ -30,10 +30,10 @@
           "mint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
           "amount": 1,
           "classIndex": 0,
-          "timeToBuild": null,
+          "timeToBuild": 500,
           "componentScope": "set1",
           "useUsageIndex": 0,
-          "condition": { "cooldown": true },
+          "condition": { "presence": true },
           "inherited": { "notInherited": true }
         }
       ]

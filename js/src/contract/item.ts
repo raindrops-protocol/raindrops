@@ -27,6 +27,12 @@ import { sendTransactionWithRetry } from "../utils/transactions";
 
 function convertNumsToBNs(data: any) {
   if (data.itemClassData) {
+    data.itemClassData.config.components?.forEach((k) => {
+      if (k.timeToBuild != null) {
+        k.timeToBuild = new BN(k.timeToBuild);
+      }
+    });
+
     data.itemClassData.config.usages?.forEach((k) => {
       let u = k.itemClassType.consumable;
       if (u) {
