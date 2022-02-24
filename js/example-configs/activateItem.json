@@ -1,10 +1,10 @@
 {
   "itemMint": "5VDCnw9NADV4Bwr2x6wXcyNXU5EuWWksfceUtk7nxubm",
-  "index": 0,
+  "index": 1,
   "itemClassMint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
   "classIndex": 0,
-  "itemMarkerSpace": 25,
-  "usagePermissivenessToUse": { "tokenHolder": true },
+  "itemMarkerSpace": 37,
+  "usagePermissivenessToUse": { "parentTokenHolder": true },
   "amount": 1,
   "usageIndex": 0,
   "originator": null,

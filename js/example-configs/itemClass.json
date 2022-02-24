@@ -1,16 +1,13 @@
 {
   "data": {
     "settings": {
-      "freeBuild": {
-        "inherited": { "notInherited": true },
-        "boolean": true
-      },
+      "freeBuild": null,
       "childrenMustBeEditions": null,
       "builderMustBeHolder": null,
       "updatePermissiveness": null,
       "buildPermissiveness": [
         {
-          "permissivenessType": { "anybody": true },
+          "permissivenessType": { "tokenHolder": true },
           "inherited": { "notInherited": true }
         }
       ],
@@ -25,26 +22,18 @@
       "usageStateRoot": null,
       "componentRoot": null,
       "usages": null,
-      "components": [
-        {
-          "mint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
-          "amount": 1,
-          "classIndex": 0,
-          "timeToBuild": 500,
-          "componentScope": "set1",
-          "useUsageIndex": 0,
-          "condition": { "presence": true },
-          "inherited": { "notInherited": true }
-        }
-      ]
+      "components": null
     }
   },
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
-  "index": 9,
-  "parent": null,
+  "index": 10,
+  "parent": {
+    "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+    "index": 9
+  },
   "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,
   "totalSpaceBytes": 300

@@ -33,6 +33,7 @@ pub struct CreateItemClassArgs {
     item_class_bump: u8,
     class_index: u64,
     parent_class_index: Option<u64>,
+    parent_of_parent_class_index: Option<u64>,
     space: u64,
     desired_namespace_array_size: u16,
     update_permissiveness_to_use: Option<PermissivenessType>,
@@ -44,6 +45,7 @@ pub struct CreateItemClassArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainItemClassArgs {
     class_index: u64,
+    parent_class_index: Option<u64>,
     update_permissiveness_to_use: Option<PermissivenessType>,
     item_class_mint: Pubkey,
 }
@@ -51,6 +53,7 @@ pub struct DrainItemClassArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct UpdateItemClassArgs {
     class_index: u64,
+    parent_class_index: Option<u64>,
     update_permissiveness_to_use: Option<PermissivenessType>,
     item_class_data: Option<ItemClassData>,
 }
@@ -68,6 +71,7 @@ pub struct DrainItemArgs {
 pub struct CreateItemEscrowArgs {
     craft_bump: u8,
     class_index: u64,
+    parent_class_index: Option<u64>,
     craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
@@ -81,6 +85,7 @@ pub struct AddCraftItemToEscrowArgs {
     token_bump: u8,
     craft_item_counter_bump: u8,
     class_index: u64,
+    parent_class_index: Option<u64>,
     craft_item_index: u64,
     craft_item_class_index: u64,
     craft_item_class_mint: Pubkey,
@@ -101,6 +106,7 @@ pub struct AddCraftItemToEscrowArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct StartItemEscrowBuildPhaseArgs {
     class_index: u64,
+    parent_class_index: Option<u64>,
     craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
@@ -121,6 +127,7 @@ pub struct StartItemEscrowBuildPhaseArgs {
 pub struct CompleteItemEscrowBuildPhaseArgs {
     new_item_bump: u8,
     class_index: u64,
+    parent_class_index: Option<u64>,
     new_item_index: u64,
     craft_escrow_index: u64,
     component_scope: String,
@@ -144,6 +151,7 @@ pub struct UpdateItemArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DeactivateItemEscrowArgs {
     class_index: u64,
+    parent_class_index: Option<u64>,
     craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
@@ -155,6 +163,8 @@ pub struct DeactivateItemEscrowArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainItemEscrowArgs {
     class_index: u64,
+    parent_class_index: Option<u64>,
+
     craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
@@ -168,6 +178,8 @@ pub struct RemoveCraftItemFromEscrowArgs {
     token_bump: u8,
     craft_item_counter_bump: u8,
     class_index: u64,
+    parent_class_index: Option<u64>,
+
     craft_item_index: u64,
     craft_escrow_index: u64,
     component_scope: String,
@@ -287,6 +299,7 @@ pub mod item {
             update_permissiveness_to_use,
             store_mint,
             store_metadata_fields,
+            parent_of_parent_class_index,
             mut item_class_data,
             ..
         } = args;
@@ -342,6 +355,7 @@ pub mod item {
                     .item_class_data(parent_info.data.borrow())?
                     .settings
                     .update_permissiveness,
+                class_index: parent_of_parent_class_index,
                 index: parent_class_index.unwrap(),
                 account_mint: None,
             })?;
@@ -370,6 +384,7 @@ pub mod item {
                     permissiveness_type: PermissivenessType::UpdateAuthority,
                     inherited: InheritanceState::NotInherited,
                 }]),
+                class_index: parent_of_parent_class_index,
                 index: class_index,
                 account_mint: Some(&item_mint.key()),
             })?;
@@ -418,33 +433,38 @@ pub mod item {
             class_index,
             update_permissiveness_to_use,
             item_class_data,
+            parent_class_index,
         } = args;
 
         let item_class = &mut ctx.accounts.item_class;
         let item_mint = &ctx.accounts.item_mint;
+        let parent = &ctx.accounts.parent;
+
         msg!("1");
         let original_item_class_data =
             item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
         msg!("2");
         let mut new_item_class_data = if let Some(icd) = item_class_data {
-            assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                program_id: ctx.program_id,
-                given_account: &item_class.to_account_info(),
-                remaining_accounts: ctx.remaining_accounts,
-                permissiveness_to_use: &update_permissiveness_to_use,
-                permissiveness_array: &original_item_class_data.settings.update_permissiveness,
-                index: class_index,
-                account_mint: Some(&item_mint.key()),
-            })?;
+            if ctx.remaining_accounts.len() > 0 {
+                assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                    program_id: ctx.program_id,
+                    given_account: &item_class.to_account_info(),
+                    remaining_accounts: ctx.remaining_accounts,
+                    permissiveness_to_use: &update_permissiveness_to_use,
+                    permissiveness_array: &original_item_class_data.settings.update_permissiveness,
+                    index: class_index,
+                    class_index: parent_class_index,
+                    account_mint: Some(&item_mint.key()),
+                })?;
+            }
+
             icd
         } else {
             original_item_class_data
         };
-
         // The only case where only one account is passed in is when you are just
         // requesting a permissionless inheritance update.
-        if ctx.remaining_accounts.len() == 1 {
-            let parent = &ctx.remaining_accounts[0];
+        if parent.key() != System::id() {
             if let Some(ic_parent) = item_class.parent {
                 assert_keys_equal(parent.key(), ic_parent)?;
             } else {
@@ -459,6 +479,8 @@ pub mod item {
                 &parent_deserialized,
                 &parent_item_class_data,
             );
+        } else if item_class.parent.is_some() {
+            return Err(ErrorCode::ExpectedParent.into());
         }
 
         write_data(item_class, &new_item_class_data)?;
@@ -473,6 +495,7 @@ pub mod item {
             class_index,
             update_permissiveness_to_use,
             item_class_mint,
+            parent_class_index,
         } = args;
         let item_class = &mut ctx.accounts.item_class;
         let receiver = &ctx.accounts.receiver;
@@ -488,6 +511,7 @@ pub mod item {
                 .settings
                 .update_permissiveness,
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&item_class_mint.key()),
         })?;
 
@@ -526,7 +550,8 @@ pub mod item {
 
         let DrainItemArgs {
             class_index,
-            item_class_mint,
+            index,
+            item_mint,
             update_permissiveness_to_use,
             ..
         } = args;
@@ -540,8 +565,9 @@ pub mod item {
                 .item_class_data(&item_class.to_account_info().data.borrow())?
                 .settings
                 .update_permissiveness,
-            index: class_index,
-            account_mint: Some(&item_class_mint.key()),
+            index,
+            class_index: Some(class_index),
+            account_mint: Some(&item_mint.key()),
         })?;
 
         require!(item.tokens_staked == 0, UnstakeTokensFirst);
@@ -588,7 +614,7 @@ pub mod item {
             amount_to_make,
             namespace_index,
             item_class_mint,
-
+            parent_class_index,
             build_permissiveness_to_use,
             ..
         } = args;
@@ -673,6 +699,7 @@ pub mod item {
             permissiveness_to_use: &build_permissiveness_to_use,
             permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
         })?;
         msg!("7");
@@ -709,6 +736,7 @@ pub mod item {
             amount_to_contribute_from_this_contributor,
             craft_item_class_index,
             craft_item_class_mint,
+            parent_class_index,
             ..
         } = args;
 
@@ -724,6 +752,7 @@ pub mod item {
             permissiveness_to_use: &build_permissiveness_to_use,
             permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
         })?;
         require!(!item_escrow.deactivated, DeactivatedItemEscrow);
@@ -853,6 +882,7 @@ pub mod item {
             craft_item_token_mint,
             amount_contributed_from_this_contributor,
             craft_item_class_mint,
+            parent_class_index,
             ..
         } = args;
 
@@ -868,6 +898,7 @@ pub mod item {
             permissiveness_to_use: &build_permissiveness_to_use,
             permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
         })?;
         msg!("2");
@@ -967,6 +998,7 @@ pub mod item {
             end_node_proof,
             total_steps,
             component_scope,
+            parent_class_index,
             ..
         } = args;
 
@@ -982,6 +1014,7 @@ pub mod item {
             permissiveness_to_use: &build_permissiveness_to_use,
             permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
         })?;
 
@@ -1081,6 +1114,7 @@ pub mod item {
             build_permissiveness_to_use,
             store_mint,
             store_metadata_fields,
+            parent_class_index,
             ..
         } = args;
 
@@ -1108,6 +1142,7 @@ pub mod item {
             permissiveness_to_use: &build_permissiveness_to_use,
             permissiveness_array: &item_class_data.settings.build_permissiveness,
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
         })?;
 
@@ -1132,6 +1167,7 @@ pub mod item {
         }
 
         new_item.bump = new_item_bump;
+        new_item.padding = 1;
         new_item.class_index = class_index;
         new_item.parent = item_class.key();
 
@@ -1335,8 +1371,9 @@ pub mod item {
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &usage_permissiveness_to_use,
             permissiveness_array: &Some(perm_array),
+            class_index: Some(class_index),
             index,
-            account_mint: Some(&item_mint.key()),
+            account_mint: None,
         })?;
 
         match &usage.item_class_type {
@@ -1384,7 +1421,7 @@ pub mod item {
             usage_index,
             usage_proof,
             usage,
-            item_mint,
+            class_index,
             ..
         } = args;
 
@@ -1410,7 +1447,8 @@ pub mod item {
             permissiveness_to_use: &usage_permissiveness_to_use,
             permissiveness_array: &Some(perm_array),
             index,
-            account_mint: Some(&item_mint),
+            class_index: Some(class_index),
+            account_mint: None,
         })?;
 
         let item_activation_marker_info = item_activation_marker.to_account_info();
@@ -1828,9 +1866,9 @@ pub struct UpdateItemClass<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
+    // Pass up system if you dont have a parent
+    parent: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
-    // also if you JUST pass up the parent key as the third account, with NO item data to update,
-    // this command will permissionlessly enforce inheritance rules on the item class from it's parent.
 }
 
 #[derive(Accounts)]
@@ -2124,11 +2162,16 @@ pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 
 pub trait Inherited: Clone {
     fn set_inherited(&mut self, i: InheritanceState);
+    fn get_inherited(&self) -> &InheritanceState;
 }
 
 impl Inherited for Root {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
+    }
+
+    fn get_inherited(&self) -> &InheritanceState {
+        return &self.inherited;
     }
 }
 
@@ -2136,11 +2179,17 @@ impl Inherited for ItemUsage {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
     }
+    fn get_inherited(&self) -> &InheritanceState {
+        return &self.inherited;
+    }
 }
 
 impl Inherited for Component {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        return &self.inherited;
     }
 }
 
@@ -2148,11 +2197,17 @@ impl Inherited for Permissiveness {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
     }
+    fn get_inherited(&self) -> &InheritanceState {
+        return &self.inherited;
+    }
 }
 
 impl Inherited for ChildUpdatePropagationPermissiveness {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        return &self.inherited;
     }
 }
 
@@ -2160,11 +2215,17 @@ impl Inherited for Boolean {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
     }
+    fn get_inherited(&self) -> &InheritanceState {
+        return &self.inherited;
+    }
 }
 
 impl Inherited for NamespaceAndIndex {
     fn set_inherited(&mut self, i: InheritanceState) {
         self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        return &self.inherited;
     }
 }
 
@@ -2321,6 +2382,8 @@ pub struct UsageInfo {
 #[account]
 pub struct Item {
     namespaces: Option<Vec<NamespaceAndIndex>>,
+    // extra byte that is always 1 to simulate same structure as item class.
+    padding: u8,
     parent: Pubkey,
     class_index: u64,
     mint: Option<Pubkey>,
@@ -2366,6 +2429,8 @@ pub enum ErrorCode {
     EditionDoesntExist,
     #[msg("No parent present")]
     NoParentPresent,
+    #[msg("Expected parent")]
+    ExpectedParent,
     #[msg("Invalid mint authority")]
     InvalidMintAuthority,
     #[msg("Not mint authority")]

@@ -1,3 +1,5 @@
+use anchor_lang::prelude::msg;
+
 use {
     crate::{
         borsh::BorshDeserialize, Artifact, ArtifactClass, ErrorCode, Permissiveness,
@@ -260,8 +262,13 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
 
 pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
     let data = artifact.data.borrow();
-    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
-    let offset = 12 as usize + number * 32;
+
+    let number = if data[8] == 1 {
+        u32::from_le_bytes(*array_ref![data, 9, 4]) as usize
+    } else {
+        0
+    };
+    let offset = 8 as usize + number * 34 + if data[8] == 1 { 4 } else { 0 };
 
     if data[offset] == 1 {
         let key_bytes = array_ref![data, offset + 1, 32];

@@ -29,6 +29,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
     parentIndex,
     metadataUpdateAuthority,
   } = args;
+
   const remainingAccounts: {
     pubkey: web3.PublicKey;
     isWritable: boolean;
@@ -56,6 +57,7 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
     const parentHolder = program.provider.wallet.publicKey;
     const parentClass =
       parent || (await getItemPDA(parentMint, parentIndex))[0];
+
     remainingAccounts.push({
       pubkey: parentToken,
       isWritable: false,

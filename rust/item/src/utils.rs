@@ -631,6 +631,7 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
     pub remaining_accounts: &'c [AccountInfo<'info>],
     pub permissiveness_to_use: &'a Option<PermissivenessType>,
     pub permissiveness_array: &'a Option<Vec<Permissiveness>>,
+    pub class_index: Option<u64>,
     pub index: u64,
     pub account_mint: Option<&'b Pubkey>,
 }
@@ -656,6 +657,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
         permissiveness_to_use,
         permissiveness_array,
         index,
+        class_index,
         account_mint,
     } = args;
 
@@ -710,11 +712,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                         let class_token_account = &remaining_accounts[0];
                         let class_token_holder = &remaining_accounts[1];
                         let class = &remaining_accounts[2];
-                        let class_mint = if let Some(m) = account_mint {
-                            *m
-                        } else {
-                            remaining_accounts[3].key()
-                        };
+                        let class_mint = remaining_accounts[3].key();
 
                         assert_signer(class_token_holder)?;
 
@@ -731,7 +729,11 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                         assert_derivation(
                             program_id,
                             class,
-                            &[PREFIX.as_bytes(), class_mint.as_ref(), &index.to_le_bytes()],
+                            &[
+                                PREFIX.as_bytes(),
+                                class_mint.as_ref(),
+                                &class_index.unwrap().to_le_bytes(),
+                            ],
                         )?;
 
                         assert_keys_equal(grab_parent(given_account)?, *class.key)?;
@@ -822,7 +824,13 @@ pub fn propagate_parent_array<T: Inherited>(args: PropagateParentArrayArgs<T>) -
         } else {
             match &child_items {
                 Some(c_items) => {
-                    let mut new_items: Vec<T> = c_items.to_vec();
+                    let mut new_items: Vec<T> = vec![];
+                    for item in c_items {
+                        if item.get_inherited() == &InheritanceState::NotInherited {
+                            new_items.push(item.clone())
+                        }
+                    }
+
                     add_to_new_array_from_parent(
                         InheritanceState::Inherited,
                         p_items,
@@ -1054,8 +1062,13 @@ pub fn assert_valid_item_settings_for_edition_type(
 
 pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
     let data = artifact.data.borrow();
-    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
-    let offset = 12 as usize + number * 32;
+
+    let number = if data[8] == 1 {
+        u32::from_le_bytes(*array_ref![data, 9, 4]) as usize
+    } else {
+        0
+    };
+    let offset = 8 as usize + number * 34 + if data[8] == 1 { 4 } else { 0 } + 1;
 
     if data[offset] == 1 {
         let key_bytes = array_ref![data, offset + 1, 32];

@@ -3,12 +3,15 @@
   "itemClassMint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
   "amountToMake": 1,
   "namespaceIndex": null,
-  "buildPermissivenessToUse": { "anybody": true },
-  "classIndex": 9,
-  "newItemIndex": 6,
+  "buildPermissivenessToUse": { "parentTokenHolder": true },
+  "classIndex": 10,
+  "newItemIndex": 10,
   "craftEscrowIndex": 1,
   "componentScope": "set1",
-  "parent": null,
+  "parent": {
+    "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+    "index": 9
+  },
   "originator": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
   "merkleInfo": null,
   "totalSpaceBytes": 200,
@@ -18,7 +21,7 @@
   "components": [
     {
       "mint": "5VDCnw9NADV4Bwr2x6wXcyNXU5EuWWksfceUtk7nxubm",
-      "index": 0
+      "index": 1
     }
   ]
 }

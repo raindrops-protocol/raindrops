@@ -67,12 +67,18 @@ programCommand("create_item_class")
         storeMint: config.storeMint,
         storeMetadataFields: config.storeMetadataFields,
         itemClassData: config.data as ItemClassData,
+        parentOfParentClassIndex: config.parent?.parent
+          ? config.parent.parent.index
+          : null,
       },
       {
         itemMint: new web3.PublicKey(config.mint),
         parent: config.parent
           ? (
-              await getItemPDA(config.parent.mint, config.parent.index)
+              await getItemPDA(
+                new web3.PublicKey(config.parent.mint),
+                new BN(config.parent.index)
+              )
             )[0]
           : null,
         parentMint: config.parent
@@ -88,11 +94,7 @@ programCommand("create_item_class")
           ? config.parent.metadataUpdateAuthority
           : null,
       },
-      {
-        parentOfParentClassIndex: config.parent?.parent
-          ? config.parent.parent.index
-          : null,
-      }
+      {}
     );
   });
 
@@ -127,6 +129,7 @@ programCommand("create_item_escrow")
           : null,
         itemClassMint: new web3.PublicKey(config.itemClassMint),
         amountToMake: new BN(config.amountToMake || 1),
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         newItemMint: new web3.PublicKey(config.newItemMint),
@@ -144,9 +147,7 @@ programCommand("create_item_escrow")
           ? new web3.PublicKey(config.metadataUpdateAuthority)
           : walletKeyPair.publicKey,
       },
-      {
-        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
-      }
+      {}
     );
   });
 
@@ -180,11 +181,10 @@ programCommand("deactivate_item_escrow")
         newItemToken: config.newItemToken
           ? new web3.PublicKey(config.newItemToken)
           : null,
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {},
-      {
-        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
-      }
+      {}
     );
   });
 
@@ -250,6 +250,7 @@ programCommand("add_craft_item_to_escrow")
         amountToContributeFromThisContributor: new BN(amountToContribute),
         craftItemClassIndex: new BN(component.classIndex),
         craftItemClassMint: component.mint,
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         newItemToken: config.newItemToken
@@ -269,9 +270,7 @@ programCommand("add_craft_item_to_escrow")
           ? new web3.PublicKey(config.metadataUpdateAuthority)
           : walletKeyPair.publicKey,
       },
-      {
-        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
-      }
+      {}
     );
   });
 
@@ -339,6 +338,7 @@ programCommand("remove_craft_item_from_escrow")
         craftItemTokenMint: new web3.PublicKey(
           config.components[actualIndex].mint
         ),
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         newItemToken: config.newItemToken
@@ -396,6 +396,7 @@ programCommand("start_item_escrow_build_phase")
         endNodeProof: config.merkleInfo
           ? new web3.PublicKey(config.merkleInfo.endNodeProof)
           : null,
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         newItemToken: config.newItemToken
@@ -412,9 +413,7 @@ programCommand("start_item_escrow_build_phase")
           ? new web3.PublicKey(config.metadataUpdateAuthority)
           : walletKeyPair.publicKey,
       },
-      {
-        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
-      }
+      {}
     );
   });
 
@@ -453,6 +452,7 @@ programCommand("complete_item_escrow_build_phase")
         storeMetadataFields: !!config.storeMetadataFields,
         storeMint: !!config.storeMint,
         newItemBump: null,
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         newItemMint: new web3.PublicKey(config.newItemMint),
@@ -470,9 +470,7 @@ programCommand("complete_item_escrow_build_phase")
           ? new web3.PublicKey(config.metadataUpdateAuthority)
           : walletKeyPair.publicKey,
       },
-      {
-        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
-      }
+      {}
     );
   });
 
@@ -506,6 +504,7 @@ programCommand("drain_item_escrow")
         newItemToken: config.newItemToken
           ? new web3.PublicKey(config.newItemToken)
           : null,
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         originator: config.originator
@@ -609,6 +608,37 @@ programCommand("end_item_activation")
         ),
       }
     );
+  });
+
+programCommand("update_valid_for_use_if_warmup_passed")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with item class settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, transferAuthority } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.updateValidForUseIfWarmupPassed({
+      classIndex: new BN(config.classIndex || 0),
+      itemClassMint: new web3.PublicKey(config.itemClassMint),
+      amount: new BN(config.amount || 1),
+      index: new BN(config.index),
+      usageIndex: config.usageIndex,
+      itemMint: new web3.PublicKey(config.itemMint),
+      usageProof: null,
+      usage: null,
+    });
   });
 
 programCommand("show_item_build")
@@ -1098,8 +1128,12 @@ programCommand("update_item_class")
     "-cp, --config-path <string>",
     "JSON file with item class settings"
   )
+  .option(
+    "-iu, --inheritence-update",
+    "Permissionlessly update inherited fields"
+  )
   .action(async (files: string[], cmd) => {
-    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+    const { keypair, env, configPath, rpcUrl, inheritenceUpdate } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
@@ -1127,12 +1161,16 @@ programCommand("update_item_class")
         classIndex: new BN(config.index || 0),
         updatePermissivenessToUse: config.updatePermissivenessToUse,
         itemClassData: config.data as ItemClassData,
+        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         itemMint: new web3.PublicKey(config.mint),
         parent: config.parent
           ? (
-              await getItemPDA(config.parent.mint, config.parent.index)
+              await getItemPDA(
+                new web3.PublicKey(config.parent.mint),
+                new BN(config.parent.index)
+              )
             )[0]
           : null,
         parentMint: config.parent
@@ -1143,7 +1181,7 @@ programCommand("update_item_class")
           : walletKeyPair.publicKey,
       },
       {
-        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+        permissionless: inheritenceUpdate,
       }
     );
   });

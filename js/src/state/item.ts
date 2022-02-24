@@ -14,7 +14,6 @@ import {
 extendBorsh();
 
 export const decodeItemClass = (buffer: Buffer): ItemClass => {
-  console.log("buffer", new Uint8Array(buffer));
   const metadata = deserializeUnchecked(
     ITEM_SCHEMA,
     ItemClass,
@@ -275,7 +274,6 @@ export class Consumable {
     cooldownDuration: null | BN;
     warmupDuration: null | BN;
   }) {
-    console.log("Fuck", args);
     this.maxUses = args.maxUses;
     this.maxPlayersPerUse = args.maxPlayersPerUse;
     this.itemUsageType = args.itemUsageType;
@@ -412,7 +410,7 @@ export const ITEM_SCHEMA = new Map<any, any>([
       fields: [
         ["overridable", "u8"],
         ["inherited", "u8"],
-        ["permissivenessType", "u8"],
+        ["childUpdatePropagationPermissivenessType", "u8"],
       ],
     },
   ],

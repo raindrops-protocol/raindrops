@@ -27,6 +27,16 @@ import { sendTransactionWithRetry } from "../utils/transactions";
 
 function convertNumsToBNs(data: any) {
   if (data.itemClassData) {
+    if (data.itemClassData.settings.stakingWarmUpDuration)
+      data.itemClassData.settings.stakingWarmUpDuration = new BN(
+        data.itemClassData.settings.stakingWarmUpDuration
+      );
+
+    if (data.itemClassData.settings.stakingCooldownDuration)
+      data.itemClassData.settings.stakingCooldownDuration = new BN(
+        data.itemClassData.settings.stakingCooldownDuration
+      );
+
     data.itemClassData.config.components?.forEach((k) => {
       if (k.timeToBuild != null) {
         k.timeToBuild = new BN(k.timeToBuild);
@@ -105,6 +115,7 @@ export interface EndItemActivationArgs {
 export interface CreateItemClassArgs {
   itemClassBump: number | null;
   classIndex: BN;
+  parentOfParentClassIndex: null | BN;
   parentClassIndex: null | BN;
   space: BN;
   desiredNamespaceArraySize: number;
@@ -117,6 +128,7 @@ export interface CreateItemClassArgs {
 export interface CreateItemEscrowArgs {
   craftBump: number | null;
   classIndex: BN;
+  parentClassIndex: null | BN;
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -128,6 +140,7 @@ export interface CreateItemEscrowArgs {
 export interface AddCraftItemToEscrowArgs {
   tokenBump: number | null;
   classIndex: BN;
+  parentClassIndex: null | BN;
   craftItemIndex: BN;
   craftEscrowIndex: BN;
   craftItemClassIndex: BN;
@@ -162,6 +175,8 @@ export interface RemoveCraftItemFromEscrowArgs {
   tokenBump: number | null;
   craftItemTokenMint: web3.PublicKey;
   classIndex: BN;
+  parentClassIndex: null | BN;
+
   craftItemIndex: BN;
   craftEscrowIndex: BN;
   craftItemCounterBump: number | null;
@@ -184,6 +199,8 @@ export interface RemoveCraftItemFromEscrowArgs {
 
 export interface StartItemEscrowBuildPhaseArgs {
   classIndex: BN;
+  parentClassIndex: null | BN;
+
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -199,6 +216,8 @@ export interface CompleteItemEscrowBuildPhaseArgs {
   classIndex: BN;
   newItemBump: number;
   newItemIndex: BN;
+  parentClassIndex: null | BN;
+
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -212,6 +231,8 @@ export interface CompleteItemEscrowBuildPhaseArgs {
 
 export interface DeactivateItemEscrowArgs {
   classIndex: BN;
+  parentClassIndex: null | BN;
+
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -220,8 +241,20 @@ export interface DeactivateItemEscrowArgs {
   newItemToken: web3.PublicKey;
 }
 
+export interface UpdateValidForUseIfWarmupPassedArgs {
+  classIndex: BN;
+  index: BN;
+  usageIndex: number;
+  itemClassMint: web3.PublicKey;
+  itemMint: web3.PublicKey;
+  amount: BN;
+  usageProof: null | web3.PublicKey;
+  usage: null;
+}
+
 export interface DrainItemEscrowArgs {
   classIndex: BN;
+  parentClassIndex: null | BN;
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -233,6 +266,7 @@ export interface DrainItemEscrowArgs {
 export interface UpdateItemClassArgs {
   classIndex: BN;
   updatePermissivenessToUse: null | AnchorPermissivenessType;
+  parentClassIndex: null | BN;
   itemClassData: any | null;
 }
 
@@ -281,6 +315,9 @@ export interface AddCraftItemToEscrowAccounts {
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
+
+export interface UpdateValidForUseIfWarmupPassedAccounts {}
+
 export interface RemoveCraftItemFromEscrowAccounts {
   itemClassMint: web3.PublicKey;
   newItemToken: web3.PublicKey | null;
@@ -325,36 +362,26 @@ export interface BeginItemActivationAdditionalArgs {}
 
 export interface EndItemActivationAdditionalArgs {}
 
-export interface CreateItemClassAdditionalArgs {
-  parentOfParentClassIndex: BN | null;
-}
+export interface CreateItemClassAdditionalArgs {}
 
 export interface UpdateItemClassAdditionalArgs {
-  parentClassIndex: BN | null;
+  permissionless: boolean;
 }
 
-export interface CreateItemEscrowAdditionalArgs {
-  parentClassIndex: BN | null;
-}
+export interface CreateItemEscrowAdditionalArgs {}
 
-export interface StartItemEscrowBuildPhaseAdditionalArgs {
-  parentClassIndex: BN | null;
-}
-export interface CompleteItemEscrowBuildPhaseAdditionalArgs {
-  parentClassIndex: BN | null;
-}
+export interface StartItemEscrowBuildPhaseAdditionalArgs {}
+export interface CompleteItemEscrowBuildPhaseAdditionalArgs {}
 
 export interface UpdateItemAdditionalArgs {}
-export interface AddCraftItemToEscrowAdditionalArgs {
-  parentClassIndex: BN | null;
-}
-export interface RemoveCraftItemFromEscrowAdditionalArgs {
-  parentClassIndex: BN | null;
-}
+export interface AddCraftItemToEscrowAdditionalArgs {}
+export interface RemoveCraftItemFromEscrowAdditionalArgs {}
 
 export interface DeactivateItemEscrowAdditionalArgs {}
 
 export interface DrainItemEscrowAdditionalArgs {}
+
+export interface UpdateValidForUseIfWarmupPassedAdditionalArgs {}
 
 export class ItemProgram {
   id: web3.PublicKey;
@@ -397,13 +424,10 @@ export class ItemProgram {
         permissivenessToUse: args.buildPermissivenessToUse,
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
-        parentIndex: additionalArgs.parentClassIndex,
+        parentIndex: args.parentClassIndex,
         parent: accounts.parentMint
           ? (
-              await getItemPDA(
-                accounts.parentMint,
-                additionalArgs.parentClassIndex
-              )
+              await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
           : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
@@ -470,13 +494,10 @@ export class ItemProgram {
         permissivenessToUse: args.buildPermissivenessToUse,
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
-        parentIndex: additionalArgs.parentClassIndex,
+        parentIndex: args.parentClassIndex,
         parent: accounts.parentMint
           ? (
-              await getItemPDA(
-                accounts.parentMint,
-                additionalArgs.parentClassIndex
-              )
+              await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
           : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
@@ -579,6 +600,30 @@ export class ItemProgram {
     });
   }
 
+  async updateValidForUseIfWarmupPassed(
+    args: UpdateValidForUseIfWarmupPassedArgs,
+    _accounts: UpdateValidForUseIfWarmupPassedAccounts = {},
+    _additionalArgs: UpdateValidForUseIfWarmupPassedAdditionalArgs = {}
+  ) {
+    const itemActivationMarker = (
+      await getItemActivationMarker({
+        itemMint: args.itemMint,
+        index: args.index,
+        usageIndex: new BN(args.usageIndex),
+        amount: args.amount,
+      })
+    )[0];
+
+    await this.program.rpc.updateValidForUseIfWarmupPassed(args, {
+      accounts: {
+        item: (await getItemPDA(args.itemMint, args.index))[0],
+        itemClass: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
+        itemActivationMarker,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+      },
+    });
+  }
+
   async addCraftItemToEscrow(
     args: AddCraftItemToEscrowArgs,
     accounts: AddCraftItemToEscrowAccounts,
@@ -589,13 +634,10 @@ export class ItemProgram {
         permissivenessToUse: args.buildPermissivenessToUse,
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
-        parentIndex: additionalArgs.parentClassIndex,
+        parentIndex: args.parentClassIndex,
         parent: accounts.parentMint
           ? (
-              await getItemPDA(
-                accounts.parentMint,
-                additionalArgs.parentClassIndex
-              )
+              await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
           : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
@@ -741,13 +783,10 @@ export class ItemProgram {
         permissivenessToUse: args.buildPermissivenessToUse,
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
-        parentIndex: additionalArgs.parentClassIndex,
+        parentIndex: args.parentClassIndex,
         parent: accounts.parentMint
           ? (
-              await getItemPDA(
-                accounts.parentMint,
-                additionalArgs.parentClassIndex
-              )
+              await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
           : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
@@ -1045,13 +1084,10 @@ export class ItemProgram {
         permissivenessToUse: args.buildPermissivenessToUse,
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
-        parentIndex: additionalArgs.parentClassIndex,
+        parentIndex: args.parentClassIndex,
         parent: accounts.parentMint
           ? (
-              await getItemPDA(
-                accounts.parentMint,
-                additionalArgs.parentClassIndex
-              )
+              await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
           : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
@@ -1116,14 +1152,13 @@ export class ItemProgram {
       parentMint: accounts.parentMint,
       parent: accounts.parent,
       parentOfParentClassMint: accounts.parentOfParentClassMint,
-      parentOfParentClassIndex: additionalArgs.parentOfParentClassIndex,
+      parentOfParentClassIndex: args.parentOfParentClassIndex,
       parentOfParentClass:
-        additionalArgs.parentOfParentClassIndex &&
-        accounts.parentOfParentClassMint
+        args.parentOfParentClassIndex && accounts.parentOfParentClassMint
           ? (
               await getItemPDA(
                 accounts.parentOfParentClassMint,
-                additionalArgs.parentOfParentClassIndex
+                args.parentOfParentClassIndex
               )
             )[0]
           : null,
@@ -1162,7 +1197,7 @@ export class ItemProgram {
   async updateItem(
     args: UpdateItemArgs,
     _accounts: UpdateItemAccounts,
-    _additionalArgs: UpdateItemAdditionalArgs
+    additionalArgs: UpdateItemAdditionalArgs
   ): Promise<web3.PublicKey> {
     const itemClassKey = (
       await getItemPDA(args.itemClassMint, args.classIndex)
@@ -1185,16 +1220,17 @@ export class ItemProgram {
     accounts: UpdateItemClassAccounts,
     additionalArgs: UpdateItemClassAdditionalArgs
   ): Promise<web3.PublicKey> {
-    const remainingAccounts =
-      await generateRemainingAccountsGivenPermissivenessToUse({
-        permissivenessToUse: args.updatePermissivenessToUse,
-        tokenMint: accounts.itemMint,
-        parentMint: accounts.parentMint,
-        parentIndex: additionalArgs.parentClassIndex,
-        parent: accounts.parent,
-        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
-        program: this.program,
-      });
+    const remainingAccounts = additionalArgs.permissionless
+      ? [{ pubkey: accounts.parent, isWritable: false, isSigner: false }]
+      : await generateRemainingAccountsGivenPermissivenessToUse({
+          permissivenessToUse: args.updatePermissivenessToUse,
+          tokenMint: accounts.itemMint,
+          parentMint: accounts.parentMint,
+          parentIndex: args.parentClassIndex,
+          parent: accounts.parent,
+          metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+          program: this.program,
+        });
 
     convertNumsToBNs(args);
 
@@ -1205,6 +1241,7 @@ export class ItemProgram {
     await this.program.rpc.updateItemClass(args, {
       accounts: {
         itemClass: itemClassKey,
+        parent: accounts.parent || web3.SystemProgram.programId,
         itemMint: accounts.itemMint,
       },
       remainingAccounts:
