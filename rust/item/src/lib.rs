@@ -1293,6 +1293,7 @@ pub mod item {
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
         let clock = &ctx.accounts.clock;
         let token_program = &ctx.accounts.token_program;
+        let validation_program = &ctx.accounts.validation_program;
 
         let BeginItemActivationArgs {
             usage_permissiveness_to_use,
@@ -1329,7 +1330,13 @@ pub mod item {
             let item_class_info = item_class.to_account_info();
             let item_info = item.to_account_info();
             let item_account_info = item_account.to_account_info();
-            let accounts = vec![item_class_info, item_info, item_account_info];
+            let accounts = vec![
+                item_class_info,
+                item_info,
+                item_account_info,
+                validation_program.to_account_info(),
+            ];
+            assert_keys_equal(validation_program.key(), validation.key)?;
 
             let keys = vec![
                 AccountMeta::new_readonly(item_class.key(), false),
@@ -1373,7 +1380,7 @@ pub mod item {
             permissiveness_array: &Some(perm_array),
             class_index: Some(class_index),
             index,
-            account_mint: None,
+            account_mint: Some(&item_mint.key()),
         })?;
 
         match &usage.item_class_type {
@@ -1422,6 +1429,7 @@ pub mod item {
             usage_proof,
             usage,
             class_index,
+            item_mint,
             ..
         } = args;
 
@@ -1448,7 +1456,7 @@ pub mod item {
             permissiveness_array: &Some(perm_array),
             index,
             class_index: Some(class_index),
-            account_mint: None,
+            account_mint: Some(&item_mint.key()),
         })?;
 
         let item_activation_marker_info = item_activation_marker.to_account_info();
@@ -1924,6 +1932,9 @@ pub struct BeginItemActivation<'info> {
     token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
+    // System program if there is no validation to call
+    // if there is, pass up the validation program
+    validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 

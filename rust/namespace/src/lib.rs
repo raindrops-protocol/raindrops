@@ -621,8 +621,6 @@ pub struct RemoveFromNamespaceGatekeeper<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ValidationArgs {
-    // For enum detection on the other end.
-    instruction: [u8; 8],
     extra_identifier: u64,
     class_index: u64,
     index: u64,

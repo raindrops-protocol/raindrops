@@ -703,7 +703,7 @@ programCommand("show_item")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
   .option(
     "-i, --index <string>",
-    "Class index. Normally is 0, defaults to 0. Allows for more than one item class def per nft."
+    "index. Normally is 0, defaults to 0. Allows for more than one item class def per nft."
   )
   .action(async (files: string[], cmd) => {
     const { keypair, env, configPath, rpcUrl, mint, index } = cmd.opts();
@@ -1011,8 +1011,8 @@ programCommand("show_item_class")
         );
         log.info(
           "------> Validation:",
-          u.callback
-            ? `Call ${u.callback.key.toBase58()} with ${u.callback.code}`
+          u.validation
+            ? `Call ${u.validation.key.toBase58()} with ${u.validation.code}`
             : "Not Set"
         );
 

@@ -7,7 +7,10 @@ Example usage:
           "index": 0,
           "basicItemEffects": null,
           "callback": null,
-          "validation": null,
+           "validation": {
+            "key": "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV",
+            "code": 35
+          },
           "usagePermissiveness": [{ "updateAuthority": true }],
           "inherited": { "notInherited": true },
           "itemClassType": {

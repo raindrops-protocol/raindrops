@@ -955,6 +955,12 @@ export class ItemProgram {
     }
 
     const itemKey = (await getItemPDA(accounts.itemMint, args.index))[0];
+
+    const itemClass = await this.fetchItemClass(
+      args.itemClassMint,
+      args.classIndex
+    );
+
     instructions.push(
       this.program.instruction.beginItemActivation(args, {
         accounts: {
@@ -970,6 +976,15 @@ export class ItemProgram {
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
+          validationProgram: itemClass.object.itemClassData.config.usages[
+            args.usageIndex
+          ].validation
+            ? new web3.PublicKey(
+                itemClass.object.itemClassData.config.usages[
+                  args.usageIndex
+                ].validation.key
+              )
+            : SystemProgram.programId,
         },
         remainingAccounts:
           remainingAccounts.length > 0 ? remainingAccounts : undefined,

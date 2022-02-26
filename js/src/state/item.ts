@@ -446,6 +446,16 @@ export const ITEM_SCHEMA = new Map<any, any>([
     },
   ],
   [
+    Callback,
+    {
+      kind: "struct",
+      fields: [
+        ["key", "pubkey"],
+        ["code", "u64"],
+      ],
+    },
+  ],
+  [
     Consumable,
     {
       kind: "struct",
