@@ -7,7 +7,7 @@
       "updatePermissiveness": null,
       "buildPermissiveness": [
         {
-          "permissivenessType": { "tokenHolder": true },
+          "permissivenessType": { "parentTokenHolder": true },
           "inherited": { "notInherited": true }
         }
       ],
@@ -15,25 +15,86 @@
       "stakingCooldownDuration": null,
       "stakingPermissiveness": null,
       "unstakingPermissiveness": null,
-      "childUpdatePropagationPermissiveness": null
+      "childUpdatePropagationPermissiveness": [
+        {
+          "childUpdatePropagationPermissivenessType": { "usages": true },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": { "components": true },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "updatePermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "buildPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "stakingPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "freeBuildPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        }
+      ]
     },
     "config": {
       "usageRoot": null,
       "usageStateRoot": null,
       "componentRoot": null,
-      "usages": null,
-      "components": null
+      "usages": [
+        {
+          "index": 0,
+          "basicItemEffects": null,
+          "usagePermissiveness": [{ "updateAuthority": true }],
+          "inherited": { "notInherited": true },
+          "validation": {
+            "key": "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV",
+            "code": 35
+          },
+          "callback": null,
+          "itemClassType": {
+            "consumable": {
+              "maxUses": null,
+              "maxPlayersPerUse": null,
+              "itemUsageType": { "infinite": true },
+              "cooldownDuration": 500,
+              "warmupDuration": null
+            }
+          }
+        }
+      ],
+      "components": [
+        {
+          "mint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
+          "amount": 1,
+          "classIndex": 0,
+          "timeToBuild": null,
+          "componentScope": "set1",
+          "useUsageIndex": 0,
+          "condition": { "presence": true },
+          "inherited": { "notInherited": true }
+        }
+      ]
     }
   },
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
-  "index": 10,
-  "parent": {
-    "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
-    "index": 9
-  },
+  "index": 9,
   "updatePermissivenessToUse": { "updateAuthority": true },
   "namespaceRequirement": 1,
   "totalSpaceBytes": 300

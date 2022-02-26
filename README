@@ -6,6 +6,8 @@ Example usage:
  {
           "index": 0,
           "basicItemEffects": null,
+          "callback": null,
+          "validation": null,
           "usagePermissiveness": [{ "updateAuthority": true }],
           "inherited": { "notInherited": true },
           "itemClassType": {

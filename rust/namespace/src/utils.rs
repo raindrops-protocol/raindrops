@@ -314,10 +314,7 @@ pub fn check_permissiveness_against_holder<'a>(
                     Account::try_from(&namespace_gatekeeper.to_account_info())?;
                 for filter in &deserialized.artifact_filters {
                     match &filter.filter {
-                        Filter::Namespace {
-                            namespaces,
-                            padding: _p,
-                        } => {
+                        Filter::Namespace { namespaces } => {
                             if let Some(ns) = &art_namespaces {
                                 for n in namespaces {
                                     for other_n in ns {
@@ -330,12 +327,7 @@ pub fn check_permissiveness_against_holder<'a>(
                             }
                             return Err(ErrorCode::CannotJoinNamespace.into());
                         }
-                        Filter::Category {
-                            namespace,
-                            category: _c,
-                            padding: _p,
-                            padding2: _p2,
-                        } => {
+                        Filter::Category { namespace, .. } => {
                             if let Some(ns) = &art_namespaces {
                                 for n in ns {
                                     if n.namespace == *namespace {
@@ -346,14 +338,7 @@ pub fn check_permissiveness_against_holder<'a>(
                             }
                             return Err(ErrorCode::CannotJoinNamespace.into());
                         }
-                        Filter::Key {
-                            key: _k,
-                            mint,
-                            metadata: _md,
-                            edition: _e,
-                            padding: _p,
-                            padding2: _p2,
-                        } => {
+                        Filter::Key { mint, .. } => {
                             let as_token: spl_token::state::Account =
                                 assert_initialized(&artifact.to_account_info())?;
 
@@ -376,10 +361,7 @@ pub fn check_permissiveness_against_holder<'a>(
                     Account::try_from(&namespace_gatekeeper.to_account_info())?;
                 for filter in &deserialized.artifact_filters {
                     match &filter.filter {
-                        Filter::Namespace {
-                            namespaces,
-                            padding: _p,
-                        } => {
+                        Filter::Namespace { namespaces } => {
                             if let Some(ns) = &art_namespaces {
                                 for n in namespaces {
                                     for other_n in ns {
@@ -392,12 +374,7 @@ pub fn check_permissiveness_against_holder<'a>(
                             }
                             return Ok(art_namespaces);
                         }
-                        Filter::Category {
-                            namespace,
-                            category: _c,
-                            padding: _p,
-                            padding2: _p2,
-                        } => {
+                        Filter::Category { namespace, .. } => {
                             if let Some(ns) = &art_namespaces {
                                 for n in ns {
                                     if n.namespace == *namespace {
@@ -408,14 +385,7 @@ pub fn check_permissiveness_against_holder<'a>(
                             }
                             return Ok(art_namespaces);
                         }
-                        Filter::Key {
-                            key: _k,
-                            mint,
-                            metadata: _md,
-                            edition: _e,
-                            padding: _p,
-                            padding2: _p2,
-                        } => {
+                        Filter::Key { mint, .. } => {
                             let as_token: spl_token::state::Account =
                                 assert_initialized(&artifact.to_account_info())?;
 

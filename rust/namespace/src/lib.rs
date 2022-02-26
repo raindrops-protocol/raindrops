@@ -10,7 +10,7 @@ use {
     anchor_spl::token::{Mint, Token, TokenAccount},
     std::str::FromStr,
 };
-anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const MATCH_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const ITEM_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
@@ -413,6 +413,14 @@ pub mod namespace {
         }
         Ok(())
     }
+
+    pub fn item_validation<'info>(
+        ctx: Context<'_, '_, '_, 'info, ItemValidation<'info>>,
+        args: ValidationArgs,
+    ) -> ProgramResult {
+        // Dummy
+        Ok(())
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -436,22 +444,17 @@ pub const MAX_FILTER_SLOTS: usize = 5;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum Filter {
     Namespace {
-        namespaces: Vec<Pubkey>, //
-        padding: [u8; FILTER_SIZE - MAX_FILTER_SLOTS * 32],
+        namespaces: Vec<Pubkey>,
     },
     Category {
         namespace: Pubkey,
         category: Option<Vec<String>>,
-        padding: [u8; 32],
-        padding2: [u8; FILTER_SIZE - 1 - (25 * MAX_FILTER_SLOTS) - 32 - 32],
     },
     Key {
         key: Pubkey,
         mint: Pubkey,
         metadata: Pubkey,
         edition: Option<Pubkey>,
-        padding: [u8; 32],
-        padding2: [u8; FILTER_SIZE - 32 - 32 - 32 - 33 - 32],
     },
 }
 
@@ -614,6 +617,29 @@ pub struct RemoveFromNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: Signer<'info>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ValidationArgs {
+    // For enum detection on the other end.
+    instruction: [u8; 8],
+    extra_identifier: u64,
+    class_index: u64,
+    index: u64,
+    item_class_mint: Pubkey,
+    amount: u64,
+    usage_permissiveness_to_use: Option<u8>,
+    usage_index: u16,
+    // Use this if using roots
+    usage_info: Option<u8>,
+}
+
+#[derive(Accounts)]
+#[instruction(args: ValidationArgs)]
+pub struct ItemValidation<'info> {
+    item_class: UncheckedAccount<'info>,
+    item: UncheckedAccount<'info>,
+    item_account: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

@@ -44,7 +44,18 @@ function convertNumsToBNs(data: any) {
     });
 
     data.itemClassData.config.usages?.forEach((k) => {
+      if (k.validation != null && k.validation != undefined) {
+        k.validation.key = new web3.PublicKey(k.validation.key);
+        k.validation.code = new BN(k.validation.code);
+      }
+
+      if (k.callback != null && k.callback != undefined) {
+        k.callback.key = new web3.PublicKey(k.callback.key);
+        k.callback.code = new BN(k.callback.code);
+      }
+
       let u = k.itemClassType.consumable;
+
       if (u) {
         if (u.maxUses != null) u.maxUses = new BN(u.maxUses);
         if (u.maxPlayersPerUse != null)
