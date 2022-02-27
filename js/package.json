@@ -1,5 +1,5 @@
 {
-  "name": "@raindrops/cli",
+  "name": "raindrops-cli",
   "version": "0.0.2",
   "main": "./build/main.js",
   "license": "MIT",
