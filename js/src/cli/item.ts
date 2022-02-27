@@ -1129,7 +1129,7 @@ programCommand("update_item_class")
     "JSON file with item class settings"
   )
   .option(
-    "-iu, --inheritence-update",
+    "-iu, --inheritance-update",
     "Permissionlessly update inherited fields"
   )
   .action(async (files: string[], cmd) => {

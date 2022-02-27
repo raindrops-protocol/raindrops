@@ -115,7 +115,6 @@ pub struct NamespaceAndIndex {
 #[account]
 pub struct PlayerClass {
     namespaces: Option<Vec<NamespaceAndIndex>>,
-
     parent: Option<Pubkey>,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,
@@ -133,7 +132,8 @@ pub struct PlayerClass {
 #[account]
 pub struct Player {
     namespaces: Option<Vec<NamespaceAndIndex>>,
-
+    // extra byte that is always 1 to simulate same structure as item class.
+    padding: u8,
     parent: Pubkey,
     mint: Option<Pubkey>,
     metadata: Option<Pubkey>,
