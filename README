@@ -1,5 +1,13 @@
 Architecture Docs: https://solanalabs.notion.site/Raindrops-Protocol-Architecture-Guide-c13bbd3ff0ae4989baeb27208318c558
 
+Can install the raindrop-cli with
+
+`npm install -g raindrops-cli`
+
+Access the items-cli via
+
+`items-cli --help`
+
 Right now this is just scratch pad for examples. Will be readme eventually.
 
 Example usage:
