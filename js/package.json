@@ -4,7 +4,7 @@
   "main": "./build/main.js",
   "license": "MIT",
   "bin": {
-    "items-cli": "./build/items-cli.js"
+    "items-cli": "./build/cli/item.js"
   },
   "scripts": {
     "build": "tsc -p ./src",
