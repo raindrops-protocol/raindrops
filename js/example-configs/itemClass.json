@@ -76,18 +76,7 @@
           }
         }
       ],
-      "components": [
-        {
-          "mint": "FvGU3HCV4BjtFs2YbvbMugySMbXDE7i2iKsaQqvNyWZx",
-          "amount": 1,
-          "classIndex": 0,
-          "timeToBuild": null,
-          "componentScope": "set1",
-          "useUsageIndex": 0,
-          "condition": { "presence": true },
-          "inherited": { "notInherited": true }
-        }
-      ]
+      "components": null
     }
   },
   "metadataUpdateAuthority": null,
