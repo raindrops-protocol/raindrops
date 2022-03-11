@@ -2522,4 +2522,6 @@ pub enum ErrorCode {
     CraftClassIndexMismatch,
     #[msg("Must use at least one of this item")]
     MustBeGreaterThanZero,
+    #[msg("To use an ata in this contract, please remove its delegate first")]
+    AtaShouldNotHaveDelegate,
 }

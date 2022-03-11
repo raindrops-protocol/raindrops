@@ -1095,6 +1095,7 @@ pub fn assert_is_ata(
     let ata_account: spl_token::state::Account = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet)?;
     assert_keys_equal(get_associated_token_address(wallet, mint), *ata.key)?;
+    require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
     Ok(ata_account)
 }
 

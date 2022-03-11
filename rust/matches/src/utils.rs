@@ -1,15 +1,71 @@
 use {
     crate::ErrorCode,
     anchor_lang::{
-        prelude::{msg, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar},
+        prelude::{
+            msg, AccountInfo, Program, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
+        },
+        require,
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
+        Key, ToAccountInfo,
     },
+    anchor_spl::token::Token,
+    spl_associated_token_account::get_associated_token_address,
+    spl_token::instruction::close_account,
     std::convert::TryInto,
 };
+
+pub fn assert_is_ata(
+    ata: &AccountInfo,
+    wallet: &Pubkey,
+    mint: &Pubkey,
+) -> Result<spl_token::state::Account, ProgramError> {
+    assert_owned_by(ata, &spl_token::id())?;
+    let ata_account: spl_token::state::Account = assert_initialized(ata)?;
+    assert_keys_equal(ata_account.owner, *wallet)?;
+    assert_keys_equal(get_associated_token_address(wallet, mint), *ata.key)?;
+    require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+    Ok(ata_account)
+}
+
+pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {
+    if key1 != key2 {
+        Err(ErrorCode::PublicKeyMismatch.into())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn close_token_account<'a>(
+    program_account: &AccountInfo<'a>,
+    fee_payer: &AccountInfo<'a>,
+    token_program: &Program<'a, Token>,
+    owner: &AccountInfo<'a>,
+    signer_seeds: &[&[u8]],
+) -> ProgramResult {
+    invoke_signed(
+        &close_account(
+            &token_program.key,
+            &program_account.key(),
+            &fee_payer.key(),
+            &owner.key(),
+            &[],
+        )
+        .unwrap(),
+        &[
+            token_program.to_account_info(),
+            fee_payer.clone(),
+            program_account.to_account_info(),
+            owner.clone(),
+        ],
+        &[&signer_seeds],
+    )?;
+
+    Ok(())
+}
 
 pub fn assert_initialized<T: Pack + IsInitialized>(
     account_info: &AccountInfo,

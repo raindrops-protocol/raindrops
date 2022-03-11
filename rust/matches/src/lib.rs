@@ -2,9 +2,9 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
-        get_mask_and_index_for_seq, spl_token_burn, spl_token_mint_to, spl_token_transfer,
-        TokenBurnParams, TokenTransferParams,
+        assert_derivation, assert_initialized, assert_is_ata, assert_owned_by, close_token_account,
+        create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
+        spl_token_mint_to, spl_token_transfer, TokenBurnParams, TokenTransferParams,
     },
     anchor_lang::{
         prelude::*,
@@ -36,6 +36,8 @@ pub struct CreateMatchArgs {
     win_oracle_cooldown: u64,
     authority: Pubkey,
     space: u64,
+    leave_allowed: bool,
+    minimum_allowed_entry_time: Option<u64>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -43,9 +45,10 @@ pub struct UpdateMatchArgs {
     match_state: MatchState,
     token_entry_validation_root: Option<Root>,
     token_entry_validation: Option<Vec<TokenValidation>>,
-    win_oracle: Pubkey,
     win_oracle_cooldown: u64,
     authority: Pubkey,
+    leave_allowed: bool,
+    minimum_allowed_entry_time: Option<u64>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -69,6 +72,214 @@ pub struct DisburseTokensByOracleArgs {
 #[program]
 pub mod matches {
     use super::*;
+
+    pub fn create_match<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CreateMatch<'info>>,
+        args: CreateMatchArgs,
+    ) -> ProgramResult {
+        let CreateMatchArgs {
+            match_bump,
+            match_state,
+            token_entry_validation_root,
+            token_entry_validation,
+            win_oracle,
+            win_oracle_cooldown,
+            authority,
+            leave_allowed,
+            minimum_allowed_entry_time,
+            ..
+        } = args;
+
+        let match_instance = &mut ctx.accounts.match_instance;
+
+        match_instance.bump = match_bump;
+        require!(
+            match_state == MatchState::Draft || match_state == MatchState::Initialized,
+            InvalidStartingMatchState
+        );
+        match_instance.state = match_state;
+        if token_entry_validation.is_some() {
+            match_instance.token_entry_validation = token_entry_validation;
+        } else {
+            match_instance.token_entry_validation_root = token_entry_validation_root;
+        }
+        match_instance.win_oracle = win_oracle;
+        match_instance.win_oracle_cooldown = win_oracle_cooldown;
+        match_instance.authority = authority;
+        match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
+        match_instance.leave_allowed = leave_allowed;
+
+        Ok(())
+    }
+
+    pub fn update_match<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdateMatch<'info>>,
+        args: UpdateMatchArgs,
+    ) -> ProgramResult {
+        let UpdateMatchArgs {
+            match_state,
+            token_entry_validation_root,
+            token_entry_validation,
+            authority,
+            win_oracle_cooldown,
+            leave_allowed,
+            minimum_allowed_entry_time,
+            ..
+        } = args;
+
+        let match_instance = &mut ctx.accounts.match_instance;
+
+        match match_instance.state {
+            MatchState::Draft => {
+                require!(
+                    match_state == MatchState::Initialized,
+                    InvalidUpdateMatchState
+                )
+            }
+            MatchState::Initialized => {
+                require!(match_state == MatchState::Started, InvalidUpdateMatchState)
+            }
+            MatchState::Started => {
+                require!(
+                    match_state == MatchState::Deactivated,
+                    InvalidUpdateMatchState
+                )
+            }
+            MatchState::Finalized => return Err(ErrorCode::InvalidUpdateMatchState.into()),
+            MatchState::PaidOut => return Err(ErrorCode::InvalidUpdateMatchState.into()),
+            MatchState::Deactivated => return Err(ErrorCode::InvalidUpdateMatchState.into()),
+        }
+
+        match_instance.state = match_state;
+        if token_entry_validation.is_some() {
+            match_instance.token_entry_validation = token_entry_validation;
+        } else {
+            match_instance.token_entry_validation_root = token_entry_validation_root;
+        }
+        match_instance.authority = authority;
+        match_instance.win_oracle_cooldown = win_oracle_cooldown;
+
+        match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
+        match_instance.leave_allowed = leave_allowed;
+
+        Ok(())
+    }
+
+    pub fn update_match_from_oracle<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdateMatchFromOracle<'info>>,
+    ) -> ProgramResult {
+        let match_instance = &mut ctx.accounts.match_instance;
+        let win_oracle = &ctx.accounts.win_oracle;
+
+        let win_oracle_instance: WinOracle =
+            AnchorDeserialize::try_from_slice(&win_oracle.data.borrow())?;
+
+        require!(
+            match_instance.state == MatchState::Started
+                || match_instance.state == MatchState::Initialized,
+            InvalidOracleUpdate
+        );
+
+        if win_oracle_instance.finalized {
+            match_instance.state = MatchState::Finalized;
+        } else {
+            match_instance.state = MatchState::Started;
+        }
+
+        Ok(())
+    }
+
+    pub fn drain_match<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DrainMatch<'info>>,
+    ) -> ProgramResult {
+        let match_instance = &mut ctx.accounts.match_instance;
+        let receiver = &mut ctx.accounts.receiver;
+        require!(
+            match_instance.state == MatchState::Deactivated
+                || match_instance.state == MatchState::PaidOut,
+            CannotDrainYet
+        );
+
+        require!(
+            match_instance.token_types_removed == match_instance.token_types_added,
+            CannotDrainYet
+        );
+
+        let info = match_instance.to_account_info();
+        let snapshot: u64 = info.lamports();
+
+        **info.lamports.borrow_mut() = 0;
+
+        **receiver.lamports.borrow_mut() = receiver
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
+
+    pub fn leave_match<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, LeaveMatch<'info>>,
+    ) -> ProgramResult {
+        let match_instance = &mut ctx.accounts.match_instance;
+        let token_account_escrow = &ctx.accounts.token_account_escrow;
+        let destination_token_account = &ctx.accounts.token_account_escrow;
+        let token_mint = &ctx.accounts.token_mint;
+        let receiver = &mut ctx.accounts.receiver;
+        let token_program = &ctx.accounts.token_program;
+        let destination_info = destination_token_account.to_account_info();
+        let token_escrow_info = token_account_escrow.to_account_info();
+        let match_info = match_instance.to_account_info();
+        let token_info = token_program.to_account_info();
+        let receiver_info = receiver.to_account_info();
+
+        assert_is_ata(&destination_info, &receiver.key(), &token_mint.key())?;
+
+        require!(
+            match_instance.state == MatchState::Deactivated
+                || match_instance.state == MatchState::PaidOut
+                || match_instance.state == MatchState::Initialized
+                || match_instance.state == MatchState::Started,
+            CannotLeaveMatch
+        );
+
+        if match_instance.state == MatchState::Initialized
+            || match_instance.state == MatchState::Started
+        {
+            require!(match_instance.leave_allowed, CannotLeaveMatch);
+            require!(receiver.is_signer, ReceiverMustBeSigner)
+        }
+
+        let match_seeds = &[
+            PREFIX.as_bytes(),
+            match_instance.win_oracle.as_ref(),
+            &[match_instance.bump],
+        ];
+
+        spl_token_transfer(TokenTransferParams {
+            source: token_account_escrow.to_account_info(),
+            destination: destination_info,
+            amount: token_account_escrow.amount,
+            authority: match_instance.to_account_info(),
+            authority_signer_seeds: match_seeds,
+            token_program: token_info,
+        })?;
+
+        close_token_account(
+            &token_escrow_info,
+            &receiver_info,
+            token_program,
+            &match_info,
+            match_seeds,
+        )?;
+
+        match_instance.token_types_removed = match_instance
+            .token_types_removed
+            .checked_sub(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -104,7 +315,7 @@ pub struct DrainMatch<'info> {
     #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
     authority: Signer<'info>,
-    receiver: Signer<'info>,
+    receiver: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -169,24 +380,24 @@ pub struct DisbursePlayerTokensByOracle<'info> {
 pub struct LeaveMatch<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
-    receiver: Signer<'info>,
-    // cant be stolen to a different craft item token account due to seed by token key
+    receiver: UncheckedAccount<'info>,
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), receiver.key().as_ref()], bump=args.escrow_bump)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     token_mint: Account<'info, Mint>,
-    #[account(mut, constraint=token_account.mint == token_mint.key())]
-    token_account: Account<'info, TokenAccount>,
+    #[account(mut, constraint=destination_token_account.mint == token_mint.key())]
+    destination_token_account: Account<'info, TokenAccount>,
     token_program: Program<'info, Token>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum MatchState {
     Draft,
     Initialized,
     Started,
     Finalized,
     PaidOut,
+    Deactivated,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
@@ -274,7 +485,7 @@ pub struct TokenDelta {
 // Oracles must match this serde
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct WinOracle {
-    new_state: MatchState,
+    finalized: bool,
     token_transfer_root: Option<Root>,
     token_transfers: Option<Vec<TokenDelta>>,
 }
@@ -322,4 +533,22 @@ pub enum ErrorCode {
     TokenBurnFailed,
     #[msg("Derived key is invalid")]
     DerivedKeyInvalid,
+    #[msg("A match can only start in draft or initialized state")]
+    InvalidStartingMatchState,
+    #[msg("Match authority can only shift from Draft to Initialized or from Initialized/Started to Deactivated")]
+    InvalidUpdateMatchState,
+    #[msg("Cannot rely on an oracle until the match has been initialized or started")]
+    InvalidOracleUpdate,
+    #[msg("Cannot drain a match until it is in paid out or deactivated and all token accounts have been drained")]
+    CannotDrainYet,
+    #[msg("You can only leave deactivated or paid out matches, or initialized matches with leave_allowed on.")]
+    CannotLeaveMatch,
+    #[msg(
+        "You must be the person who joined the match to leave it in initialized or started state."
+    )]
+    ReceiverMustBeSigner,
+    #[msg("Public key mismatch")]
+    PublicKeyMismatch,
+    #[msg("To use an ata in this contract, please remove its delegate first")]
+    AtaShouldNotHaveDelegate,
 }
