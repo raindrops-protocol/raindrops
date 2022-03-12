@@ -2,12 +2,14 @@ import { web3, BN } from "@project-serum/anchor";
 import {
   TOKEN_PROGRAM_ID,
   SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+  NAMESPACE_ID,
   ITEM_ID,
   TOKEN_METADATA_PROGRAM_ID,
   MATCHES_ID,
 } from "../constants/programIds";
 import { PREFIX as ITEM_PREFIX, MARKER } from "../constants/item";
 import { PREFIX as MATCHES_PREFIX } from "../constants/matches";
+import { PREFIX as NAMESPACE_PREFIX } from "../constants/namespace";
 
 export const getAtaForMint = async (
   mint: web3.PublicKey,
@@ -25,6 +27,15 @@ export const getMatch = async (
   return await web3.PublicKey.findProgramAddress(
     [Buffer.from(MATCHES_PREFIX), oracle.toBuffer()],
     MATCHES_ID
+  );
+};
+
+export const getNamespacePDA = async (
+  mint: web3.PublicKey,
+): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [Buffer.from(NAMESPACE_PREFIX), mint.toBuffer()],
+    NAMESPACE_ID
   );
 };
 
