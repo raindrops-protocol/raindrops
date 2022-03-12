@@ -1,0 +1,32 @@
+{
+  "uuid": "e3e52d",
+  "mint": "AZE8B2436AhQNNDeuXFpJQWrhALc8vAstNo4M7pguVfY",
+  "metadata": "AZE8B2436AhQNNDeuXFpJQWrhALc8vAstNo4M7pguVfY",
+  "masterEdition": "AZE8B2436AhQNNDeuXFpJQWrhALc8vAstNo4M7pguVfY",
+  "prettyName": "juice box",
+  "desiredNamespaceArraySize": 2,
+  "permissivenessSettings": {
+    "namespacePermissiveness": {
+      "namespace": true
+    },
+    "itemPermissiveness": {
+      "whitelist": true
+    },
+    "playerPermissiveness": {
+      "all": true
+    },
+    "matchPermissiveness": {
+      "whitelist": true
+    },
+    "missionPermissiveness": {
+      "blacklist": true
+    },
+    "cachePermissiveness": {
+      "all": true
+    }
+  },
+  "whitelistedStakingMints": [
+    "8SEtLzq9XzirZEWBitZ1hXkrj4idrN3GdMCyzDmXqKCG",
+    "8U4SGDrrBFxtsc9EGKuSA1cto8rd63ALZiS78uo72qx4"
+  ]
+}
