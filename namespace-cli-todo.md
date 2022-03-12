@@ -11,9 +11,11 @@ Some things left to do or updates to make to work with latest anchor/package ver
 * Anchor >0.20.1 now does not support using bump on init. <https://github.com/project-serum/anchor/commit/598c7b0790689187360ffbf80935dac94d9a939c>
 * Unsafe accounts need doc comments explaining why they are unchecked
 
-## Issues encountered
+## Issues encountered (rust contract)
 
 * IDL generation has issue with usize types. More investigation needed.
+* namespace.mint wasn't being set on namespace init.
+* namespace.pretty_name was being set to an empty string.
 
 ## Run new CLI scripts
 

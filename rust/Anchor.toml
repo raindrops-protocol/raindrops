@@ -14,4 +14,4 @@ match = "cndyAnrLdpjq1Ssp1z8xxDsB8dxe7u4HL5Nxi2K5WXZ"
 test = "ts-mocha -p ./tsconfig.json -t 1000000 test/*.ts"
 
 [workspace]
-members = ["item"]
+members = ["item", "namespace"]
