@@ -3,8 +3,9 @@ pub mod utils;
 use {
     crate::utils::{
         assert_derivation, assert_initialized, assert_is_ata, assert_owned_by, close_token_account,
-        create_or_allocate_account_raw, get_mask_and_index_for_seq, spl_token_burn,
-        spl_token_mint_to, spl_token_transfer, TokenBurnParams, TokenTransferParams,
+        create_or_allocate_account_raw, get_mask_and_index_for_seq, is_part_of_namespace,
+        is_valid_validation, spl_token_burn, spl_token_mint_to, spl_token_transfer, verify,
+        TokenBurnParams, TokenTransferParams,
     },
     anchor_lang::{
         prelude::*,
@@ -55,6 +56,8 @@ pub struct UpdateMatchArgs {
 pub struct JoinMatchArgs {
     amount: u64,
     escrow_bump: u8,
+    token_entry_validation_proof: Option<Vec<[u8; 32]>>,
+    token_entry_validation: Option<TokenValidation>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -223,7 +226,7 @@ pub mod matches {
     ) -> ProgramResult {
         let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;
-        let destination_token_account = &ctx.accounts.token_account_escrow;
+        let destination_token_account = &ctx.accounts.destination_token_account;
         let token_mint = &ctx.accounts.token_mint;
         let receiver = &mut ctx.accounts.receiver;
         let token_program = &ctx.accounts.token_program;
@@ -280,6 +283,86 @@ pub mod matches {
 
         Ok(())
     }
+
+    pub fn join_match<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, JoinMatch<'info>>,
+        args: JoinMatchArgs,
+    ) -> ProgramResult {
+        let match_instance = &mut ctx.accounts.match_instance;
+        let token_account_escrow = &ctx.accounts.token_account_escrow;
+        let source_token_account = &ctx.accounts.source_token_account;
+        let token_transfer_authority = &ctx.accounts.token_transfer_authority;
+        let token_mint = &ctx.accounts.token_mint;
+        let payer = &mut ctx.accounts.payer;
+        let token_program = &ctx.accounts.token_program;
+        let source_item_or_player_pda = &ctx.accounts.source_item_or_player_pda;
+        let source_info = source_token_account.to_account_info();
+        let token_escrow_info = token_account_escrow.to_account_info();
+        let match_info = match_instance.to_account_info();
+        let token_info = token_program.to_account_info();
+        let payer_info = payer.to_account_info();
+
+        let JoinMatchArgs {
+            amount,
+            token_entry_validation_proof,
+            token_entry_validation,
+            ..
+        } = args;
+
+        assert_is_ata(&source_info, &payer.key(), &token_mint.key())?;
+
+        require!(
+            match_instance.state == MatchState::Initialized
+                || match_instance.state == MatchState::Started,
+            CannotEnterMatch
+        );
+
+        if let Some(proof) = token_entry_validation_proof {
+            if let Some(root) = &match_instance.token_entry_validation_root {
+                if let Some(validation) = token_entry_validation {
+                    let chief_node = anchor_lang::solana_program::keccak::hashv(&[
+                        &[0x00],
+                        &AnchorSerialize::try_to_vec(&validation)?,
+                    ]);
+                    require!(verify(&proof, &root.root, chief_node.0), InvalidProof);
+                    if !is_valid_validation(&validation, source_item_or_player_pda, token_mint)? {
+                        return Err(ErrorCode::InvalidValidation.into());
+                    }
+                } else {
+                    return Err(ErrorCode::MustPassUpValidation.into());
+                }
+            } else {
+                return Err(ErrorCode::RootNotPresent.into());
+            }
+        } else if let Some(val_arr) = &match_instance.token_entry_validation {
+            let mut validation = false;
+            for val in val_arr {
+                if is_valid_validation(&val, source_item_or_player_pda, token_mint)? {
+                    validation = true;
+                    break;
+                }
+            }
+            if !validation {
+                return Err(ErrorCode::NoValidValidationFound.into());
+            }
+        };
+
+        spl_token_transfer(TokenTransferParams {
+            source: source_info,
+            destination: token_account_escrow.to_account_info(),
+            amount,
+            authority: token_transfer_authority.to_account_info(),
+            authority_signer_seeds: &[],
+            token_program: token_info,
+        })?;
+
+        match_instance.token_types_added = match_instance
+            .token_types_added
+            .checked_add(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -324,12 +407,14 @@ pub struct JoinMatch<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
     token_transfer_authority: Signer<'info>,
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), token_account.owner.as_ref()], bump=args.escrow_bump, token::mint = token_mint, token::authority = match_instance, payer=payer)]
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), source_token_account.owner.as_ref()], bump=args.escrow_bump, token::mint = token_mint, token::authority = match_instance, payer=payer)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     token_mint: Account<'info, Mint>,
-    #[account(mut, constraint=token_account.mint == token_mint.key())]
-    token_account: Account<'info, TokenAccount>,
+    #[account(mut, constraint=source_token_account.mint == token_mint.key())]
+    source_token_account: Account<'info, TokenAccount>,
+    // set to system if none
+    source_item_or_player_pda: UncheckedAccount<'info>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
@@ -503,7 +588,7 @@ pub enum Filter {
     None,
     All,
     Namespace { namespace: Pubkey },
-    Key { key: Pubkey, index: u64 },
+    Parent { key: Pubkey },
     Mint { mint: Pubkey },
 }
 
@@ -551,4 +636,20 @@ pub enum ErrorCode {
     PublicKeyMismatch,
     #[msg("To use an ata in this contract, please remove its delegate first")]
     AtaShouldNotHaveDelegate,
+    #[msg("Can only enter matches in started or initialized state")]
+    CannotEnterMatch,
+    #[msg("Invalid proof")]
+    InvalidProof,
+    #[msg("Root not present on object")]
+    RootNotPresent,
+    #[msg("If using roots, must pass up the object you are proving is a member")]
+    MustPassUpValidation,
+    #[msg("No valid validations found")]
+    NoValidValidationFound,
+    #[msg("Blacklisted")]
+    Blacklisted,
+    #[msg("Tokens are explicitly not allowed in this match")]
+    NoTokensAllowed,
+    #[msg("This validation will not let in this token")]
+    InvalidValidation,
 }

@@ -1,8 +1,9 @@
 use {
-    crate::ErrorCode,
+    crate::{ErrorCode, Filter, TokenValidation},
     anchor_lang::{
         prelude::{
-            msg, AccountInfo, Program, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
+            msg, Account, AccountInfo, Program, ProgramError, ProgramResult, Pubkey, Rent,
+            SolanaSysvar, UncheckedAccount,
         },
         require,
         solana_program::{
@@ -12,7 +13,8 @@ use {
         },
         Key, ToAccountInfo,
     },
-    anchor_spl::token::Token,
+    anchor_spl::token::{Mint, Token},
+    arrayref::array_ref,
     spl_associated_token_account::get_associated_token_address,
     spl_token::instruction::close_account,
     std::convert::TryInto,
@@ -273,4 +275,88 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         seeds.as_slice(),
     );
     result.map_err(|_| ErrorCode::TokenBurnFailed.into())
+}
+
+/// Returns true if a `leaf` can be proved to be a part of a Merkle tree
+/// defined by `root`. For this, a `proof` must be provided, containing
+/// sibling hashes on the branch from the leaf to the root of the tree. Each
+/// pair of leaves and each pair of pre-images are assumed to be sorted.
+pub fn verify(proof: &Vec<[u8; 32]>, root: &[u8; 32], leaf: [u8; 32]) -> bool {
+    let mut computed_hash = leaf;
+    for proof_element in proof.into_iter() {
+        if computed_hash <= *proof_element {
+            // Hash(current computed hash + current element of the proof)
+            computed_hash = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x01],
+                &computed_hash,
+                proof_element,
+            ])
+            .0;
+        } else {
+            // Hash(current element of the proof + current computed hash)
+            computed_hash = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x01],
+                proof_element,
+                &computed_hash,
+            ])
+            .0;
+        }
+    }
+    // Check if the computed hash (root) is equal to the provided root
+    computed_hash == *root
+}
+
+pub fn is_part_of_namespace<'a>(artifact: &AccountInfo<'a>, namespace: &Pubkey) -> bool {
+    let data = artifact.data.borrow_mut();
+    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
+    let offset = 12 as usize;
+    for i in 0..number {
+        let key_bytes = array_ref![data, offset + i * 33, 32];
+        let key = Pubkey::new_from_array(*key_bytes);
+        if key == *namespace {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+pub fn is_valid_validation<'info>(
+    val: &TokenValidation,
+    source_item_or_player_pda: &UncheckedAccount<'info>,
+    token_mint: &Account<'info, Mint>,
+) -> Result<bool, ProgramError> {
+    match val.filter {
+        Filter::None => {
+            return Err(ErrorCode::NoTokensAllowed.into());
+        }
+        Filter::All => {
+            if val.is_blacklist {
+                return Err(ErrorCode::Blacklisted.into());
+            } else {
+                return Ok(true);
+            }
+        }
+        Filter::Namespace { namespace } => {
+            if !is_part_of_namespace(source_item_or_player_pda, &namespace) {
+                return Ok(false);
+            }
+        }
+        Filter::Parent { key } => {
+            if key != source_item_or_player_pda.key() {
+                return Ok(false);
+            }
+        }
+        Filter::Mint { mint } => {
+            if token_mint.key() != mint {
+                return Ok(false);
+            }
+        }
+    }
+
+    if val.is_blacklist {
+        return Err(ErrorCode::Blacklisted.into());
+    } else {
+        return Ok(true);
+    }
 }
