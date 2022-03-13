@@ -70,6 +70,8 @@ pub struct LeaveMatchArgs {
 pub struct DisburseTokensByOracleArgs {
     escrow_bump: u8,
     original_sender: Pubkey,
+    token_delta_proof: Option<Vec<[u8; 32]>>,
+    token_delta: Option<TokenDelta>,
 }
 
 #[program]
@@ -284,6 +286,110 @@ pub mod matches {
         Ok(())
     }
 
+    pub fn disburse_tokens_by_oracle<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DisburseTokensByOracle<'info>>,
+        args: DisburseTokensByOracleArgs,
+    ) -> ProgramResult {
+        let match_instance = &mut ctx.accounts.match_instance;
+        let token_account_escrow = &ctx.accounts.token_account_escrow;
+        let destination_token_account = &ctx.accounts.destination_token_account;
+        let token_mint = &ctx.accounts.token_mint;
+        let win_oracle = &ctx.accounts.win_oracle;
+        let original_sender = &ctx.accounts.original_sender;
+        let token_program = &ctx.accounts.token_program;
+
+        let win_oracle_instance: WinOracle =
+            AnchorDeserialize::try_from_slice(&win_oracle.data.borrow())?;
+
+        let DisburseTokensByOracleArgs {
+            token_delta_proof,
+            token_delta,
+            ..
+        } = args;
+
+        let tfer = if let Some(proof) = token_delta_proof {
+            if let Some(root) = &win_oracle_instance.token_transfer_root {
+                if let Some(delta) = token_delta {
+                    let chief_node = anchor_lang::solana_program::keccak::hashv(&[
+                        &[0x00],
+                        &AnchorSerialize::try_to_vec(&delta)?,
+                        &match_instance.current_token_transfer_index.to_le_bytes(),
+                    ]);
+                    require!(verify(&proof, &root.root, chief_node.0), InvalidProof);
+                    delta
+                } else {
+                    return Err(ErrorCode::MustPassUpObject.into());
+                }
+            } else {
+                return Err(ErrorCode::RootNotPresent.into());
+            }
+        } else if let Some(tfer_arr) = &win_oracle_instance.token_transfers {
+            tfer_arr[match_instance.current_token_transfer_index as usize].clone()
+        } else {
+            return Err(ErrorCode::NoDeltasFound.into());
+        };
+
+        require!(
+            tfer.token_transfer_type == TokenTransferType::Normal,
+            UsePlayerEndpoint
+        );
+
+        require!(
+            token_account_escrow.amount <= tfer.amount,
+            CannotDeltaMoreThanAmountPresent
+        );
+
+        require!(tfer.mint == token_mint.key(), DeltaMintDoesNotMatch);
+
+        require!(tfer.from == original_sender.key(), FromDoesNotMatch);
+
+        let time_to_close = token_account_escrow.amount == tfer.amount;
+        let match_seeds = &[
+            PREFIX.as_bytes(),
+            match_instance.win_oracle.as_ref(),
+            &[match_instance.bump],
+        ];
+
+        if let Some(to) = tfer.to {
+            require!(to == destination_token_account.key(), DestinationMismatch);
+
+            spl_token_transfer(TokenTransferParams {
+                source: token_account_escrow.to_account_info(),
+                destination: destination_token_account.to_account_info(),
+                amount: tfer.amount,
+                authority: match_instance.to_account_info(),
+                authority_signer_seeds: match_seeds,
+                token_program: token_program.to_account_info(),
+            })?;
+        } else {
+            spl_token_burn(TokenBurnParams {
+                mint: token_mint.to_account_info(),
+                source: token_account_escrow.to_account_info(),
+                amount: tfer.amount,
+                authority: match_instance.to_account_info(),
+                authority_signer_seeds: Some(match_seeds),
+                token_program: token_program.to_account_info(),
+            })?;
+        }
+
+        if time_to_close {
+            close_token_account(
+                &token_account_escrow.to_account_info(),
+                &original_sender.to_account_info(),
+                token_program,
+                &match_instance.to_account_info(),
+                match_seeds,
+            )?;
+        }
+
+        match_instance.current_token_transfer_index = match_instance
+            .current_token_transfer_index
+            .checked_add(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        return Ok(());
+    }
+
     pub fn join_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, JoinMatch<'info>>,
         args: JoinMatchArgs,
@@ -297,10 +403,7 @@ pub mod matches {
         let token_program = &ctx.accounts.token_program;
         let source_item_or_player_pda = &ctx.accounts.source_item_or_player_pda;
         let source_info = source_token_account.to_account_info();
-        let token_escrow_info = token_account_escrow.to_account_info();
-        let match_info = match_instance.to_account_info();
         let token_info = token_program.to_account_info();
-        let payer_info = payer.to_account_info();
 
         let JoinMatchArgs {
             amount,
@@ -329,7 +432,7 @@ pub mod matches {
                         return Err(ErrorCode::InvalidValidation.into());
                     }
                 } else {
-                    return Err(ErrorCode::MustPassUpValidation.into());
+                    return Err(ErrorCode::MustPassUpObject.into());
                 }
             } else {
                 return Err(ErrorCode::RootNotPresent.into());
@@ -426,7 +529,7 @@ pub struct JoinMatch<'info> {
 pub struct DisburseTokensByOracle<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), args.original_sender.as_ref()], bump=args.escrow_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), original_sender.key().as_ref()], bump=args.escrow_bump)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     token_mint: Account<'info, Mint>,
@@ -434,6 +537,7 @@ pub struct DisburseTokensByOracle<'info> {
     destination_token_account: Account<'info, TokenAccount>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
+    original_sender: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
@@ -557,13 +661,20 @@ pub struct PlayerWinCallbackBitmap {
     match_key: Pubkey,
 }
 
+// To transfer a player token, make it a Normal type
+// and use it as the mint
+// To transfer item from player a to b, use player to player
+// and from and to are the player pubkeys, with item mint being mint
+// To transfer item from player a to entrant b, use PlayerToEntrant
+// from is the player pubkey, to is the wallet to which item is going.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TokenDelta {
+    // Is either player pda, or original wallet that moved token in
     from: Pubkey,
     /// if no to, token is burned
+    // can be player pda, or new wallet to send to.
     to: Option<Pubkey>,
-    token_type: TokenType,
-    callback: Option<Callback>,
+    token_transfer_type: TokenTransferType,
     mint: Pubkey,
     amount: u64,
 }
@@ -575,12 +686,20 @@ pub struct WinOracle {
     token_transfers: Option<Vec<TokenDelta>>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum TokenType {
     /// No missions explicitly.
     Player,
     Item,
     Any,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+pub enum TokenTransferType {
+    /// No missions explicitly.
+    PlayerToPlayer,
+    PlayerToEntrant,
+    Normal,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -595,7 +714,6 @@ pub enum Filter {
 #[account]
 pub struct TokenValidation {
     filter: Filter,
-    token_type: TokenType,
     is_blacklist: bool,
     callback: Option<Callback>,
 }
@@ -643,7 +761,7 @@ pub enum ErrorCode {
     #[msg("Root not present on object")]
     RootNotPresent,
     #[msg("If using roots, must pass up the object you are proving is a member")]
-    MustPassUpValidation,
+    MustPassUpObject,
     #[msg("No valid validations found")]
     NoValidValidationFound,
     #[msg("Blacklisted")]
@@ -652,4 +770,16 @@ pub enum ErrorCode {
     NoTokensAllowed,
     #[msg("This validation will not let in this token")]
     InvalidValidation,
+    #[msg("This oracle lacks any deltas")]
+    NoDeltasFound,
+    #[msg("Please use the player-specific endpoint for token transfers from a player")]
+    UsePlayerEndpoint,
+    #[msg("The original_sender argument does not match the from on the token delta")]
+    FromDoesNotMatch,
+    #[msg("Cannot give away more than is present in the token account")]
+    CannotDeltaMoreThanAmountPresent,
+    #[msg("Delta mint must match provided token mint account")]
+    DeltaMintDoesNotMatch,
+    #[msg("The given destination token account does not match the delta to field")]
+    DestinationMismatch,
 }
