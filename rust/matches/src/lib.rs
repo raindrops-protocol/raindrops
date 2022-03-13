@@ -70,8 +70,14 @@ pub struct LeaveMatchArgs {
 pub struct DisburseTokensByOracleArgs {
     escrow_bump: u8,
     original_sender: Pubkey,
-    token_delta_proof: Option<Vec<[u8; 32]>>,
-    token_delta: Option<TokenDelta>,
+    token_delta_proof_info: Option<TokenDeltaProofInfo>,
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct TokenDeltaProofInfo {
+    token_delta_proof: Vec<[u8; 32]>,
+    token_delta: TokenDelta,
+    total_proof: Vec<[u8; 32]>,
+    total: u64,
 }
 
 #[program]
@@ -302,28 +308,47 @@ pub mod matches {
             AnchorDeserialize::try_from_slice(&win_oracle.data.borrow())?;
 
         let DisburseTokensByOracleArgs {
-            token_delta_proof,
-            token_delta,
+            token_delta_proof_info,
             ..
         } = args;
 
-        let tfer = if let Some(proof) = token_delta_proof {
+        require!(
+            match_instance.state == MatchState::Finalized,
+            MatchMustBeInFinalized
+        );
+
+        let tfer = if let Some(proof_info) = token_delta_proof_info {
+            let TokenDeltaProofInfo {
+                token_delta_proof,
+                token_delta,
+                total_proof,
+                total,
+            } = proof_info;
             if let Some(root) = &win_oracle_instance.token_transfer_root {
-                if let Some(delta) = token_delta {
-                    let chief_node = anchor_lang::solana_program::keccak::hashv(&[
-                        &[0x00],
-                        &AnchorSerialize::try_to_vec(&delta)?,
-                        &match_instance.current_token_transfer_index.to_le_bytes(),
-                    ]);
-                    require!(verify(&proof, &root.root, chief_node.0), InvalidProof);
-                    delta
-                } else {
-                    return Err(ErrorCode::MustPassUpObject.into());
+                let chief_node = anchor_lang::solana_program::keccak::hashv(&[
+                    &[0x00],
+                    &AnchorSerialize::try_to_vec(&token_delta)?,
+                    &match_instance.current_token_transfer_index.to_le_bytes(),
+                ]);
+                require!(
+                    verify(&token_delta_proof, &root.root, chief_node.0),
+                    InvalidProof
+                );
+
+                let total_node =
+                    anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total.to_le_bytes()]);
+                require!(verify(&total_proof, &root.root, total_node.0), InvalidProof);
+                if match_instance.current_token_transfer_index == (total - 1) as u64 {
+                    match_instance.state = MatchState::PaidOut;
                 }
+                token_delta
             } else {
                 return Err(ErrorCode::RootNotPresent.into());
             }
         } else if let Some(tfer_arr) = &win_oracle_instance.token_transfers {
+            if match_instance.current_token_transfer_index == (tfer_arr.len() - 1) as u64 {
+                match_instance.state = MatchState::PaidOut;
+            }
             tfer_arr[match_instance.current_token_transfer_index as usize].clone()
         } else {
             return Err(ErrorCode::NoDeltasFound.into());
@@ -782,4 +807,6 @@ pub enum ErrorCode {
     DeltaMintDoesNotMatch,
     #[msg("The given destination token account does not match the delta to field")]
     DestinationMismatch,
+    #[msg("Match must be in finalized state to diburse")]
+    MatchMustBeInFinalized,
 }
