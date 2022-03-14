@@ -9,6 +9,7 @@ import { getNamespacePDA } from "../utils/pda";
 
 import { ObjectWrapper } from "./common";
 import { getCluster } from "../utils/connection";
+import { sendTransactionWithRetry } from "../utils/transactions";
 
 function convertNumbersToBNs(data: any) {
   if (data.desiredNamespaceArraySize) {
@@ -54,11 +55,13 @@ export interface InitializeNamespaceArgs {
   whitelistedStakingMints: web3.PublicKey[];
 }
 
-export class NamespaceProgram {
+export interface InitializeNamespaceAdditionalArgs {}
+
+export class NamespaceInstruction {
   id: web3.PublicKey;
   program: Program;
 
-  constructor(args: { id: web3.PublicKey; program: Program; }) {
+  constructor(args: { id: web3.PublicKey; program: Program }) {
     this.id = args.id;
     this.program = args.program;
   }
@@ -66,7 +69,8 @@ export class NamespaceProgram {
   async initializeNamespace(
     args: InitializeNamespaceArgs,
     accounts: InitializeNamespaceAccounts,
-  ): Promise<void> {
+    _additionalArgs: InitializeNamespaceAdditionalArgs = {}
+  ) {
     const [namespacePDA, namespaceBump] = await getNamespacePDA(
       accounts.mint,
     )
@@ -78,19 +82,53 @@ export class NamespaceProgram {
       mint => { return { pubkey: mint, isWritable: false, isSigner: false } }
     );
 
-    await this.program.rpc.initializeNamespace(args, {
-      accounts: {
-        namespace: namespacePDA,
-        mint: accounts.mint,
-        metadata: accounts.metadata,
-        masterEdition: accounts.masterEdition,
-        payer: this.program.provider.wallet.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-      },
-      remainingAccounts: remainingAccounts,
+    return [
+      this.program.instruction.initializeNamespace(args, {
+        accounts: {
+          namespace: namespacePDA,
+          mint: accounts.mint,
+          metadata: accounts.metadata,
+          masterEdition: accounts.masterEdition,
+          payer: this.program.provider.wallet.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        },
+        remainingAccounts: remainingAccounts,
+      })
+    ];
+  }
+}
+
+export class NamespaceProgram {
+  id: web3.PublicKey;
+  program: Program;
+  instruction: NamespaceInstruction;
+
+  constructor(args: { id: web3.PublicKey; program: Program; }) {
+    this.id = args.id;
+    this.program = args.program;
+    this.instruction = new NamespaceInstruction({
+      id: this.id,
+      program: this.program,
     });
+  }
+
+  async initializeNamespace(
+    args: InitializeNamespaceArgs,
+    accounts: InitializeNamespaceAccounts,
+  ): Promise<void> {
+    const instruction = await this.instruction.initializeNamespace(
+      args,
+      accounts
+    );
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instruction,
+      []
+    );
   }
 
   async fetchNamespace(
