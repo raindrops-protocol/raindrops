@@ -1,17 +1,19 @@
 use {
-    crate::{ErrorCode, Filter, TokenValidation},
+    crate::{ErrorCode, Filter, TokenValidation, ValidationArgs},
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, Program, ProgramError, ProgramResult, Pubkey, Rent,
-            SolanaSysvar, UncheckedAccount,
+            msg, Account, AccountInfo, AccountMeta, Program, ProgramError, ProgramResult, Pubkey,
+            Rent, SolanaSysvar, UncheckedAccount,
         },
         require,
         solana_program::{
+            hash,
+            instruction::Instruction,
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
-        Key, ToAccountInfo,
+        AnchorSerialize, Key, ToAccountInfo,
     },
     anchor_spl::token::{Mint, Token},
     arrayref::array_ref,
@@ -321,10 +323,19 @@ pub fn is_part_of_namespace<'a>(artifact: &AccountInfo<'a>, namespace: &Pubkey) 
     return false;
 }
 
+pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
+    let preimage = format!("{}:{}", namespace, name);
+
+    let mut sighash = [0u8; 8];
+    sighash.copy_from_slice(&hash::hash(preimage.as_bytes()).to_bytes()[..8]);
+    sighash
+}
+
 pub fn is_valid_validation<'info>(
     val: &TokenValidation,
     source_item_or_player_pda: &UncheckedAccount<'info>,
     token_mint: &Account<'info, Mint>,
+    validation_program: &UncheckedAccount<'info>,
 ) -> Result<bool, ProgramError> {
     match val.filter {
         Filter::None => {
@@ -356,7 +367,35 @@ pub fn is_valid_validation<'info>(
 
     if val.is_blacklist {
         return Err(ErrorCode::Blacklisted.into());
-    } else {
-        return Ok(true);
     }
+
+    if let Some(validation) = &val.validation {
+        let accounts = vec![
+            source_item_or_player_pda.to_account_info(),
+            token_mint.to_account_info(),
+            validation_program.to_account_info(),
+        ];
+
+        assert_keys_equal(validation_program.key(), validation.key)?;
+
+        let keys = vec![
+            AccountMeta::new_readonly(source_item_or_player_pda.key(), false),
+            AccountMeta::new_readonly(token_mint.key(), false),
+        ];
+
+        invoke(
+            &Instruction {
+                program_id: validation.key,
+                accounts: keys,
+                data: AnchorSerialize::try_to_vec(&ValidationArgs {
+                    instruction: sighash("global", "match_validation"),
+                    extra_identifier: validation.code,
+                    token_validation: val.clone(),
+                })?,
+            },
+            &accounts,
+        )?;
+    }
+
+    return Ok(true);
 }

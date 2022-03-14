@@ -24,7 +24,7 @@ use {
     },
     spl_token::instruction::{initialize_account2, mint_to},
 };
-anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
 pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -101,6 +101,8 @@ pub mod matches {
             ..
         } = args;
 
+        msg!("1");
+
         let match_instance = &mut ctx.accounts.match_instance;
 
         match_instance.bump = match_bump;
@@ -119,7 +121,7 @@ pub mod matches {
         match_instance.authority = authority;
         match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
         match_instance.leave_allowed = leave_allowed;
-
+        msg!("2");
         Ok(())
     }
 
@@ -426,6 +428,7 @@ pub mod matches {
         let token_mint = &ctx.accounts.token_mint;
         let payer = &mut ctx.accounts.payer;
         let token_program = &ctx.accounts.token_program;
+        let validation_program = &ctx.accounts.validation_program;
         let source_item_or_player_pda = &ctx.accounts.source_item_or_player_pda;
         let source_info = source_token_account.to_account_info();
         let token_info = token_program.to_account_info();
@@ -453,7 +456,12 @@ pub mod matches {
                         &AnchorSerialize::try_to_vec(&validation)?,
                     ]);
                     require!(verify(&proof, &root.root, chief_node.0), InvalidProof);
-                    if !is_valid_validation(&validation, source_item_or_player_pda, token_mint)? {
+                    if !is_valid_validation(
+                        &validation,
+                        source_item_or_player_pda,
+                        token_mint,
+                        validation_program,
+                    )? {
                         return Err(ErrorCode::InvalidValidation.into());
                     }
                 } else {
@@ -465,7 +473,12 @@ pub mod matches {
         } else if let Some(val_arr) = &match_instance.token_entry_validation {
             let mut validation = false;
             for val in val_arr {
-                if is_valid_validation(&val, source_item_or_player_pda, token_mint)? {
+                if is_valid_validation(
+                    &val,
+                    source_item_or_player_pda,
+                    token_mint,
+                    validation_program,
+                )? {
                     validation = true;
                     break;
                 }
@@ -533,18 +546,19 @@ pub struct DrainMatch<'info> {
 #[instruction(args: JoinMatchArgs)]
 pub struct JoinMatch<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
-    match_instance: Account<'info, Match>,
+    match_instance: Box<Account<'info, Match>>,
     token_transfer_authority: Signer<'info>,
     #[account(init_if_needed, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), source_token_account.owner.as_ref()], bump=args.escrow_bump, token::mint = token_mint, token::authority = match_instance, payer=payer)]
-    token_account_escrow: Account<'info, TokenAccount>,
+    token_account_escrow: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    token_mint: Account<'info, Mint>,
+    token_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint=source_token_account.mint == token_mint.key())]
-    source_token_account: Account<'info, TokenAccount>,
+    source_token_account: Box<Account<'info, TokenAccount>>,
     // set to system if none
     source_item_or_player_pda: UncheckedAccount<'info>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
+    validation_program: UncheckedAccount<'info>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
@@ -635,7 +649,18 @@ pub enum InheritanceState {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Callback(pub Pubkey, pub u64);
+pub struct Callback {
+    pub key: Pubkey,
+    pub code: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ValidationArgs {
+    // For enum detection on the other end.
+    instruction: [u8; 8],
+    extra_identifier: u64,
+    token_validation: TokenValidation,
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
@@ -647,6 +672,7 @@ pub struct NamespaceAndIndex {
 pub const MIN_MATCH_SIZE: usize = 8 + // discriminator
 32 + // win oracle
 8 + // oracle cooldown
+8 + // last oracle check
 32 + // authority,
 1 + // match state
 1 + // leave allowed
@@ -667,6 +693,7 @@ pub struct Match {
     // for redistributing items
     win_oracle: Pubkey,
     win_oracle_cooldown: u64,
+    last_oracle_check: u64,
     authority: Pubkey,
     state: MatchState,
     leave_allowed: bool,
@@ -736,11 +763,11 @@ pub enum Filter {
     Mint { mint: Pubkey },
 }
 
-#[account]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TokenValidation {
     filter: Filter,
     is_blacklist: bool,
-    callback: Option<Callback>,
+    validation: Option<Callback>,
 }
 
 #[error]
