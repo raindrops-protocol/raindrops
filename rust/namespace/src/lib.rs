@@ -23,7 +23,7 @@ const MAX_CACHED_ITEMS: usize = 100;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitializeNamespaceArgs {
     bump: u8,
-    desired_namespace_array_size: u8,
+    desired_namespace_array_size: u64,
     uuid: String,
     pretty_name: String,
     permissiveness_settings: PermissivenessSettings,
@@ -295,7 +295,7 @@ pub mod namespace {
 
     pub fn remove_from_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, RemoveFromNamespaceGatekeeper<'info>>,
-        idx: u8,
+        idx: u64,
     ) -> ProgramResult {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
 
@@ -442,18 +442,6 @@ pub enum ArtifactType {
 
 pub const MAX_FILTER_SLOTS: usize = 5;
 
-// (5 + 1) * 32 - 5 * 32 = 32
-// const NAMESPACE_PADDING_SIZE: usize = FILTER_SIZE - MAX_FILTER_SLOTS * 32;
-// 6*32 - 1 - (25 * 5) - 32 - 32 = 2
-// const NAMESPACE_CATEGORY_PADDING2_SIZE: usize = FILTER_SIZE - 1 - (25 * MAX_FILTER_SLOTS) - 32 - 32;
-// (5 + 1) * 32 - 32 - 32 - 32 - 33 - 32 = 31
-// const NAMESPACE_KEY_PADDING2_SIZE: usize = FILTER_SIZE - 32 - 32 - 32 - 33 - 32;
-
-// TODO: Figure out why IDL parsing is failing when using the above calculations.
-// references on github to similar issues:
-// https://github.com/project-serum/anchor/issues/1476
-// https://github.com/project-serum/anchor/pull/968
-// https://github.com/project-serum/anchor/issues/294
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum Filter {
     Namespace {
