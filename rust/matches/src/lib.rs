@@ -288,7 +288,7 @@ pub mod matches {
 
         match_instance.token_types_removed = match_instance
             .token_types_removed
-            .checked_sub(1)
+            .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         Ok(())
