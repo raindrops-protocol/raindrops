@@ -1,7 +1,8 @@
 #!/usr/bin/env ts-node
 import * as fs from "fs";
-import { program } from "commander";
 import log from "loglevel";
+import { program } from "commander";
+import { programCommand } from "./utils";
 import { loadWalletKey } from "../utils/file";
 import { SystemProgram } from "@solana/web3.js";
 
@@ -1214,26 +1215,5 @@ programCommand("update_item")
       {}
     );
   });
-
-function programCommand(name: string) {
-  return program
-    .command(name)
-    .option(
-      "-e, --env <string>",
-      "Solana cluster env name",
-      "devnet" //mainnet-beta, testnet, devnet
-    )
-    .requiredOption("-k, --keypair <path>", `Solana wallet location`)
-    .option("-l, --log-level <string>", "log level", setLogLevel);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function setLogLevel(value, prev) {
-  if (value === undefined || value === null) {
-    return;
-  }
-  log.info("setting the log value to: " + value);
-  log.setLevel(value);
-}
 
 program.parse(process.argv);

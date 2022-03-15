@@ -1,10 +1,11 @@
 {
   "name": "raindrops-cli",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "./build/main.js",
   "license": "MIT",
   "bin": {
-    "items-cli": "./src/cli/item.ts"
+    "items-cli": "./src/cli/item.ts",
+    "namespace-cli": "./src/cli/namespace.ts"
   },
   "scripts": {
     "build": "tsc -p ./src",

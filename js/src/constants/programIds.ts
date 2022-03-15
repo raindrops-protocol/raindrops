@@ -1,5 +1,9 @@
 import { web3 } from "@project-serum/anchor";
 
+export const NAMESPACE_ID = new web3.PublicKey(
+  "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
+);
+
 export const ITEM_ID = new web3.PublicKey(
   "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 );

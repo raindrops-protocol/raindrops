@@ -23,7 +23,7 @@ const MAX_CACHED_ITEMS: usize = 100;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitializeNamespaceArgs {
     bump: u8,
-    desired_namespace_array_size: usize,
+    desired_namespace_array_size: u64,
     uuid: String,
     pretty_name: String,
     permissiveness_settings: PermissivenessSettings,
@@ -110,8 +110,9 @@ pub mod namespace {
         namespace.bump = bump;
         namespace.uuid = uuid;
         namespace.whitelisted_staking_mints = whitelisted_staking_mints;
-        namespace.pretty_name = namespace.pretty_name.to_string();
+        namespace.pretty_name = pretty_name;
         namespace.permissiveness_settings = permissiveness_settings;
+        namespace.mint = mint.key();
         namespace.metadata = metadata.key();
         namespace.master_edition = master_edition.key();
         namespace.highest_page = 0;
@@ -294,13 +295,13 @@ pub mod namespace {
 
     pub fn remove_from_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, RemoveFromNamespaceGatekeeper<'info>>,
-        idx: usize,
+        idx: u64,
     ) -> ProgramResult {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
 
         let mut new_arr = vec![];
         for i in 0..namespace_gatekeeper.artifact_filters.len() {
-            if i != idx {
+            if i != idx as usize {
                 new_arr.push(namespace_gatekeeper.artifact_filters[i].clone())
             }
         }
@@ -545,7 +546,7 @@ pub const INDEX_SIZE: usize = 8 + // key
 1 + // bump
 8 + // page
 4 + // amount in vec
-32*MAX_CACHED_ITEMS + // array space
+32 * MAX_CACHED_ITEMS + // array space
 100; //padding
 
 pub const ARTIFACT_FILTER_SIZE: usize = 8 + // key
@@ -562,7 +563,7 @@ FILTER_SIZE + //
 #[derive(Accounts)]
 #[instruction(args: InitializeNamespaceArgs)]
 pub struct InitializeNamespace<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), mint.key().as_ref()], payer=payer, bump=args.bump, space=args.desired_namespace_array_size*NAMESPACE_AND_INDEX_SIZE + MIN_NAMESPACE_SIZE + 4)]
+    #[account(init, seeds=[PREFIX.as_bytes(), mint.key().as_ref()], payer=payer, bump=args.bump, space=args.desired_namespace_array_size as usize * NAMESPACE_AND_INDEX_SIZE + MIN_NAMESPACE_SIZE + 4)]
     namespace: Account<'info, Namespace>,
     mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
