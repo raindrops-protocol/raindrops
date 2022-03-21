@@ -15,7 +15,7 @@ use {
             program_pack::Pack,
             system_instruction, system_program,
         },
-        AnchorDeserialize, AnchorSerialize,
+        AnchorDeserialize, AnchorSerialize, Discriminator,
     },
     anchor_spl::token::{Mint, TokenAccount},
     metaplex_token_metadata::instruction::{
@@ -92,6 +92,7 @@ pub struct TokenDeltaProofInfo {
 
 #[program]
 pub mod matches {
+
     use super::*;
 
     pub fn create_or_update_oracle<'a, 'b, 'c, 'info>(
@@ -111,14 +112,12 @@ pub mod matches {
             token_transfers,
         };
 
-        let as_vec = new_oracle.try_to_vec()?;
-
-        let win_oracle = &mut ctx.accounts.oracle;
-
-        let mut data = win_oracle.data.borrow_mut();
-
-        for i in 0..as_vec.len() {
-            data[i] = as_vec[i];
+        let mut new_data = WinOracle::discriminator().try_to_vec().unwrap();
+        new_data.append(&mut new_oracle.try_to_vec().unwrap());
+        let data = &mut ctx.accounts.oracle.data.borrow_mut();
+        // god forgive me couldnt think of better way to deal with this
+        for i in 0..new_data.len() {
+            data[i] = new_data[i];
         }
 
         return Ok(());
@@ -222,8 +221,8 @@ pub mod matches {
         let match_instance = &mut ctx.accounts.match_instance;
         let win_oracle = &ctx.accounts.win_oracle;
 
-        let win_oracle_instance: WinOracle =
-            AnchorDeserialize::try_from_slice(&win_oracle.data.borrow())?;
+        let win_oracle_instance: Account<'_, WinOracle> =
+            Account::try_from(&win_oracle.to_account_info())?;
 
         require!(
             match_instance.state == MatchState::Started

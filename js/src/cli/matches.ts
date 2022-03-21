@@ -61,6 +61,41 @@ programCommand("create_match")
     );
   });
 
+programCommand("update_match_from_oracle")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.updateMatchFromOracle(
+      {},
+      {
+        winOracle: config.winOracle
+          ? new web3.PublicKey(config.winOracle)
+          : (
+              await getOracle(
+                new web3.PublicKey(config.oracleState.seed),
+                walletKeyPair.publicKey
+              )
+            )[0],
+      },
+      {}
+    );
+  });
+
 programCommand("create_or_update_oracle")
   .requiredOption(
     "-cp, --config-path <string>",

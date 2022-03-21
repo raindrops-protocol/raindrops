@@ -58,6 +58,11 @@ export interface CreateOrUpdateOracleArgs {
   tokenTransferRoot: null;
   tokenTransfers: null | AnchorTokenDelta[];
 }
+
+export interface UpdateMatchFromOracleAccounts {
+  winOracle: web3.PublicKey;
+}
+
 export class MatchesInstruction {
   id: web3.PublicKey;
   program: Program;
@@ -82,6 +87,24 @@ export class MatchesInstruction {
           payer: this.program.provider.wallet.publicKey,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
+        },
+      }),
+    ];
+  }
+
+  async updateMatchFromOracle(
+    args = {},
+    accounts: UpdateMatchFromOracleAccounts,
+    _additionalArgs = {}
+  ) {
+    const match = (await getMatch(accounts.winOracle))[0];
+
+    return [
+      this.program.instruction.updateMatchFromOracle({
+        accounts: {
+          matchInstance: match,
+          winOracle: accounts.winOracle,
+          authority: this.program.provider.wallet.publicKey,
         },
       }),
     ];
@@ -176,8 +199,23 @@ export class MatchesProgram {
   ) {
     const instructions = await this.instruction.createMatch(args);
 
-    if (!args.winOracle) {
-    }
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      []
+    );
+  }
+
+  async updateMatchFromOracle(
+    args = {},
+    accounts: UpdateMatchFromOracleAccounts,
+    _additionalArgs = {}
+  ) {
+    const instructions = await this.instruction.updateMatchFromOracle(
+      args,
+      accounts
+    );
 
     await sendTransactionWithRetry(
       this.program.provider.connection,
