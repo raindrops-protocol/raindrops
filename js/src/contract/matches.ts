@@ -3,12 +3,12 @@ import { SystemProgram } from "@solana/web3.js";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { MATCHES_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { getMatch } from "../utils/pda";
+import { getMatch, getOracle } from "../utils/pda";
 import { ObjectWrapper } from "./common";
 import log from "loglevel";
 import { getCluster } from "../utils/connection";
 import { sendTransactionWithRetry } from "../utils/transactions";
-import { AnchorMatchState } from "../state/matches";
+import { AnchorMatchState, AnchorTokenDelta } from "../state/matches";
 
 function convertNumsToBNs(data: any) {}
 export class MatchWrapper implements ObjectWrapper<any, MatchesProgram> {
@@ -43,10 +43,21 @@ export interface CreateMatchArgs {
   minimumAllowedEntryTime: BN | null;
 }
 
-export interface CreateMatchAccounts {}
+export interface CreateMatchAdditionalArgs {
+  seed: string;
+  finalized: boolean;
+  tokenTransferRoot: null;
+  tokenTransfers: null | AnchorTokenDelta[];
+}
 
-export interface CreateMatchAdditionalArgs {}
-
+export interface CreateOrUpdateOracleArgs {
+  oracleBump: number | null;
+  seed: string;
+  space: BN;
+  finalized: boolean;
+  tokenTransferRoot: null;
+  tokenTransfers: null | AnchorTokenDelta[];
+}
 export class MatchesInstruction {
   id: web3.PublicKey;
   program: Program;
@@ -58,8 +69,8 @@ export class MatchesInstruction {
 
   async createMatch(
     args: CreateMatchArgs,
-    _accounts: CreateMatchAccounts = {},
-    _additionalArgs: CreateMatchAdditionalArgs = {}
+    _accounts = {},
+    _additionalArgs = {}
   ) {
     const [match, matchBump] = await getMatch(args.winOracle);
 
@@ -76,21 +87,40 @@ export class MatchesInstruction {
     ];
   }
 
-  /*async createOracle(
-    oracle: web3.PublicKey
+  async createOrUpdateOracle(
+    args: CreateOrUpdateOracleArgs,
+    _accounts = {},
+    _additionalArgs = {}
   ) {
-    const [match, matchBump] = await getMatch(args.winOracle);
+    const [oracle, oracleBump] = await getOracle(
+      new web3.PublicKey(args.seed),
+      this.program.provider.wallet.publicKey
+    );
 
-    args.matchBump = matchBump;
-    return this.program.instruction.createMatch(args, {
-      accounts: {
-        matchInstance: match,
-        payer: this.program.provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-      },
-    });
-  }*/
+    const tokenTransfers = args.tokenTransfers
+      ? args.tokenTransfers.map((t) => ({
+          ...t,
+          from: new web3.PublicKey(t.from),
+          to: t.to ? new web3.PublicKey(t.to) : null,
+          mint: new web3.PublicKey(t.mint),
+        }))
+      : null;
+
+    args.oracleBump = oracleBump;
+    return [
+      this.program.instruction.createOrUpdateOracle(
+        { ...args, tokenTransfers, seed: new web3.PublicKey(args.seed) },
+        {
+          accounts: {
+            oracle,
+            payer: this.program.provider.wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+          },
+        }
+      ),
+    ];
+  }
 }
 
 export class MatchesProgram {
@@ -120,12 +150,49 @@ export class MatchesProgram {
     });
   }
 
+  async fetchOracle(oracle: web3.PublicKey): Promise<MatchWrapper> {
+    const oracleAcct = await this.program.provider.connection.getAccountInfo(
+      oracle
+    );
+
+    const oracleInstance =
+      await this.program.account.winOracle.coder.accounts.decode(
+        "WinOracle",
+        oracleAcct.data
+      );
+
+    return new MatchWrapper({
+      program: this,
+      key: oracle,
+      data: oracleAcct.data,
+      object: oracleInstance,
+    });
+  }
+
   async createMatch(
     args: CreateMatchArgs,
-    _accounts: CreateMatchAccounts = {},
-    _additionalArgs: CreateMatchAdditionalArgs = {}
+    _accounts = {},
+    additionalArgs: CreateMatchAdditionalArgs
   ) {
     const instructions = await this.instruction.createMatch(args);
+
+    if (!args.winOracle) {
+    }
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      []
+    );
+  }
+
+  async createOrUpdateOracle(
+    args: CreateOrUpdateOracleArgs,
+    _accounts = {},
+    _additionalArgs = {}
+  ) {
+    const instructions = await this.instruction.createOrUpdateOracle(args);
 
     await sendTransactionWithRetry(
       this.program.provider.connection,

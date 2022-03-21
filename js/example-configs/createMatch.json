@@ -1,9 +1,15 @@
 {
-  "winOracle": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "winOracle": null,
   "matchState": null,
   "winOracleCooldown": null,
   "space": null,
   "minimumAllowedEntryTime": null,
   "tokenEntryValidation": null,
-  "authority": null
+  "authority": null,
+  "oracleState": {
+    "seed": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+    "finalized": false,
+    "tokenTransferRoot": null,
+    "tokenTransfers": null
+  }
 }

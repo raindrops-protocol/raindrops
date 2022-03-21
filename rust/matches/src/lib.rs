@@ -28,6 +28,16 @@ anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
 pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CreateOrUpdateOracleArgs {
+    oracle_bump: u8,
+    token_transfer_root: Option<Root>,
+    token_transfers: Option<Vec<TokenDelta>>,
+    seed: Pubkey,
+    space: u64,
+    finalized: bool,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateMatchArgs {
     match_bump: u8,
     match_state: MatchState,
@@ -84,6 +94,36 @@ pub struct TokenDeltaProofInfo {
 pub mod matches {
     use super::*;
 
+    pub fn create_or_update_oracle<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CreateOrUpdateOracle<'info>>,
+        args: CreateOrUpdateOracleArgs,
+    ) -> ProgramResult {
+        let CreateOrUpdateOracleArgs {
+            token_transfer_root,
+            token_transfers,
+            finalized,
+            ..
+        } = args;
+
+        let new_oracle = WinOracle {
+            finalized,
+            token_transfer_root,
+            token_transfers,
+        };
+
+        let as_vec = new_oracle.try_to_vec()?;
+
+        let win_oracle = &mut ctx.accounts.oracle;
+
+        let mut data = win_oracle.data.borrow_mut();
+
+        for i in 0..as_vec.len() {
+            data[i] = as_vec[i];
+        }
+
+        return Ok(());
+    }
+
     pub fn create_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CreateMatch<'info>>,
         args: CreateMatchArgs,
@@ -100,8 +140,6 @@ pub mod matches {
             minimum_allowed_entry_time,
             ..
         } = args;
-
-        msg!("1");
 
         let match_instance = &mut ctx.accounts.match_instance;
 
@@ -121,7 +159,7 @@ pub mod matches {
         match_instance.authority = authority;
         match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
         match_instance.leave_allowed = leave_allowed;
-        msg!("2");
+
         Ok(())
     }
 
@@ -618,6 +656,18 @@ pub struct LeaveMatch<'info> {
     token_program: Program<'info, Token>,
 }
 
+/// While not required to be an account owned by this program, we provide an easy
+/// set of endpoitns to create oracles using the program if you don't want to do it yourself.
+#[derive(Accounts)]
+#[instruction(args: CreateOrUpdateOracleArgs)]
+pub struct CreateOrUpdateOracle<'info> {
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), payer.key().as_ref(), args.seed.as_ref()], bump=args.oracle_bump, payer=payer, space=args.space as usize)]
+    oracle: UncheckedAccount<'info>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum MatchState {
     Draft,
@@ -731,7 +781,7 @@ pub struct TokenDelta {
     amount: u64,
 }
 // Oracles must match this serde
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[account]
 pub struct WinOracle {
     finalized: bool,
     token_transfer_root: Option<Root>,

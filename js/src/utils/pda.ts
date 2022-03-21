@@ -30,8 +30,18 @@ export const getMatch = async (
   );
 };
 
+export const getOracle = async (
+  seed: web3.PublicKey,
+  payer: web3.PublicKey
+): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [Buffer.from(MATCHES_PREFIX), payer.toBuffer(), seed.toBuffer()],
+    MATCHES_ID
+  );
+};
+
 export const getNamespacePDA = async (
-  mint: web3.PublicKey,
+  mint: web3.PublicKey
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
     [Buffer.from(NAMESPACE_PREFIX), mint.toBuffer()],
