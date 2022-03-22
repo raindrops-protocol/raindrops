@@ -1,7 +1,7 @@
 {
   "winOracle": null,
   "matchState": null,
-  "winOracleCooldown": null,
+  "winOracleCooldown": 10,
   "space": null,
   "minimumAllowedEntryTime": null,
   "tokenEntryValidation": null,

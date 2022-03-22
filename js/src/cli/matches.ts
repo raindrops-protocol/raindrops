@@ -61,6 +61,55 @@ programCommand("create_match")
     );
   });
 
+programCommand("update_match")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.updateMatch(
+      {
+        matchState: config.matchState || { draft: true },
+        tokenEntryValidationRoot: null,
+        tokenEntryValidation: config.tokenEntryValidation
+          ? config.tokenEntryValidation
+          : null,
+        winOracleCooldown: new BN(config.winOracleCooldown || 0),
+        authority: config.authority
+          ? new web3.PublicKey(config.authority)
+          : walletKeyPair.publicKey,
+        leaveAllowed: false,
+        minimumAllowedEntryTime: config.minimumAllowedEntryTime
+          ? new BN(config.minimumAllowedEntryTime)
+          : null,
+      },
+      {
+        winOracle: config.winOracle
+          ? new web3.PublicKey(config.winOracle)
+          : (
+              await getOracle(
+                new web3.PublicKey(config.oracleState.seed),
+                walletKeyPair.publicKey
+              )
+            )[0],
+      },
+      {}
+    );
+  });
+
 programCommand("update_match_from_oracle")
   .requiredOption(
     "-cp, --config-path <string>",

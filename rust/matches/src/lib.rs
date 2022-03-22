@@ -558,7 +558,7 @@ pub struct CreateMatch<'info> {
 pub struct UpdateMatch<'info> {
     #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
-    #[account(constraint=win_oracle.key() == match_instance.key())]
+    #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
     authority: Signer<'info>,
 }

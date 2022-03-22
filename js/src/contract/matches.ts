@@ -43,6 +43,16 @@ export interface CreateMatchArgs {
   minimumAllowedEntryTime: BN | null;
 }
 
+export interface UpdateMatchArgs {
+  matchState: AnchorMatchState;
+  tokenEntryValidationRoot: null;
+  tokenEntryValidation: null;
+  winOracleCooldown: BN;
+  authority: web3.PublicKey;
+  leaveAllowed: boolean;
+  minimumAllowedEntryTime: BN | null;
+}
+
 export interface CreateMatchAdditionalArgs {
   seed: string;
   finalized: boolean;
@@ -60,6 +70,10 @@ export interface CreateOrUpdateOracleArgs {
 }
 
 export interface UpdateMatchFromOracleAccounts {
+  winOracle: web3.PublicKey;
+}
+
+export interface UpdateMatchAccounts {
   winOracle: web3.PublicKey;
 }
 
@@ -87,6 +101,24 @@ export class MatchesInstruction {
           payer: this.program.provider.wallet.publicKey,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
+        },
+      }),
+    ];
+  }
+
+  async updateMatch(
+    args: UpdateMatchArgs,
+    accounts: UpdateMatchAccounts,
+    _additionalArgs = {}
+  ) {
+    const [match, matchBump] = await getMatch(accounts.winOracle);
+
+    return [
+      this.program.instruction.updateMatch(args, {
+        accounts: {
+          matchInstance: match,
+          winOracle: accounts.winOracle,
+          authority: this.program.provider.wallet.publicKey,
         },
       }),
     ];
@@ -198,6 +230,21 @@ export class MatchesProgram {
     additionalArgs: CreateMatchAdditionalArgs
   ) {
     const instructions = await this.instruction.createMatch(args);
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      []
+    );
+  }
+
+  async updateMatch(
+    args: UpdateMatchArgs,
+    accounts: UpdateMatchAccounts,
+    _additionalArgs = {}
+  ) {
+    const instructions = await this.instruction.updateMatch(args, accounts);
 
     await sendTransactionWithRetry(
       this.program.provider.connection,
