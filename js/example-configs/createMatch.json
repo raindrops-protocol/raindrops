@@ -6,10 +6,20 @@
   "minimumAllowedEntryTime": null,
   "tokenEntryValidation": null,
   "authority": null,
+  "leaveAllowed": false,
+  "joinAllowedDuringStart": false,
   "oracleState": {
     "seed": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
     "finalized": false,
     "tokenTransferRoot": null,
     "tokenTransfers": null
-  }
+  },
+  "tokensToJoin": [
+    {
+      "mint": "AoDxuMeVojMb9pBjcrKnCrz6e2u6HxdcJBPgUDDfd4W7",
+      "amount": 1,
+      "sourceType": 2,
+      "index": null
+    }
+  ]
 }

@@ -6,10 +6,12 @@ import {
   ITEM_ID,
   TOKEN_METADATA_PROGRAM_ID,
   MATCHES_ID,
+  PLAYER_ID,
 } from "../constants/programIds";
 import { PREFIX as ITEM_PREFIX, MARKER } from "../constants/item";
 import { PREFIX as MATCHES_PREFIX } from "../constants/matches";
 import { PREFIX as NAMESPACE_PREFIX } from "../constants/namespace";
+import { PREFIX as PLAYER_PREFIX } from "../constants/player";
 
 export const getAtaForMint = async (
   mint: web3.PublicKey,
@@ -26,6 +28,22 @@ export const getMatch = async (
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
     [Buffer.from(MATCHES_PREFIX), oracle.toBuffer()],
+    MATCHES_ID
+  );
+};
+
+export const getMatchTokenAccountEscrow = async (
+  oracle: web3.PublicKey,
+  tokenMint: web3.PublicKey,
+  tokenOwner: web3.PublicKey
+): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(MATCHES_PREFIX),
+      oracle.toBuffer(),
+      tokenMint.toBuffer(),
+      tokenOwner.toBuffer(),
+    ],
     MATCHES_ID
   );
 };
@@ -56,6 +74,16 @@ export const getItemPDA = async (
   return await web3.PublicKey.findProgramAddress(
     [Buffer.from(ITEM_PREFIX), mint.toBuffer(), index.toBuffer("le", 8)],
     ITEM_ID
+  );
+};
+
+export const getPlayerPDA = async (
+  mint: web3.PublicKey,
+  index: BN
+): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [Buffer.from(PLAYER_PREFIX), mint.toBuffer(), index.toBuffer("le", 8)],
+    PLAYER_ID
   );
 };
 

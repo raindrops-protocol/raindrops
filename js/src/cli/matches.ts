@@ -8,7 +8,7 @@ import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
 import { getMatchesProgram } from "../contract/matches";
 import { getMatch, getOracle } from "../utils/pda";
-import { MatchState, TokenTransferType } from "../state/matches";
+import { MatchState, TokenTransferType, TokenType } from "../state/matches";
 import { InheritanceState } from "../state/common";
 
 programCommand("create_match")
@@ -51,7 +51,8 @@ programCommand("create_match")
           ? new web3.PublicKey(config.authority)
           : walletKeyPair.publicKey,
         space: config.space ? new BN(config.space) : new BN(150),
-        leaveAllowed: false,
+        leaveAllowed: config.leaveAllowed,
+        joinAllowedDuringStart: config.joinAllowedDuringStart,
         minimumAllowedEntryTime: config.minimumAllowedEntryTime
           ? new BN(config.minimumAllowedEntryTime)
           : null,
@@ -91,7 +92,8 @@ programCommand("update_match")
         authority: config.authority
           ? new web3.PublicKey(config.authority)
           : walletKeyPair.publicKey,
-        leaveAllowed: false,
+        leaveAllowed: config.leaveAllowed,
+        joinAllowedDuringStart: config.joinAllowedDuringStart,
         minimumAllowedEntryTime: config.minimumAllowedEntryTime
           ? new BN(config.minimumAllowedEntryTime)
           : null,
@@ -108,6 +110,68 @@ programCommand("update_match")
       },
       {}
     );
+  });
+
+programCommand("join_match")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .option(
+    "-i, --index <string>",
+    "Index of token you want to join with in settings file"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, index } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    const indices = [];
+
+    if (index != undefined && index != null) indices.push(index);
+    else config.tokensToJoin.forEach((_, i) => indices.push(i));
+
+    for (let i = 0; i < indices.length; i++) {
+      const setup = config.tokensToJoin[indices[i]];
+      await anchorProgram.joinMatch(
+        {
+          amount: new BN(setup.amount),
+          escrowBump: null,
+          tokenEntryValidation: null,
+          tokenEntryValidationProof: null,
+        },
+        {
+          tokenMint: new web3.PublicKey(setup.mint),
+          sourceTokenAccount: null,
+          tokenTransferAuthority: null,
+          validationProgram: null,
+        },
+        {
+          winOracle: config.winOracle
+            ? new web3.PublicKey(config.winOracle)
+            : (
+                await getOracle(
+                  new web3.PublicKey(config.oracleState.seed),
+                  walletKeyPair.publicKey
+                )
+              )[0],
+          sourceType: setup.sourceType as TokenType,
+          index:
+            setup.index != null && setup.index != undefined
+              ? new BN(setup.index)
+              : null,
+        }
+      );
+    }
   });
 
 programCommand("update_match_from_oracle")

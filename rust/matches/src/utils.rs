@@ -26,12 +26,20 @@ pub fn assert_is_ata(
     ata: &AccountInfo,
     wallet: &Pubkey,
     mint: &Pubkey,
+    expected_delegate: Option<&Pubkey>,
 ) -> Result<spl_token::state::Account, ProgramError> {
     assert_owned_by(ata, &spl_token::id())?;
     let ata_account: spl_token::state::Account = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet)?;
     assert_keys_equal(get_associated_token_address(wallet, mint), *ata.key)?;
-    require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+    if let Some(delegate) = expected_delegate {
+        require!(
+            ata_account.delegate.unwrap() == *delegate,
+            AtaDelegateMismatch
+        );
+    } else {
+        require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+    }
     Ok(ata_account)
 }
 

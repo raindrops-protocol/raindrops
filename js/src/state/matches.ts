@@ -24,6 +24,12 @@ export enum TokenTransferType {
   Normal,
 }
 
+export enum TokenType {
+  Player,
+  Item,
+  Any,
+}
+
 export interface AnchorTokenTransferType {
   playerToPlayer?: boolean;
   playerToEntrant?: boolean;

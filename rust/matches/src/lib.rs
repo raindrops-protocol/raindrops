@@ -48,6 +48,7 @@ pub struct CreateMatchArgs {
     authority: Pubkey,
     space: u64,
     leave_allowed: bool,
+    join_allowed_during_start: bool,
     minimum_allowed_entry_time: Option<u64>,
 }
 
@@ -59,6 +60,7 @@ pub struct UpdateMatchArgs {
     win_oracle_cooldown: u64,
     authority: Pubkey,
     leave_allowed: bool,
+    join_allowed_during_start: bool,
     minimum_allowed_entry_time: Option<u64>,
 }
 
@@ -283,7 +285,7 @@ pub mod matches {
         let token_info = token_program.to_account_info();
         let receiver_info = receiver.to_account_info();
 
-        assert_is_ata(&destination_info, &receiver.key(), &token_mint.key())?;
+        assert_is_ata(&destination_info, &receiver.key(), &token_mint.key(), None)?;
 
         require!(
             match_instance.state == MatchState::Deactivated
@@ -477,13 +479,25 @@ pub mod matches {
             ..
         } = args;
 
-        assert_is_ata(&source_info, &payer.key(), &token_mint.key())?;
+        assert_is_ata(
+            &source_info,
+            &payer.key(),
+            &token_mint.key(),
+            Some(&token_transfer_authority.key()),
+        )?;
 
-        require!(
-            match_instance.state == MatchState::Initialized
-                || match_instance.state == MatchState::Started,
-            CannotEnterMatch
-        );
+        if match_instance.join_allowed_during_start {
+            require!(
+                match_instance.state == MatchState::Initialized
+                    || match_instance.state == MatchState::Started,
+                CannotEnterMatch
+            );
+        } else {
+            require!(
+                match_instance.state == MatchState::Initialized,
+                CannotEnterMatch
+            );
+        }
 
         if let Some(proof) = token_entry_validation_proof {
             if let Some(root) = &match_instance.token_entry_validation_root {
@@ -755,6 +769,7 @@ pub struct Match {
     token_types_removed: u64,
     token_entry_validation: Option<Vec<TokenValidation>>,
     token_entry_validation_root: Option<Root>,
+    join_allowed_during_start: bool,
 }
 
 #[account]
@@ -885,4 +900,6 @@ pub enum ErrorCode {
     DestinationMismatch,
     #[msg("Match must be in finalized state to diburse")]
     MatchMustBeInFinalized,
+    #[msg("ATA delegate mismatch")]
+    AtaDelegateMismatch,
 }
