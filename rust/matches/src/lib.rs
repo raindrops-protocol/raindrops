@@ -184,22 +184,37 @@ pub mod matches {
         match match_instance.state {
             MatchState::Draft => {
                 require!(
-                    match_state == MatchState::Initialized,
+                    match_state == MatchState::Initialized || match_state == MatchState::Draft,
                     InvalidUpdateMatchState
                 )
             }
             MatchState::Initialized => {
-                require!(match_state == MatchState::Started, InvalidUpdateMatchState)
+                require!(
+                    match_state == MatchState::Started || match_state == MatchState::Initialized,
+                    InvalidUpdateMatchState
+                )
             }
             MatchState::Started => {
+                require!(
+                    match_state == MatchState::Deactivated || match_state == MatchState::Started,
+                    InvalidUpdateMatchState
+                )
+            }
+            MatchState::Finalized => {
+                require!(
+                    match_state == MatchState::Finalized,
+                    InvalidUpdateMatchState
+                )
+            }
+            MatchState::PaidOut => {
+                require!(match_state == MatchState::PaidOut, InvalidUpdateMatchState)
+            }
+            MatchState::Deactivated => {
                 require!(
                     match_state == MatchState::Deactivated,
                     InvalidUpdateMatchState
                 )
             }
-            MatchState::Finalized => return Err(ErrorCode::InvalidUpdateMatchState.into()),
-            MatchState::PaidOut => return Err(ErrorCode::InvalidUpdateMatchState.into()),
-            MatchState::Deactivated => return Err(ErrorCode::InvalidUpdateMatchState.into()),
         }
 
         match_instance.state = match_state;
@@ -272,6 +287,7 @@ pub mod matches {
 
     pub fn leave_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, LeaveMatch<'info>>,
+        _args: LeaveMatchArgs,
     ) -> ProgramResult {
         let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;

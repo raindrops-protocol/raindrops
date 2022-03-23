@@ -1,12 +1,12 @@
 {
   "winOracle": null,
-  "matchState": null,
+  "matchState": { "initialized": true },
   "winOracleCooldown": 10,
   "space": null,
   "minimumAllowedEntryTime": null,
   "tokenEntryValidation": null,
   "authority": null,
-  "leaveAllowed": false,
+  "leaveAllowed": true,
   "joinAllowedDuringStart": false,
   "oracleState": {
     "seed": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",

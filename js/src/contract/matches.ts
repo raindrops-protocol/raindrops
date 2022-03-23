@@ -74,6 +74,11 @@ export interface JoinMatchArgs {
   tokenEntryValidation: null;
 }
 
+export interface LeaveMatchArgs {
+  amount: BN;
+  escrowBump: number | null;
+}
+
 export interface CreateMatchAdditionalArgs {
   seed: string;
   finalized: boolean;
@@ -105,9 +110,18 @@ export interface JoinMatchAccounts {
   validationProgram: web3.PublicKey | null;
 }
 
+export interface LeaveMatchAccounts {
+  tokenMint: web3.PublicKey;
+  receiver: web3.PublicKey;
+}
+
 export interface JoinMatchAdditionalArgs {
   sourceType: TokenType;
   index: BN | null;
+  winOracle: web3.PublicKey;
+}
+
+export interface LeaveMatchAdditionalArgs {
   winOracle: web3.PublicKey;
 }
 
@@ -161,6 +175,44 @@ export class MatchesInstruction {
         }),
       ],
       signers: [],
+    };
+  }
+
+  async leaveMatch(
+    args: LeaveMatchArgs,
+    accounts: LeaveMatchAccounts,
+    additionalArgs: LeaveMatchAdditionalArgs
+  ) {
+    const match = (await getMatch(additionalArgs.winOracle))[0];
+
+    const destinationTokenAccount = (
+      await getAtaForMint(accounts.tokenMint, accounts.receiver)
+    )[0];
+
+    const [tokenAccountEscrow, escrowBump] = await getMatchTokenAccountEscrow(
+      additionalArgs.winOracle,
+      accounts.tokenMint,
+      this.program.provider.wallet.publicKey
+    );
+
+    args.escrowBump = escrowBump;
+
+    const signers = [];
+
+    return {
+      instructions: [
+        this.program.instruction.leaveMatch(args, {
+          accounts: {
+            matchInstance: match,
+            tokenAccountEscrow,
+            tokenMint: accounts.tokenMint,
+            destinationTokenAccount,
+            receiver: this.program.provider.wallet.publicKey,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          },
+        }),
+      ],
+      signers,
     };
   }
 
@@ -366,6 +418,25 @@ export class MatchesProgram {
     additionalArgs: JoinMatchAdditionalArgs
   ) {
     const { instructions, signers } = await this.instruction.joinMatch(
+      args,
+      accounts,
+      additionalArgs
+    );
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      signers
+    );
+  }
+
+  async leaveMatch(
+    args: LeaveMatchArgs,
+    accounts: LeaveMatchAccounts,
+    additionalArgs: LeaveMatchAdditionalArgs
+  ) {
+    const { instructions, signers } = await this.instruction.leaveMatch(
       args,
       accounts,
       additionalArgs

@@ -174,6 +174,59 @@ programCommand("join_match")
     }
   });
 
+programCommand("leave_match")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .option(
+    "-i, --index <string>",
+    "Index of token you want to join with in settings file"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, index } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    const indices = [];
+
+    if (index != undefined && index != null) indices.push(index);
+    else config.tokensToJoin.forEach((_, i) => indices.push(i));
+
+    for (let i = 0; i < indices.length; i++) {
+      const setup = config.tokensToJoin[indices[i]];
+      await anchorProgram.leaveMatch(
+        {
+          amount: new BN(setup.amount),
+          escrowBump: null,
+        },
+        {
+          tokenMint: new web3.PublicKey(setup.mint),
+          receiver: walletKeyPair.publicKey,
+        },
+        {
+          winOracle: config.winOracle
+            ? new web3.PublicKey(config.winOracle)
+            : (
+                await getOracle(
+                  new web3.PublicKey(config.oracleState.seed),
+                  walletKeyPair.publicKey
+                )
+              )[0],
+        }
+      );
+    }
+  });
+
 programCommand("update_match_from_oracle")
   .requiredOption(
     "-cp, --config-path <string>",
