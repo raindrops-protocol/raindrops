@@ -95,12 +95,18 @@ export interface CreateOrUpdateOracleArgs {
   tokenTransfers: null | AnchorTokenDelta[];
 }
 
+export interface DrainMatchArgs {}
+
 export interface UpdateMatchFromOracleAccounts {
   winOracle: web3.PublicKey;
 }
 
 export interface UpdateMatchAccounts {
   winOracle: web3.PublicKey;
+}
+
+export interface DrainMatchAccounts {
+  receiver: web3.PublicKey | null;
 }
 
 export interface JoinMatchAccounts {
@@ -122,6 +128,10 @@ export interface JoinMatchAdditionalArgs {
 }
 
 export interface LeaveMatchAdditionalArgs {
+  winOracle: web3.PublicKey;
+}
+
+export interface DrainMatchAdditionalArgs {
   winOracle: web3.PublicKey;
 }
 
@@ -150,6 +160,28 @@ export class MatchesInstruction {
             payer: this.program.provider.wallet.publicKey,
             systemProgram: SystemProgram.programId,
             rent: web3.SYSVAR_RENT_PUBKEY,
+          },
+        }),
+      ],
+      signers: [],
+    };
+  }
+
+  async drainMatch(
+    _args: DrainMatchArgs,
+    accounts: DrainMatchAccounts,
+    additionalArgs: DrainMatchAdditionalArgs
+  ) {
+    const match = (await getMatch(additionalArgs.winOracle))[0];
+
+    return {
+      instructions: [
+        this.program.instruction.drainMatch({
+          accounts: {
+            matchInstance: match,
+            authority: this.program.provider.wallet.publicKey,
+            receiver:
+              accounts.receiver || this.program.provider.wallet.publicKey,
           },
         }),
       ],
@@ -403,6 +435,25 @@ export class MatchesProgram {
     additionalArgs: CreateMatchAdditionalArgs
   ) {
     const { instructions, signers } = await this.instruction.createMatch(args);
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      signers
+    );
+  }
+
+  async drainMatch(
+    args: DrainMatchArgs,
+    accounts: DrainMatchAccounts,
+    additionalArgs: DrainMatchAdditionalArgs
+  ) {
+    const { instructions, signers } = await this.instruction.drainMatch(
+      args,
+      accounts,
+      additionalArgs
+    );
 
     await sendTransactionWithRetry(
       this.program.provider.connection,

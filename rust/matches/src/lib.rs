@@ -184,13 +184,17 @@ pub mod matches {
         match match_instance.state {
             MatchState::Draft => {
                 require!(
-                    match_state == MatchState::Initialized || match_state == MatchState::Draft,
+                    match_state == MatchState::Initialized
+                        || match_state == MatchState::Draft
+                        || match_state == MatchState::Deactivated,
                     InvalidUpdateMatchState
                 )
             }
             MatchState::Initialized => {
                 require!(
-                    match_state == MatchState::Started || match_state == MatchState::Initialized,
+                    match_state == MatchState::Started
+                        || match_state == MatchState::Initialized
+                        || match_state == MatchState::Deactivated,
                     InvalidUpdateMatchState
                 )
             }

@@ -1,6 +1,6 @@
 {
   "winOracle": null,
-  "matchState": { "initialized": true },
+  "matchState": { "draft": true },
   "winOracleCooldown": 10,
   "space": null,
   "minimumAllowedEntryTime": null,
