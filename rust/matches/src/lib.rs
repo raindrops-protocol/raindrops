@@ -38,6 +38,13 @@ pub struct CreateOrUpdateOracleArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DrainOracleArgs {
+    oracle_bump: u8,
+    match_bump: u8,
+    seed: Pubkey,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateMatchArgs {
     match_bump: u8,
     match_state: MatchState,
@@ -81,7 +88,6 @@ pub struct LeaveMatchArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DisburseTokensByOracleArgs {
     escrow_bump: u8,
-    original_sender: Pubkey,
     token_delta_proof_info: Option<TokenDeltaProofInfo>,
 }
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -108,19 +114,13 @@ pub mod matches {
             ..
         } = args;
 
-        let new_oracle = WinOracle {
-            finalized,
-            token_transfer_root,
-            token_transfers,
-        };
+        let win_oracle = &mut ctx.accounts.oracle;
 
-        let mut new_data = WinOracle::discriminator().try_to_vec().unwrap();
-        new_data.append(&mut new_oracle.try_to_vec().unwrap());
-        let data = &mut ctx.accounts.oracle.data.borrow_mut();
-        // god forgive me couldnt think of better way to deal with this
-        for i in 0..new_data.len() {
-            data[i] = new_data[i];
-        }
+        require!(!win_oracle.finalized, OracleAlreadyFinalized);
+
+        win_oracle.finalized = finalized;
+        win_oracle.token_transfer_root = token_transfer_root.clone();
+        win_oracle.token_transfers = token_transfers.clone();
 
         return Ok(());
     }
@@ -241,9 +241,18 @@ pub mod matches {
     ) -> ProgramResult {
         let match_instance = &mut ctx.accounts.match_instance;
         let win_oracle = &ctx.accounts.win_oracle;
+        let clock = &ctx.accounts.clock;
 
         let win_oracle_instance: Account<'_, WinOracle> =
             Account::try_from(&win_oracle.to_account_info())?;
+
+        if match_instance.last_oracle_check != 0 {
+            require!(
+                clock.unix_timestamp - match_instance.win_oracle_cooldown as i64
+                    > match_instance.last_oracle_check as i64,
+                OracleCooldownNotPassed
+            );
+        }
 
         require!(
             match_instance.state == MatchState::Started
@@ -256,6 +265,35 @@ pub mod matches {
         } else {
             match_instance.state = MatchState::Started;
         }
+
+        match_instance.last_oracle_check = clock.unix_timestamp as u64;
+
+        Ok(())
+    }
+
+    pub fn drain_oracle<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DrainOracle<'info>>,
+        _args: DrainOracleArgs,
+    ) -> ProgramResult {
+        let match_instance = &mut ctx.accounts.match_instance;
+
+        require!(
+            match_instance.to_account_info().data_is_empty(),
+            MatchMustBeDrained
+        );
+
+        let oracle = &mut ctx.accounts.oracle;
+        let receiver = &mut ctx.accounts.receiver;
+
+        let info = oracle.to_account_info();
+        let snapshot: u64 = info.lamports();
+
+        **info.lamports.borrow_mut() = 0;
+
+        **receiver.lamports.borrow_mut() = receiver
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         Ok(())
     }
@@ -365,9 +403,6 @@ pub mod matches {
         let original_sender = &ctx.accounts.original_sender;
         let token_program = &ctx.accounts.token_program;
 
-        let win_oracle_instance: WinOracle =
-            AnchorDeserialize::try_from_slice(&win_oracle.data.borrow())?;
-
         let DisburseTokensByOracleArgs {
             token_delta_proof_info,
             ..
@@ -378,6 +413,7 @@ pub mod matches {
             MatchMustBeInFinalized
         );
 
+        msg!("1");
         let tfer = if let Some(proof_info) = token_delta_proof_info {
             let TokenDeltaProofInfo {
                 token_delta_proof,
@@ -385,7 +421,7 @@ pub mod matches {
                 total_proof,
                 total,
             } = proof_info;
-            if let Some(root) = &win_oracle_instance.token_transfer_root {
+            if let Some(root) = &win_oracle.token_transfer_root {
                 let chief_node = anchor_lang::solana_program::keccak::hashv(&[
                     &[0x00],
                     &AnchorSerialize::try_to_vec(&token_delta)?,
@@ -406,7 +442,7 @@ pub mod matches {
             } else {
                 return Err(ErrorCode::RootNotPresent.into());
             }
-        } else if let Some(tfer_arr) = &win_oracle_instance.token_transfers {
+        } else if let Some(tfer_arr) = &win_oracle.token_transfers {
             if match_instance.current_token_transfer_index == (tfer_arr.len() - 1) as u64 {
                 match_instance.state = MatchState::PaidOut;
             }
@@ -414,6 +450,7 @@ pub mod matches {
         } else {
             return Err(ErrorCode::NoDeltasFound.into());
         };
+        msg!("2");
 
         require!(
             tfer.token_transfer_type == TokenTransferType::Normal,
@@ -424,6 +461,7 @@ pub mod matches {
             token_account_escrow.amount <= tfer.amount,
             CannotDeltaMoreThanAmountPresent
         );
+        msg!("3");
 
         require!(tfer.mint == token_mint.key(), DeltaMintDoesNotMatch);
 
@@ -437,11 +475,14 @@ pub mod matches {
         ];
 
         if let Some(to) = tfer.to {
-            require!(to == destination_token_account.key(), DestinationMismatch);
+            let dest_acct_info = destination_token_account.to_account_info();
+            if to != destination_token_account.key() {
+                assert_is_ata(&dest_acct_info, &to, &token_mint.key(), None)?;
+            }
 
             spl_token_transfer(TokenTransferParams {
                 source: token_account_escrow.to_account_info(),
-                destination: destination_token_account.to_account_info(),
+                destination: dest_acct_info,
                 amount: tfer.amount,
                 authority: match_instance.to_account_info(),
                 authority_signer_seeds: match_seeds,
@@ -457,6 +498,7 @@ pub mod matches {
                 token_program: token_program.to_account_info(),
             })?;
         }
+        msg!("4");
 
         if time_to_close {
             close_token_account(
@@ -466,6 +508,10 @@ pub mod matches {
                 &match_instance.to_account_info(),
                 match_seeds,
             )?;
+            match_instance.token_types_removed = match_instance
+                .token_types_removed
+                .checked_add(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
         }
 
         match_instance.current_token_transfer_index = match_instance
@@ -603,6 +649,7 @@ pub struct UpdateMatchFromOracle<'info> {
     match_instance: Account<'info, Match>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
+    clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]
@@ -610,6 +657,18 @@ pub struct DrainMatch<'info> {
     #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
     authority: Signer<'info>,
+    receiver: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(args: DrainOracleArgs)]
+pub struct DrainOracle<'info> {
+    #[account(seeds=[PREFIX.as_bytes(), oracle.key().as_ref()], bump=args.match_bump)]
+    match_instance: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), authority.key().as_ref(), args.seed.as_ref()], bump = args.oracle_bump)]
+    oracle: Account<'info, WinOracle>,
+    authority: Signer<'info>,
+    #[account(mut)]
     receiver: UncheckedAccount<'info>,
 }
 
@@ -646,7 +705,7 @@ pub struct DisburseTokensByOracle<'info> {
     #[account(mut, constraint=destination_token_account.mint == token_mint.key())]
     destination_token_account: Account<'info, TokenAccount>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
-    win_oracle: UncheckedAccount<'info>,
+    win_oracle: Box<Account<'info, WinOracle>>,
     original_sender: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
@@ -658,7 +717,7 @@ pub struct DisburseTokensByOracle<'info> {
 pub struct DisbursePlayerTokensByOracle<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), player_token_mint.key().as_ref(), args.original_sender.as_ref()], bump=args.escrow_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), player_token_mint.key().as_ref(), original_sender.key().as_ref()], bump=args.escrow_bump)]
     player_token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     player_token_mint: Account<'info, Mint>,
@@ -670,6 +729,7 @@ pub struct DisbursePlayerTokensByOracle<'info> {
     destination_token_account: Account<'info, TokenAccount>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
+    original_sender: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
@@ -695,7 +755,7 @@ pub struct LeaveMatch<'info> {
 #[instruction(args: CreateOrUpdateOracleArgs)]
 pub struct CreateOrUpdateOracle<'info> {
     #[account(init_if_needed, seeds=[PREFIX.as_bytes(), payer.key().as_ref(), args.seed.as_ref()], bump=args.oracle_bump, payer=payer, space=args.space as usize)]
-    oracle: UncheckedAccount<'info>,
+    oracle: Account<'info, WinOracle>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
@@ -922,4 +982,10 @@ pub enum ErrorCode {
     MatchMustBeInFinalized,
     #[msg("ATA delegate mismatch")]
     AtaDelegateMismatch,
+    #[msg("Oracle already finalized")]
+    OracleAlreadyFinalized,
+    #[msg("Oracle cooldown not over")]
+    OracleCooldownNotPassed,
+    #[msg("Match must be drained first")]
+    MatchMustBeDrained,
 }

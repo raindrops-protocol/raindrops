@@ -21,8 +21,8 @@ import {
   TokenType,
 } from "../state/matches";
 import { Token } from "@solana/spl-token";
+import { createAssociatedTokenAccountInstruction } from "../utils/ata";
 
-function convertNumsToBNs(data: any) {}
 export class MatchWrapper implements ObjectWrapper<any, MatchesProgram> {
   program: MatchesProgram;
   key: web3.PublicKey;
@@ -79,6 +79,11 @@ export interface LeaveMatchArgs {
   escrowBump: number | null;
 }
 
+export interface DisburseTokensByOracleArgs {
+  escrowBump: number | null;
+  tokenDeltaProofInfo: null;
+}
+
 export interface CreateMatchAdditionalArgs {
   seed: string;
   finalized: boolean;
@@ -97,6 +102,12 @@ export interface CreateOrUpdateOracleArgs {
 
 export interface DrainMatchArgs {}
 
+export interface DrainOracleArgs {
+  oracleBump: number | null;
+  matchBump: number | null;
+  seed: string;
+}
+
 export interface UpdateMatchFromOracleAccounts {
   winOracle: web3.PublicKey;
 }
@@ -107,6 +118,14 @@ export interface UpdateMatchAccounts {
 
 export interface DrainMatchAccounts {
   receiver: web3.PublicKey | null;
+}
+
+export interface DrainOracleAccounts {
+  receiver: web3.PublicKey | null;
+}
+
+export interface DisburseTokensByOracleAccounts {
+  winOracle: web3.PublicKey;
 }
 
 export interface JoinMatchAccounts {
@@ -133,6 +152,10 @@ export interface LeaveMatchAdditionalArgs {
 
 export interface DrainMatchAdditionalArgs {
   winOracle: web3.PublicKey;
+}
+
+export interface DisburseTokensByOracleAdditionalArgs {
+  tokenDelta: AnchorTokenDelta;
 }
 
 export class MatchesInstruction {
@@ -167,6 +190,71 @@ export class MatchesInstruction {
     };
   }
 
+  async disburseTokensByOracle(
+    args: DisburseTokensByOracleArgs,
+    accounts: DisburseTokensByOracleAccounts,
+    additionalArgs: DisburseTokensByOracleAdditionalArgs
+  ) {
+    const match = (await getMatch(accounts.winOracle))[0];
+    const tfer = additionalArgs.tokenDelta;
+
+    const [tokenAccountEscrow, escrowBump] = await getMatchTokenAccountEscrow(
+      accounts.winOracle,
+      tfer.mint,
+      tfer.from
+    );
+
+    let destinationTokenAccount = tfer.to;
+    const info = await this.program.provider.connection.getAccountInfo(
+      destinationTokenAccount
+    );
+
+    const instructions = [];
+
+    if (!info.owner.equals(TOKEN_PROGRAM_ID)) {
+      const destinationTokenOwner = destinationTokenAccount;
+      destinationTokenAccount = (
+        await getAtaForMint(tfer.mint, destinationTokenAccount)
+      )[0];
+
+      const exists = await this.program.provider.connection.getAccountInfo(
+        destinationTokenAccount
+      );
+
+      if (!exists || exists.data.length == 0) {
+        instructions.unshift(
+          createAssociatedTokenAccountInstruction(
+            destinationTokenAccount,
+            this.program.provider.wallet.publicKey,
+            destinationTokenOwner,
+            tfer.mint
+          )
+        );
+      }
+    }
+    args.escrowBump = escrowBump;
+
+    instructions.push(
+      this.program.instruction.disburseTokensByOracle(args, {
+        accounts: {
+          matchInstance: match,
+          tokenAccountEscrow,
+          tokenMint: tfer.mint,
+          originalSender: tfer.from,
+          destinationTokenAccount,
+          winOracle: accounts.winOracle,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        },
+      })
+    );
+    return {
+      instructions,
+      signers: [],
+    };
+  }
+
   async drainMatch(
     _args: DrainMatchArgs,
     accounts: DrainMatchAccounts,
@@ -189,6 +277,37 @@ export class MatchesInstruction {
     };
   }
 
+  async drainOracle(
+    args: DrainOracleArgs,
+    accounts: DrainOracleAccounts,
+    _additionalArgs = {}
+  ) {
+    const [oracle, oracleBump] = await getOracle(
+      new web3.PublicKey(args.seed),
+      this.program.provider.wallet.publicKey
+    );
+
+    const [match, matchBump] = await getMatch(oracle);
+    args.oracleBump = oracleBump;
+    args.matchBump = matchBump;
+    return {
+      instructions: [
+        this.program.instruction.drainOracle(
+          { ...args, seed: new web3.PublicKey(args.seed) },
+          {
+            accounts: {
+              matchInstance: match,
+              authority: this.program.provider.wallet.publicKey,
+              receiver:
+                accounts.receiver || this.program.provider.wallet.publicKey,
+              oracle,
+            },
+          }
+        ),
+      ],
+      signers: [],
+    };
+  }
   async updateMatch(
     args: UpdateMatchArgs,
     accounts: UpdateMatchAccounts,
@@ -337,6 +456,7 @@ export class MatchesInstruction {
             matchInstance: match,
             winOracle: accounts.winOracle,
             authority: this.program.provider.wallet.publicKey,
+            clock: web3.SYSVAR_CLOCK_PUBKEY,
           },
         }),
       ],
@@ -360,6 +480,7 @@ export class MatchesInstruction {
           from: new web3.PublicKey(t.from),
           to: t.to ? new web3.PublicKey(t.to) : null,
           mint: new web3.PublicKey(t.mint),
+          amount: new BN(t.amount),
         }))
       : null;
 
@@ -444,6 +565,26 @@ export class MatchesProgram {
     );
   }
 
+  async disburseTokensByOracle(
+    args: DisburseTokensByOracleArgs,
+    accounts: DisburseTokensByOracleAccounts,
+    additionalArgs: DisburseTokensByOracleAdditionalArgs
+  ) {
+    const { instructions, signers } =
+      await this.instruction.disburseTokensByOracle(
+        args,
+        accounts,
+        additionalArgs
+      );
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      signers
+    );
+  }
+
   async drainMatch(
     args: DrainMatchArgs,
     accounts: DrainMatchAccounts,
@@ -453,6 +594,24 @@ export class MatchesProgram {
       args,
       accounts,
       additionalArgs
+    );
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instructions,
+      signers
+    );
+  }
+
+  async drainOracle(
+    args: DrainOracleArgs,
+    accounts: DrainOracleAccounts,
+    _additionalArgs = {}
+  ) {
+    const { instructions, signers } = await this.instruction.drainOracle(
+      args,
+      accounts
     );
 
     await sendTransactionWithRetry(

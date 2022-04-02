@@ -7,9 +7,10 @@ import { loadWalletKey } from "../utils/file";
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
 import { getMatchesProgram } from "../contract/matches";
-import { getMatch, getOracle } from "../utils/pda";
+import { getAtaForMint, getMatch, getOracle } from "../utils/pda";
 import { MatchState, TokenTransferType, TokenType } from "../state/matches";
 import { InheritanceState } from "../state/common";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 programCommand("create_match")
   .requiredOption(
@@ -262,6 +263,52 @@ programCommand("update_match_from_oracle")
     );
   });
 
+programCommand("disburse_tokens_by_oracle")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    const winOracle = config.winOracle
+      ? new web3.PublicKey(config.winOracle)
+      : (
+          await getOracle(
+            new web3.PublicKey(config.oracleState.seed),
+            walletKeyPair.publicKey
+          )
+        )[0];
+    const oracleInstance = await anchorProgram.fetchOracle(winOracle);
+    for (let i = 0; i < oracleInstance.object.tokenTransfers.length; i++) {
+      const tfer = oracleInstance.object.tokenTransfers[i];
+
+      await anchorProgram.disburseTokensByOracle(
+        {
+          escrowBump: null,
+          tokenDeltaProofInfo: null,
+        },
+        {
+          winOracle,
+        },
+        {
+          tokenDelta: tfer,
+        }
+      );
+    }
+  });
+
 programCommand("drain_match")
   .requiredOption(
     "-cp, --config-path <string>",
@@ -295,6 +342,33 @@ programCommand("drain_match")
                 walletKeyPair.publicKey
               )
             )[0],
+      }
+    );
+  });
+
+programCommand("drain_oracle")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.drainOracle(
+      { seed: config.oracleState.seed, oracleBump: null, matchBump: null },
+      {
+        receiver: walletKeyPair.publicKey,
       }
     );
   });
@@ -389,8 +463,8 @@ programCommand("show_match")
       o.tokenTransferRoot ? o.tokenTransferRoot.root.toBase58() : "Unset"
     );
     log.info("Oracle Token Transfers:");
-    if (u.tokenTransfers) {
-      u.tokenTransfers.map((k) => {
+    if (o.tokenTransfers) {
+      o.tokenTransfers.map((k) => {
         log.info("--> From:", k.from.toBase58());
         log.info("--> To:", k.to ? k.to.toBase58() : "Burn");
         log.info("--> Transfer Type:", TokenTransferType[k.tokenTransferType]);
