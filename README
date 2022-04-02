@@ -1,5 +1,7 @@
 Architecture Docs: https://solanalabs.notion.site/Raindrops-Protocol-Architecture-Guide-c13bbd3ff0ae4989baeb27208318c558
 
+**_ NONE OF THIS CODE IS AUDITED YET USE AT YOUR OWN RISK _**
+
 Can install the raindrop-cli with
 
 `npm install -g raindrops-cli`

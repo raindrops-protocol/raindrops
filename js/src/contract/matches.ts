@@ -94,6 +94,7 @@ export interface CreateMatchAdditionalArgs {
 export interface CreateOrUpdateOracleArgs {
   oracleBump: number | null;
   seed: string;
+  authority: web3.PublicKey;
   space: BN;
   finalized: boolean;
   tokenTransferRoot: null;
@@ -106,6 +107,7 @@ export interface DrainOracleArgs {
   oracleBump: number | null;
   matchBump: number | null;
   seed: string;
+  authority: web3.PublicKey;
 }
 
 export interface UpdateMatchFromOracleAccounts {
@@ -284,7 +286,7 @@ export class MatchesInstruction {
   ) {
     const [oracle, oracleBump] = await getOracle(
       new web3.PublicKey(args.seed),
-      this.program.provider.wallet.publicKey
+      new web3.PublicKey(args.authority)
     );
 
     const [match, matchBump] = await getMatch(oracle);
@@ -471,7 +473,7 @@ export class MatchesInstruction {
   ) {
     const [oracle, oracleBump] = await getOracle(
       new web3.PublicKey(args.seed),
-      this.program.provider.wallet.publicKey
+      args.authority
     );
 
     const tokenTransfers = args.tokenTransfers

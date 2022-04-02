@@ -38,7 +38,10 @@ programCommand("create_match")
           : (
               await getOracle(
                 new web3.PublicKey(config.oracleState.seed),
-                walletKeyPair.publicKey
+
+                config.oracleState.authority
+                  ? new web3.PublicKey(config.oracleState.authority)
+                  : walletKeyPair.publicKey
               )
             )[0],
         matchBump: null,
@@ -105,7 +108,10 @@ programCommand("update_match")
           : (
               await getOracle(
                 new web3.PublicKey(config.oracleState.seed),
-                walletKeyPair.publicKey
+
+                config.oracleState.authority
+                  ? new web3.PublicKey(config.oracleState.authority)
+                  : walletKeyPair.publicKey
               )
             )[0],
       },
@@ -162,7 +168,10 @@ programCommand("join_match")
             : (
                 await getOracle(
                   new web3.PublicKey(config.oracleState.seed),
-                  walletKeyPair.publicKey
+
+                  config.oracleState.authority
+                    ? new web3.PublicKey(config.oracleState.authority)
+                    : walletKeyPair.publicKey
                 )
               )[0],
           sourceType: setup.sourceType as TokenType,
@@ -220,7 +229,10 @@ programCommand("leave_match")
             : (
                 await getOracle(
                   new web3.PublicKey(config.oracleState.seed),
-                  walletKeyPair.publicKey
+
+                  config.oracleState.authority
+                    ? new web3.PublicKey(config.oracleState.authority)
+                    : walletKeyPair.publicKey
                 )
               )[0],
         }
@@ -255,7 +267,10 @@ programCommand("update_match_from_oracle")
           : (
               await getOracle(
                 new web3.PublicKey(config.oracleState.seed),
-                walletKeyPair.publicKey
+
+                config.oracleState.authority
+                  ? new web3.PublicKey(config.oracleState.authority)
+                  : walletKeyPair.publicKey
               )
             )[0],
       },
@@ -287,7 +302,10 @@ programCommand("disburse_tokens_by_oracle")
       : (
           await getOracle(
             new web3.PublicKey(config.oracleState.seed),
-            walletKeyPair.publicKey
+
+            config.oracleState.authority
+              ? new web3.PublicKey(config.oracleState.authority)
+              : walletKeyPair.publicKey
           )
         )[0];
     const oracleInstance = await anchorProgram.fetchOracle(winOracle);
@@ -339,7 +357,10 @@ programCommand("drain_match")
           : (
               await getOracle(
                 new web3.PublicKey(config.oracleState.seed),
-                walletKeyPair.publicKey
+
+                config.oracleState.authority
+                  ? new web3.PublicKey(config.oracleState.authority)
+                  : walletKeyPair.publicKey
               )
             )[0],
       }
@@ -366,7 +387,14 @@ programCommand("drain_oracle")
     const config = JSON.parse(configString);
 
     await anchorProgram.drainOracle(
-      { seed: config.oracleState.seed, oracleBump: null, matchBump: null },
+      {
+        seed: config.oracleState.seed,
+        authority: config.oracleState.authority
+          ? new web3.PublicKey(config.oracleState.authority)
+          : walletKeyPair.publicKey,
+        oracleBump: null,
+        matchBump: null,
+      },
       {
         receiver: walletKeyPair.publicKey,
       }
@@ -395,6 +423,9 @@ programCommand("create_or_update_oracle")
     await anchorProgram.createOrUpdateOracle({
       seed: config.oracleState.seed,
       oracleBump: null,
+      authority: config.oracleState.authority
+        ? new web3.PublicKey(config.oracleState.authority)
+        : walletKeyPair.publicKey,
       tokenTransferRoot: config.oracleState.tokenTransferRoot,
       tokenTransfers: config.oracleState.tokenTransfers,
       space: config.space ? new BN(config.space) : new BN(150),
@@ -422,7 +453,9 @@ programCommand("show_match")
         : (
             await getOracle(
               new web3.PublicKey(config.oracleState.seed),
-              walletKeyPair.publicKey
+              config.oracleState.authority
+                ? new web3.PublicKey(config.oracleState.authority)
+                : walletKeyPair.publicKey
             )
           )[0];
     }
@@ -474,6 +507,12 @@ programCommand("show_match")
     }
     log.info("Authority:", u.authority.toBase58());
     log.info("Leaving Match Allowed?:", u.leaveAllowed ? "Yes" : "No");
+
+    log.info(
+      "Joining Match Allowed?:",
+      u.joinAllowedDuringStart ? "Yes" : "No"
+    );
+
     log.info(
       "Minimum Allowed Entry Time:",
       u.minimumAllowedEntryTime

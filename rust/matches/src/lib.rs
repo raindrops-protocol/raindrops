@@ -176,6 +176,7 @@ pub mod matches {
             win_oracle_cooldown,
             leave_allowed,
             minimum_allowed_entry_time,
+            join_allowed_during_start,
             ..
         } = args;
 
@@ -232,6 +233,7 @@ pub mod matches {
 
         match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
         match_instance.leave_allowed = leave_allowed;
+        match_instance.join_allowed_during_start = join_allowed_during_start;
 
         Ok(())
     }
@@ -706,6 +708,7 @@ pub struct DisburseTokensByOracle<'info> {
     destination_token_account: Account<'info, TokenAccount>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: Box<Account<'info, WinOracle>>,
+    #[account(mut)]
     original_sender: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
@@ -729,6 +732,7 @@ pub struct DisbursePlayerTokensByOracle<'info> {
     destination_token_account: Account<'info, TokenAccount>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
+    #[account(mut)]
     original_sender: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,

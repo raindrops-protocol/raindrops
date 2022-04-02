@@ -7,15 +7,16 @@
   "tokenEntryValidation": null,
   "authority": null,
   "leaveAllowed": true,
-  "joinAllowedDuringStart": false,
+  "joinAllowedDuringStart": true,
   "oracleState": {
     "seed": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17g",
+    "authority": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
     "finalized": true,
     "tokenTransferRoot": null,
     "tokenTransfers": [
       {
-        "from": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
-        "to": "3yp9iTsCgZoBsXhtRLB8cWHNcTDeR6VJniRuDrHNTuxU",
+        "from": "Dq3SXLF283A5Q7abqR4EpNkwUr6nLEVoQ7zFd5MNXFec",
+        "to": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
         "tokenTransferType": { "normal": true },
         "mint": "AoDxuMeVojMb9pBjcrKnCrz6e2u6HxdcJBPgUDDfd4W7",
         "amount": 1
@@ -25,6 +26,12 @@
   "tokensToJoin": [
     {
       "mint": "AoDxuMeVojMb9pBjcrKnCrz6e2u6HxdcJBPgUDDfd4W7",
+      "amount": 1,
+      "sourceType": 2,
+      "index": null
+    },
+    {
+      "mint": "9UtumWmQhYFxS5EnqxccFm1t7JixT5kivLiYASA4AiaG",
       "amount": 1,
       "sourceType": 2,
       "index": null
