@@ -31,6 +31,7 @@ hfuzz_workspace
 **/.DS_Store
 .cache
 js/packages/web/.env
+js/test-configs/
 traits
 traits-configuration.json
 test-ledger/

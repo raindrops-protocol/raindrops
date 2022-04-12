@@ -1,10 +1,14 @@
-import { web3, Program, BN, Provider, Wallet } from "@project-serum/anchor";
+import { web3, Program, BN, Provider } from "@project-serum/anchor";
 import { SystemProgram } from "@solana/web3.js";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import log from "loglevel";
 
 import { NAMESPACE_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { decodeNamespace, Namespace, PermissivenessSettings } from "../state/namespace";
+import {
+  decodeNamespace,
+  Namespace,
+  PermissivenessSettings,
+} from "../state/namespace";
 import { getNamespacePDA } from "../utils/pda";
 
 import { ObjectWrapper } from "./common";
@@ -20,7 +24,9 @@ function convertNumbersToBNs(data: any) {
   }
 }
 
-export class NamespaceWrapper implements ObjectWrapper<Namespace, NamespaceProgram> {
+export class NamespaceWrapper
+  implements ObjectWrapper<Namespace, NamespaceProgram>
+{
   program: NamespaceProgram;
   key: web3.PublicKey;
   object: Namespace;
@@ -57,6 +63,18 @@ export interface InitializeNamespaceArgs {
 
 export interface InitializeNamespaceAdditionalArgs {}
 
+export interface UpdateNamespaceArgs {
+  prettyName: string | null;
+  permissivenessSettings: PermissivenessSettings | null;
+  whitelistedStakingMints: web3.PublicKey[] | null;
+}
+
+export interface UpdateNamespaceAccounts {
+  mint: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+}
+
 export class NamespaceInstruction {
   id: web3.PublicKey;
   program: Program;
@@ -71,16 +89,14 @@ export class NamespaceInstruction {
     accounts: InitializeNamespaceAccounts,
     _additionalArgs: InitializeNamespaceAdditionalArgs = {}
   ) {
-    const [namespacePDA, namespaceBump] = await getNamespacePDA(
-      accounts.mint,
-    )
+    const [namespacePDA, namespaceBump] = await getNamespacePDA(accounts.mint);
     args.bump = namespaceBump;
 
     convertNumbersToBNs(args);
 
-    const remainingAccounts = args.whitelistedStakingMints.map(
-      mint => { return { pubkey: mint, isWritable: false, isSigner: false } }
-    );
+    const remainingAccounts = args.whitelistedStakingMints.map((mint) => {
+      return { pubkey: mint, isWritable: false, isSigner: false };
+    });
 
     return [
       this.program.instruction.initializeNamespace(args, {
@@ -95,7 +111,31 @@ export class NamespaceInstruction {
           rent: web3.SYSVAR_RENT_PUBKEY,
         },
         remainingAccounts: remainingAccounts,
-      })
+      }),
+    ];
+  }
+
+  async updateNamespace(
+    args: UpdateNamespaceArgs,
+    accounts: UpdateNamespaceAccounts
+  ) {
+    const [namespacePDA] = await getNamespacePDA(accounts.mint);
+
+    const remainingAccounts = args.whitelistedStakingMints
+      ? args.whitelistedStakingMints.map((mint) => {
+          return { pubkey: mint, isWritable: false, isSigner: false };
+        })
+      : [];
+
+    return [
+      this.program.instruction.updateNamespace(args, {
+        accounts: {
+          namespace: namespacePDA,
+          namespaceToken: accounts.namespaceToken,
+          tokenHolder: accounts.tokenHolder,
+        },
+        remainingAccounts,
+      }),
     ];
   }
 }
@@ -105,7 +145,7 @@ export class NamespaceProgram {
   program: Program;
   instruction: NamespaceInstruction;
 
-  constructor(args: { id: web3.PublicKey; program: Program; }) {
+  constructor(args: { id: web3.PublicKey; program: Program }) {
     this.id = args.id;
     this.program = args.program;
     this.instruction = new NamespaceInstruction({
@@ -116,7 +156,7 @@ export class NamespaceProgram {
 
   async initializeNamespace(
     args: InitializeNamespaceArgs,
-    accounts: InitializeNamespaceAccounts,
+    accounts: InitializeNamespaceAccounts
   ): Promise<void> {
     const instruction = await this.instruction.initializeNamespace(
       args,
@@ -131,12 +171,12 @@ export class NamespaceProgram {
     );
   }
 
-  async fetchNamespace(
-    mint: web3.PublicKey,
-  ): Promise<NamespaceWrapper> {
+  async fetchNamespace(mint: web3.PublicKey): Promise<NamespaceWrapper> {
     let namespacePDA = (await getNamespacePDA(mint))[0];
 
-    let namespaceObj = await this.program.provider.connection.getAccountInfo(namespacePDA);
+    let namespaceObj = await this.program.provider.connection.getAccountInfo(
+      namespacePDA
+    );
 
     const namespaceDecoded = decodeNamespace(namespaceObj.data);
     namespaceDecoded.program = this.program;
@@ -147,6 +187,20 @@ export class NamespaceProgram {
       data: namespaceObj.data,
       object: namespaceDecoded,
     });
+  }
+
+  async updateNamespace(
+    args: UpdateNamespaceArgs,
+    accounts: UpdateNamespaceAccounts
+  ): Promise<void> {
+    const instruction = await this.instruction.updateNamespace(args, accounts);
+
+    await sendTransactionWithRetry(
+      this.program.provider.connection,
+      this.program.provider.wallet,
+      instruction,
+      []
+    );
   }
 }
 

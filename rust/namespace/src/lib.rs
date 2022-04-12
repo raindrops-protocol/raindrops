@@ -416,8 +416,8 @@ pub mod namespace {
     }
 
     pub fn item_validation<'info>(
-        ctx: Context<'_, '_, '_, 'info, ItemValidation<'info>>,
-        args: ValidationArgs,
+        _ctx: Context<'_, '_, '_, 'info, ItemValidation<'info>>,
+        _args: ValidationArgs,
     ) -> ProgramResult {
         // Dummy
         Ok(())

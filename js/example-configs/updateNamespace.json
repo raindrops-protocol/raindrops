@@ -1,0 +1,26 @@
+{
+  "mint": "5ZimKseBhPBuWaAKXM5SUqGM94hFvKC1gCqpyznFnLBy",
+  "namespaceToken": "79tFos4uzMqTw45DKKLWaVWPVk82ZDkD3JDgMtfBezhp",
+  "prettyName": "Cryptolizer Genesis",
+  "permissivenessSettings": {
+    "namespacePermissiveness": {
+      "namespace": true
+    },
+    "itemPermissiveness": {
+      "whitelist": true
+    },
+    "playerPermissiveness": {
+      "all": true
+    },
+    "matchPermissiveness": {
+      "whitelist": true
+    },
+    "missionPermissiveness": {
+      "blacklist": true
+    },
+    "cachePermissiveness": {
+      "all": true
+    }
+  },
+  "whitelistedStakingMints": ["BsTa1NyFRrqNgTxk2KDvvLCJBPCeB3CneNjX7nXqdfVv"]
+}
