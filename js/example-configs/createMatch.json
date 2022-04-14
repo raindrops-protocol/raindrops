@@ -1,22 +1,35 @@
 {
   "winOracle": null,
-  "matchState": { "started": true },
+  "matchState": { "initialized": true },
   "winOracleCooldown": 10,
-  "space": null,
+  "space": 300,
   "minimumAllowedEntryTime": null,
-  "tokenEntryValidation": null,
+  "tokenEntryValidation": [
+    {
+      "filter": {
+        "parent": {
+          "key": "2aEHhUyRXvV18i7wb17nNJsD2qafHpiJcKS3wcBgUoui"
+        }
+      },
+      "isBlacklist": false,
+      "validation": {
+        "key": "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV",
+        "code": 1
+      }
+    }
+  ],
   "authority": null,
   "leaveAllowed": true,
   "joinAllowedDuringStart": true,
   "oracleState": {
-    "seed": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17g",
+    "seed": "Gz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17g",
     "authority": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
-    "finalized": true,
+    "finalized": false,
     "tokenTransferRoot": null,
     "tokenTransfers": [
       {
-        "from": "Dq3SXLF283A5Q7abqR4EpNkwUr6nLEVoQ7zFd5MNXFec",
-        "to": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
+        "from": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
+        "to": "Dq3SXLF283A5Q7abqR4EpNkwUr6nLEVoQ7zFd5MNXFec",
         "tokenTransferType": { "normal": true },
         "mint": "AoDxuMeVojMb9pBjcrKnCrz6e2u6HxdcJBPgUDDfd4W7",
         "amount": 1
@@ -27,8 +40,9 @@
     {
       "mint": "AoDxuMeVojMb9pBjcrKnCrz6e2u6HxdcJBPgUDDfd4W7",
       "amount": 1,
-      "sourceType": 2,
-      "index": null
+      "sourceType": 1,
+      "index": 1,
+      "validationProgram": "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
     },
     {
       "mint": "9UtumWmQhYFxS5EnqxccFm1t7JixT5kivLiYASA4AiaG",

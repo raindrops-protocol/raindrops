@@ -18,11 +18,38 @@ import { sendTransactionWithRetry } from "../utils/transactions";
 import {
   AnchorMatchState,
   AnchorTokenDelta,
+  AnchorTokenEntryValidation,
   TokenType,
 } from "../state/matches";
 import { Token } from "@solana/spl-token";
 import { createAssociatedTokenAccountInstruction } from "../utils/ata";
 
+export function transformTokenValidations(args: {
+  tokenEntryValidation: AnchorTokenEntryValidation[] | null;
+}) {
+  if (args.tokenEntryValidation) {
+    args.tokenEntryValidation = args.tokenEntryValidation.map((r) => {
+      const newRFilter = { ...r.filter };
+      Object.keys(newRFilter).forEach((k) => {
+        Object.keys(newRFilter[k]).forEach((y) => {
+          if (typeof newRFilter[k][y] === "string") {
+            newRFilter[k][y] = new web3.PublicKey(newRFilter[k][y]);
+          }
+        });
+      });
+
+      r.filter = newRFilter;
+
+      if (r.validation) {
+        if (typeof r.validation.key === "string") {
+          r.validation.key = new web3.PublicKey(r.validation.key);
+          r.validation.code = new BN(r.validation.code);
+        }
+      }
+      return r;
+    });
+  }
+}
 export class MatchWrapper implements ObjectWrapper<any, MatchesProgram> {
   program: MatchesProgram;
   key: web3.PublicKey;
@@ -46,7 +73,7 @@ export interface CreateMatchArgs {
   matchBump: number | null;
   matchState: AnchorMatchState;
   tokenEntryValidationRoot: null;
-  tokenEntryValidation: null;
+  tokenEntryValidation: null | AnchorTokenEntryValidation[];
   winOracle: web3.PublicKey;
   winOracleCooldown: BN;
   authority: web3.PublicKey;
@@ -176,6 +203,7 @@ export class MatchesInstruction {
   ) {
     const [match, matchBump] = await getMatch(args.winOracle);
 
+    transformTokenValidations(args);
     args.matchBump = matchBump;
     return {
       instructions: [
@@ -315,7 +343,8 @@ export class MatchesInstruction {
     accounts: UpdateMatchAccounts,
     _additionalArgs = {}
   ) {
-    const [match, matchBump] = await getMatch(accounts.winOracle);
+    const match = (await getMatch(accounts.winOracle))[0];
+    transformTokenValidations(args);
 
     return {
       instructions: [

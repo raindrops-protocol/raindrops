@@ -1,4 +1,5 @@
 import { web3, BN } from "@project-serum/anchor";
+import { Callback } from "./common";
 
 export interface AnchorMatchState {
   draft?: boolean;
@@ -7,6 +8,20 @@ export interface AnchorMatchState {
   finalized?: boolean;
   paidOut?: boolean;
   deactivated?: boolean;
+}
+
+export interface AnchorTokenEntryValidation {
+  filter: AnchorFilter;
+  isBlacklist: boolean;
+  validation: null | Callback;
+}
+
+export interface AnchorFilter {
+  none?: boolean;
+  all?: boolean;
+  namespace?: { namespace: web3.PublicKey };
+  parent?: { key: web3.PublicKey };
+  mint?: { mint: web3.PublicKey };
 }
 
 export enum MatchState {

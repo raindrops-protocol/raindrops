@@ -422,6 +422,14 @@ pub mod namespace {
         // Dummy
         Ok(())
     }
+
+    pub fn match_validation<'info>(
+        ctx: Context<'_, '_, '_, 'info, MatchValidation<'info>>,
+        args: MatchValidationArgs,
+    ) -> ProgramResult {
+        // Dummy
+        Ok(())
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -633,12 +641,47 @@ pub struct ValidationArgs {
     usage_info: Option<u8>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Callback {
+    pub key: Pubkey,
+    pub code: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct TokenValidation {
+    filter: TokenValidationFilter,
+    is_blacklist: bool,
+    validation: Option<Callback>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum TokenValidationFilter {
+    None,
+    All,
+    Namespace { namespace: Pubkey },
+    Parent { key: Pubkey },
+    Mint { mint: Pubkey },
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct MatchValidationArgs {
+    extra_identifier: u64,
+    token_validation: TokenValidation,
+}
+
 #[derive(Accounts)]
 #[instruction(args: ValidationArgs)]
 pub struct ItemValidation<'info> {
     item_class: UncheckedAccount<'info>,
     item: UncheckedAccount<'info>,
     item_account: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(args: MatchValidationArgs)]
+pub struct MatchValidation<'info> {
+    source_item_or_player_pda: UncheckedAccount<'info>,
+    mint: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

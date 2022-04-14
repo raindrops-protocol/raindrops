@@ -160,7 +160,9 @@ programCommand("join_match")
           tokenMint: new web3.PublicKey(setup.mint),
           sourceTokenAccount: null,
           tokenTransferAuthority: null,
-          validationProgram: null,
+          validationProgram: setup.validationProgram
+            ? new web3.PublicKey(setup.validationProgram)
+            : null,
         },
         {
           winOracle: config.winOracle
@@ -528,7 +530,16 @@ programCommand("show_match")
     log.info("Token Entry Validations:");
     if (u.tokenEntryValidation) {
       u.tokenEntryValidation.map((k) => {
-        log.info("--> Filter:", k.filter);
+        log.info("--> Filter:");
+        if (k.filter.mint)
+          log.info("----> Mint:", k.filter.mint.mint.toBase58());
+        if (k.filter.namespace)
+          log.info("----> Namespace:", k.filter.namespace.namespace.toBase58());
+        if (k.filter.parent)
+          log.info("----> Parent:", k.filter.parent.key.toBase58());
+        if (k.filter.all) log.info("----> All allowed");
+        if (k.filter.none) log.info("----> None allowed");
+
         log.info("--> Blacklist?:", k.isBlacklist);
         log.info(
           "--> Validation:",

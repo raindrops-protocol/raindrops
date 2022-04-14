@@ -340,6 +340,25 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     sighash
 }
 
+pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+    let data = artifact.data.borrow();
+
+    let number = if data[8] == 1 {
+        u32::from_le_bytes(*array_ref![data, 9, 4]) as usize
+    } else {
+        0
+    };
+    let offset = 8 as usize + number * 34 + if data[8] == 1 { 4 } else { 0 } + 1;
+
+    if data[offset] == 1 {
+        let key_bytes = array_ref![data, offset + 1, 32];
+        let key = Pubkey::new_from_array(*key_bytes);
+        return Ok(key);
+    } else {
+        return Err(ErrorCode::NoParentPresent.into());
+    }
+}
+
 pub fn is_valid_validation<'info>(
     val: &TokenValidation,
     source_item_or_player_pda: &UncheckedAccount<'info>,
@@ -363,7 +382,8 @@ pub fn is_valid_validation<'info>(
             }
         }
         Filter::Parent { key } => {
-            if key != source_item_or_player_pda.key() {
+            let parent = grab_parent(source_item_or_player_pda)?;
+            if key != parent {
                 return Ok(false);
             }
         }

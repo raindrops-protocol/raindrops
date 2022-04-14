@@ -992,4 +992,6 @@ pub enum ErrorCode {
     OracleCooldownNotPassed,
     #[msg("Match must be drained first")]
     MatchMustBeDrained,
+    #[msg("No parent present")]
+    NoParentPresent,
 }
