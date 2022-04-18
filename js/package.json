@@ -1,11 +1,11 @@
 {
   "name": "raindrops-cli",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "./build/main.js",
   "license": "MIT",
   "bin": {
     "items-cli": "./src/cli/item.ts",
-    "matches-cli": "./src/cli/match.ts",
+    "matches-cli": "./src/cli/matches.ts",
     "namespace-cli": "./src/cli/namespace.ts"
   },
   "scripts": {
@@ -48,7 +48,8 @@
     "jsonschema": "^1.4.0",
     "lodash": "^4.17.21",
     "loglevel": "^1.7.1",
-    "node-fetch": "^2.6.1"
+    "node-fetch": "^2.6.1",
+    "raindrops-cli": "^0.0.7"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.15.6",
