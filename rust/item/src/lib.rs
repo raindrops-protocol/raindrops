@@ -30,7 +30,6 @@ pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassArgs {
-    item_class_bump: u8,
     class_index: u64,
     parent_class_index: Option<u64>,
     parent_of_parent_class_index: Option<u64>,
@@ -69,7 +68,6 @@ pub struct DrainItemArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemEscrowArgs {
-    craft_bump: u8,
     class_index: u64,
     parent_class_index: Option<u64>,
     craft_escrow_index: u64,
@@ -82,8 +80,6 @@ pub struct CreateItemEscrowArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AddCraftItemToEscrowArgs {
-    token_bump: u8,
-    craft_item_counter_bump: u8,
     class_index: u64,
     parent_class_index: Option<u64>,
     craft_item_index: u64,
@@ -125,7 +121,6 @@ pub struct StartItemEscrowBuildPhaseArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CompleteItemEscrowBuildPhaseArgs {
-    new_item_bump: u8,
     class_index: u64,
     parent_class_index: Option<u64>,
     new_item_index: u64,
@@ -164,7 +159,6 @@ pub struct DeactivateItemEscrowArgs {
 pub struct DrainItemEscrowArgs {
     class_index: u64,
     parent_class_index: Option<u64>,
-
     craft_escrow_index: u64,
     component_scope: String,
     amount_to_make: u64,
@@ -175,11 +169,8 @@ pub struct DrainItemEscrowArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RemoveCraftItemFromEscrowArgs {
-    token_bump: u8,
-    craft_item_counter_bump: u8,
     class_index: u64,
     parent_class_index: Option<u64>,
-
     craft_item_index: u64,
     craft_escrow_index: u64,
     component_scope: String,
@@ -199,7 +190,6 @@ pub struct RemoveCraftItemFromEscrowArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BeginItemActivationArgs {
-    item_activation_bump: u8,
     class_index: u64,
     index: u64,
     item_class_mint: Pubkey,
@@ -292,7 +282,6 @@ pub mod item {
         args: CreateItemClassArgs,
     ) -> Result<()> {
         let CreateItemClassArgs {
-            item_class_bump,
             class_index,
             parent_class_index,
             desired_namespace_array_size,
@@ -391,7 +380,7 @@ pub mod item {
         }
         msg!("5");
 
-        item_class.bump = item_class_bump;
+        item_class.bump = *ctx.bumps.get("item_class").unwrap();
         if store_metadata_fields {
             item_class.metadata = Some(metadata.key());
             item_class.edition = if edition.data_is_empty() {
@@ -609,7 +598,6 @@ pub mod item {
         let item_class_data = item_class.item_class_data(&item_class_info.data.borrow())?;
         msg!("2");
         let CreateItemEscrowArgs {
-            craft_bump,
             class_index,
             amount_to_make,
             namespace_index,
@@ -680,7 +668,7 @@ pub mod item {
         msg!("5");
         assert_metadata_valid(new_item_metadata, edition_option, &new_item_mint.key())?;
 
-        item_escrow.bump = craft_bump;
+        item_escrow.bump = *ctx.bumps.get("item_escrow").unwrap();
 
         if let Some(namespaces) = &item_class.namespaces {
             if let Some(ns_index) = namespace_index {
@@ -739,6 +727,13 @@ pub mod item {
             parent_class_index,
             ..
         } = args;
+
+        let acct = craft_item_counter.to_account_info();
+        let data: &[u8] = &craft_item_counter.try_borrow_data()?;
+        let disc_bytes = array_ref![data, 0, 8];
+        if disc_bytes != &CraftItemCounter::discriminator() && disc_bytes.iter().any(|a| a != &0) {
+            return Err(error!(ErrorCode::ReinitializationDetected));
+        }
 
         let item_class_data =
             item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
@@ -1107,7 +1102,6 @@ pub mod item {
         let ed = edition.to_account_info();
 
         let CompleteItemEscrowBuildPhaseArgs {
-            new_item_bump,
             class_index,
             amount_to_make,
             item_class_mint,
@@ -1117,6 +1111,13 @@ pub mod item {
             parent_class_index,
             ..
         } = args;
+
+        let acct = new_item.to_account_info();
+        let data: &[u8] = &new_item.try_borrow_data()?;
+        let disc_bytes = array_ref![data, 0, 8];
+        if disc_bytes != &Item::discriminator() && disc_bytes.iter().any(|a| a != &0) {
+            return Err(error!(ErrorCode::ReinitializationDetected));
+        }
 
         let edition_option = if edition.data_len() > 0 {
             Some(&ed)
@@ -1166,7 +1167,7 @@ pub mod item {
             return Err(error!(ErrorCode::BuildPhaseNotStarted));
         }
 
-        new_item.bump = new_item_bump;
+        new_item.bump = *ctx.bumps.get("new_item").unwrap();
         new_item.padding = 1;
         new_item.class_index = class_index;
         new_item.parent = item_class.key();
@@ -1297,7 +1298,6 @@ pub mod item {
 
         let BeginItemActivationArgs {
             usage_permissiveness_to_use,
-            item_activation_bump,
             index,
             mut usage_info,
             usage_index,
@@ -1310,7 +1310,7 @@ pub mod item {
         require!(amount > 0, MustBeGreaterThanZero);
         require!(item_account.amount >= amount, InsufficientBalance);
 
-        item_activation_marker.bump = item_activation_bump;
+        item_activation_marker.bump = *ctx.bumps.get("item_activation_marker").unwrap();
 
         if amount > 1 {
             item_activation_marker.amount = Some(amount);
@@ -1690,7 +1690,7 @@ pub mod item {
 pub struct CreateItemClass<'info> {
     // parent determines who can create this (if present) so need to add all classes and check who is the signer...
     // perhaps do this via optional additional accounts to save space.
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump=args.item_class_bump, space=args.space as usize, payer=payer, constraint=args.space as usize >= MIN_ITEM_CLASS_SIZE)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.class_index.to_le_bytes()], bump, space=args.space as usize, payer=payer, constraint=args.space as usize >= MIN_ITEM_CLASS_SIZE)]
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
@@ -1698,6 +1698,7 @@ pub struct CreateItemClass<'info> {
     // is the parent item class (if there is one.) Otherwise use same item class.
     #[account(mut)]
     parent: UncheckedAccount<'info>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
@@ -1734,12 +1735,13 @@ pub struct CreateItemEscrow<'info> {
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.craft_bump, space=if args.namespace_index.is_none() { 37 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 36} , payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), payer.key().as_ref(), new_item_mint.key().as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump, space=if args.namespace_index.is_none() { 37 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 36} , payer=payer)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
@@ -1755,14 +1757,14 @@ pub struct AddCraftItemToEscrow<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(),args.originator.as_ref(), args.new_item_mint.as_ref(), new_item_token.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.new_item_mint.as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(),&args.component_scope.as_bytes()
-    ], bump=args.craft_item_counter_bump, space=16, payer=payer)]
+    ], bump, space=16, payer=payer)]
     craft_item_counter: Box<Account<'info, CraftItemCounter>>,
     #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), payer.key().as_ref(), args.new_item_mint.as_ref(), craft_item_token_account.key().as_ref(),&args.craft_escrow_index.to_le_bytes(),  &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(), &args.amount_to_make.to_le_bytes(),  &args.amount_to_contribute_from_this_contributor.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.token_bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), payer.key().as_ref(), args.new_item_mint.as_ref(), craft_item_token_account.key().as_ref(),&args.craft_escrow_index.to_le_bytes(),  &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(), &args.amount_to_make.to_le_bytes(),  &args.amount_to_contribute_from_this_contributor.to_le_bytes(), &args.component_scope.as_bytes()], bump, token::mint = craft_item_token_mint, token::authority = item_class, payer=payer)]
     craft_item_token_account_escrow: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     craft_item_token_mint: Box<Account<'info, Mint>>,
@@ -1773,6 +1775,7 @@ pub struct AddCraftItemToEscrow<'info> {
     #[account(constraint=craft_item.parent == craft_item_class.key() && craft_item.class_index == args.craft_item_class_index, seeds=[PREFIX.as_bytes(), args.craft_item_class_mint.as_ref(), &args.craft_item_class_index.to_le_bytes()], bump=craft_item_class.bump)]
     craft_item_class: Box<Account<'info, ItemClass>>,
     craft_item_transfer_authority: Signer<'info>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
@@ -1849,7 +1852,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     // perhaps do this via optional additional accounts to save space.
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes()], bump=item_class.bump)]
     item_class: Box<Account<'info, ItemClass>>,
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), new_item_mint.key().as_ref(), &args.new_item_index.to_le_bytes()], bump=args.new_item_bump, payer=payer, space=args.space as usize, constraint= args.space as usize >= MIN_ITEM_SIZE)]
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), new_item_mint.key().as_ref(), &args.new_item_index.to_le_bytes()], bump, payer=payer, space=args.space as usize, constraint= args.space as usize >= MIN_ITEM_SIZE)]
     new_item: Box<Account<'info, Item>>,
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
@@ -1860,6 +1863,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
@@ -1921,10 +1925,11 @@ pub struct BeginItemActivation<'info> {
     #[account(mut, constraint=item_mint.key() == item_account.mint)]
     item_account: Box<Account<'info, TokenAccount>>,
     item_transfer_authority: Signer<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &(args.usage_index as u64).to_le_bytes(), &args.amount.to_le_bytes(), MARKER.as_bytes()], bump=args.item_activation_bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1+1+8+1 && args.item_marker_space <= 8+1+1+1+8+2+2+2+32+9, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), item_mint.key().as_ref(), &args.index.to_le_bytes(), &(args.usage_index as u64).to_le_bytes(), &args.amount.to_le_bytes(), MARKER.as_bytes()], bump, space=args.item_marker_space as usize, constraint=args.item_marker_space >=  8+1+1+1+8+1 && args.item_marker_space <= 8+1+1+1+8+2+2+2+32+9, payer=payer)]
     item_activation_marker: Box<Account<'info, ItemActivationMarker>>,
     // payer required here as extra key to guarantee some paying entity for anchor
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
+    #[account(mut)]
     payer: Signer<'info>,
     #[account(constraint = player_program.key() == Pubkey::from_str(PLAYER_ID).unwrap())]
     player_program: UncheckedAccount<'info>,
@@ -2524,4 +2529,6 @@ pub enum ErrorCode {
     MustBeGreaterThanZero,
     #[msg("To use an ata in this contract, please remove its delegate first")]
     AtaShouldNotHaveDelegate,
+    #[msg("Reinitialization hack detected")]
+    ReinitializationDetected,
 }

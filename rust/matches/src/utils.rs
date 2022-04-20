@@ -1,9 +1,10 @@
 use {
     crate::{ErrorCode, Filter, TokenValidation, ValidationArgs},
     anchor_lang::{
+        error,
         prelude::{
-            msg, Account, AccountInfo, AccountMeta, Program, ProgramError, Result<()>, Pubkey,
-            Rent, SolanaSysvar, UncheckedAccount,
+            msg, Account, AccountInfo, AccountMeta, Program, ProgramError, Pubkey, Rent, Result,
+            SolanaSysvar, UncheckedAccount,
         },
         require,
         solana_program::{

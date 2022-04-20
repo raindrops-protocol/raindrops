@@ -6,9 +6,10 @@ use {
         ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, PREFIX,
     },
     anchor_lang::{
+        error,
         prelude::{
             msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
-            Result<()>, Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
+            Pubkey, Rent, Result, SolanaSysvar, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{
@@ -18,7 +19,7 @@ use {
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
-        Key, System, ToAccountInfo,
+        system_program, Key, ToAccountInfo,
     },
     anchor_spl::token::{Mint, Token},
     arrayref::array_ref,

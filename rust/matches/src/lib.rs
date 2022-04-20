@@ -18,6 +18,7 @@ use {
         AnchorDeserialize, AnchorSerialize, Discriminator,
     },
     anchor_spl::token::{Mint, TokenAccount},
+    arrayref::array_ref,
     metaplex_token_metadata::instruction::{
         create_master_edition, create_metadata_accounts,
         mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
@@ -29,7 +30,6 @@ pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateOrUpdateOracleArgs {
-    oracle_bump: u8,
     token_transfer_root: Option<Root>,
     token_transfers: Option<Vec<TokenDelta>>,
     seed: Pubkey,
@@ -39,14 +39,11 @@ pub struct CreateOrUpdateOracleArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainOracleArgs {
-    oracle_bump: u8,
-    match_bump: u8,
     seed: Pubkey,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateMatchArgs {
-    match_bump: u8,
     match_state: MatchState,
     token_entry_validation_root: Option<Root>,
     token_entry_validation: Option<Vec<TokenValidation>>,
@@ -74,7 +71,6 @@ pub struct UpdateMatchArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct JoinMatchArgs {
     amount: u64,
-    escrow_bump: u8,
     token_entry_validation_proof: Option<Vec<[u8; 32]>>,
     token_entry_validation: Option<TokenValidation>,
 }
@@ -82,12 +78,10 @@ pub struct JoinMatchArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct LeaveMatchArgs {
     amount: u64,
-    escrow_bump: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DisburseTokensByOracleArgs {
-    escrow_bump: u8,
     token_delta_proof_info: Option<TokenDeltaProofInfo>,
 }
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -114,6 +108,13 @@ pub mod matches {
             ..
         } = args;
 
+        let acct = new_item.to_account_info();
+        let data: &[u8] = &new_item.try_borrow_data()?;
+        let disc_bytes = array_ref![data, 0, 8];
+        if disc_bytes != &Item::discriminator() && disc_bytes.iter().any(|a| a != &0) {
+            return Err(error!(ErrorCode::ReinitializationDetected));
+        }
+
         let win_oracle = &mut ctx.accounts.oracle;
 
         require!(!win_oracle.finalized, OracleAlreadyFinalized);
@@ -130,7 +131,6 @@ pub mod matches {
         args: CreateMatchArgs,
     ) -> Result<()> {
         let CreateMatchArgs {
-            match_bump,
             match_state,
             token_entry_validation_root,
             token_entry_validation,
@@ -630,6 +630,7 @@ pub mod matches {
 pub struct CreateMatch<'info> {
     #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= MIN_MATCH_SIZE as u64)]
     match_instance: Account<'info, Match>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
@@ -680,7 +681,7 @@ pub struct JoinMatch<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Box<Account<'info, Match>>,
     token_transfer_authority: Signer<'info>,
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), source_token_account.owner.as_ref()], bump=args.escrow_bump, token::mint = token_mint, token::authority = match_instance, payer=payer)]
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), source_token_account.owner.as_ref()], bump, token::mint = token_mint, token::authority = match_instance, payer=payer)]
     token_account_escrow: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     token_mint: Box<Account<'info, Mint>>,
@@ -688,6 +689,7 @@ pub struct JoinMatch<'info> {
     source_token_account: Box<Account<'info, TokenAccount>>,
     // set to system if none
     source_item_or_player_pda: UncheckedAccount<'info>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     validation_program: UncheckedAccount<'info>,
@@ -760,6 +762,7 @@ pub struct LeaveMatch<'info> {
 pub struct CreateOrUpdateOracle<'info> {
     #[account(init_if_needed, seeds=[PREFIX.as_bytes(), payer.key().as_ref(), args.seed.as_ref()], bump, payer=payer, space=args.space as usize)]
     oracle: Account<'info, WinOracle>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
@@ -994,4 +997,6 @@ pub enum ErrorCode {
     MatchMustBeDrained,
     #[msg("No parent present")]
     NoParentPresent,
+    #[msg("Reinitialization hack detected")]
+    ReinitializationDetected,
 }
