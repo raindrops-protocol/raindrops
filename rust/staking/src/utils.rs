@@ -7,7 +7,7 @@ use {
     },
     anchor_lang::{
         prelude::{
-            Account, AccountInfo, Program, ProgramError, ProgramResult, Pubkey, UncheckedAccount,
+            Account, AccountInfo, Program, ProgramError, Result<()>, Pubkey, UncheckedAccount,
         },
         require,
         solana_program::{
@@ -29,15 +29,15 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(ErrorCode::Uninitialized.into())
+        Err(error!(ErrorCode::Uninitialized))
     } else {
         Ok(account)
     }
 }
 
-pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     if account.owner != owner {
-        Err(ErrorCode::IncorrectOwner.into())
+        Err(error!(ErrorCode::IncorrectOwner))
     } else {
         Ok(())
     }
@@ -59,7 +59,7 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
 }
 
 #[inline(always)]
-pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
     let TokenTransferParams {
         source,
         destination,
@@ -88,7 +88,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         },
     );
 
-    result.map_err(|_| ErrorCode::TokenTransferFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
 }
 
 pub fn assert_derivation(
@@ -98,7 +98,7 @@ pub fn assert_derivation(
 ) -> Result<u8, ProgramError> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(bump)
 }
@@ -107,10 +107,10 @@ pub fn assert_derivation_with_bump(
     program_id: &Pubkey,
     account: &AccountInfo,
     path: &[&[u8]],
-) -> ProgramResult {
+) -> Result<()> {
     let key = Pubkey::create_program_address(&path, program_id)?;
     if key != *account.key {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(())
 }
@@ -128,7 +128,7 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
 pub fn assert_builder_must_be_holder_check(
     item_class: &Account<ArtifactClass>,
     new_item_token_holder: &UncheckedAccount,
-) -> ProgramResult {
+) -> Result<()> {
     if let Some(b) = &item_class.data.builder_must_be_holder {
         require!(
             b.boolean && !new_item_token_holder.is_signer,
@@ -139,7 +139,7 @@ pub fn assert_builder_must_be_holder_check(
     return Ok(());
 }
 
-pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> ProgramResult {
+pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Result<()> {
     let AssertPermissivenessAccessArgs {
         program_id,
         given_account,
@@ -162,7 +162,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 }
 
                 if !found {
-                    return Err(ErrorCode::PermissivenessNotFound.into());
+                    return Err(error!(ErrorCode::PermissivenessNotFound));
                 }
 
                 match perm_to_use.permissiveness_type {
@@ -183,7 +183,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                         let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
 
                         if acct.amount == 0 {
-                            return Err(ErrorCode::InsufficientBalance.into());
+                            return Err(error!(ErrorCode::InsufficientBalance));
                         }
 
                         assert_derivation(
@@ -216,7 +216,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                         )?;
 
                         if acct.amount == 0 {
-                            return Err(ErrorCode::InsufficientBalance.into());
+                            return Err(error!(ErrorCode::InsufficientBalance));
                         }
 
                         assert_derivation(
@@ -254,7 +254,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 }
             }
         }
-        None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
+        None => return Err(error!(ErrorCode::MustSpecifyPermissivenessType)),
     }
 
     Ok(())
@@ -275,7 +275,7 @@ pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramErro
         let key = Pubkey::new_from_array(*key_bytes);
         return Ok(key);
     } else {
-        return Err(ErrorCode::NoParentPresent.into());
+        return Err(error!(ErrorCode::NoParentPresent));
     }
 }
 
@@ -298,15 +298,15 @@ pub fn assert_is_ata(
     Ok(ata_account)
 }
 
-pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {
+pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> Result<()> {
     if key1 != key2 {
-        Err(ErrorCode::PublicKeyMismatch.into())
+        Err(error!(ErrorCode::PublicKeyMismatch))
     } else {
         Ok(())
     }
 }
 
-pub fn assert_signer(account: &AccountInfo) -> ProgramResult {
+pub fn assert_signer(account: &AccountInfo) -> Result<()> {
     if !account.is_signer {
         Err(ProgramError::MissingRequiredSignature)
     } else {
@@ -318,7 +318,7 @@ pub fn assert_metadata_valid<'a>(
     metadata: &AccountInfo,
     edition: Option<&AccountInfo>,
     mint: &Pubkey,
-) -> ProgramResult {
+) -> Result<()> {
     assert_derivation(
         &metaplex_token_metadata::id(),
         &metadata,
@@ -329,7 +329,7 @@ pub fn assert_metadata_valid<'a>(
         ],
     )?;
     if metadata.data_is_empty() {
-        return Err(ErrorCode::MetadataDoesntExist.into());
+        return Err(error!(ErrorCode::MetadataDoesntExist));
     }
 
     if let Some(ed) = edition {
@@ -344,7 +344,7 @@ pub fn assert_metadata_valid<'a>(
             ],
         )?;
         if ed.data_is_empty() {
-            return Err(ErrorCode::EditionDoesntExist.into());
+            return Err(error!(ErrorCode::EditionDoesntExist));
         }
     }
 
@@ -379,7 +379,7 @@ pub fn close_token_account<'a>(
     token_program: &Program<'a, Token>,
     owner: &AccountInfo<'a>,
     signer_seeds: &[&[u8]],
-) -> ProgramResult {
+) -> Result<()> {
     invoke_signed(
         &close_account(
             &token_program.key,

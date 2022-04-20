@@ -290,7 +290,7 @@ pub mod item {
     pub fn create_item_class<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CreateItemClass<'info>>,
         args: CreateItemClassArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let CreateItemClassArgs {
             item_class_bump,
             class_index,
@@ -428,7 +428,7 @@ pub mod item {
     pub fn update_item_class<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdateItemClass<'info>>,
         args: UpdateItemClassArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let UpdateItemClassArgs {
             class_index,
             update_permissiveness_to_use,
@@ -468,7 +468,7 @@ pub mod item {
             if let Some(ic_parent) = item_class.parent {
                 assert_keys_equal(parent.key(), ic_parent)?;
             } else {
-                return Err(ErrorCode::NoParentPresent.into());
+                return Err(error!(ErrorCode::NoParentPresent));
             }
             let parent_data = &*parent.data;
             let parent_deserialized: Account<'_, ItemClass> = Account::try_from(parent)?;
@@ -480,7 +480,7 @@ pub mod item {
                 &parent_item_class_data,
             );
         } else if item_class.parent.is_some() {
-            return Err(ErrorCode::ExpectedParent.into());
+            return Err(error!(ErrorCode::ExpectedParent));
         }
 
         write_data(item_class, &new_item_class_data)?;
@@ -490,7 +490,7 @@ pub mod item {
     pub fn drain_item_class<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DrainItemClass<'info>>,
         args: DrainItemClassArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let DrainItemClassArgs {
             class_index,
             update_permissiveness_to_use,
@@ -543,7 +543,7 @@ pub mod item {
     pub fn drain_item<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DrainItem<'info>>,
         args: DrainItemArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &mut ctx.accounts.item_class;
         let item = &mut ctx.accounts.item;
         let receiver = &ctx.accounts.receiver;
@@ -593,7 +593,7 @@ pub mod item {
     pub fn create_item_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CreateItemEscrow<'info>>,
         args: CreateItemEscrowArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         msg!("0");
         let item_class = &ctx.accounts.item_class;
         let item_class_metadata = &ctx.accounts.item_class_metadata;
@@ -620,7 +620,7 @@ pub mod item {
         } = args;
 
         if amount_to_make == 0 {
-            return Err(ErrorCode::CannotMakeZero.into());
+            return Err(error!(ErrorCode::CannotMakeZero));
         }
         msg!("3");
         assert_builder_must_be_holder_check(&item_class_data, new_item_token_holder)?;
@@ -635,7 +635,7 @@ pub mod item {
             // we know already new item token holder is above 0, this is edition, so supply = 1.
             // amount to make better = 1.
             if amount_to_make != 1 || new_item_token.amount != 1 {
-                return Err(ErrorCode::InsufficientBalance.into());
+                return Err(error!(ErrorCode::InsufficientBalance));
             }
             msg!("4.1");
             if let Some(c) = item_class_data.settings.children_must_be_editions {
@@ -710,7 +710,7 @@ pub mod item {
     pub fn add_craft_item_to_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, AddCraftItemToEscrow<'info>>,
         args: AddCraftItemToEscrowArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &ctx.accounts.item_class;
         let item_escrow = &mut ctx.accounts.item_escrow;
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
@@ -862,7 +862,7 @@ pub mod item {
     pub fn remove_craft_item_from_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, RemoveCraftItemFromEscrow<'info>>,
         args: RemoveCraftItemFromEscrowArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &ctx.accounts.item_class;
         let item_escrow = &mut ctx.accounts.item_escrow;
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
@@ -985,7 +985,7 @@ pub mod item {
     pub fn start_item_escrow_build_phase<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, StartItemEscrowBuildPhase<'info>>,
         args: StartItemEscrowBuildPhaseArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &ctx.accounts.item_class;
         let item_escrow = &mut ctx.accounts.item_escrow;
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
@@ -1033,7 +1033,7 @@ pub mod item {
             if counter == 0 {
                 if let Some(c) = item_class_data.settings.free_build {
                     if !c.boolean {
-                        return Err(ErrorCode::MustUseRealScope.into());
+                        return Err(error!(ErrorCode::MustUseRealScope));
                     }
                 }
             } else {
@@ -1045,7 +1045,7 @@ pub mod item {
                     if total_s == 0 {
                         if let Some(c) = item_class_data.settings.free_build {
                             if !c.boolean {
-                                return Err(ErrorCode::MustUseRealScope.into());
+                                return Err(error!(ErrorCode::MustUseRealScope));
                             }
                         }
                     } else {
@@ -1063,18 +1063,18 @@ pub mod item {
                         require!(total_s == item_escrow.step, StillMissingComponents);
                     }
                 } else {
-                    return Err(ErrorCode::MissingMerkleInfo.into());
+                    return Err(error!(ErrorCode::MissingMerkleInfo));
                 }
             } else {
-                return Err(ErrorCode::MissingMerkleInfo.into());
+                return Err(error!(ErrorCode::MissingMerkleInfo));
             }
         } else {
             if let Some(c) = item_class_data.settings.free_build {
                 if !c.boolean {
-                    return Err(ErrorCode::MustUseMerkleOrComponentList.into());
+                    return Err(error!(ErrorCode::MustUseMerkleOrComponentList));
                 }
             } else {
-                return Err(ErrorCode::MustUseMerkleOrComponentList.into());
+                return Err(error!(ErrorCode::MustUseMerkleOrComponentList));
             }
         };
 
@@ -1094,7 +1094,7 @@ pub mod item {
     pub fn complete_item_escrow_build_phase<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CompleteItemEscrowBuildPhase<'info>>,
         args: CompleteItemEscrowBuildPhaseArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &mut ctx.accounts.item_class;
         let item_escrow = &mut ctx.accounts.item_escrow;
         let new_item = &mut ctx.accounts.new_item;
@@ -1159,11 +1159,11 @@ pub mod item {
                         clock.unix_timestamp,
                         finish
                     );
-                    return Err(ErrorCode::BuildPhaseNotFinished.into());
+                    return Err(error!(ErrorCode::BuildPhaseNotFinished));
                 }
             }
         } else {
-            return Err(ErrorCode::BuildPhaseNotStarted.into());
+            return Err(error!(ErrorCode::BuildPhaseNotStarted));
         }
 
         new_item.bump = new_item_bump;
@@ -1223,7 +1223,7 @@ pub mod item {
     pub fn update_item<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdateItem<'info>>,
         _args: UpdateItemArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &mut ctx.accounts.item_class;
         let item = &mut ctx.accounts.item;
 
@@ -1238,7 +1238,7 @@ pub mod item {
     pub fn deactivate_item_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DeactivateItemEscrow<'info>>,
         _args: DeactivateItemEscrowArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_escrow = &mut ctx.accounts.item_escrow;
 
         require!(!item_escrow.deactivated, AlreadyDeactivated);
@@ -1260,7 +1260,7 @@ pub mod item {
     pub fn drain_item_escrow<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DrainItemEscrow<'info>>,
         _args: DrainItemEscrowArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_escrow = &mut ctx.accounts.item_escrow;
         let originator = &ctx.accounts.originator;
 
@@ -1284,7 +1284,7 @@ pub mod item {
     pub fn begin_item_activation<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, BeginItemActivation<'info>>,
         args: BeginItemActivationArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &ctx.accounts.item_class;
         let item = &mut ctx.accounts.item;
         let item_account = &ctx.accounts.item_account;
@@ -1411,7 +1411,7 @@ pub mod item {
     pub fn end_item_activation<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, EndItemActivation<'info>>,
         args: EndItemActivationArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item_class = &ctx.accounts.item_class;
         let item = &mut ctx.accounts.item;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
@@ -1475,7 +1475,7 @@ pub mod item {
     pub fn reset_state_validation_for_activation<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, ResetStateValidationForActivation<'info>>,
         args: ResetStateValidationForActivationArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         // You f-ed up and used the wrong new state root. Can reset here with some
         // validation. Basically starts from scratch again the proving process.
 
@@ -1500,7 +1500,7 @@ pub mod item {
                 unix_timestamp,
             })?;
         } else {
-            return Err(ErrorCode::ProvingNewStateNotRequired.into());
+            return Err(error!(ErrorCode::ProvingNewStateNotRequired));
         }
         Ok(())
     }
@@ -1508,7 +1508,7 @@ pub mod item {
     pub fn update_valid_for_use_if_warmup_passed<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdateValidForUseIfWarmupPassed<'info>>,
         args: UpdateValidForUseIfWarmupPassedArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         // You had a warmup you needed to get through.
         // Now it's passed, so you want to permissionlessly update
         // item activation marker.
@@ -1532,7 +1532,7 @@ pub mod item {
 
         let item_usage = get_item_usage(get_item_args)?;
         match &item_usage.item_class_type {
-            ItemClassType::Wearable { .. } => return Err(ErrorCode::CannotUseWearable.into()),
+            ItemClassType::Wearable { .. } => return Err(error!(ErrorCode::CannotUseWearable)),
             ItemClassType::Consumable {
                 warmup_duration, ..
             } => {
@@ -1544,7 +1544,7 @@ pub mod item {
                     if clock.unix_timestamp > threshold as i64 {
                         item_activation_marker.valid_for_use = true;
                     } else {
-                        return Err(ErrorCode::WarmupNotFinished.into());
+                        return Err(error!(ErrorCode::WarmupNotFinished));
                     }
                 } else {
                     item_activation_marker.valid_for_use = true;
@@ -1563,7 +1563,7 @@ pub mod item {
     pub fn prove_new_state_valid<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, ProveNewStateValid<'info>>,
         args: ProveNewStateValidArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let item = &mut ctx.accounts.item;
         let item_class = &ctx.accounts.item_class;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
@@ -1596,7 +1596,7 @@ pub mod item {
                     let proof = &usage_state_proofs[index];
                     let new_proof = &new_usage_state_proofs[index];
                     if state.index != pc.states_proven {
-                        return Err(ErrorCode::MustSubmitStatesInOrder.into());
+                        return Err(error!(ErrorCode::MustSubmitStatesInOrder));
                     }
                     if state.index != pc.ignore_index {
                         let node = anchor_lang::solana_program::keccak::hashv(&[
@@ -1635,7 +1635,7 @@ pub mod item {
 
                     match &item_usage.item_class_type {
                         ItemClassType::Wearable { .. } => {
-                            return Err(ErrorCode::CannotUseWearable.into())
+                            return Err(error!(ErrorCode::CannotUseWearable))
                         }
                         ItemClassType::Consumable {
                             warmup_duration, ..
@@ -1655,10 +1655,10 @@ pub mod item {
                     };
                 }
             } else {
-                return Err(ErrorCode::ProvingNewStateNotRequired.into());
+                return Err(error!(ErrorCode::ProvingNewStateNotRequired));
             }
         } else {
-            return Err(ErrorCode::ProvingNewStateNotRequired.into());
+            return Err(error!(ErrorCode::ProvingNewStateNotRequired));
         }
 
         Ok(())
@@ -2408,7 +2408,7 @@ pub struct Item {
     data: ItemData,
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Account does not have correct owner!")]
     IncorrectOwner,

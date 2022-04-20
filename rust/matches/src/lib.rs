@@ -106,7 +106,7 @@ pub mod matches {
     pub fn create_or_update_oracle<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CreateOrUpdateOracle<'info>>,
         args: CreateOrUpdateOracleArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let CreateOrUpdateOracleArgs {
             token_transfer_root,
             token_transfers,
@@ -128,7 +128,7 @@ pub mod matches {
     pub fn create_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CreateMatch<'info>>,
         args: CreateMatchArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let CreateMatchArgs {
             match_bump,
             match_state,
@@ -144,7 +144,7 @@ pub mod matches {
 
         let match_instance = &mut ctx.accounts.match_instance;
 
-        match_instance.bump = match_bump;
+        match_instance.bump = *ctx.bumps.get("match_instance").unwrap();
         require!(
             match_state == MatchState::Draft || match_state == MatchState::Initialized,
             InvalidStartingMatchState
@@ -167,7 +167,7 @@ pub mod matches {
     pub fn update_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdateMatch<'info>>,
         args: UpdateMatchArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let UpdateMatchArgs {
             match_state,
             token_entry_validation_root,
@@ -240,7 +240,7 @@ pub mod matches {
 
     pub fn update_match_from_oracle<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdateMatchFromOracle<'info>>,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let match_instance = &mut ctx.accounts.match_instance;
         let win_oracle = &ctx.accounts.win_oracle;
         let clock = &ctx.accounts.clock;
@@ -276,7 +276,7 @@ pub mod matches {
     pub fn drain_oracle<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DrainOracle<'info>>,
         _args: DrainOracleArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let match_instance = &mut ctx.accounts.match_instance;
 
         require!(
@@ -302,7 +302,7 @@ pub mod matches {
 
     pub fn drain_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DrainMatch<'info>>,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let match_instance = &mut ctx.accounts.match_instance;
         let receiver = &mut ctx.accounts.receiver;
         require!(
@@ -332,7 +332,7 @@ pub mod matches {
     pub fn leave_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, LeaveMatch<'info>>,
         _args: LeaveMatchArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;
         let destination_token_account = &ctx.accounts.destination_token_account;
@@ -396,7 +396,7 @@ pub mod matches {
     pub fn disburse_tokens_by_oracle<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DisburseTokensByOracle<'info>>,
         args: DisburseTokensByOracleArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;
         let destination_token_account = &ctx.accounts.destination_token_account;
@@ -442,7 +442,7 @@ pub mod matches {
                 }
                 token_delta
             } else {
-                return Err(ErrorCode::RootNotPresent.into());
+                return Err(error!(ErrorCode::RootNotPresent));
             }
         } else if let Some(tfer_arr) = &win_oracle.token_transfers {
             if match_instance.current_token_transfer_index == (tfer_arr.len() - 1) as u64 {
@@ -450,7 +450,7 @@ pub mod matches {
             }
             tfer_arr[match_instance.current_token_transfer_index as usize].clone()
         } else {
-            return Err(ErrorCode::NoDeltasFound.into());
+            return Err(error!(ErrorCode::NoDeltasFound));
         };
         msg!("2");
 
@@ -527,7 +527,7 @@ pub mod matches {
     pub fn join_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, JoinMatch<'info>>,
         args: JoinMatchArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;
         let source_token_account = &ctx.accounts.source_token_account;
@@ -581,13 +581,13 @@ pub mod matches {
                         token_mint,
                         validation_program,
                     )? {
-                        return Err(ErrorCode::InvalidValidation.into());
+                        return Err(error!(ErrorCode::InvalidValidation));
                     }
                 } else {
-                    return Err(ErrorCode::MustPassUpObject.into());
+                    return Err(error!(ErrorCode::MustPassUpObject));
                 }
             } else {
-                return Err(ErrorCode::RootNotPresent.into());
+                return Err(error!(ErrorCode::RootNotPresent));
             }
         } else if let Some(val_arr) = &match_instance.token_entry_validation {
             let mut validation = false;
@@ -603,7 +603,7 @@ pub mod matches {
                 }
             }
             if !validation {
-                return Err(ErrorCode::NoValidValidationFound.into());
+                return Err(error!(ErrorCode::NoValidValidationFound));
             }
         };
 
@@ -628,7 +628,7 @@ pub mod matches {
 #[derive(Accounts)]
 #[instruction(args: CreateMatchArgs)]
 pub struct CreateMatch<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump=args.match_bump, payer=payer, space=args.space as usize, constraint=args.space >= MIN_MATCH_SIZE as u64)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= MIN_MATCH_SIZE as u64)]
     match_instance: Account<'info, Match>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -758,7 +758,7 @@ pub struct LeaveMatch<'info> {
 #[derive(Accounts)]
 #[instruction(args: CreateOrUpdateOracleArgs)]
 pub struct CreateOrUpdateOracle<'info> {
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), payer.key().as_ref(), args.seed.as_ref()], bump=args.oracle_bump, payer=payer, space=args.space as usize)]
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), payer.key().as_ref(), args.seed.as_ref()], bump, payer=payer, space=args.space as usize)]
     oracle: Account<'info, WinOracle>,
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -918,7 +918,7 @@ pub struct TokenValidation {
     validation: Option<Callback>,
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Account does not have correct owner!")]
     IncorrectOwner,

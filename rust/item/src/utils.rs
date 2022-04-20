@@ -8,7 +8,7 @@ use {
     anchor_lang::{
         prelude::{
             msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
-            ProgramResult, Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
+            Result<()>, Pubkey, Rent, SolanaSysvar, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{
@@ -48,15 +48,15 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(ErrorCode::Uninitialized.into())
+        Err(error!(ErrorCode::Uninitialized))
     } else {
         Ok(account)
     }
 }
 
-pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     if account.owner != owner {
-        Err(ErrorCode::IncorrectOwner.into())
+        Err(error!(ErrorCode::IncorrectOwner))
     } else {
         Ok(())
     }
@@ -413,7 +413,7 @@ pub fn get_class_write_offsets(
 pub fn write_data(
     item_class: &mut Account<ItemClass>,
     item_class_data: &ItemClassData,
-) -> ProgramResult {
+) -> Result<()> {
     let item_class_info = item_class.to_account_info();
     let (ctr, _) = get_class_write_offsets(item_class, &item_class_info.data);
     let mut data = item_class_info.try_borrow_mut_data()?;
@@ -428,7 +428,7 @@ pub fn write_data(
 }
 
 #[inline(always)]
-pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
     let TokenTransferParams {
         source,
         destination,
@@ -457,7 +457,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         },
     );
 
-    result.map_err(|_| ErrorCode::TokenTransferFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
 }
 
 pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError> {
@@ -479,7 +479,7 @@ pub fn assert_derivation(
 ) -> Result<u8, ProgramError> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(bump)
 }
@@ -491,7 +491,7 @@ pub fn assert_derivation_by_key(
 ) -> Result<u8, ProgramError> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(bump)
 }
@@ -500,10 +500,10 @@ pub fn assert_derivation_with_bump(
     program_id: &Pubkey,
     account: &AccountInfo,
     path: &[&[u8]],
-) -> ProgramResult {
+) -> Result<()> {
     let key = Pubkey::create_program_address(&path, program_id)?;
     if key != *account.key {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(())
 }
@@ -565,7 +565,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
     authority: AccountInfo<'a>,
     authority_signer_seeds: &'b [&'b [u8]],
     token_program: AccountInfo<'a>,
-) -> ProgramResult {
+) -> Result<()> {
     let result = invoke_signed(
         &spl_token::instruction::mint_to(
             token_program.key,
@@ -578,7 +578,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| ErrorCode::TokenMintToFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenMintToFailed))
 }
 
 /// TokenBurnParams
@@ -597,7 +597,7 @@ pub struct TokenBurnParams<'a: 'b, 'b> {
     pub token_program: AccountInfo<'a>,
 }
 
-pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
     let TokenBurnParams {
         mint,
         source,
@@ -622,7 +622,7 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         &[source, mint, authority, token_program],
         seeds.as_slice(),
     );
-    result.map_err(|_| ErrorCode::TokenBurnFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenBurnFailed))
 }
 
 pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
@@ -639,7 +639,7 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
 pub fn assert_builder_must_be_holder_check(
     item_class_data: &ItemClassData,
     new_item_token_holder: &UncheckedAccount,
-) -> ProgramResult {
+) -> Result<()> {
     if let Some(b) = &item_class_data.settings.builder_must_be_holder {
         if b.boolean {
             require!(new_item_token_holder.is_signer, MustBeHolderToBuild)
@@ -649,7 +649,7 @@ pub fn assert_builder_must_be_holder_check(
     return Ok(());
 }
 
-pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> ProgramResult {
+pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Result<()> {
     let AssertPermissivenessAccessArgs {
         program_id,
         given_account,
@@ -673,7 +673,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 }
 
                 if !found {
-                    return Err(ErrorCode::PermissivenessNotFound.into());
+                    return Err(error!(ErrorCode::PermissivenessNotFound));
                 }
 
                 match perm_to_use {
@@ -694,7 +694,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                         let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
 
                         if acct.amount == 0 {
-                            return Err(ErrorCode::InsufficientBalance.into());
+                            return Err(error!(ErrorCode::InsufficientBalance));
                         }
 
                         assert_derivation(
@@ -723,7 +723,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                         )?;
 
                         if acct.amount == 0 {
-                            return Err(ErrorCode::InsufficientBalance.into());
+                            return Err(error!(ErrorCode::InsufficientBalance));
                         }
 
                         assert_derivation(
@@ -785,7 +785,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Pro
                 assert_keys_equal(update_authority, *metadata_update_authority.key)?;
             }
         }
-        None => return Err(ErrorCode::MustSpecifyPermissivenessType.into()),
+        None => return Err(error!(ErrorCode::MustSpecifyPermissivenessType)),
     }
 
     Ok(())
@@ -1011,7 +1011,7 @@ pub fn update_item_class_with_inherited_information(
 pub fn assert_valid_item_settings_for_edition_type(
     edition: Option<&AccountInfo>,
     item_data: &ItemClassData,
-) -> ProgramResult {
+) -> Result<()> {
     if edition.is_none() {
         if let Some(usages) = &item_data.config.usages {
             for usage in usages {
@@ -1023,7 +1023,7 @@ pub fn assert_valid_item_settings_for_edition_type(
                             || item_effects.staking_amount_divisor.is_some()
                             || item_effects.staking_duration_divisor.is_some()
                         {
-                            return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                            return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
                         }
                     }
                 }
@@ -1038,18 +1038,18 @@ pub fn assert_valid_item_settings_for_edition_type(
                         if let Some(max) = max_uses {
                             if max > &1 {
                                 // cant have a fungible mint with more than one use. Impossible to track state per token.
-                                return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                                return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
                             }
                         }
 
                         if cooldown_duration.is_some() {
-                            return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                            return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
                         }
 
                         if item_usage_type != &ItemUsageType::Destruction
                             && item_usage_type != &ItemUsageType::Infinite
                         {
-                            return Err(ErrorCode::InvalidConfigForFungibleMints.into());
+                            return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
                         }
                     }
                     _ => {}
@@ -1075,7 +1075,7 @@ pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramErro
         let key = Pubkey::new_from_array(*key_bytes);
         return Ok(key);
     } else {
-        return Err(ErrorCode::NoParentPresent.into());
+        return Err(error!(ErrorCode::NoParentPresent));
     }
 }
 
@@ -1100,15 +1100,15 @@ pub fn assert_is_ata(
     Ok(ata_account)
 }
 
-pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {
+pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> Result<()> {
     if key1 != key2 {
-        Err(ErrorCode::PublicKeyMismatch.into())
+        Err(error!(ErrorCode::PublicKeyMismatch))
     } else {
         Ok(())
     }
 }
 
-pub fn assert_signer(account: &AccountInfo) -> ProgramResult {
+pub fn assert_signer(account: &AccountInfo) -> Result<()> {
     if !account.is_signer {
         Err(ProgramError::MissingRequiredSignature)
     } else {
@@ -1120,7 +1120,7 @@ pub fn assert_metadata_valid<'a>(
     metadata: &AccountInfo,
     edition: Option<&AccountInfo>,
     mint: &Pubkey,
-) -> ProgramResult {
+) -> Result<()> {
     assert_derivation(
         &metaplex_token_metadata::id(),
         &metadata,
@@ -1131,7 +1131,7 @@ pub fn assert_metadata_valid<'a>(
         ],
     )?;
     if metadata.data_is_empty() {
-        return Err(ErrorCode::MetadataDoesntExist.into());
+        return Err(error!(ErrorCode::MetadataDoesntExist));
     }
 
     if let Some(ed) = edition {
@@ -1146,7 +1146,7 @@ pub fn assert_metadata_valid<'a>(
             ],
         )?;
         if ed.data_is_empty() {
-            return Err(ErrorCode::EditionDoesntExist.into());
+            return Err(error!(ErrorCode::EditionDoesntExist));
         }
     }
 
@@ -1156,20 +1156,20 @@ pub fn assert_metadata_valid<'a>(
 pub fn assert_mint_authority_matches_mint(
     mint_authority: &COption<Pubkey>,
     mint_authority_info: &AccountInfo,
-) -> ProgramResult {
+) -> Result<()> {
     match mint_authority {
         COption::None => {
-            return Err(ErrorCode::InvalidMintAuthority.into());
+            return Err(error!(ErrorCode::InvalidMintAuthority));
         }
         COption::Some(key) => {
             if mint_authority_info.key != key {
-                return Err(ErrorCode::InvalidMintAuthority.into());
+                return Err(error!(ErrorCode::InvalidMintAuthority));
             }
         }
     }
 
     if !mint_authority_info.is_signer {
-        return Err(ErrorCode::NotMintAuthority.into());
+        return Err(error!(ErrorCode::NotMintAuthority));
     }
 
     Ok(())
@@ -1207,7 +1207,7 @@ pub struct TransferMintAuthorityArgs<'b, 'info> {
 
 pub fn transfer_mint_authority<'b, 'info>(
     args: TransferMintAuthorityArgs<'b, 'info>,
-) -> ProgramResult {
+) -> Result<()> {
     let TransferMintAuthorityArgs {
         item_class_key,
         item_class_info,
@@ -1298,7 +1298,7 @@ pub struct VerifyCooldownArgs<'a, 'info> {
     pub unix_timestamp: u64,
 }
 
-pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> ProgramResult {
+pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Result<()> {
     let VerifyCooldownArgs {
         craft_usage_info,
         craft_item_class,
@@ -1334,7 +1334,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
                 InvalidProof
             );
         } else {
-            return Err(ErrorCode::MissingMerkleInfo.into());
+            return Err(error!(ErrorCode::MissingMerkleInfo));
         }
 
         let class_node = anchor_lang::solana_program::keccak::hashv(&[
@@ -1349,7 +1349,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
                 InvalidProof
             );
         } else {
-            return Err(ErrorCode::MissingMerkleInfo.into());
+            return Err(error!(ErrorCode::MissingMerkleInfo));
         }
 
         require!(
@@ -1373,7 +1373,7 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
                             .checked_add(cooldown)
                             .ok_or(ErrorCode::NumericalOverflowError)?;
                         if cooldown_over < unix_timestamp {
-                            return Err(ErrorCode::UnableToFindValidCooldownState.into());
+                            return Err(error!(ErrorCode::UnableToFindValidCooldownState));
                         }
                     }
                 }
@@ -1412,9 +1412,9 @@ pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Progra
             }
         }
 
-        return Err(ErrorCode::UnableToFindValidCooldownState.into());
+        return Err(error!(ErrorCode::UnableToFindValidCooldownState));
     } else {
-        return Err(ErrorCode::MissingMerkleInfo.into());
+        return Err(error!(ErrorCode::MissingMerkleInfo));
     };
 
     Ok(())
@@ -1465,10 +1465,10 @@ pub fn verify_component<'a, 'info>(
                 require!(verify(&p, &component_root.root, node.0), InvalidProof);
                 c
             } else {
-                return Err(ErrorCode::MissingMerkleInfo.into());
+                return Err(error!(ErrorCode::MissingMerkleInfo));
             }
         } else {
-            return Err(ErrorCode::MissingMerkleInfo.into());
+            return Err(error!(ErrorCode::MissingMerkleInfo));
         }
     } else if let Some(components) = &item_class_data.config.components {
         let mut counter: usize = 0;
@@ -1492,7 +1492,7 @@ pub fn verify_component<'a, 'info>(
 
         comp
     } else {
-        return Err(ErrorCode::MustUseMerkleOrComponentList.into());
+        return Err(error!(ErrorCode::MustUseMerkleOrComponentList));
     };
 
     require!(
@@ -1551,7 +1551,7 @@ pub fn create_program_token_account_if_not_present<'a>(
     owner: &AccountInfo<'a>,
     rent: &Sysvar<'a, Rent>,
     signer_seeds: &[&[u8]],
-) -> ProgramResult {
+) -> Result<()> {
     assert_owned_by(&mint.to_account_info(), &token_program.key())?;
 
     if program_account.data_is_empty() {
@@ -1593,7 +1593,7 @@ pub fn close_token_account<'a>(
     token_program: &Program<'a, Token>,
     owner: &AccountInfo<'a>,
     signer_seeds: &[&[u8]],
-) -> ProgramResult {
+) -> Result<()> {
     invoke_signed(
         &close_account(
             &token_program.key,
@@ -1619,7 +1619,7 @@ pub fn enact_valid_state_change(
     item_usage_state: &mut ItemUsageState,
     item_usage: &ItemUsage,
     unix_timestamp: u64,
-) -> ProgramResult {
+) -> Result<()> {
     item_usage_state.uses = item_usage_state
         .uses
         .checked_add(1)
@@ -1640,7 +1640,7 @@ pub fn enact_valid_state_change(
                         .checked_add(duration)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
                     if unix_timestamp < cooldown_ends {
-                        return Err(ErrorCode::CooldownNotOver.into());
+                        return Err(error!(ErrorCode::CooldownNotOver));
                     }
                 }
             }
@@ -1690,7 +1690,7 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
     item_activation_marker.unix_timestamp = unix_timestamp;
 
     match &item_usage.item_class_type {
-        ItemClassType::Wearable { .. } => return Err(ErrorCode::CannotUseWearable.into()),
+        ItemClassType::Wearable { .. } => return Err(error!(ErrorCode::CannotUseWearable)),
         ItemClassType::Consumable {
             warmup_duration, ..
         } => {
@@ -1766,11 +1766,11 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
             });
             usage_state
         } else {
-            return Err(ErrorCode::MissingMerkleInfo.into());
+            return Err(error!(ErrorCode::MissingMerkleInfo));
         }
     } else if let Some(usage_states) = &mut item.data.usage_states {
         if usage_states.len() == 0 {
-            return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+            return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
         } else {
             let mut usage_state: Option<&mut ItemUsageState> = None;
             for n in 0..usage_states.len() {
@@ -1785,11 +1785,11 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
             if usage_state.is_some() {
                 usage_state.unwrap()
             } else {
-                return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+                return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
             }
         }
     } else {
-        return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+        return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
     };
 
     Ok((item_usage.clone(), usage_state.clone()))
@@ -1825,14 +1825,14 @@ pub fn get_item_usage<'a, 'info>(
                 require!(verify(usage_proof, &usage_root.root, node.0), InvalidProof);
                 us.clone()
             } else {
-                return Err(ErrorCode::MissingMerkleInfo.into());
+                return Err(error!(ErrorCode::MissingMerkleInfo));
             }
         } else {
-            return Err(ErrorCode::MissingMerkleInfo.into());
+            return Err(error!(ErrorCode::MissingMerkleInfo));
         }
     } else if let Some(usages) = &item_class_data.config.usages {
         if usages.len() == 0 {
-            return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+            return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
         } else {
             let mut usage = &usages[0];
             for n in 0..usages.len() {
@@ -1844,7 +1844,7 @@ pub fn get_item_usage<'a, 'info>(
             usage.clone()
         }
     } else {
-        return Err(ErrorCode::CannotUseItemWithoutUsageOrMerkle.into());
+        return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
     };
 
     Ok(item_usage)

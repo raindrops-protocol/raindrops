@@ -2,7 +2,7 @@ use {
     crate::{ErrorCode, Filter, TokenValidation, ValidationArgs},
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, AccountMeta, Program, ProgramError, ProgramResult, Pubkey,
+            msg, Account, AccountInfo, AccountMeta, Program, ProgramError, Result<()>, Pubkey,
             Rent, SolanaSysvar, UncheckedAccount,
         },
         require,
@@ -44,9 +44,9 @@ pub fn assert_is_ata(
     Ok(ata_account)
 }
 
-pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {
+pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> Result<()> {
     if key1 != key2 {
-        Err(ErrorCode::PublicKeyMismatch.into())
+        Err(error!(ErrorCode::PublicKeyMismatch))
     } else {
         Ok(())
     }
@@ -58,7 +58,7 @@ pub fn close_token_account<'a>(
     token_program: &Program<'a, Token>,
     owner: &AccountInfo<'a>,
     signer_seeds: &[&[u8]],
-) -> ProgramResult {
+) -> Result<()> {
     invoke_signed(
         &close_account(
             &token_program.key,
@@ -85,15 +85,15 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(ErrorCode::Uninitialized.into())
+        Err(error!(ErrorCode::Uninitialized))
     } else {
         Ok(account)
     }
 }
 
-pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     if account.owner != owner {
-        Err(ErrorCode::IncorrectOwner.into())
+        Err(error!(ErrorCode::IncorrectOwner))
     } else {
         Ok(())
     }
@@ -115,7 +115,7 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
 }
 
 #[inline(always)]
-pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
     let TokenTransferParams {
         source,
         destination,
@@ -144,7 +144,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         },
     );
 
-    result.map_err(|_| ErrorCode::TokenTransferFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
 }
 
 pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError> {
@@ -166,7 +166,7 @@ pub fn assert_derivation(
 ) -> Result<u8, ProgramError> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(bump)
 }
@@ -228,7 +228,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
     authority: AccountInfo<'a>,
     authority_signer_seeds: &'b [&'b [u8]],
     token_program: AccountInfo<'a>,
-) -> ProgramResult {
+) -> Result<()> {
     let result = invoke_signed(
         &spl_token::instruction::mint_to(
             token_program.key,
@@ -241,7 +241,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| ErrorCode::TokenMintToFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenMintToFailed))
 }
 
 /// TokenBurnParams
@@ -260,7 +260,7 @@ pub struct TokenBurnParams<'a: 'b, 'b> {
     pub token_program: AccountInfo<'a>,
 }
 
-pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
     let TokenBurnParams {
         mint,
         source,
@@ -285,7 +285,7 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         &[source, mint, authority, token_program],
         seeds.as_slice(),
     );
-    result.map_err(|_| ErrorCode::TokenBurnFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenBurnFailed))
 }
 
 /// Returns true if a `leaf` can be proved to be a part of a Merkle tree
@@ -355,7 +355,7 @@ pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramErro
         let key = Pubkey::new_from_array(*key_bytes);
         return Ok(key);
     } else {
-        return Err(ErrorCode::NoParentPresent.into());
+        return Err(error!(ErrorCode::NoParentPresent));
     }
 }
 
@@ -367,11 +367,11 @@ pub fn is_valid_validation<'info>(
 ) -> Result<bool, ProgramError> {
     match val.filter {
         Filter::None => {
-            return Err(ErrorCode::NoTokensAllowed.into());
+            return Err(error!(ErrorCode::NoTokensAllowed));
         }
         Filter::All => {
             if val.is_blacklist {
-                return Err(ErrorCode::Blacklisted.into());
+                return Err(error!(ErrorCode::Blacklisted));
             } else {
                 return Ok(true);
             }
@@ -395,7 +395,7 @@ pub fn is_valid_validation<'info>(
     }
 
     if val.is_blacklist {
-        return Err(ErrorCode::Blacklisted.into());
+        return Err(error!(ErrorCode::Blacklisted));
     }
 
     if let Some(validation) = &val.validation {

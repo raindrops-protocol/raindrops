@@ -56,7 +56,7 @@ pub mod namespace {
     pub fn initialize_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, InitializeNamespace<'info>>,
         args: InitializeNamespaceArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let InitializeNamespaceArgs {
             bump,
             desired_namespace_array_size,
@@ -67,15 +67,15 @@ pub mod namespace {
         } = args;
 
         if uuid.len() > 6 {
-            return Err(ErrorCode::UUIDTooLong.into());
+            return Err(error!(ErrorCode::UUIDTooLong));
         }
 
         if pretty_name.len() > 32 {
-            return Err(ErrorCode::PrettyNameTooLong.into());
+            return Err(error!(ErrorCode::PrettyNameTooLong));
         }
 
         if whitelisted_staking_mints.len() > MAX_WHITELIST {
-            return Err(ErrorCode::WhitelistStakeListTooLong.into());
+            return Err(error!(ErrorCode::WhitelistStakeListTooLong));
         }
 
         for n in 0..whitelisted_staking_mints.len() {
@@ -125,7 +125,7 @@ pub mod namespace {
     pub fn update_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, UpdateNamespace<'info>>,
         args: UpdateNamespaceArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let UpdateNamespaceArgs {
             pretty_name,
             permissiveness_settings,
@@ -136,7 +136,7 @@ pub mod namespace {
 
         if let Some(ws_mints) = whitelisted_staking_mints {
             if ws_mints.len() > MAX_WHITELIST {
-                return Err(ErrorCode::WhitelistStakeListTooLong.into());
+                return Err(error!(ErrorCode::WhitelistStakeListTooLong));
             }
             for n in 0..ws_mints.len() {
                 let mint_account = &ctx.remaining_accounts[n];
@@ -147,7 +147,7 @@ pub mod namespace {
         }
         if let Some(pn) = pretty_name {
             if pn.len() > 32 {
-                return Err(ErrorCode::PrettyNameTooLong.into());
+                return Err(error!(ErrorCode::PrettyNameTooLong));
             }
             namespace.pretty_name = pn.to_string();
         }
@@ -162,7 +162,7 @@ pub mod namespace {
     pub fn cache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, CacheArtifact<'info>>,
         args: CacheArtifactArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let CacheArtifactArgs {
             index_bump, page, ..
         } = args;
@@ -181,14 +181,16 @@ pub mod namespace {
             && artifact.owner != &Pubkey::from_str(ITEM_ID).unwrap()
             && artifact.owner != &id()
         {
-            return Err(ErrorCode::CanOnlyCacheValidRaindropsObjects.into());
+            return Err(error!(ErrorCode::CanOnlyCacheValidRaindropsObjects));
         }
 
         if index_info.data_is_empty() {
             if prior_index_info.data_is_empty() {
-                return Err(ErrorCode::PreviousIndexNeedsToExistBeforeCreatingThisOne.into());
+                return Err(error!(
+                    ErrorCode::PreviousIndexNeedsToExistBeforeCreatingThisOne
+                ));
             } else if prior_index.caches.len() < MAX_CACHED_ITEMS {
-                return Err(ErrorCode::PreviousIndexNotFull.into());
+                return Err(error!(ErrorCode::PreviousIndexNotFull));
             }
             let namespace_key = namespace.key();
             let page_str = page.to_string();
@@ -208,7 +210,7 @@ pub mod namespace {
                 &signer_seeds,
             )?;
         } else if index.caches.len() >= MAX_CACHED_ITEMS {
-            return Err(ErrorCode::IndexFull.into());
+            return Err(error!(ErrorCode::IndexFull));
         }
 
         namespace.artifacts_cached = namespace
@@ -224,7 +226,7 @@ pub mod namespace {
 
         let old_val = inverse_indexed_bool_for_namespace(artifact, namespace.key())?;
         if old_val == 1 {
-            return Err(ErrorCode::AlreadyCached.into());
+            return Err(error!(ErrorCode::AlreadyCached));
         }
         Ok(())
     }
@@ -232,7 +234,7 @@ pub mod namespace {
     pub fn uncache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, UncacheArtifact<'info>>,
         args: UncacheArtifactArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let UncacheArtifactArgs { page, .. } = args;
         let namespace = &mut ctx.accounts.namespace;
         let index = &mut ctx.accounts.index;
@@ -278,7 +280,7 @@ pub mod namespace {
     pub fn create_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, CreateNamespaceGatekeeper<'info>>,
         bump: u8,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
         namespace_gatekeeper.bump = bump;
         Ok(())
@@ -287,7 +289,7 @@ pub mod namespace {
     pub fn add_to_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, AddToNamespaceGatekeeper<'info>>,
         artifact_filter: ArtifactFilter,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
         namespace_gatekeeper.artifact_filters.push(artifact_filter);
         Ok(())
@@ -296,7 +298,7 @@ pub mod namespace {
     pub fn remove_from_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, RemoveFromNamespaceGatekeeper<'info>>,
         idx: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
 
         let mut new_arr = vec![];
@@ -312,7 +314,7 @@ pub mod namespace {
     pub fn leave_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
         _namespace_gatekeeper_bump: u8,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let artifact = &mut ctx.accounts.artifact;
         let namespace = &mut ctx.accounts.namespace;
 
@@ -322,7 +324,7 @@ pub mod namespace {
             for n in &art_names {
                 if n.namespace == namespace.key() {
                     if n.indexed {
-                        return Err(ErrorCode::ArtifactStillCached.into());
+                        return Err(error!(ErrorCode::ArtifactStillCached));
                     } else {
                         let mut new_vec = vec![];
                         for j in &art_names {
@@ -356,13 +358,13 @@ pub mod namespace {
             }
         }
 
-        return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
+        return Err(error!(ErrorCode::ArtifactNotPartOfNamespace));
     }
 
     pub fn join_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
         _namespace_gatekeeper_bump: u8,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
         let artifact = &mut ctx.accounts.artifact;
         let token_holder = &ctx.accounts.token_holder;
@@ -405,12 +407,12 @@ pub mod namespace {
                 }
                 if !most_recent_zero {
                     msg!("Out of space!");
-                    return Err(ErrorCode::CannotJoinNamespace.into());
+                    return Err(error!(ErrorCode::CannotJoinNamespace));
                 }
             }
         } else {
             msg!("Out of space! You did not allocate any space for namespaces.");
-            return Err(ErrorCode::CannotJoinNamespace.into());
+            return Err(error!(ErrorCode::CannotJoinNamespace));
         }
         Ok(())
     }
@@ -418,7 +420,7 @@ pub mod namespace {
     pub fn item_validation<'info>(
         ctx: Context<'_, '_, '_, 'info, ItemValidation<'info>>,
         args: ValidationArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         // Dummy
         Ok(())
     }
@@ -426,7 +428,7 @@ pub mod namespace {
     pub fn match_validation<'info>(
         ctx: Context<'_, '_, '_, 'info, MatchValidation<'info>>,
         args: MatchValidationArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         // Dummy
         Ok(())
     }
@@ -748,7 +750,7 @@ pub struct UncacheArtifact<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Account does not have correct owner!")]
     IncorrectOwner,

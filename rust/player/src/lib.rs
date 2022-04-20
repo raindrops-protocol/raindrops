@@ -185,7 +185,7 @@ pub enum BasicStatType {
     },
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Account does not have correct owner!")]
     IncorrectOwner,

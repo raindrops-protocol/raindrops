@@ -5,7 +5,7 @@ use {
     },
     anchor_lang::{
         prelude::{
-            msg, Account, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar,
+            msg, Account, AccountInfo, ProgramError, Result<()>, Pubkey, Rent, SolanaSysvar,
             UncheckedAccount,
         },
         solana_program::{
@@ -25,15 +25,15 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(ErrorCode::Uninitialized.into())
+        Err(error!(ErrorCode::Uninitialized))
     } else {
         Ok(account)
     }
 }
 
-pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     if account.owner != owner {
-        Err(ErrorCode::IncorrectOwner.into())
+        Err(error!(ErrorCode::IncorrectOwner))
     } else {
         Ok(())
     }
@@ -55,7 +55,7 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
 }
 
 #[inline(always)]
-pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
     let TokenTransferParams {
         source,
         destination,
@@ -84,7 +84,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         },
     );
 
-    result.map_err(|_| ErrorCode::TokenTransferFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
 }
 
 pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError> {
@@ -106,7 +106,7 @@ pub fn assert_derivation(
 ) -> Result<u8, ProgramError> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(bump)
 }
@@ -168,7 +168,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
     authority: AccountInfo<'a>,
     authority_signer_seeds: &'b [&'b [u8]],
     token_program: AccountInfo<'a>,
-) -> ProgramResult {
+) -> Result<()> {
     let result = invoke_signed(
         &spl_token::instruction::mint_to(
             token_program.key,
@@ -181,7 +181,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| ErrorCode::TokenMintToFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenMintToFailed))
 }
 
 /// TokenBurnParams
@@ -200,7 +200,7 @@ pub struct TokenBurnParams<'a: 'b, 'b> {
     pub token_program: AccountInfo<'a>,
 }
 
-pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
     let TokenBurnParams {
         mint,
         source,
@@ -225,10 +225,10 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         &[source, mint, authority, token_program],
         seeds.as_slice(),
     );
-    result.map_err(|_| ErrorCode::TokenBurnFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenBurnFailed))
 }
 
-pub fn assert_signer(account: &UncheckedAccount) -> ProgramResult {
+pub fn assert_signer(account: &UncheckedAccount) -> Result<()> {
     if !account.is_signer {
         Err(ProgramError::MissingRequiredSignature)
     } else {
@@ -239,7 +239,7 @@ pub fn assert_signer(account: &UncheckedAccount) -> ProgramResult {
 pub fn assert_part_of_namespace<'a>(
     artifact: &AccountInfo<'a>,
     namespace: &Account<'a, Namespace>,
-) -> ProgramResult {
+) -> Result<()> {
     let data = artifact.data.borrow_mut();
     let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
     let offset = 12 as usize;
@@ -251,7 +251,7 @@ pub fn assert_part_of_namespace<'a>(
         }
     }
 
-    return Err(ErrorCode::ArtifactLacksNamespace.into());
+    return Err(error!(ErrorCode::ArtifactLacksNamespace));
 }
 
 pub fn inverse_indexed_bool_for_namespace(
@@ -271,7 +271,7 @@ pub fn inverse_indexed_bool_for_namespace(
         }
         start += 33;
     }
-    return Err(ErrorCode::ArtifactNotPartOfNamespace.into());
+    return Err(error!(ErrorCode::ArtifactNotPartOfNamespace));
 }
 
 pub fn pull_namespaces(
@@ -308,7 +308,7 @@ pub fn check_permissiveness_against_holder<'a>(
         Permissiveness::All => Ok(art_namespaces),
         Permissiveness::Whitelist => {
             if namespace_gatekeeper.data_is_empty() {
-                return Err(ErrorCode::CannotJoinNamespace.into());
+                return Err(error!(ErrorCode::CannotJoinNamespace));
             } else {
                 let deserialized: Account<'_, NamespaceGatekeeper> =
                     Account::try_from(&namespace_gatekeeper.to_account_info())?;
@@ -325,7 +325,7 @@ pub fn check_permissiveness_against_holder<'a>(
                                     }
                                 }
                             }
-                            return Err(ErrorCode::CannotJoinNamespace.into());
+                            return Err(error!(ErrorCode::CannotJoinNamespace));
                         }
                         Filter::Category { namespace, .. } => {
                             if let Some(ns) = &art_namespaces {
@@ -336,7 +336,7 @@ pub fn check_permissiveness_against_holder<'a>(
                                     }
                                 }
                             }
-                            return Err(ErrorCode::CannotJoinNamespace.into());
+                            return Err(error!(ErrorCode::CannotJoinNamespace));
                         }
                         Filter::Key { mint, .. } => {
                             let as_token: spl_token::state::Account =
@@ -346,16 +346,16 @@ pub fn check_permissiveness_against_holder<'a>(
                                 msg!("Whitelisted!");
                                 return Ok(art_namespaces);
                             }
-                            return Err(ErrorCode::CannotJoinNamespace.into());
+                            return Err(error!(ErrorCode::CannotJoinNamespace));
                         }
                     }
                 }
-                return Err(ErrorCode::CannotJoinNamespace.into());
+                return Err(error!(ErrorCode::CannotJoinNamespace));
             }
         }
         Permissiveness::Blacklist => {
             if namespace_gatekeeper.data_is_empty() {
-                return Err(ErrorCode::CannotJoinNamespace.into());
+                return Err(error!(ErrorCode::CannotJoinNamespace));
             } else {
                 let deserialized: Account<'_, NamespaceGatekeeper> =
                     Account::try_from(&namespace_gatekeeper.to_account_info())?;
@@ -367,7 +367,7 @@ pub fn check_permissiveness_against_holder<'a>(
                                     for other_n in ns {
                                         if other_n.namespace == *n {
                                             msg!("Blacklisted!");
-                                            return Err(ErrorCode::CannotJoinNamespace.into());
+                                            return Err(error!(ErrorCode::CannotJoinNamespace));
                                         }
                                     }
                                 }
@@ -379,7 +379,7 @@ pub fn check_permissiveness_against_holder<'a>(
                                 for n in ns {
                                     if n.namespace == *namespace {
                                         msg!("Blacklisted!");
-                                        return Err(ErrorCode::CannotJoinNamespace.into());
+                                        return Err(error!(ErrorCode::CannotJoinNamespace));
                                     }
                                 }
                             }
@@ -391,13 +391,13 @@ pub fn check_permissiveness_against_holder<'a>(
 
                             if as_token.mint == *mint {
                                 msg!("Blacklisted!");
-                                return Err(ErrorCode::CannotJoinNamespace.into());
+                                return Err(error!(ErrorCode::CannotJoinNamespace));
                             }
                             return Ok(art_namespaces);
                         }
                     }
                 }
-                return Err(ErrorCode::CannotJoinNamespace.into());
+                return Err(error!(ErrorCode::CannotJoinNamespace));
             }
         }
         Permissiveness::Namespace => {
@@ -442,7 +442,7 @@ pub fn assert_can_add_to_namespace<'a>(
             &namespace.permissiveness_settings.namespace_permissiveness,
         )?
     } else {
-        return Err(ErrorCode::CannotJoinNamespace.into());
+        return Err(error!(ErrorCode::CannotJoinNamespace));
     };
     return Ok(art_namespaces);
 }
@@ -450,7 +450,7 @@ pub fn assert_metadata_valid<'a>(
     metadata: &UncheckedAccount,
     edition: Option<&UncheckedAccount>,
     mint: &Pubkey,
-) -> ProgramResult {
+) -> Result<()> {
     assert_derivation(
         &metaplex_token_metadata::id(),
         &metadata.to_account_info(),
@@ -461,7 +461,7 @@ pub fn assert_metadata_valid<'a>(
         ],
     )?;
     if metadata.data_is_empty() {
-        return Err(ErrorCode::MetadataDoesntExist.into());
+        return Err(error!(ErrorCode::MetadataDoesntExist));
     }
 
     if let Some(ed) = edition {
@@ -476,7 +476,7 @@ pub fn assert_metadata_valid<'a>(
             ],
         )?;
         if ed.data_is_empty() {
-            return Err(ErrorCode::EditionDoesntExist.into());
+            return Err(error!(ErrorCode::EditionDoesntExist));
         }
     }
 

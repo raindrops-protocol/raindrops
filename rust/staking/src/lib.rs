@@ -72,7 +72,7 @@ pub mod staking {
     pub fn begin_artifact_stake_warmup<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, BeginArtifactStakeWarmup<'info>>,
         args: BeginArtifactStakeWarmupArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let namespace = &ctx.accounts.namespace;
         let artifact_unchecked = &mut ctx.accounts.artifact;
         let artifact_class_unchecked = &ctx.accounts.artifact_class;
@@ -135,13 +135,13 @@ pub mod staking {
             }
         }
 
-        return Err(ErrorCode::StakingMintNotWhitelisted.into());
+        return Err(error!(ErrorCode::StakingMintNotWhitelisted));
     }
 
     pub fn end_artifact_stake_warmup<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, EndArtifactStakeWarmup<'info>>,
         args: EndArtifactStakeWarmupArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let artifact_unchecked = &mut ctx.accounts.artifact;
         let artifact_class_unchecked = &ctx.accounts.artifact_class;
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
@@ -235,7 +235,7 @@ pub mod staking {
     pub fn begin_artifact_stake_cooldown<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, BeginArtifactStakeCooldown<'info>>,
         args: BeginArtifactStakeCooldownArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let artifact_unchecked = &mut ctx.accounts.artifact;
         let artifact_class_unchecked = &ctx.accounts.artifact_class;
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
@@ -314,7 +314,7 @@ pub mod staking {
     pub fn end_artifact_stake_cooldown<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, EndArtifactStakeCooldown<'info>>,
         args: EndArtifactStakeCooldownArgs,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let artifact_unchecked = &mut ctx.accounts.artifact;
         let artifact_class_unchecked = &ctx.accounts.artifact_class;
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
@@ -606,7 +606,7 @@ pub struct Artifact {
     tokens_staked: u64,
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Account does not have correct owner!")]
     IncorrectOwner,

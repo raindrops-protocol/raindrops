@@ -1,7 +1,7 @@
 use {
     crate::ErrorCode,
     anchor_lang::{
-        prelude::{msg, AccountInfo, ProgramError, ProgramResult, Pubkey, Rent, SolanaSysvar},
+        prelude::{msg, AccountInfo, ProgramError, Result<()>, Pubkey, Rent, SolanaSysvar},
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
@@ -16,15 +16,15 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(ErrorCode::Uninitialized.into())
+        Err(error!(ErrorCode::Uninitialized))
     } else {
         Ok(account)
     }
 }
 
-pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     if account.owner != owner {
-        Err(ErrorCode::IncorrectOwner.into())
+        Err(error!(ErrorCode::IncorrectOwner))
     } else {
         Ok(())
     }
@@ -46,7 +46,7 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
 }
 
 #[inline(always)]
-pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
     let TokenTransferParams {
         source,
         destination,
@@ -75,7 +75,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         },
     );
 
-    result.map_err(|_| ErrorCode::TokenTransferFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
 }
 
 pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError> {
@@ -97,7 +97,7 @@ pub fn assert_derivation(
 ) -> Result<u8, ProgramError> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
-        return Err(ErrorCode::DerivedKeyInvalid.into());
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
     Ok(bump)
 }
@@ -159,7 +159,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
     authority: AccountInfo<'a>,
     authority_signer_seeds: &'b [&'b [u8]],
     token_program: AccountInfo<'a>,
-) -> ProgramResult {
+) -> Result<()> {
     let result = invoke_signed(
         &spl_token::instruction::mint_to(
             token_program.key,
@@ -172,7 +172,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_err(|_| ErrorCode::TokenMintToFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenMintToFailed))
 }
 
 /// TokenBurnParams
@@ -191,7 +191,7 @@ pub struct TokenBurnParams<'a: 'b, 'b> {
     pub token_program: AccountInfo<'a>,
 }
 
-pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
+pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
     let TokenBurnParams {
         mint,
         source,
@@ -216,5 +216,5 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         &[source, mint, authority, token_program],
         seeds.as_slice(),
     );
-    result.map_err(|_| ErrorCode::TokenBurnFailed.into())
+    result.map_Err(error!(|_| ErrorCode::TokenBurnFailed))
 }
