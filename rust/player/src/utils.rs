@@ -1,7 +1,8 @@
 use {
     crate::ErrorCode,
     anchor_lang::{
-        prelude::{msg, AccountInfo, ProgramError, Result<()>, Pubkey, Rent, SolanaSysvar},
+        error,
+        prelude::{msg, AccountInfo, Pubkey, Rent, Result, SolanaSysvar},
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
@@ -11,9 +12,7 @@ use {
     std::convert::TryInto,
 };
 
-pub fn assert_initialized<T: Pack + IsInitialized>(
-    account_info: &AccountInfo,
-) -> Result<T, ProgramError> {
+pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
         Err(error!(ErrorCode::Uninitialized))
@@ -75,10 +74,10 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
         },
     );
 
-    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
+    result.map_err(|_| error!(ErrorCode::TokenTransferFailed))
 }
 
-pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError> {
+pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize)> {
     let my_position_in_index = seq
         .checked_div(8)
         .ok_or(ErrorCode::NumericalOverflowError)?;
@@ -90,11 +89,7 @@ pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError>
     Ok((mask, my_position_in_index as usize))
 }
 
-pub fn assert_derivation(
-    program_id: &Pubkey,
-    account: &AccountInfo,
-    path: &[&[u8]],
-) -> Result<u8, ProgramError> {
+pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
@@ -113,7 +108,7 @@ pub fn create_or_allocate_account_raw<'a>(
     payer_info: &AccountInfo<'a>,
     size: usize,
     signer_seeds: &[&[u8]],
-) -> Result<(), ProgramError> {
+) -> Result<()> {
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
     let required_lamports = rent
         .minimum_balance(size)
@@ -172,7 +167,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_Err(error!(|_| ErrorCode::TokenMintToFailed))
+    result.map_err(|_| error!(ErrorCode::TokenMintToFailed))
 }
 
 /// TokenBurnParams
@@ -216,5 +211,5 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
         &[source, mint, authority, token_program],
         seeds.as_slice(),
     );
-    result.map_Err(error!(|_| ErrorCode::TokenBurnFailed))
+    result.map_err(|_| error!(ErrorCode::TokenBurnFailed))
 }

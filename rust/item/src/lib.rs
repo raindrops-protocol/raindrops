@@ -2,10 +2,9 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_builder_must_be_holder_check, assert_initialized, assert_is_ata, assert_keys_equal,
+        assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal,
         assert_metadata_valid, assert_mint_authority_matches_mint, assert_permissiveness_access,
-        assert_valid_item_settings_for_edition_type, close_token_account,
-        create_or_allocate_account_raw, get_item_usage,
+        assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
         propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
         spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
         verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
@@ -16,7 +15,7 @@ use {
     anchor_lang::{
         prelude::*,
         solana_program::{instruction::Instruction, program::invoke, program_option::COption},
-        AnchorDeserialize, AnchorSerialize,
+        AnchorDeserialize, AnchorSerialize, Discriminator,
     },
     anchor_spl::token::{Mint, Token, TokenAccount},
     arrayref::array_ref,
@@ -729,7 +728,7 @@ pub mod item {
         } = args;
 
         let acct = craft_item_counter.to_account_info();
-        let data: &[u8] = &craft_item_counter.try_borrow_data()?;
+        let data: &[u8] = &acct.data.try_borrow().unwrap();
         let disc_bytes = array_ref![data, 0, 8];
         if disc_bytes != &CraftItemCounter::discriminator() && disc_bytes.iter().any(|a| a != &0) {
             return Err(error!(ErrorCode::ReinitializationDetected));
@@ -1113,7 +1112,7 @@ pub mod item {
         } = args;
 
         let acct = new_item.to_account_info();
-        let data: &[u8] = &new_item.try_borrow_data()?;
+        let data: &[u8] = &acct.data.try_borrow().unwrap();
         let disc_bytes = array_ref![data, 0, 8];
         if disc_bytes != &Item::discriminator() && disc_bytes.iter().any(|a| a != &0) {
             return Err(error!(ErrorCode::ReinitializationDetected));
@@ -1791,14 +1790,14 @@ pub struct RemoveCraftItemFromEscrow<'info> {
     item_class: Box<Account<'info, ItemClass>>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(),  &args.class_index.to_le_bytes(), args.originator.as_ref(), args.new_item_mint.as_ref(), new_item_token.key().as_ref(),&args.craft_escrow_index.to_le_bytes(), &args.amount_to_make.to_le_bytes(), &args.component_scope.as_bytes()], bump=item_escrow.bump)]
     item_escrow: Box<Account<'info, ItemEscrow>>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.new_item_mint.as_ref(),&args.craft_escrow_index.to_le_bytes(), &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(),&args.component_scope.as_bytes()], bump=args.craft_item_counter_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.new_item_mint.as_ref(),&args.craft_escrow_index.to_le_bytes(), &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(),&args.component_scope.as_bytes()], bump)]
     craft_item_counter: UncheckedAccount<'info>,
     #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), receiver.key().as_ref(), args.new_item_mint.as_ref(), craft_item_token_account.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(), &args.amount_to_make.to_le_bytes(),  &args.amount_contributed_from_this_contributor.to_le_bytes(), &args.component_scope.as_bytes()], bump=args.token_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), receiver.key().as_ref(), args.new_item_mint.as_ref(), craft_item_token_account.key().as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(), &args.amount_to_make.to_le_bytes(),  &args.amount_contributed_from_this_contributor.to_le_bytes(), &args.component_scope.as_bytes()], bump)]
     craft_item_token_account_escrow: UncheckedAccount<'info>,
     #[account(mut)]
     craft_item_token_account: Box<Account<'info, TokenAccount>>,

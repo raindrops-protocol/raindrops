@@ -1,14 +1,11 @@
-use anchor_lang::prelude::msg;
-
 use {
     crate::{
         borsh::BorshDeserialize, Artifact, ArtifactClass, ErrorCode, Permissiveness,
         PermissivenessType, PREFIX,
     },
     anchor_lang::{
-        prelude::{
-            Account, AccountInfo, Program, ProgramError, Result<()>, Pubkey, UncheckedAccount,
-        },
+        error,
+        prelude::{Account, AccountInfo, Program, ProgramError, Pubkey, Result, UncheckedAccount},
         require,
         solana_program::{
             hash,
@@ -24,9 +21,7 @@ use {
     std::convert::TryFrom,
 };
 
-pub fn assert_initialized<T: Pack + IsInitialized>(
-    account_info: &AccountInfo,
-) -> Result<T, ProgramError> {
+pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
         Err(error!(ErrorCode::Uninitialized))
@@ -88,14 +83,10 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
         },
     );
 
-    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
+    result.map_err(|_| error!(ErrorCode::TokenTransferFailed))
 }
 
-pub fn assert_derivation(
-    program_id: &Pubkey,
-    account: &AccountInfo,
-    path: &[&[u8]],
-) -> Result<u8, ProgramError> {
+pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
@@ -108,7 +99,7 @@ pub fn assert_derivation_with_bump(
     account: &AccountInfo,
     path: &[&[u8]],
 ) -> Result<()> {
-    let key = Pubkey::create_program_address(&path, program_id)?;
+    let key = Pubkey::create_program_address(&path, program_id).unwrap();
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
@@ -260,7 +251,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
     Ok(())
 }
 
-pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey> {
     let data = artifact.data.borrow();
 
     let number = if data[8] == 1 {
@@ -279,7 +270,7 @@ pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramErro
     }
 }
 
-pub fn grab_update_authority<'a>(metadata: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+pub fn grab_update_authority<'a>(metadata: &AccountInfo<'a>) -> Result<Pubkey> {
     let data = metadata.data.borrow();
     let key_bytes = array_ref![data, 1, 32];
     let key = Pubkey::new_from_array(*key_bytes);
@@ -290,7 +281,7 @@ pub fn assert_is_ata(
     ata: &AccountInfo,
     wallet: &Pubkey,
     mint: &Pubkey,
-) -> Result<spl_token::state::Account, ProgramError> {
+) -> Result<spl_token::state::Account> {
     assert_owned_by(ata, &spl_token::id())?;
     let ata_account: spl_token::state::Account = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet)?;
@@ -308,7 +299,7 @@ pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> Result<()> {
 
 pub fn assert_signer(account: &AccountInfo) -> Result<()> {
     if !account.is_signer {
-        Err(ProgramError::MissingRequiredSignature)
+        Err(ProgramError::MissingRequiredSignature.into())
     } else {
         Ok(())
     }
@@ -354,7 +345,7 @@ pub fn assert_metadata_valid<'a>(
 pub fn assert_part_of_namespace<'a, 'b>(
     artifact: &'b AccountInfo<'a>,
     namespace: &'b AccountInfo<'a>,
-) -> Result<Account<'a, raindrops_namespace::Namespace>, ProgramError> {
+) -> Result<Account<'a, raindrops_namespace::Namespace>> {
     assert_owned_by(namespace, &raindrops_namespace::id())?;
 
     let deserialized: Account<raindrops_namespace::Namespace> = Account::try_from(namespace)?;
@@ -405,7 +396,7 @@ pub fn assert_is_proper_class<'info>(
     artifact_class: &UncheckedAccount<'info>,
     mint: &Pubkey,
     index: u64,
-) -> Result<ArtifactClass, ProgramError> {
+) -> Result<ArtifactClass> {
     require!(
         artifact_class.owner == &raindrops_player::id()
             || artifact_class.owner == &raindrops_item::id(),
@@ -464,7 +455,7 @@ pub fn assert_is_proper_instance<'info>(
     artifact_class: &Pubkey,
     mint: &Pubkey,
     index: u64,
-) -> Result<Artifact, ProgramError> {
+) -> Result<Artifact> {
     require!(
         artifact.owner == &raindrops_player::id() || artifact.owner == &raindrops_item::id(),
         InvalidProgramOwner

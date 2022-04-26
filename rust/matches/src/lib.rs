@@ -108,10 +108,12 @@ pub mod matches {
             ..
         } = args;
 
-        let acct = new_item.to_account_info();
-        let data: &[u8] = &new_item.try_borrow_data()?;
+        let oracle = &ctx.accounts.oracle;
+
+        let acct = oracle.to_account_info();
+        let data: &[u8] = &acct.data.try_borrow().unwrap();
         let disc_bytes = array_ref![data, 0, 8];
-        if disc_bytes != &Item::discriminator() && disc_bytes.iter().any(|a| a != &0) {
+        if disc_bytes != &WinOracle::discriminator() && disc_bytes.iter().any(|a| a != &0) {
             return Err(error!(ErrorCode::ReinitializationDetected));
         }
 
@@ -666,9 +668,9 @@ pub struct DrainMatch<'info> {
 #[derive(Accounts)]
 #[instruction(args: DrainOracleArgs)]
 pub struct DrainOracle<'info> {
-    #[account(seeds=[PREFIX.as_bytes(), oracle.key().as_ref()], bump=args.match_bump)]
+    #[account(seeds=[PREFIX.as_bytes(), oracle.key().as_ref()], bump)]
     match_instance: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), authority.key().as_ref(), args.seed.as_ref()], bump = args.oracle_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), authority.key().as_ref(), args.seed.as_ref()], bump)]
     oracle: Account<'info, WinOracle>,
     authority: Signer<'info>,
     #[account(mut)]
@@ -702,7 +704,7 @@ pub struct JoinMatch<'info> {
 pub struct DisburseTokensByOracle<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), original_sender.key().as_ref()], bump=args.escrow_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), original_sender.key().as_ref()], bump)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     token_mint: Account<'info, Mint>,
@@ -722,7 +724,7 @@ pub struct DisburseTokensByOracle<'info> {
 pub struct DisbursePlayerTokensByOracle<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), player_token_mint.key().as_ref(), original_sender.key().as_ref()], bump=args.escrow_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), player_token_mint.key().as_ref(), original_sender.key().as_ref()], bump)]
     player_token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     player_token_mint: Account<'info, Mint>,
@@ -746,7 +748,7 @@ pub struct LeaveMatch<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
     receiver: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), receiver.key().as_ref()], bump=args.escrow_bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), receiver.key().as_ref()], bump)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     token_mint: Account<'info, Mint>,

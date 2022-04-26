@@ -9,7 +9,7 @@ use {
         error,
         prelude::{
             msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
-            Pubkey, Rent, Result, SolanaSysvar, Sysvar, UncheckedAccount,
+            Pubkey, Rent, Result, SolanaSysvar, System, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{
@@ -19,7 +19,7 @@ use {
             program_pack::{IsInitialized, Pack},
             system_instruction,
         },
-        system_program, Key, ToAccountInfo,
+        Key, ToAccountInfo,
     },
     anchor_spl::token::{Mint, Token},
     arrayref::array_ref,
@@ -30,10 +30,7 @@ use {
 };
 
 impl ItemClass {
-    pub fn item_class_data(
-        &self,
-        data: &RefCell<&mut [u8]>,
-    ) -> Result<ItemClassData, ProgramError> {
+    pub fn item_class_data(&self, data: &RefCell<&mut [u8]>) -> Result<ItemClassData> {
         let (ctr, end_ctr) = get_class_write_offsets(self, data);
 
         //  msg!("Ctr {}->{} {:?}", ctr, end_ctr, &data.borrow());
@@ -44,9 +41,7 @@ impl ItemClass {
     }
 }
 
-pub fn assert_initialized<T: Pack + IsInitialized>(
-    account_info: &AccountInfo,
-) -> Result<T, ProgramError> {
+pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
         Err(error!(ErrorCode::Uninitialized))
@@ -458,10 +453,10 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
         },
     );
 
-    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
+    result.map_err(|_| error!(ErrorCode::TokenTransferFailed))
 }
 
-pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError> {
+pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize)> {
     let my_position_in_index = seq
         .checked_div(8)
         .ok_or(ErrorCode::NumericalOverflowError)?;
@@ -473,11 +468,7 @@ pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError>
     Ok((mask, my_position_in_index as usize))
 }
 
-pub fn assert_derivation(
-    program_id: &Pubkey,
-    account: &AccountInfo,
-    path: &[&[u8]],
-) -> Result<u8, ProgramError> {
+pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
@@ -489,7 +480,7 @@ pub fn assert_derivation_by_key(
     program_id: &Pubkey,
     account: &Pubkey,
     path: &[&[u8]],
-) -> Result<u8, ProgramError> {
+) -> Result<u8> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
@@ -502,7 +493,7 @@ pub fn assert_derivation_with_bump(
     account: &AccountInfo,
     path: &[&[u8]],
 ) -> Result<()> {
-    let key = Pubkey::create_program_address(&path, program_id)?;
+    let key = Pubkey::create_program_address(&path, program_id).unwrap();
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
@@ -520,7 +511,7 @@ pub fn create_or_allocate_account_raw<'a>(
     payer_info: &AccountInfo<'a>,
     size: usize,
     signer_seeds: &[&[u8]],
-) -> Result<(), ProgramError> {
+) -> Result<()> {
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
     let required_lamports = rent
         .minimum_balance(size)
@@ -579,7 +570,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_Err(error!(|_| ErrorCode::TokenMintToFailed))
+    result.map_err(|_| error!(ErrorCode::TokenMintToFailed))
 }
 
 /// TokenBurnParams
@@ -623,7 +614,7 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
         &[source, mint, authority, token_program],
         seeds.as_slice(),
     );
-    result.map_Err(error!(|_| ErrorCode::TokenBurnFailed))
+    result.map_err(|_| error!(ErrorCode::TokenBurnFailed))
 }
 
 pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
@@ -1061,7 +1052,7 @@ pub fn assert_valid_item_settings_for_edition_type(
     Ok(())
 }
 
-pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey> {
     let data = artifact.data.borrow();
 
     let number = if data[8] == 1 {
@@ -1080,7 +1071,7 @@ pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramErro
     }
 }
 
-pub fn grab_update_authority<'a>(metadata: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+pub fn grab_update_authority<'a>(metadata: &AccountInfo<'a>) -> Result<Pubkey> {
     let data = metadata.data.borrow();
     let key_bytes = array_ref![data, 1, 32];
     let key = Pubkey::new_from_array(*key_bytes);
@@ -1091,7 +1082,7 @@ pub fn assert_is_ata(
     ata: &AccountInfo,
     wallet: &Pubkey,
     mint: &Pubkey,
-) -> Result<spl_token::state::Account, ProgramError> {
+) -> Result<spl_token::state::Account> {
     assert_owned_by(ata, &spl_token::id())?;
     let ata_account: spl_token::state::Account = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet)?;
@@ -1111,7 +1102,7 @@ pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> Result<()> {
 
 pub fn assert_signer(account: &AccountInfo) -> Result<()> {
     if !account.is_signer {
-        Err(ProgramError::MissingRequiredSignature)
+        Err(ProgramError::MissingRequiredSignature.into())
     } else {
         Ok(())
     }
@@ -1179,7 +1170,7 @@ pub fn assert_mint_authority_matches_mint(
 pub fn assert_part_of_namespace<'a, 'b>(
     artifact: &'b AccountInfo<'a>,
     namespace: &'b AccountInfo<'a>,
-) -> Result<Account<'a, raindrops_namespace::Namespace>, ProgramError> {
+) -> Result<Account<'a, raindrops_namespace::Namespace>> {
     assert_owned_by(namespace, &raindrops_namespace::id())?;
 
     let deserialized: Account<raindrops_namespace::Namespace> = Account::try_from(namespace)?;
@@ -1439,9 +1430,7 @@ pub struct VerifyComponentArgs<'a, 'info> {
     pub count_check: bool,
 }
 
-pub fn verify_component<'a, 'info>(
-    args: VerifyComponentArgs<'a, 'info>,
-) -> Result<Component, ProgramError> {
+pub fn verify_component<'a, 'info>(args: VerifyComponentArgs<'a, 'info>) -> Result<Component> {
     let VerifyComponentArgs {
         item_class,
         component,
@@ -1665,7 +1654,7 @@ pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
 
 pub fn verify_and_affect_item_state_update<'a, 'info>(
     args: VerifyAndAffectItemStateUpdateArgs,
-) -> Result<(ItemUsage, ItemUsageState), ProgramError> {
+) -> Result<(ItemUsage, ItemUsageState)> {
     let VerifyAndAffectItemStateUpdateArgs {
         item,
         item_class,
@@ -1803,9 +1792,7 @@ pub struct GetItemUsageArgs<'a, 'info> {
     pub usage: Option<ItemUsage>,
 }
 
-pub fn get_item_usage<'a, 'info>(
-    args: GetItemUsageArgs<'a, 'info>,
-) -> Result<ItemUsage, ProgramError> {
+pub fn get_item_usage<'a, 'info>(args: GetItemUsageArgs<'a, 'info>) -> Result<ItemUsage> {
     let GetItemUsageArgs {
         item_class,
         usage_index,

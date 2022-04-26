@@ -3,8 +3,8 @@ use {
     anchor_lang::{
         error,
         prelude::{
-            msg, Account, AccountInfo, AccountMeta, Program, ProgramError, Pubkey, Rent, Result,
-            SolanaSysvar, UncheckedAccount,
+            msg, Account, AccountInfo, AccountMeta, Program, Pubkey, Rent, Result, SolanaSysvar,
+            UncheckedAccount,
         },
         require,
         solana_program::{
@@ -28,7 +28,7 @@ pub fn assert_is_ata(
     wallet: &Pubkey,
     mint: &Pubkey,
     expected_delegate: Option<&Pubkey>,
-) -> Result<spl_token::state::Account, ProgramError> {
+) -> Result<spl_token::state::Account> {
     assert_owned_by(ata, &spl_token::id())?;
     let ata_account: spl_token::state::Account = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet)?;
@@ -81,9 +81,7 @@ pub fn close_token_account<'a>(
     Ok(())
 }
 
-pub fn assert_initialized<T: Pack + IsInitialized>(
-    account_info: &AccountInfo,
-) -> Result<T, ProgramError> {
+pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
         Err(error!(ErrorCode::Uninitialized))
@@ -145,10 +143,10 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
         },
     );
 
-    result.map_Err(error!(|_| ErrorCode::TokenTransferFailed))
+    result.map_err(|_| error!(ErrorCode::TokenTransferFailed))
 }
 
-pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError> {
+pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize)> {
     let my_position_in_index = seq
         .checked_div(8)
         .ok_or(ErrorCode::NumericalOverflowError)?;
@@ -160,11 +158,7 @@ pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize), ProgramError>
     Ok((mask, my_position_in_index as usize))
 }
 
-pub fn assert_derivation(
-    program_id: &Pubkey,
-    account: &AccountInfo,
-    path: &[&[u8]],
-) -> Result<u8, ProgramError> {
+pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
@@ -183,7 +177,7 @@ pub fn create_or_allocate_account_raw<'a>(
     payer_info: &AccountInfo<'a>,
     size: usize,
     signer_seeds: &[&[u8]],
-) -> Result<(), ProgramError> {
+) -> Result<()> {
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
     let required_lamports = rent
         .minimum_balance(size)
@@ -242,7 +236,7 @@ pub fn spl_token_mint_to<'a: 'b, 'b>(
         &[mint, destination, authority, token_program],
         &[authority_signer_seeds],
     );
-    result.map_Err(error!(|_| ErrorCode::TokenMintToFailed))
+    result.map_err(|_| error!(ErrorCode::TokenMintToFailed))
 }
 
 /// TokenBurnParams
@@ -286,7 +280,7 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
         &[source, mint, authority, token_program],
         seeds.as_slice(),
     );
-    result.map_Err(error!(|_| ErrorCode::TokenBurnFailed))
+    result.map_err(|_| error!(ErrorCode::TokenBurnFailed))
 }
 
 /// Returns true if a `leaf` can be proved to be a part of a Merkle tree
@@ -341,7 +335,7 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     sighash
 }
 
-pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey, ProgramError> {
+pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey> {
     let data = artifact.data.borrow();
 
     let number = if data[8] == 1 {
@@ -365,7 +359,7 @@ pub fn is_valid_validation<'info>(
     source_item_or_player_pda: &UncheckedAccount<'info>,
     token_mint: &Account<'info, Mint>,
     validation_program: &UncheckedAccount<'info>,
-) -> Result<bool, ProgramError> {
+) -> Result<bool> {
     match val.filter {
         Filter::None => {
             return Err(error!(ErrorCode::NoTokensAllowed));

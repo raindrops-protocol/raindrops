@@ -318,11 +318,12 @@ export class MatchesInstruction {
     );
 
     const [match, matchBump] = await getMatch(oracle);
-    args.oracleBump = oracleBump;
-    args.matchBump = matchBump;
+
     return {
       instructions: [
         this.program.instruction.drainOracle(
+          matchBump,
+          oracleBump,
           { ...args, seed: new web3.PublicKey(args.seed) },
           {
             accounts: {

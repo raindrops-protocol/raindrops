@@ -718,7 +718,7 @@ pub struct CacheArtifact<'info> {
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.to_string().as_bytes()], bump=index.bump)]
     index: Account<'info, NamespaceIndex>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.checked_sub(1).ok_or(0)?.to_string().as_bytes()], bump=prior_index.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.checked_sub(1).ok_or(0).unwrap().to_string().as_bytes()], bump=prior_index.bump)]
     prior_index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
