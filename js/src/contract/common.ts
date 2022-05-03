@@ -1,5 +1,5 @@
 import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
-import { Program, web3, BN } from "@project-serum/anchor";
+import { Program, web3, BN, AnchorProvider } from "@project-serum/anchor";
 import { getAtaForMint, getItemPDA, getMetadata } from "../utils/pda";
 
 export interface ObjectWrapper<T, V> {
@@ -37,9 +37,12 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
   }[] = [];
   if (permissivenessToUse.tokenHolder) {
     const tokenAccount = (
-      await getAtaForMint(tokenMint, program.provider.wallet.publicKey)
+      await getAtaForMint(
+        tokenMint,
+        (program.provider as AnchorProvider).wallet.publicKey
+      )
     )[0];
-    const tokenHolder = program.provider.wallet.publicKey;
+    const tokenHolder = (program.provider as AnchorProvider).wallet.publicKey;
     remainingAccounts.push({
       pubkey: tokenAccount,
       isWritable: false,
@@ -52,9 +55,12 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
     });
   } else if (permissivenessToUse.parentTokenHolder) {
     const parentToken = (
-      await getAtaForMint(parentMint, program.provider.wallet.publicKey)
+      await getAtaForMint(
+        parentMint,
+        (program.provider as AnchorProvider).wallet.publicKey
+      )
     )[0];
-    const parentHolder = program.provider.wallet.publicKey;
+    const parentHolder = (program.provider as AnchorProvider).wallet.publicKey;
     const parentClass =
       parent || (await getItemPDA(parentMint, parentIndex))[0];
 
@@ -80,7 +86,9 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
     });
   } else if (permissivenessToUse.updateAuthority || !permissivenessToUse) {
     remainingAccounts.push({
-      pubkey: metadataUpdateAuthority || program.provider.wallet.publicKey,
+      pubkey:
+        metadataUpdateAuthority ||
+        (program.provider as AnchorProvider).wallet.publicKey,
       isWritable: false,
       isSigner: true,
     });
@@ -134,7 +142,9 @@ export async function generateRemainingAccountsForCreateClass(args: {
   }[] = [];
   if (!parent || !parentMint) {
     remainingAccounts.push({
-      pubkey: metadataUpdateAuthority || program.provider.wallet.publicKey,
+      pubkey:
+        metadataUpdateAuthority ||
+        (program.provider as AnchorProvider).wallet.publicKey,
       isWritable: false,
       isSigner: true,
     });
@@ -145,9 +155,12 @@ export async function generateRemainingAccountsForCreateClass(args: {
     });
   } else if (permissivenessToUse.tokenHolder) {
     const tokenAccount = (
-      await getAtaForMint(parentMint, program.provider.wallet.publicKey)
+      await getAtaForMint(
+        parentMint,
+        (program.provider as AnchorProvider).wallet.publicKey
+      )
     )[0];
-    const tokenHolder = program.provider.wallet.publicKey;
+    const tokenHolder = (program.provider as AnchorProvider).wallet.publicKey;
     remainingAccounts.push({
       pubkey: tokenAccount,
       isWritable: false,
@@ -167,10 +180,10 @@ export async function generateRemainingAccountsForCreateClass(args: {
     const parentToken = (
       await getAtaForMint(
         parentOfParentClassMint,
-        program.provider.wallet.publicKey
+        (program.provider as AnchorProvider).wallet.publicKey
       )
     )[0];
-    const parentHolder = program.provider.wallet.publicKey;
+    const parentHolder = (program.provider as AnchorProvider).wallet.publicKey;
     const parentClass =
       parentOfParentClass ||
       (await getItemPDA(parentOfParentClassMint, parentOfParentClassIndex))[0];
@@ -196,7 +209,9 @@ export async function generateRemainingAccountsForCreateClass(args: {
     });
   } else if (permissivenessToUse.updateAuthority) {
     remainingAccounts.push({
-      pubkey: parentUpdateAuthority || program.provider.wallet.publicKey,
+      pubkey:
+        parentUpdateAuthority ||
+        (program.provider as AnchorProvider).wallet.publicKey,
       isWritable: false,
       isSigner: true,
     });

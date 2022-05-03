@@ -1,4 +1,12 @@
-import { web3, Program, BN, Provider, Wallet } from "@project-serum/anchor";
+import {
+  web3,
+  Program,
+  BN,
+  Provider,
+  Wallet,
+  AnchorProvider,
+  Address,
+} from "@project-serum/anchor";
 import { SystemProgram } from "@solana/web3.js";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
@@ -99,7 +107,6 @@ export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
 export interface UsageInfo {}
 
 export interface BeginItemActivationArgs {
-  itemActivationBump: number | null;
   classIndex: BN;
   index: BN;
   itemClassMint: web3.PublicKey;
@@ -111,7 +118,6 @@ export interface BeginItemActivationArgs {
 }
 
 export interface EndItemActivationArgs {
-  itemActivationBump: number | null;
   classIndex: BN;
   index: BN;
   itemMint: web3.PublicKey;
@@ -124,7 +130,6 @@ export interface EndItemActivationArgs {
 }
 
 export interface CreateItemClassArgs {
-  itemClassBump: number | null;
   classIndex: BN;
   parentOfParentClassIndex: null | BN;
   parentClassIndex: null | BN;
@@ -137,7 +142,6 @@ export interface CreateItemClassArgs {
 }
 
 export interface CreateItemEscrowArgs {
-  craftBump: number | null;
   classIndex: BN;
   parentClassIndex: null | BN;
   craftEscrowIndex: BN;
@@ -149,14 +153,12 @@ export interface CreateItemEscrowArgs {
 }
 
 export interface AddCraftItemToEscrowArgs {
-  tokenBump: number | null;
   classIndex: BN;
   parentClassIndex: null | BN;
   craftItemIndex: BN;
   craftEscrowIndex: BN;
   craftItemClassIndex: BN;
   craftItemClassMint: web3.PublicKey;
-  craftItemCounterBump: number | null;
   componentScope: String;
   amountToMake: BN;
   amountToContributeFromThisContributor: BN;
@@ -183,14 +185,12 @@ export interface AddCraftItemToEscrowArgs {
 }
 
 export interface RemoveCraftItemFromEscrowArgs {
-  tokenBump: number | null;
   craftItemTokenMint: web3.PublicKey;
   classIndex: BN;
   parentClassIndex: null | BN;
 
   craftItemIndex: BN;
   craftEscrowIndex: BN;
-  craftItemCounterBump: number | null;
   craftItemClassIndex: BN;
   craftItemClassMint: web3.PublicKey;
   componentScope: String;
@@ -211,7 +211,6 @@ export interface RemoveCraftItemFromEscrowArgs {
 export interface StartItemEscrowBuildPhaseArgs {
   classIndex: BN;
   parentClassIndex: null | BN;
-
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -225,10 +224,8 @@ export interface StartItemEscrowBuildPhaseArgs {
 
 export interface CompleteItemEscrowBuildPhaseArgs {
   classIndex: BN;
-  newItemBump: number;
   newItemIndex: BN;
   parentClassIndex: null | BN;
-
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -243,7 +240,6 @@ export interface CompleteItemEscrowBuildPhaseArgs {
 export interface DeactivateItemEscrowArgs {
   classIndex: BN;
   parentClassIndex: null | BN;
-
   craftEscrowIndex: BN;
   componentScope: String;
   amountToMake: BN;
@@ -410,9 +406,9 @@ export class ItemProgram {
     let itemClass = (await getItemPDA(mint, index))[0];
 
     // Need a manual deserializer due to our hack we had to do.
-    let itemClassObj = await this.program.provider.connection.getAccountInfo(
-      itemClass
-    );
+    let itemClassObj = await (
+      this.program.provider as AnchorProvider
+    ).connection.getAccountInfo(itemClass);
 
     const ic = decodeItemClass(itemClassObj.data);
     ic.program = this.program;
@@ -449,7 +445,7 @@ export class ItemProgram {
       await getItemPDA(accounts.itemClassMint, args.classIndex)
     )[0];
 
-    const [itemEscrow, itemEscrowBump] = await getItemEscrow({
+    const [itemEscrow, _] = await getItemEscrow({
       itemClassMint: accounts.itemClassMint,
       craftEscrowIndex: args.craftEscrowIndex,
       classIndex: args.classIndex,
@@ -459,17 +455,17 @@ export class ItemProgram {
         (
           await getAtaForMint(
             accounts.newItemMint,
-            this.program.provider.wallet.publicKey
+            (this.program.provider as AnchorProvider).wallet.publicKey
           )
         )[0],
-      payer: this.program.provider.wallet.publicKey,
+      payer: (this.program.provider as AnchorProvider).wallet.publicKey,
       amountToMake: args.amountToMake,
       componentScope: args.componentScope,
     });
 
-    args.craftBump = itemEscrowBump;
-    await this.program.rpc.createItemEscrow(args, {
-      accounts: {
+    await this.program.methods
+      .createItemEscrow(args)
+      .accounts({
         itemClass: itemClassKey,
         itemClassMetadata: await getMetadata(accounts.itemClassMint),
         newItemMint: accounts.newItemMint,
@@ -481,18 +477,18 @@ export class ItemProgram {
           (
             await getAtaForMint(
               accounts.newItemMint,
-              this.program.provider.wallet.publicKey
+              (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
         newItemTokenHolder:
-          accounts.newItemTokenHolder || this.program.provider.wallet.publicKey,
-        payer: this.program.provider.wallet.publicKey,
+          accounts.newItemTokenHolder ||
+          (this.program.provider as AnchorProvider).wallet.publicKey,
+        payer: (this.program.provider as AnchorProvider).wallet.publicKey,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
-      },
-      remainingAccounts:
-        remainingAccounts.length > 0 ? remainingAccounts : undefined,
-    });
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc();
   }
 
   async completeItemEscrowBuildPhase(
@@ -519,12 +515,10 @@ export class ItemProgram {
       await getItemPDA(accounts.itemClassMint, args.classIndex)
     )[0];
 
-    const [newItem, newItemBump] = await getItemPDA(
+    const [newItem, _] = await getItemPDA(
       accounts.newItemMint,
       args.newItemIndex
     );
-
-    args.newItemBump = newItemBump;
 
     const itemEscrow = (
       await getItemEscrow({
@@ -537,17 +531,21 @@ export class ItemProgram {
           (
             await getAtaForMint(
               accounts.newItemMint,
-              args.originator || this.program.provider.wallet.publicKey
+              args.originator ||
+                (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
-        payer: args.originator || this.program.provider.wallet.publicKey,
+        payer:
+          args.originator ||
+          (this.program.provider as AnchorProvider).wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
     )[0];
 
-    await this.program.rpc.completeItemEscrowBuildPhase(args, {
-      accounts: {
+    await this.program.methods
+      .completeItemEscrowBuildPhase(args)
+      .accounts({
         itemClass: itemClassKey,
         itemEscrow,
         newItem,
@@ -559,22 +557,22 @@ export class ItemProgram {
           (
             await getAtaForMint(
               accounts.newItemMint,
-              args.originator || this.program.provider.wallet.publicKey
+              args.originator ||
+                (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
         newItemTokenHolder:
           accounts.newItemTokenHolder ||
           args.originator ||
-          this.program.provider.wallet.publicKey,
-        payer: this.program.provider.wallet.publicKey,
+          (this.program.provider as AnchorProvider).wallet.publicKey,
+        payer: (this.program.provider as AnchorProvider).wallet.publicKey,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: web3.SYSVAR_RENT_PUBKEY,
         clock: web3.SYSVAR_CLOCK_PUBKEY,
-      },
-      remainingAccounts:
-        remainingAccounts.length > 0 ? remainingAccounts : undefined,
-    });
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc();
   }
 
   async deactivateItemEscrow(
@@ -587,7 +585,7 @@ export class ItemProgram {
       (
         await getAtaForMint(
           args.newItemMint,
-          this.program.provider.wallet.publicKey
+          (this.program.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
     const itemEscrow = (
@@ -597,18 +595,19 @@ export class ItemProgram {
         craftEscrowIndex: args.craftEscrowIndex,
         newItemMint: args.newItemMint,
         newItemToken: args.newItemToken,
-        payer: this.program.provider.wallet.publicKey,
+        payer: (this.program.provider as AnchorProvider).wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
     )[0];
 
-    await this.program.rpc.deactivateItemEscrow(args, {
-      accounts: {
+    await this.program.methods
+      .deactivateItemEscrow(args)
+      .accounts({
         itemEscrow,
-        originator: this.program.provider.wallet.publicKey,
-      },
-    });
+        originator: (this.program.provider as AnchorProvider).wallet.publicKey,
+      })
+      .rpc();
   }
 
   async updateValidForUseIfWarmupPassed(
@@ -625,14 +624,15 @@ export class ItemProgram {
       })
     )[0];
 
-    await this.program.rpc.updateValidForUseIfWarmupPassed(args, {
-      accounts: {
+    await this.program.methods
+      .updateValidForUseIfWarmupPassed(args)
+      .accounts({
         item: (await getItemPDA(args.itemMint, args.index))[0],
         itemClass: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
         itemActivationMarker,
         clock: web3.SYSVAR_CLOCK_PUBKEY,
-      },
-    });
+      })
+      .rpc();
   }
 
   async addCraftItemToEscrow(
@@ -661,7 +661,7 @@ export class ItemProgram {
     const craftItemTokenAccount = (
       await getAtaForMint(
         accounts.craftItemTokenMint,
-        this.program.provider.wallet.publicKey
+        (this.program.provider as AnchorProvider).wallet.publicKey
       )
     )[0];
 
@@ -673,7 +673,7 @@ export class ItemProgram {
       newItemMint: args.newItemMint,
       craftItemMint: accounts.craftItemTokenMint,
       craftItemToken: craftItemTokenAccount,
-      payer: this.program.provider.wallet.publicKey,
+      payer: (this.program.provider as AnchorProvider).wallet.publicKey,
       amountToMake: args.amountToMake,
       amountToContributeFromThisContributor:
         args.amountToContributeFromThisContributor,
@@ -690,9 +690,6 @@ export class ItemProgram {
       componentScope: args.componentScope,
     });
 
-    args.tokenBump = itemEscrowBump;
-    args.craftItemCounterBump = craftBump;
-
     const itemEscrow = (
       await getItemEscrow({
         itemClassMint: accounts.itemClassMint,
@@ -704,10 +701,13 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              args.originator || this.program.provider.wallet.publicKey
+              args.originator ||
+                (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
-        payer: args.originator || this.program.provider.wallet.publicKey,
+        payer:
+          args.originator ||
+          (this.program.provider as AnchorProvider).wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
@@ -727,14 +727,15 @@ export class ItemProgram {
         TOKEN_PROGRAM_ID,
         craftItemTokenAccount,
         craftItemTransferAuthority.publicKey,
-        this.program.provider.wallet.publicKey,
+        (this.program.provider as AnchorProvider).wallet.publicKey,
         [],
         args.amountToContributeFromThisContributor.toNumber()
       )
     );
     instructions.push(
-      await this.program.instruction.addCraftItemToEscrow(args, {
-        accounts: {
+      await this.program.methods
+        .addCraftItemToEscrow(args)
+        .accounts({
           itemClass: itemClassKey,
           itemEscrow,
           craftItemCounter,
@@ -743,42 +744,42 @@ export class ItemProgram {
             (
               await getAtaForMint(
                 args.newItemMint,
-                args.originator || this.program.provider.wallet.publicKey
+                args.originator ||
+                  (this.program.provider as AnchorProvider).wallet.publicKey
               )
             )[0],
           newItemTokenHolder:
             accounts.newItemTokenHolder ||
             args.originator ||
-            this.program.provider.wallet.publicKey,
+            (this.program.provider as AnchorProvider).wallet.publicKey,
           craftItemTokenAccountEscrow: craftItemEscrow,
           craftItemTokenMint: accounts.craftItemTokenMint,
           craftItemTokenAccount,
           craftItem,
-          craftItemClass: craftItemObj.parent,
+          craftItemClass: craftItemObj.parent as Address,
           craftItemTransferAuthority: craftItemTransferAuthority.publicKey,
-          payer: this.program.provider.wallet.publicKey,
+          payer: (this.program.provider as AnchorProvider).wallet.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
-        },
-        remainingAccounts:
-          remainingAccounts.length > 0 ? remainingAccounts : undefined,
-      })
+        })
+        .remainingAccounts(remainingAccounts)
+        .instruction()
     );
 
     instructions.push(
       Token.createRevokeInstruction(
         TOKEN_PROGRAM_ID,
         craftItemTokenAccount,
-        this.program.provider.wallet.publicKey,
+        (this.program.provider as AnchorProvider).wallet.publicKey,
         []
       )
     );
 
     await sendTransactionWithRetry(
-      this.program.provider.connection,
-      this.program.provider.wallet,
+      (this.program.provider as AnchorProvider).connection,
+      (this.program.provider as AnchorProvider).wallet,
       instructions,
       signers
     );
@@ -810,7 +811,7 @@ export class ItemProgram {
     const craftItemTokenAccount = (
       await getAtaForMint(
         args.craftItemTokenMint,
-        this.program.provider.wallet.publicKey
+        (this.program.provider as AnchorProvider).wallet.publicKey
       )
     )[0];
 
@@ -822,7 +823,7 @@ export class ItemProgram {
       newItemMint: args.newItemMint,
       craftItemMint: args.craftItemTokenMint,
       craftItemToken: craftItemTokenAccount,
-      payer: this.program.provider.wallet.publicKey,
+      payer: (this.program.provider as AnchorProvider).wallet.publicKey,
       amountToMake: args.amountToMake,
       amountToContributeFromThisContributor:
         args.amountContributedFromThisContributor,
@@ -839,9 +840,6 @@ export class ItemProgram {
       componentScope: args.componentScope,
     });
 
-    args.tokenBump = itemEscrowBump;
-    args.craftItemCounterBump = craftBump;
-
     const itemEscrow = (
       await getItemEscrow({
         itemClassMint: accounts.itemClassMint,
@@ -853,17 +851,21 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              args.originator || this.program.provider.wallet.publicKey
+              args.originator ||
+                (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
-        payer: args.originator || this.program.provider.wallet.publicKey,
+        payer:
+          args.originator ||
+          (this.program.provider as AnchorProvider).wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
     )[0];
 
-    await this.program.rpc.removeCraftItemFromEscrow(args, {
-      accounts: {
+    await this.program.methods
+      .removeCraftItemFromEscrow(args)
+      .accounts({
         itemClass: itemClassKey,
         itemEscrow,
         craftItemCounter,
@@ -872,13 +874,14 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              args.originator || this.program.provider.wallet.publicKey
+              args.originator ||
+                (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
         newItemTokenHolder:
           accounts.newItemTokenHolder ||
           args.originator ||
-          this.program.provider.wallet.publicKey,
+          (this.program.provider as AnchorProvider).wallet.publicKey,
         craftItemTokenAccountEscrow: craftItemEscrow,
         craftItemTokenAccount,
         craftItem: (
@@ -887,13 +890,12 @@ export class ItemProgram {
         craftItemClass: (
           await getItemPDA(args.craftItemClassMint, args.craftItemClassIndex)
         )[0],
-        receiver: this.program.provider.wallet.publicKey,
+        receiver: (this.program.provider as AnchorProvider).wallet.publicKey,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
-      },
-      remainingAccounts:
-        remainingAccounts.length > 0 ? remainingAccounts : undefined,
-    });
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc();
   }
 
   async beginItemActivation(
@@ -916,14 +918,13 @@ export class ItemProgram {
       await getItemPDA(args.itemClassMint, args.classIndex)
     )[0];
 
-    const [itemActivationMarker, bump] = await getItemActivationMarker({
-      itemMint: accounts.itemMint,
-      index: args.index,
-      usageIndex: new BN(args.usageIndex),
-      amount: args.amount,
-    });
-
-    args.itemActivationBump = bump;
+    const [itemActivationMarker, itemActivationBump] =
+      await getItemActivationMarker({
+        itemMint: accounts.itemMint,
+        index: args.index,
+        usageIndex: new BN(args.usageIndex),
+        amount: args.amount,
+      });
 
     const instructions = [],
       signers = [];
@@ -935,7 +936,7 @@ export class ItemProgram {
         (
           await getAtaForMint(
             accounts.itemMint,
-            this.program.provider.wallet.publicKey
+            (this.program.provider as AnchorProvider).wallet.publicKey
           )
         )[0]
       )
@@ -947,7 +948,7 @@ export class ItemProgram {
           TOKEN_PROGRAM_ID,
           accounts.itemAccount,
           itemTransferAuthority.publicKey,
-          this.program.provider.wallet.publicKey,
+          (this.program.provider as AnchorProvider).wallet.publicKey,
           [],
           args.amount.toNumber()
         )
@@ -962,15 +963,16 @@ export class ItemProgram {
     );
 
     instructions.push(
-      this.program.instruction.beginItemActivation(args, {
-        accounts: {
+      this.program.methods
+        .beginItemActivation(args)
+        .accounts({
           itemClass: itemClassKey,
           itemMint: accounts.itemMint,
           item: itemKey,
           itemAccount: accounts.itemAccount,
           itemTransferAuthority: itemTransferAuthority.publicKey,
           itemActivationMarker,
-          payer: this.program.provider.wallet.publicKey,
+          payer: (this.program.provider as AnchorProvider).wallet.publicKey,
           playerProgram: PLAYER_ID,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -985,10 +987,9 @@ export class ItemProgram {
                 ].validation.key
               )
             : SystemProgram.programId,
-        },
-        remainingAccounts:
-          remainingAccounts.length > 0 ? remainingAccounts : undefined,
-      })
+        })
+        .remainingAccounts(remainingAccounts)
+        .instruction()
     );
 
     if (
@@ -996,7 +997,7 @@ export class ItemProgram {
         (
           await getAtaForMint(
             accounts.itemMint,
-            this.program.provider.wallet.publicKey
+            (this.program.provider as AnchorProvider).wallet.publicKey
           )
         )[0]
       )
@@ -1005,15 +1006,15 @@ export class ItemProgram {
         Token.createRevokeInstruction(
           TOKEN_PROGRAM_ID,
           accounts.itemAccount,
-          this.program.provider.wallet.publicKey,
+          (this.program.provider as AnchorProvider).wallet.publicKey,
           []
         )
       );
     }
 
     await sendTransactionWithRetry(
-      this.program.provider.connection,
-      this.program.provider.wallet,
+      (this.program.provider as AnchorProvider).connection,
+      (this.program.provider as AnchorProvider).wallet,
       instructions,
       signers
     );
@@ -1049,16 +1050,18 @@ export class ItemProgram {
     )[0];
 
     const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
-    await this.program.rpc.endItemActivation(args, {
-      accounts: {
+    await this.program.methods
+      .endItemActivation(args)
+      .accounts({
         itemClass: itemClassKey,
         item: itemKey,
         itemActivationMarker,
-        receiver: accounts.originator || this.program.provider.wallet.publicKey,
-      },
-      remainingAccounts:
-        remainingAccounts.length > 0 ? remainingAccounts : undefined,
-    });
+        receiver:
+          accounts.originator ||
+          (this.program.provider as AnchorProvider).wallet.publicKey,
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc();
   }
 
   async drainItemEscrow(
@@ -1074,7 +1077,7 @@ export class ItemProgram {
       args.newItemToken = (
         await getAtaForMint(
           args.newItemMint,
-          this.program.provider.wallet.publicKey
+          (this.program.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
     }
@@ -1086,18 +1089,19 @@ export class ItemProgram {
         craftEscrowIndex: args.craftEscrowIndex,
         newItemMint: args.newItemMint,
         newItemToken: args.newItemToken,
-        payer: this.program.provider.wallet.publicKey,
+        payer: (this.program.provider as AnchorProvider).wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
     )[0];
 
-    await this.program.rpc.drainItemEscrow(args, {
-      accounts: {
+    await this.program.methods
+      .drainItemEscrow(args)
+      .accounts({
         itemEscrow,
         originator: accounts.originator,
-      },
-    });
+      })
+      .rpc();
   }
 
   async startItemEscrowBuildPhase(
@@ -1135,17 +1139,21 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              args.originator || this.program.provider.wallet.publicKey
+              args.originator ||
+                (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
-        payer: args.originator || this.program.provider.wallet.publicKey,
+        payer:
+          args.originator ||
+          (this.program.provider as AnchorProvider).wallet.publicKey,
         amountToMake: args.amountToMake,
         componentScope: args.componentScope,
       })
     )[0];
 
-    await this.program.rpc.startItemEscrowBuildPhase(args, {
-      accounts: {
+    await this.program.methods
+      .startItemEscrowBuildPhase(args)
+      .accounts({
         itemClass: itemClassKey,
         itemEscrow,
         newItemToken:
@@ -1153,18 +1161,18 @@ export class ItemProgram {
           (
             await getAtaForMint(
               args.newItemMint,
-              args.originator || this.program.provider.wallet.publicKey
+              args.originator ||
+                (this.program.provider as AnchorProvider).wallet.publicKey
             )
           )[0],
         newItemTokenHolder:
           accounts.newItemTokenHolder ||
           args.originator ||
-          this.program.provider.wallet.publicKey,
+          (this.program.provider as AnchorProvider).wallet.publicKey,
         clock: web3.SYSVAR_CLOCK_PUBKEY,
-      },
-      remainingAccounts:
-        remainingAccounts.length > 0 ? remainingAccounts : undefined,
-    });
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc();
   }
 
   async createItemClass(
@@ -1200,22 +1208,20 @@ export class ItemProgram {
       args.classIndex
     );
 
-    args.itemClassBump = itemClassBump;
-
-    await this.program.rpc.createItemClass(args, {
-      accounts: {
+    await this.program.methods
+      .createItemClass(args)
+      .accounts({
         itemClass: itemClassKey,
         itemMint: accounts.itemMint,
         metadata: await getMetadata(accounts.itemMint),
         edition: await getEdition(accounts.itemMint),
         parent: accounts.parent || itemClassKey,
-        payer: this.program.provider.wallet.publicKey,
+        payer: (this.program.provider as AnchorProvider).wallet.publicKey,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
-      },
-      remainingAccounts:
-        remainingAccounts.length > 0 ? remainingAccounts : undefined,
-    });
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc();
 
     return itemClassKey;
   }
@@ -1231,12 +1237,15 @@ export class ItemProgram {
 
     const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
 
-    await this.program.rpc.updateItem(args, {
-      accounts: {
-        itemClass: itemClassKey,
-        item: itemKey,
-      },
-    });
+    await this.program.methods
+      .updateItem(args)
+      .accounts({
+        accounts: {
+          itemClass: itemClassKey,
+          item: itemKey,
+        },
+      })
+      .rpc();
 
     return itemClassKey;
   }
@@ -1264,15 +1273,15 @@ export class ItemProgram {
       await getItemPDA(accounts.itemMint, args.classIndex)
     )[0];
 
-    await this.program.rpc.updateItemClass(args, {
-      accounts: {
+    await this.program.methods
+      .updateItemClass(args)
+      .accounts({
         itemClass: itemClassKey,
         parent: accounts.parent || web3.SystemProgram.programId,
         itemMint: accounts.itemMint,
-      },
-      remainingAccounts:
-        remainingAccounts.length > 0 ? remainingAccounts : undefined,
-    });
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc();
 
     return itemClassKey;
   }
@@ -1290,7 +1299,7 @@ export async function getItemProgram(
   if (anchorWallet instanceof web3.Keypair)
     anchorWallet = new NodeWallet(anchorWallet);
 
-  const provider = new Provider(solConnection, anchorWallet, {
+  const provider = new AnchorProvider(solConnection, anchorWallet, {
     preflightCommitment: "recent",
   });
 

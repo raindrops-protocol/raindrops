@@ -59,7 +59,6 @@ programCommand("create_item_class")
 
     await anchorProgram.createItemClass(
       {
-        itemClassBump: null,
         classIndex: new BN(config.index || 0),
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
         space: new BN(config.totalSpaceBytes),
@@ -120,7 +119,6 @@ programCommand("create_item_escrow")
 
     await anchorProgram.createItemEscrow(
       {
-        craftBump: null,
         classIndex: new BN(config.classIndex || 0),
         craftEscrowIndex: new BN(config.craftEscrowIndex || 0),
         componentScope: config.componentScope || "none",
@@ -229,8 +227,6 @@ programCommand("add_craft_item_to_escrow")
 
     await anchorProgram.addCraftItemToEscrow(
       {
-        tokenBump: null,
-        craftItemCounterBump: null,
         newItemMint: new web3.PublicKey(config.newItemMint),
         originator: config.originator
           ? new web3.PublicKey(config.originator)
@@ -315,8 +311,6 @@ programCommand("remove_craft_item_from_escrow")
 
     await anchorProgram.removeCraftItemFromEscrow(
       {
-        tokenBump: null,
-        craftItemCounterBump: null,
         newItemMint: new web3.PublicKey(config.newItemMint),
         originator: config.originator
           ? new web3.PublicKey(config.originator)
@@ -452,7 +446,6 @@ programCommand("complete_item_escrow_build_phase")
         space: new BN(config.totalSpaceBytes),
         storeMetadataFields: !!config.storeMetadataFields,
         storeMint: !!config.storeMint,
-        newItemBump: null,
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
@@ -547,7 +540,6 @@ programCommand("begin_item_activation")
         itemMarkerSpace: config.itemMarkerSpace,
         usageInfo: null,
         usageIndex: config.usageIndex,
-        itemActivationBump: null,
         usagePermissivenessToUse: config.usagePermissivenessToUse,
       },
       {
@@ -596,7 +588,6 @@ programCommand("end_item_activation")
         amount: new BN(config.amount || 1),
         index: new BN(config.index),
         usageIndex: config.usageIndex,
-        itemActivationBump: null,
         itemMint: new web3.PublicKey(config.itemMint),
         usageProof: null,
         usage: null,
@@ -683,9 +674,9 @@ programCommand("show_item_build")
       })
     )[0];
 
-    const itemEscrow = await anchorProgram.program.account.itemEscrow.fetch(
+    const itemEscrow = (await anchorProgram.program.account.itemEscrow.fetch(
       itemEscrowKey
-    );
+    )) as any;
     log.setLevel("info");
 
     log.info("Build status:");
@@ -719,7 +710,13 @@ programCommand("show_item")
 
     const itemKey = (await getItemPDA(actualMint, actualIndex))[0];
 
-    const item = await anchorProgram.program.account.item.fetch(itemKey);
+    const item = (await anchorProgram.program.account.item.fetch(
+      itemKey
+    )) as any;
+
+    const itemParent = (await anchorProgram.program.account.itemClass.fetch(
+      item.parent
+    )) as any;
     log.setLevel("info");
     log.info("Item", itemKey.toBase58());
     log.info(
@@ -739,7 +736,9 @@ programCommand("show_item")
       "Parent:",
       item.parent.toBase58(),
       "Index:",
-      item.classIndex.toNumber()
+      item.classIndex.toNumber(),
+      "Mint:",
+      itemParent.mint ? itemParent.mint.toBase58() : "Not cached on object"
     );
     log.info(
       "Mint:",
@@ -1207,7 +1206,7 @@ programCommand("update_item")
     await anchorProgram.updateItem(
       {
         index: new BN(itemIndex || 0),
-        classIndex: itemObj.classIndex,
+        classIndex: itemObj.classIndex as BN,
         itemMint: new web3.PublicKey(itemMint),
         itemClassMint: new web3.PublicKey(itemClassMint),
       },

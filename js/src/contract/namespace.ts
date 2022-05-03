@@ -1,10 +1,14 @@
-import { web3, Program, BN, Provider, Wallet } from "@project-serum/anchor";
+import { web3, Program, BN, AnchorProvider } from "@project-serum/anchor";
 import { SystemProgram } from "@solana/web3.js";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import log from "loglevel";
 
 import { NAMESPACE_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { decodeNamespace, Namespace, PermissivenessSettings } from "../state/namespace";
+import {
+  decodeNamespace,
+  Namespace,
+  PermissivenessSettings,
+} from "../state/namespace";
 import { getNamespacePDA } from "../utils/pda";
 
 import { ObjectWrapper } from "./common";
@@ -20,7 +24,9 @@ function convertNumbersToBNs(data: any) {
   }
 }
 
-export class NamespaceWrapper implements ObjectWrapper<Namespace, NamespaceProgram> {
+export class NamespaceWrapper
+  implements ObjectWrapper<Namespace, NamespaceProgram>
+{
   program: NamespaceProgram;
   key: web3.PublicKey;
   object: Namespace;
@@ -71,16 +77,14 @@ export class NamespaceInstruction {
     accounts: InitializeNamespaceAccounts,
     _additionalArgs: InitializeNamespaceAdditionalArgs = {}
   ) {
-    const [namespacePDA, namespaceBump] = await getNamespacePDA(
-      accounts.mint,
-    )
+    const [namespacePDA, namespaceBump] = await getNamespacePDA(accounts.mint);
     args.bump = namespaceBump;
 
     convertNumbersToBNs(args);
 
-    const remainingAccounts = args.whitelistedStakingMints.map(
-      mint => { return { pubkey: mint, isWritable: false, isSigner: false } }
-    );
+    const remainingAccounts = args.whitelistedStakingMints.map((mint) => {
+      return { pubkey: mint, isWritable: false, isSigner: false };
+    });
 
     return [
       this.program.instruction.initializeNamespace(args, {
@@ -89,13 +93,13 @@ export class NamespaceInstruction {
           mint: accounts.mint,
           metadata: accounts.metadata,
           masterEdition: accounts.masterEdition,
-          payer: this.program.provider.wallet.publicKey,
+          payer: (this.program.provider as AnchorProvider).wallet.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         },
         remainingAccounts: remainingAccounts,
-      })
+      }),
     ];
   }
 }
@@ -105,7 +109,7 @@ export class NamespaceProgram {
   program: Program;
   instruction: NamespaceInstruction;
 
-  constructor(args: { id: web3.PublicKey; program: Program; }) {
+  constructor(args: { id: web3.PublicKey; program: Program }) {
     this.id = args.id;
     this.program = args.program;
     this.instruction = new NamespaceInstruction({
@@ -116,7 +120,7 @@ export class NamespaceProgram {
 
   async initializeNamespace(
     args: InitializeNamespaceArgs,
-    accounts: InitializeNamespaceAccounts,
+    accounts: InitializeNamespaceAccounts
   ): Promise<void> {
     const instruction = await this.instruction.initializeNamespace(
       args,
@@ -124,19 +128,19 @@ export class NamespaceProgram {
     );
 
     await sendTransactionWithRetry(
-      this.program.provider.connection,
-      this.program.provider.wallet,
+      (this.program.provider as AnchorProvider).connection,
+      (this.program.provider as AnchorProvider).wallet,
       instruction,
       []
     );
   }
 
-  async fetchNamespace(
-    mint: web3.PublicKey,
-  ): Promise<NamespaceWrapper> {
+  async fetchNamespace(mint: web3.PublicKey): Promise<NamespaceWrapper> {
     let namespacePDA = (await getNamespacePDA(mint))[0];
 
-    let namespaceObj = await this.program.provider.connection.getAccountInfo(namespacePDA);
+    let namespaceObj = await (
+      this.program.provider as AnchorProvider
+    ).connection.getAccountInfo(namespacePDA);
 
     const namespaceDecoded = decodeNamespace(namespaceObj.data);
     namespaceDecoded.program = this.program;
@@ -163,7 +167,7 @@ export async function getNamespaceProgram(
     anchorWallet = new NodeWallet(anchorWallet);
   }
 
-  const provider = new Provider(solConnection, anchorWallet, {
+  const provider = new AnchorProvider(solConnection, anchorWallet, {
     preflightCommitment: "recent",
   });
 

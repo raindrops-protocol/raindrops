@@ -26,6 +26,8 @@ pub const PREFIX: &str = "item";
 pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
+pub const RENT_ID: &str = "SysvarRent111111111111111111111111111111111";
+pub const CLOCK_ID: &str = "SysvarC1ock11111111111111111111111111111111";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassArgs {
@@ -709,8 +711,15 @@ pub mod item {
         let craft_item_class = &ctx.accounts.craft_item_class;
         let craft_item_counter = &mut ctx.accounts.craft_item_counter;
         let token_program = &ctx.accounts.token_program;
+        let system_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
-        msg!("1");
+        let rent = &ctx.accounts.rent;
+
+        require_keys_eq!(rent.key(), Pubkey::from_str(RENT_ID).unwrap());
+        require_keys_eq!(clock.key(), Pubkey::from_str(CLOCK_ID).unwrap());
+        require_keys_eq!(token_program.key(), anchor_spl::token::ID);
+        require_keys_eq!(system_program.key(), anchor_lang::system_program::ID);
+
         let AddCraftItemToEscrowArgs {
             class_index,
             component_scope,
@@ -774,12 +783,24 @@ pub mod item {
         if chosen_component.condition == ComponentCondition::Cooldown
             || chosen_component.condition == ComponentCondition::CooldownAndConsume
         {
+            // Due to stack size violation from newer anchor vers had to switch to hacky clock
+            let clock_info = clock.to_account_info();
+            let unix_timestamp = clock_info.data.try_borrow().unwrap();
             verify_cooldown(VerifyCooldownArgs {
                 craft_usage_info,
                 craft_item_class,
                 craft_item,
                 chosen_component: &chosen_component,
-                unix_timestamp: clock.unix_timestamp as u64,
+                unix_timestamp: u64::from_le_bytes([
+                    unix_timestamp[32],
+                    unix_timestamp[33],
+                    unix_timestamp[34],
+                    unix_timestamp[35],
+                    unix_timestamp[36],
+                    unix_timestamp[37],
+                    unix_timestamp[38],
+                    unix_timestamp[39],
+                ]),
             })?;
         }
 
@@ -1776,10 +1797,10 @@ pub struct AddCraftItemToEscrow<'info> {
     craft_item_transfer_authority: Signer<'info>,
     #[account(mut)]
     payer: Signer<'info>,
-    system_program: Program<'info, System>,
-    token_program: Program<'info, Token>,
-    rent: Sysvar<'info, Rent>,
-    clock: Sysvar<'info, Clock>,
+    system_program: UncheckedAccount<'info>,
+    token_program: UncheckedAccount<'info>,
+    rent: UncheckedAccount<'info>,
+    clock: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 

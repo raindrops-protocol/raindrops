@@ -16,8 +16,7 @@ programCommand("initialize_namespace")
     "JSON file with namespace settings"
   )
   .action(async (_files: string[], cmd) => {
-    const { keypair, env, rpcUrl, configPath } =
-      cmd.opts();
+    const { keypair, env, rpcUrl, configPath } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getNamespaceProgram(walletKeyPair, env, rpcUrl);
@@ -30,7 +29,7 @@ programCommand("initialize_namespace")
     const config = JSON.parse(configString.toString());
 
     const whitelistedStakingMints = config.whitelistedStakingMints.map(
-      mint => new web3.PublicKey(mint)
+      (mint) => new web3.PublicKey(mint)
     );
 
     await anchorProgram.initializeNamespace(
@@ -39,11 +38,11 @@ programCommand("initialize_namespace")
         uuid: config.uuid,
         prettyName: config.prettyName,
         permissivenessSettings: config.permissivenessSettings,
-        whitelistedStakingMints: whitelistedStakingMints
+        whitelistedStakingMints: whitelistedStakingMints,
       },
       {
-        mint : new web3.PublicKey(config.mint),
-        metadata : new web3.PublicKey(config.metadata),
+        mint: new web3.PublicKey(config.mint),
+        metadata: new web3.PublicKey(config.metadata),
         masterEdition: new web3.PublicKey(config.masterEdition),
       }
     );
@@ -57,23 +56,25 @@ programCommand("show_namespace")
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getNamespaceProgram(walletKeyPair, env, rpcUrl);
 
-    let tokenMint: web3.PublicKey = new web3.PublicKey(mint)
+    let tokenMint: web3.PublicKey = new web3.PublicKey(mint);
 
     const namespaceKey = (await getNamespacePDA(tokenMint))[0];
 
-    const namespace = await anchorProgram.program.account.namespace.fetch(namespaceKey);
+    const namespace = (await anchorProgram.program.account.namespace.fetch(
+      namespaceKey
+    )) as any;
     log.setLevel("info");
     log.info("Namespace:", namespaceKey.toBase58());
 
     log.info(`Namespaces: ${namespace.namespaces ? "[" : "[]"}`);
     if (namespace.namespaces) {
-        namespace.namespaces.map((n) => {
-          log.info(`{`)
-          log.info(`\tnamespace: ${n.namespace.toBase58()}`);
-          log.info(`\tindexed: ${n.indexed}`);
-          log.info(`\tinherited: ${Object.keys(n.inherited).join(", ")}`);
-          log.info(`}`)
-        })
+      namespace.namespaces.map((n) => {
+        log.info(`{`);
+        log.info(`\tnamespace: ${n.namespace.toBase58()}`);
+        log.info(`\tindexed: ${n.indexed}`);
+        log.info(`\tinherited: ${Object.keys(n.inherited).join(", ")}`);
+        log.info(`}`);
+      });
       log.info("]");
     }
 
@@ -83,11 +84,15 @@ programCommand("show_namespace")
     );
     log.info(
       "Metadata:",
-      namespace.metadata ? namespace.metadata.toBase58() : "Not cached on object"
+      namespace.metadata
+        ? namespace.metadata.toBase58()
+        : "Not cached on object"
     );
     log.info(
       "Master Edition:",
-      namespace.masterEdition ? namespace.masterEdition.toBase58() : "Not cached on object"
+      namespace.masterEdition
+        ? namespace.masterEdition.toBase58()
+        : "Not cached on object"
     );
     log.info(
       "UUID:",
@@ -95,48 +100,69 @@ programCommand("show_namespace")
     );
     log.info(
       "Pretty Name:",
-      namespace.prettyName ? namespace.prettyName.toString() : "Not cached on object"
+      namespace.prettyName
+        ? namespace.prettyName.toString()
+        : "Not cached on object"
     );
     log.info(
       "Artifacts Added:",
-      namespace.artifactsAdded ? namespace.artifactsAdded.toNumber() : "Not cached on object"
+      namespace.artifactsAdded
+        ? namespace.artifactsAdded.toNumber()
+        : "Not cached on object"
     );
     log.info(
       "Highest Page:",
-      namespace.highestPage ? namespace.highestPage.toNumber() : "Not cached on object"
+      namespace.highestPage
+        ? namespace.highestPage.toNumber()
+        : "Not cached on object"
     );
     log.info(
       "Aritfacts Cached:",
-      namespace.artifactsCached ? namespace.artifactsCached.toNumber() : "Not cached on object"
+      namespace.artifactsCached
+        ? namespace.artifactsCached.toNumber()
+        : "Not cached on object"
     );
 
     log.info("Permissiveness Settings: {");
     log.info(
-      `\tNamespace Permissiveness: ${Object.keys(namespace.permissivenessSettings.namespacePermissiveness).join(", ")}`
-    )
+      `\tNamespace Permissiveness: ${Object.keys(
+        namespace.permissivenessSettings.namespacePermissiveness
+      ).join(", ")}`
+    );
     log.info(
-      `\tItem Permissiveness: ${Object.keys(namespace.permissivenessSettings.itemPermissiveness).join(", ")}`
-    )
+      `\tItem Permissiveness: ${Object.keys(
+        namespace.permissivenessSettings.itemPermissiveness
+      ).join(", ")}`
+    );
     log.info(
-      `\tPlayer Permissiveness: ${Object.keys(namespace.permissivenessSettings.playerPermissiveness).join(", ")}`
-    )
+      `\tPlayer Permissiveness: ${Object.keys(
+        namespace.permissivenessSettings.playerPermissiveness
+      ).join(", ")}`
+    );
     log.info(
-      `\tMatch Permissiveness: ${Object.keys(namespace.permissivenessSettings.matchPermissiveness).join(", ")}`
-    )
+      `\tMatch Permissiveness: ${Object.keys(
+        namespace.permissivenessSettings.matchPermissiveness
+      ).join(", ")}`
+    );
     log.info(
-      `\tMission Permissiveness: ${Object.keys(namespace.permissivenessSettings.missionPermissiveness).join(", ")}`
-    )
+      `\tMission Permissiveness: ${Object.keys(
+        namespace.permissivenessSettings.missionPermissiveness
+      ).join(", ")}`
+    );
     log.info(
-      `\tCache Permissiveness: ${Object.keys(namespace.permissivenessSettings.cachePermissiveness).join(", ")}`
-    )
+      `\tCache Permissiveness: ${Object.keys(
+        namespace.permissivenessSettings.cachePermissiveness
+      ).join(", ")}`
+    );
     log.info("}");
 
-    log.info(
-      "Bump:",
-      namespace.bump ? namespace.bump : "Not cached on object"
-    );
+    log.info("Bump:", namespace.bump ? namespace.bump : "Not cached on object");
 
-    log.info(`Whitelist Staking Mints: [${namespace.whitelistedStakingMints?.length > 0 ? "" : "]" }`);
+    log.info(
+      `Whitelist Staking Mints: [${
+        namespace.whitelistedStakingMints?.length > 0 ? "" : "]"
+      }`
+    );
     if (namespace.whitelistedStakingMints?.length > 0) {
       namespace.whitelistedStakingMints.map((wlStakingMint) => {
         log.info(`\t${wlStakingMint.toBase58()}`);
