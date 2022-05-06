@@ -27,7 +27,6 @@ pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const RENT_ID: &str = "SysvarRent111111111111111111111111111111111";
-pub const CLOCK_ID: &str = "SysvarC1ock11111111111111111111111111111111";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassArgs {
@@ -709,16 +708,9 @@ pub mod item {
         let craft_item_token_account = &ctx.accounts.craft_item_token_account;
         let craft_item = &ctx.accounts.craft_item;
         let craft_item_class = &ctx.accounts.craft_item_class;
-        let craft_item_counter = &mut ctx.accounts.craft_item_counter;
+        let craft_item_counter = &mut ctx.accounts.craft_item_counter.load_mut()?;
         let token_program = &ctx.accounts.token_program;
-        let system_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
-        let rent = &ctx.accounts.rent;
-
-        require_keys_eq!(rent.key(), Pubkey::from_str(RENT_ID).unwrap());
-        require_keys_eq!(clock.key(), Pubkey::from_str(CLOCK_ID).unwrap());
-        require_keys_eq!(token_program.key(), anchor_spl::token::ID);
-        require_keys_eq!(system_program.key(), anchor_lang::system_program::ID);
 
         let AddCraftItemToEscrowArgs {
             class_index,
@@ -736,7 +728,7 @@ pub mod item {
             ..
         } = args;
 
-        let acct = craft_item_counter.to_account_info();
+        let acct = ctx.accounts.craft_item_counter.to_account_info();
         let data: &[u8] = &acct.data.try_borrow().unwrap();
         let disc_bytes = array_ref![data, 0, 8];
         if disc_bytes != &CraftItemCounter::discriminator() && disc_bytes.iter().any(|a| a != &0) {
@@ -783,24 +775,12 @@ pub mod item {
         if chosen_component.condition == ComponentCondition::Cooldown
             || chosen_component.condition == ComponentCondition::CooldownAndConsume
         {
-            // Due to stack size violation from newer anchor vers had to switch to hacky clock
-            let clock_info = clock.to_account_info();
-            let unix_timestamp = clock_info.data.try_borrow().unwrap();
             verify_cooldown(VerifyCooldownArgs {
                 craft_usage_info,
                 craft_item_class,
                 craft_item,
                 chosen_component: &chosen_component,
-                unix_timestamp: u64::from_le_bytes([
-                    unix_timestamp[32],
-                    unix_timestamp[33],
-                    unix_timestamp[34],
-                    unix_timestamp[35],
-                    unix_timestamp[36],
-                    unix_timestamp[37],
-                    unix_timestamp[38],
-                    unix_timestamp[39],
-                ]),
+                unix_timestamp: clock.unix_timestamp as u64,
             })?;
         }
 
@@ -956,15 +936,16 @@ pub mod item {
                 })?;
             }
 
-            let mut craft_item_acct: Account<CraftItemCounter> =
-                Account::try_from(&craft_item_counter.to_account_info())?;
+            let craft_item_acct: AccountLoader<CraftItemCounter> =
+                AccountLoader::try_from(&craft_item_counter.to_account_info())?;
 
-            craft_item_acct.amount_loaded = craft_item_acct
+            let mut craft_item_counter = craft_item_acct.load_mut()?;
+            craft_item_counter.amount_loaded = craft_item_counter
                 .amount_loaded
                 .checked_sub(amount_contributed_from_this_contributor)
                 .ok_or(ErrorCode::NumericalOverflowError)?;
 
-            amount_loaded = craft_item_acct.amount_loaded;
+            amount_loaded = craft_item_counter.amount_loaded;
             close_token_account(
                 craft_item_token_account_escrow,
                 receiver,
@@ -1778,7 +1759,7 @@ pub struct AddCraftItemToEscrow<'info> {
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.item_class_mint.as_ref(), &args.class_index.to_le_bytes(), args.new_item_mint.as_ref(), &args.craft_escrow_index.to_le_bytes(), &args.craft_item_index.to_le_bytes(), craft_item_token_account.mint.as_ref(),&args.component_scope.as_bytes()
     ], bump, space=16, payer=payer)]
-    craft_item_counter: Box<Account<'info, CraftItemCounter>>,
+    craft_item_counter: AccountLoader<'info, CraftItemCounter>,
     #[account(constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key())]
     new_item_token: Box<Account<'info, TokenAccount>>,
     // may be required signer if builder must be holder in item class is true
@@ -1797,10 +1778,10 @@ pub struct AddCraftItemToEscrow<'info> {
     craft_item_transfer_authority: Signer<'info>,
     #[account(mut)]
     payer: Signer<'info>,
-    system_program: UncheckedAccount<'info>,
-    token_program: UncheckedAccount<'info>,
-    rent: UncheckedAccount<'info>,
-    clock: UncheckedAccount<'info>,
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+    rent: Sysvar<'info, Rent>,
+    clock: Sysvar<'info, Clock>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -2344,7 +2325,7 @@ pub struct ItemEscrow {
     build_began: Option<u64>,
 }
 
-#[account]
+#[account(zero_copy)]
 pub struct CraftItemCounter {
     amount_loaded: u64,
 }
