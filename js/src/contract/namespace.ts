@@ -53,7 +53,6 @@ export interface InitializeNamespaceAccounts {
 }
 
 export interface InitializeNamespaceArgs {
-  bump?: number;
   desiredNamespaceArraySize: BN;
   uuid: string;
   prettyName: string;
@@ -77,8 +76,7 @@ export class NamespaceInstruction {
     accounts: InitializeNamespaceAccounts,
     _additionalArgs: InitializeNamespaceAdditionalArgs = {}
   ) {
-    const [namespacePDA, namespaceBump] = await getNamespacePDA(accounts.mint);
-    args.bump = namespaceBump;
+    const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
 
     convertNumbersToBNs(args);
 
@@ -87,8 +85,9 @@ export class NamespaceInstruction {
     });
 
     return [
-      this.program.instruction.initializeNamespace(args, {
-        accounts: {
+      await this.program.methods
+        .initializeNamespace(args)
+        .accounts({
           namespace: namespacePDA,
           mint: accounts.mint,
           metadata: accounts.metadata,
@@ -97,9 +96,9 @@ export class NamespaceInstruction {
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-        },
-        remainingAccounts: remainingAccounts,
-      }),
+        })
+        .remainingAccounts(remainingAccounts)
+        .instruction(),
     ];
   }
 }
