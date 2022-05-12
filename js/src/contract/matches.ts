@@ -76,7 +76,6 @@ export class MatchWrapper implements ObjectWrapper<any, MatchesProgram> {
 }
 
 export interface CreateMatchArgs {
-  matchBump: number | null;
   matchState: AnchorMatchState;
   tokenEntryValidationRoot: null;
   tokenEntryValidation: null | AnchorTokenEntryValidation[];
@@ -102,18 +101,15 @@ export interface UpdateMatchArgs {
 
 export interface JoinMatchArgs {
   amount: BN;
-  escrowBump: number | null;
   tokenEntryValidationProof: null;
   tokenEntryValidation: null;
 }
 
 export interface LeaveMatchArgs {
   amount: BN;
-  escrowBump: number | null;
 }
 
 export interface DisburseTokensByOracleArgs {
-  escrowBump: number | null;
   tokenDeltaProofInfo: null;
 }
 
@@ -125,7 +121,6 @@ export interface CreateMatchAdditionalArgs {
 }
 
 export interface CreateOrUpdateOracleArgs {
-  oracleBump: number | null;
   seed: string;
   authority: web3.PublicKey;
   space: BN;
@@ -137,8 +132,6 @@ export interface CreateOrUpdateOracleArgs {
 export interface DrainMatchArgs {}
 
 export interface DrainOracleArgs {
-  oracleBump: number | null;
-  matchBump: number | null;
   seed: string;
   authority: web3.PublicKey;
 }
@@ -207,20 +200,20 @@ export class MatchesInstruction {
     _accounts = {},
     _additionalArgs = {}
   ) {
-    const [match, matchBump] = await getMatch(args.winOracle);
+    const [match, _matchBump] = await getMatch(args.winOracle);
 
     transformTokenValidations(args);
-    args.matchBump = matchBump;
     return {
       instructions: [
-        this.program.instruction.createMatch(args, {
-          accounts: {
+        await this.program.methods
+          .createMatch(args)
+          .accounts({
             matchInstance: match,
             payer: (this.program.provider as AnchorProvider).wallet.publicKey,
             systemProgram: SystemProgram.programId,
             rent: web3.SYSVAR_RENT_PUBKEY,
-          },
-        }),
+          })
+          .instruction(),
       ],
       signers: [],
     };
@@ -234,7 +227,7 @@ export class MatchesInstruction {
     const match = (await getMatch(accounts.winOracle))[0];
     const tfer = additionalArgs.tokenDelta;
 
-    const [tokenAccountEscrow, escrowBump] = await getMatchTokenAccountEscrow(
+    const [tokenAccountEscrow, _escrowBump] = await getMatchTokenAccountEscrow(
       accounts.winOracle,
       tfer.mint,
       tfer.from
@@ -268,11 +261,11 @@ export class MatchesInstruction {
         );
       }
     }
-    args.escrowBump = escrowBump;
 
     instructions.push(
-      this.program.instruction.disburseTokensByOracle(args, {
-        accounts: {
+      await this.program.methods
+        .disburseTokensByOracle(args)
+        .accounts({
           matchInstance: match,
           tokenAccountEscrow,
           tokenMint: tfer.mint,
@@ -282,8 +275,8 @@ export class MatchesInstruction {
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-        },
-      })
+        })
+        .instruction()
     );
     return {
       instructions,
@@ -300,16 +293,17 @@ export class MatchesInstruction {
 
     return {
       instructions: [
-        this.program.instruction.drainMatch({
-          accounts: {
+        await this.program.methods
+          .drainMatch()
+          .accounts({
             matchInstance: match,
             authority: (this.program.provider as AnchorProvider).wallet
               .publicKey,
             receiver:
               accounts.receiver ||
               (this.program.provider as AnchorProvider).wallet.publicKey,
-          },
-        }),
+          })
+          .instruction(),
       ],
       signers: [],
     };
@@ -325,26 +319,22 @@ export class MatchesInstruction {
       new web3.PublicKey(args.authority)
     );
 
-    const [match, matchBump] = await getMatch(oracle);
+    const [match, _matchBump] = await getMatch(oracle);
 
     return {
       instructions: [
-        this.program.instruction.drainOracle(
-          matchBump,
-          oracleBump,
-          { ...args, seed: new web3.PublicKey(args.seed) },
-          {
-            accounts: {
-              matchInstance: match,
-              authority: (this.program.provider as AnchorProvider).wallet
-                .publicKey,
-              receiver:
-                accounts.receiver ||
-                (this.program.provider as AnchorProvider).wallet.publicKey,
-              oracle,
-            },
-          }
-        ),
+        await this.program.methods
+          .drainOracle({ ...args, seed: new web3.PublicKey(args.seed) })
+          .accounts({
+            matchInstance: match,
+            authority: (this.program.provider as AnchorProvider).wallet
+              .publicKey,
+            receiver:
+              accounts.receiver ||
+              (this.program.provider as AnchorProvider).wallet.publicKey,
+            oracle,
+          })
+          .instruction(),
       ],
       signers: [],
     };
@@ -359,14 +349,15 @@ export class MatchesInstruction {
 
     return {
       instructions: [
-        this.program.instruction.updateMatch(args, {
-          accounts: {
+        await this.program.methods
+          .updateMatch(args)
+          .accounts({
             matchInstance: match,
             winOracle: accounts.winOracle,
             authority: (this.program.provider as AnchorProvider).wallet
               .publicKey,
-          },
-        }),
+          })
+          .instruction(),
       ],
       signers: [],
     };
@@ -383,20 +374,19 @@ export class MatchesInstruction {
       await getAtaForMint(accounts.tokenMint, accounts.receiver)
     )[0];
 
-    const [tokenAccountEscrow, escrowBump] = await getMatchTokenAccountEscrow(
+    const [tokenAccountEscrow, _escrowBump] = await getMatchTokenAccountEscrow(
       additionalArgs.winOracle,
       accounts.tokenMint,
       (this.program.provider as AnchorProvider).wallet.publicKey
     );
 
-    args.escrowBump = escrowBump;
-
     const signers = [];
 
     return {
       instructions: [
-        this.program.instruction.leaveMatch(args, {
-          accounts: {
+        await this.program.methods
+          .leaveMatch(args)
+          .accounts({
             matchInstance: match,
             tokenAccountEscrow,
             tokenMint: accounts.tokenMint,
@@ -404,8 +394,8 @@ export class MatchesInstruction {
             receiver: (this.program.provider as AnchorProvider).wallet
               .publicKey,
             tokenProgram: TOKEN_PROGRAM_ID,
-          },
-        }),
+          })
+          .instruction(),
       ],
       signers,
     };
@@ -429,13 +419,11 @@ export class MatchesInstruction {
     const transferAuthority =
       accounts.tokenTransferAuthority || web3.Keypair.generate();
 
-    const [tokenAccountEscrow, escrowBump] = await getMatchTokenAccountEscrow(
+    const [tokenAccountEscrow, _escrowBump] = await getMatchTokenAccountEscrow(
       additionalArgs.winOracle,
       accounts.tokenMint,
       (this.program.provider as AnchorProvider).wallet.publicKey
     );
-
-    args.escrowBump = escrowBump;
 
     const signers = [transferAuthority];
 
@@ -449,8 +437,9 @@ export class MatchesInstruction {
           [],
           args.amount.toNumber()
         ),
-        this.program.instruction.joinMatch(args, {
-          accounts: {
+        await this.program.methods
+          .joinMatch(args)
+          .accounts({
             matchInstance: match,
             tokenTransferAuthority: transferAuthority.publicKey,
             tokenAccountEscrow,
@@ -472,9 +461,9 @@ export class MatchesInstruction {
               accounts.validationProgram || SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
-          },
-          signers,
-        }),
+          })
+          .signers(signers)
+          .instruction(),
         Token.createRevokeInstruction(
           TOKEN_PROGRAM_ID,
           sourceTokenAccount,
@@ -495,15 +484,16 @@ export class MatchesInstruction {
 
     return {
       instructions: [
-        this.program.instruction.updateMatchFromOracle({
-          accounts: {
+        await this.program.methods
+          .updateMatchFromOracle()
+          .accounts({
             matchInstance: match,
             winOracle: accounts.winOracle,
             authority: (this.program.provider as AnchorProvider).wallet
               .publicKey,
             clock: web3.SYSVAR_CLOCK_PUBKEY,
-          },
-        }),
+          })
+          .instruction(),
       ],
       signers: [],
     };
@@ -514,7 +504,7 @@ export class MatchesInstruction {
     _accounts = {},
     _additionalArgs = {}
   ) {
-    const [oracle, oracleBump] = await getOracle(
+    const [oracle, _oracleBump] = await getOracle(
       new web3.PublicKey(args.seed),
       args.authority
     );
@@ -529,20 +519,21 @@ export class MatchesInstruction {
         }))
       : null;
 
-    args.oracleBump = oracleBump;
     return {
       instructions: [
-        this.program.instruction.createOrUpdateOracle(
-          { ...args, tokenTransfers, seed: new web3.PublicKey(args.seed) },
-          {
-            accounts: {
-              oracle,
-              payer: (this.program.provider as AnchorProvider).wallet.publicKey,
-              systemProgram: SystemProgram.programId,
-              rent: web3.SYSVAR_RENT_PUBKEY,
-            },
-          }
-        ),
+        await this.program.methods
+          .createOrUpdateOracle({
+            ...args,
+            tokenTransfers,
+            seed: new web3.PublicKey(args.seed),
+          })
+          .accounts({
+            oracle,
+            payer: (this.program.provider as AnchorProvider).wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+          })
+          .instruction(),
       ],
       signers: [],
     };
