@@ -83,14 +83,10 @@ export async function sendTransactionWithRetry(
   const transaction = new Transaction();
   instructions.forEach((instruction) => transaction.add(instruction));
   transaction.recentBlockhash = (
-    await connection.getRecentBlockhash(commitment)
+    await connection.getLatestBlockhash(commitment)
   ).blockhash;
 
-  transaction.setSigners(
-    // fee payed by the wallet owner
-    wallet.publicKey,
-    ...signers.map((s) => s.publicKey)
-  );
+  transaction.feePayer = wallet.publicKey;
 
   if (signers.length > 0) {
     transaction.partialSign(...signers);
@@ -299,7 +295,7 @@ async function awaitTransactionSignatureConfirmation(
   });
 
   //@ts-ignore
-  if (connection._signatureSubscriptions[subId])
+  if (connection._subscriptionsByHash[subId])
     connection.removeSignatureListener(subId);
   done = true;
   log.debug("Returning status", status);

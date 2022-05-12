@@ -708,7 +708,6 @@ pub mod item {
         let craft_item_token_account = &ctx.accounts.craft_item_token_account;
         let craft_item = &ctx.accounts.craft_item;
         let craft_item_class = &ctx.accounts.craft_item_class;
-        let craft_item_counter = &mut ctx.accounts.craft_item_counter.load_mut()?;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
 
@@ -728,12 +727,10 @@ pub mod item {
             ..
         } = args;
 
-        let acct = ctx.accounts.craft_item_counter.to_account_info();
-        let data: &[u8] = &acct.data.try_borrow().unwrap();
-        let disc_bytes = array_ref![data, 0, 8];
-        if disc_bytes != &CraftItemCounter::discriminator() && disc_bytes.iter().any(|a| a != &0) {
-            return Err(error!(ErrorCode::ReinitializationDetected));
-        }
+        let mut craft_item_counter = match ctx.accounts.craft_item_counter.load_mut() {
+            Ok(val) => val,
+            Err(_) => ctx.accounts.craft_item_counter.load_init()?,
+        };
 
         let item_class_data =
             item_class.item_class_data(&item_class.to_account_info().data.borrow())?;

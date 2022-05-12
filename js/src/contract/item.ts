@@ -665,7 +665,7 @@ export class ItemProgram {
       )
     )[0];
 
-    const [craftItemEscrow, itemEscrowBump] = await getCraftItemEscrow({
+    const [craftItemEscrow, _itemEscrowBump] = await getCraftItemEscrow({
       itemClassMint: accounts.itemClassMint,
       classIndex: args.classIndex,
       craftIndex: args.craftItemIndex,
@@ -680,7 +680,7 @@ export class ItemProgram {
       componentScope: args.componentScope,
     });
 
-    const [craftItemCounter, craftBump] = await getCraftItemCounter({
+    const [craftItemCounter, _craftBump] = await getCraftItemCounter({
       itemClassMint: accounts.itemClassMint,
       classIndex: args.classIndex,
       craftItemIndex: args.craftItemIndex,
@@ -815,7 +815,7 @@ export class ItemProgram {
       )
     )[0];
 
-    const [craftItemEscrow, itemEscrowBump] = await getCraftItemEscrow({
+    const [craftItemEscrow, _itemEscrowBump] = await getCraftItemEscrow({
       itemClassMint: accounts.itemClassMint,
       classIndex: args.classIndex,
       craftIndex: args.craftItemIndex,
@@ -830,7 +830,7 @@ export class ItemProgram {
       componentScope: args.componentScope,
     });
 
-    const [craftItemCounter, craftBump] = await getCraftItemCounter({
+    const [craftItemCounter, _craftBump] = await getCraftItemCounter({
       itemClassMint: accounts.itemClassMint,
       classIndex: args.classIndex,
       craftItemIndex: args.craftItemIndex,
