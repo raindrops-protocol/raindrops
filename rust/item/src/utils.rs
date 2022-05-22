@@ -403,7 +403,7 @@ pub fn get_class_write_offsets(
         end_ctr += 1;
     }
 
-    return (ctr as u64, end_ctr as u64);
+    (ctr as u64, end_ctr as u64)
 }
 
 pub fn write_data(
@@ -446,7 +446,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
             amount,
         )?,
         &[source, destination, authority, token_program],
-        if authority_signer_seeds.len() == 0 {
+        if authority_signer_seeds.is_empty() {
             &[]
         } else {
             val
@@ -469,7 +469,7 @@ pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize)> {
 }
 
 pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
-    let (key, bump) = Pubkey::find_program_address(&path, program_id);
+    let (key, bump) = Pubkey::find_program_address(path, program_id);
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
@@ -481,7 +481,7 @@ pub fn assert_derivation_by_key(
     account: &Pubkey,
     path: &[&[u8]],
 ) -> Result<u8> {
-    let (key, bump) = Pubkey::find_program_address(&path, program_id);
+    let (key, bump) = Pubkey::find_program_address(path, program_id);
     if key != *account {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
@@ -493,7 +493,7 @@ pub fn assert_derivation_with_bump(
     account: &AccountInfo,
     path: &[&[u8]],
 ) -> Result<()> {
-    let key = Pubkey::create_program_address(&path, program_id).unwrap();
+    let key = Pubkey::create_program_address(path, program_id).unwrap();
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
@@ -521,7 +521,7 @@ pub fn create_or_allocate_account_raw<'a>(
     if required_lamports > 0 {
         msg!("Transfer {} lamports to the new account", required_lamports);
         invoke(
-            &system_instruction::transfer(&payer_info.key, new_account_info.key, required_lamports),
+            &system_instruction::transfer(payer_info.key, new_account_info.key, required_lamports),
             &[
                 payer_info.clone(),
                 new_account_info.clone(),
@@ -536,14 +536,14 @@ pub fn create_or_allocate_account_raw<'a>(
     invoke_signed(
         &system_instruction::allocate(new_account_info.key, size.try_into().unwrap()),
         accounts,
-        &[&signer_seeds],
+        &[signer_seeds],
     )?;
 
     msg!("Assign the account to the owning program");
     invoke_signed(
         &system_instruction::assign(new_account_info.key, &program_id),
         accounts,
-        &[&signer_seeds],
+        &[signer_seeds],
     )?;
     msg!("Completed assignation!");
 
@@ -638,7 +638,7 @@ pub fn assert_builder_must_be_holder_check(
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Result<()> {
@@ -785,7 +785,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
 
 pub fn add_to_new_array_from_parent<T: Inherited>(
     inheritance: InheritanceState,
-    parent_items: &Vec<T>,
+    parent_items: &[T],
     new_items: &mut Vec<T>,
 ) {
     for item in parent_items {
@@ -845,10 +845,7 @@ pub fn propagate_parent_array<T: Inherited>(args: PropagateParentArrayArgs<T>) -
         return None;
     }
 
-    match child_items {
-        Some(v) => Some(v.to_vec()),
-        None => None,
-    }
+    child_items.as_ref().map(|v| v.to_vec())
 }
 
 pub struct PropagateParentArgs<'a, T: Inherited> {
@@ -877,10 +874,7 @@ pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T>
         return None;
     }
 
-    match child {
-        Some(v) => Some(v.clone()),
-        None => None,
-    }
+    child.as_ref().cloned()
 }
 
 pub fn update_item_class_with_inherited_information(
@@ -1020,31 +1014,28 @@ pub fn assert_valid_item_settings_for_edition_type(
                     }
                 }
 
-                match &usage.item_class_type {
-                    ItemClassType::Consumable {
-                        max_uses,
-                        item_usage_type,
-                        cooldown_duration,
-                        ..
-                    } => {
-                        if let Some(max) = max_uses {
-                            if max > &1 {
-                                // cant have a fungible mint with more than one use. Impossible to track state per token.
-                                return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
-                            }
-                        }
-
-                        if cooldown_duration.is_some() {
-                            return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
-                        }
-
-                        if item_usage_type != &ItemUsageType::Destruction
-                            && item_usage_type != &ItemUsageType::Infinite
-                        {
+                if let ItemClassType::Consumable {
+                    max_uses,
+                    item_usage_type,
+                    cooldown_duration,
+                    ..
+                } = &usage.item_class_type {
+                    if let Some(max) = max_uses {
+                        if max > &1 {
+                            // cant have a fungible mint with more than one use. Impossible to track state per token.
                             return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
                         }
                     }
-                    _ => {}
+
+                    if cooldown_duration.is_some() {
+                        return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
+                    }
+
+                    if item_usage_type != &ItemUsageType::Destruction
+                        && item_usage_type != &ItemUsageType::Infinite
+                    {
+                        return Err(error!(ErrorCode::InvalidConfigForFungibleMints));
+                    }
                 }
             }
         }
@@ -1052,7 +1043,7 @@ pub fn assert_valid_item_settings_for_edition_type(
     Ok(())
 }
 
-pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey> {
+pub fn grab_parent(artifact: &AccountInfo) -> Result<Pubkey> {
     let data = artifact.data.borrow();
 
     let number = if data[8] == 1 {
@@ -1060,18 +1051,18 @@ pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey> {
     } else {
         0
     };
-    let offset = 8 as usize + number * 34 + if data[8] == 1 { 4 } else { 0 } + 1;
+    let offset = 8_usize + number * 34 + if data[8] == 1 { 4 } else { 0 } + 1;
 
     if data[offset] == 1 {
         let key_bytes = array_ref![data, offset + 1, 32];
         let key = Pubkey::new_from_array(*key_bytes);
-        return Ok(key);
+        Ok(key)
     } else {
-        return Err(error!(ErrorCode::NoParentPresent));
+        Err(error!(ErrorCode::NoParentPresent))
     }
 }
 
-pub fn grab_update_authority<'a>(metadata: &AccountInfo<'a>) -> Result<Pubkey> {
+pub fn grab_update_authority(metadata: &AccountInfo) -> Result<Pubkey> {
     let data = metadata.data.borrow();
     let key_bytes = array_ref![data, 1, 32];
     let key = Pubkey::new_from_array(*key_bytes);
@@ -1108,14 +1099,14 @@ pub fn assert_signer(account: &AccountInfo) -> Result<()> {
     }
 }
 
-pub fn assert_metadata_valid<'a>(
+pub fn assert_metadata_valid(
     metadata: &AccountInfo,
     edition: Option<&AccountInfo>,
     mint: &Pubkey,
 ) -> Result<()> {
     assert_derivation(
         &metaplex_token_metadata::id(),
-        &metadata,
+        metadata,
         &[
             metaplex_token_metadata::state::PREFIX.as_bytes(),
             metaplex_token_metadata::id().as_ref(),
@@ -1129,7 +1120,7 @@ pub fn assert_metadata_valid<'a>(
     if let Some(ed) = edition {
         assert_derivation(
             &metaplex_token_metadata::id(),
-            &ed,
+            ed,
             &[
                 metaplex_token_metadata::state::PREFIX.as_bytes(),
                 metaplex_token_metadata::id().as_ref(),
@@ -1197,8 +1188,8 @@ pub struct TransferMintAuthorityArgs<'b, 'info> {
     pub mint: &'b Account<'info, Mint>,
 }
 
-pub fn transfer_mint_authority<'b, 'info>(
-    args: TransferMintAuthorityArgs<'b, 'info>,
+pub fn transfer_mint_authority(
+    args: TransferMintAuthorityArgs,
 ) -> Result<()> {
     let TransferMintAuthorityArgs {
         item_class_key,
@@ -1223,7 +1214,7 @@ pub fn transfer_mint_authority<'b, 'info>(
             Some(item_class_key),
             AuthorityType::MintTokens,
             mint_authority_info.key,
-            &[&mint_authority_info.key],
+            &[mint_authority_info.key],
         )
         .unwrap(),
         accounts,
@@ -1236,10 +1227,10 @@ pub fn transfer_mint_authority<'b, 'info>(
             &set_authority(
                 token_program_info.key,
                 mint_info.key,
-                Some(&item_class_key),
+                Some(item_class_key),
                 AuthorityType::FreezeAccount,
                 mint_authority_info.key,
-                &[&mint_authority_info.key],
+                &[mint_authority_info.key],
             )
             .unwrap(),
             accounts,
@@ -1257,9 +1248,9 @@ pub fn transfer_mint_authority<'b, 'info>(
 /// defined by `root`. For this, a `proof` must be provided, containing
 /// sibling hashes on the branch from the leaf to the root of the tree. Each
 /// pair of leaves and each pair of pre-images are assumed to be sorted.
-pub fn verify(proof: &Vec<[u8; 32]>, root: &[u8; 32], leaf: [u8; 32]) -> bool {
+pub fn verify(proof: &[[u8; 32]], root: &[u8; 32], leaf: [u8; 32]) -> bool {
     let mut computed_hash = leaf;
-    for proof_element in proof.into_iter() {
+    for proof_element in proof.iter() {
         if computed_hash <= *proof_element {
             // Hash(current computed hash + current element of the proof)
             computed_hash = anchor_lang::solana_program::keccak::hashv(&[
@@ -1290,7 +1281,7 @@ pub struct VerifyCooldownArgs<'a, 'info> {
     pub unix_timestamp: u64,
 }
 
-pub fn verify_cooldown<'a, 'info>(args: VerifyCooldownArgs<'a, 'info>) -> Result<()> {
+pub fn verify_cooldown(args: VerifyCooldownArgs) -> Result<()> {
     let VerifyCooldownArgs {
         craft_usage_info,
         craft_item_class,
@@ -1430,7 +1421,7 @@ pub struct VerifyComponentArgs<'a, 'info> {
     pub count_check: bool,
 }
 
-pub fn verify_component<'a, 'info>(args: VerifyComponentArgs<'a, 'info>) -> Result<Component> {
+pub fn verify_component(args: VerifyComponentArgs) -> Result<Component> {
     let VerifyComponentArgs {
         item_class,
         component,
@@ -1549,15 +1540,15 @@ pub fn create_program_token_account_if_not_present<'a>(
             *token_program.key,
             &program_account.to_account_info(),
             &rent.to_account_info(),
-            &system_program,
-            &fee_payer,
+            system_program,
+            fee_payer,
             spl_token::state::Account::LEN,
             signer_seeds,
         )?;
 
         invoke_signed(
             &initialize_account2(
-                &token_program.key,
+                token_program.key,
                 &program_account.key(),
                 &mint.key(),
                 &owner.key(),
@@ -1570,7 +1561,7 @@ pub fn create_program_token_account_if_not_present<'a>(
                 rent.to_account_info(),
                 owner.clone(),
             ],
-            &[&signer_seeds],
+            &[signer_seeds],
         )?;
     }
 
@@ -1586,7 +1577,7 @@ pub fn close_token_account<'a>(
 ) -> Result<()> {
     invoke_signed(
         &close_account(
-            &token_program.key,
+            token_program.key,
             &program_account.key(),
             &fee_payer.key(),
             &owner.key(),
@@ -1599,7 +1590,7 @@ pub fn close_token_account<'a>(
             program_account.to_account_info(),
             owner.clone(),
         ],
-        &[&signer_seeds],
+        &[signer_seeds],
     )?;
 
     Ok(())
@@ -1614,28 +1605,26 @@ pub fn enact_valid_state_change(
         .uses
         .checked_add(1)
         .ok_or(ErrorCode::NumericalOverflowError)?;
-    match item_usage.item_class_type {
-        ItemClassType::Consumable {
-            max_uses,
-            cooldown_duration,
-            ..
-        } => {
-            if let Some(max) = max_uses {
-                require!(item_usage_state.uses <= max, MaxUsesReached)
-            }
 
-            if let Some(duration) = cooldown_duration {
-                if let Some(activated_at) = item_usage_state.activated_at {
-                    let cooldown_ends = activated_at
-                        .checked_add(duration)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-                    if unix_timestamp < cooldown_ends {
-                        return Err(error!(ErrorCode::CooldownNotOver));
-                    }
+    if let ItemClassType::Consumable {
+        max_uses,
+        cooldown_duration,
+        ..
+    } = item_usage.item_class_type {
+        if let Some(max) = max_uses {
+            require!(item_usage_state.uses <= max, MaxUsesReached)
+        }
+
+        if let Some(duration) = cooldown_duration {
+            if let Some(activated_at) = item_usage_state.activated_at {
+                let cooldown_ends = activated_at
+                    .checked_add(duration)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+                if unix_timestamp < cooldown_ends {
+                    return Err(error!(ErrorCode::CooldownNotOver));
                 }
             }
         }
-        _ => {}
     }
 
     item_usage_state.activated_at = Some(unix_timestamp);
@@ -1652,7 +1641,7 @@ pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
     pub unix_timestamp: u64,
 }
 
-pub fn verify_and_affect_item_state_update<'a, 'info>(
+pub fn verify_and_affect_item_state_update(
     args: VerifyAndAffectItemStateUpdateArgs,
 ) -> Result<(ItemUsage, ItemUsageState)> {
     let VerifyAndAffectItemStateUpdateArgs {
@@ -1759,21 +1748,21 @@ pub fn verify_and_affect_item_state_update<'a, 'info>(
             return Err(error!(ErrorCode::MissingMerkleInfo));
         }
     } else if let Some(usage_states) = &mut item.data.usage_states {
-        if usage_states.len() == 0 {
+        if usage_states.is_empty() {
             return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
         } else {
             let mut usage_state: Option<&mut ItemUsageState> = None;
-            for n in 0..usage_states.len() {
-                if usage_states[n].index == usage_index {
-                    let unwrapped_usage_state = &mut usage_states[n];
+            for n_usage_state in usage_states {
+                if n_usage_state.index == usage_index {
+                    let unwrapped_usage_state = n_usage_state;
                     enact_valid_state_change(unwrapped_usage_state, &item_usage, unix_timestamp)?;
                     usage_state = Some(unwrapped_usage_state);
                     break;
                 }
             }
 
-            if usage_state.is_some() {
-                usage_state.unwrap()
+            if let Some(usage_state) = usage_state {
+                usage_state
             } else {
                 return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
             }
@@ -1792,7 +1781,7 @@ pub struct GetItemUsageArgs<'a, 'info> {
     pub usage: Option<ItemUsage>,
 }
 
-pub fn get_item_usage<'a, 'info>(args: GetItemUsageArgs<'a, 'info>) -> Result<ItemUsage> {
+pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
     let GetItemUsageArgs {
         item_class,
         usage_index,
@@ -1819,13 +1808,13 @@ pub fn get_item_usage<'a, 'info>(args: GetItemUsageArgs<'a, 'info>) -> Result<It
             return Err(error!(ErrorCode::MissingMerkleInfo));
         }
     } else if let Some(usages) = &item_class_data.config.usages {
-        if usages.len() == 0 {
+        if usages.is_empty() {
             return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
         } else {
             let mut usage = &usages[0];
-            for n in 0..usages.len() {
-                if usages[n].index == usage_index {
-                    usage = &usages[n];
+            for usage_n in usages {
+                if usage_n.index == usage_index {
+                    usage = usage_n;
                     break;
                 }
             }
