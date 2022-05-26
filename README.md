@@ -1,4 +1,4 @@
-# Raindrops
+# 💦 Raindrops
 
 ## _NONE OF THIS CODE IS AUDITED YET USE AT YOUR OWN RISK_
 
