@@ -4,7 +4,12 @@
       "freeBuild": null,
       "childrenMustBeEditions": null,
       "builderMustBeHolder": null,
-      "updatePermissiveness": null,
+      "updatePermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
       "buildPermissiveness": [
         {
           "permissivenessType": { "tokenHolder": true },
@@ -93,9 +98,9 @@
   "metadataUpdateAuthority": null,
   "storeMint": false,
   "storeMetadataFields": false,
-  "mint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "mint": "56Bg1p5zjBKRERLiWNVsZnjhmuTTfPvxFQUq5hFcVF4k",
   "index": 13,
-  "updatePermissivenessToUse": { "updateAuthority": true },
+  "updatePermissivenessToUse": { "tokenHolder": true },
   "namespaceRequirement": 1,
   "totalSpaceBytes": 300
 }

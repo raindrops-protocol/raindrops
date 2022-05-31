@@ -44,7 +44,6 @@ programCommand("create_match")
                   : walletKeyPair.publicKey
               )
             )[0],
-        matchBump: null,
         matchState: config.matchState || { draft: true },
         tokenEntryValidationRoot: null,
         tokenEntryValidation: config.tokenEntryValidation
@@ -152,7 +151,6 @@ programCommand("join_match")
       await anchorProgram.joinMatch(
         {
           amount: new BN(setup.amount),
-          escrowBump: null,
           tokenEntryValidation: null,
           tokenEntryValidationProof: null,
         },
@@ -219,7 +217,6 @@ programCommand("leave_match")
       await anchorProgram.leaveMatch(
         {
           amount: new BN(setup.amount),
-          escrowBump: null,
         },
         {
           tokenMint: new web3.PublicKey(setup.mint),
@@ -316,7 +313,6 @@ programCommand("disburse_tokens_by_oracle")
 
       await anchorProgram.disburseTokensByOracle(
         {
-          escrowBump: null,
           tokenDeltaProofInfo: null,
         },
         {
@@ -394,8 +390,6 @@ programCommand("drain_oracle")
         authority: config.oracleState.authority
           ? new web3.PublicKey(config.oracleState.authority)
           : walletKeyPair.publicKey,
-        oracleBump: null,
-        matchBump: null,
       },
       {
         receiver: walletKeyPair.publicKey,
@@ -424,7 +418,6 @@ programCommand("create_or_update_oracle")
 
     await anchorProgram.createOrUpdateOracle({
       seed: config.oracleState.seed,
-      oracleBump: null,
       authority: config.oracleState.authority
         ? new web3.PublicKey(config.oracleState.authority)
         : walletKeyPair.publicKey,
