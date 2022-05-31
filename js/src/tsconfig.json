@@ -3,7 +3,7 @@
     "target": "es2019",
     "module": "commonjs",
     "outDir": "./../build",
-    "declaration": false,
+    "declaration": true,
     "esModuleInterop": true,
     "noImplicitAny": false,
     "removeComments": false,
@@ -11,12 +11,13 @@
     "experimentalDecorators": true,
     "downlevelIteration": true,
     "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
     "noLib": false,
     "preserveConstEnums": true,
     "suppressImplicitAnyIndexErrors": true,
     "resolveJsonModule": true,
     "lib": ["dom", "es2019"],
-    "types": ["jest", "node"]
+    "types": ["node"]
   },
   "exclude": ["node_modules", "typings/browser", "typings/browser.d.ts"],
   "atom": {

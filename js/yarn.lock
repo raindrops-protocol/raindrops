@@ -1240,26 +1240,6 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@project-serum/anchor@^0.20.1":
-  version "0.20.1"
-  resolved "https://registry.npmjs.org/@project-serum/anchor/-/anchor-0.20.1.tgz"
-  integrity sha512-2TuBmGUn9qeYz6sJINJlElrBuPsaUAtYyUsJ3XplEBf1pczrANAgs5ceJUFzdiqGEWLn+84ObSdBeChT/AXYFA==
-  dependencies:
-    "@project-serum/borsh" "^0.2.2"
-    "@solana/web3.js" "^1.17.0"
-    base64-js "^1.5.1"
-    bn.js "^5.1.2"
-    bs58 "^4.0.1"
-    buffer-layout "^1.2.2"
-    camelcase "^5.3.1"
-    crypto-hash "^1.3.0"
-    eventemitter3 "^4.0.7"
-    find "^0.3.0"
-    js-sha256 "^0.9.0"
-    pako "^2.0.3"
-    snake-case "^3.0.4"
-    toml "^3.0.0"
-
 "@project-serum/anchor@^0.24.2":
   version "0.24.2"
   resolved "https://registry.yarnpkg.com/@project-serum/anchor/-/anchor-0.24.2.tgz#a3c52a99605c80735f446ca9b3a4885034731004"
@@ -1279,14 +1259,6 @@
     pako "^2.0.3"
     snake-case "^3.0.4"
     toml "^3.0.0"
-
-"@project-serum/borsh@^0.2.2":
-  version "0.2.3"
-  resolved "https://registry.npmjs.org/@project-serum/borsh/-/borsh-0.2.3.tgz"
-  integrity sha512-lH9zEYADZE3cxrgiFym8+jbUE3NM/LH+WOKYcUjs65CT10Q64Hv45bcAAa/phwYk4Tpz0uQ1x+ergFaAoGt67Q==
-  dependencies:
-    bn.js "^5.1.2"
-    buffer-layout "^1.2.0"
 
 "@project-serum/borsh@^0.2.5":
   version "0.2.5"
@@ -1336,7 +1308,7 @@
     buffer-layout "^1.2.0"
     dotenv "10.0.0"
 
-"@solana/web3.js@^1.17.0", "@solana/web3.js@^1.21.0", "@solana/web3.js@^1.30.2", "@solana/web3.js@^1.31.0":
+"@solana/web3.js@^1.21.0", "@solana/web3.js@^1.30.2", "@solana/web3.js@^1.31.0":
   version "1.31.0"
   resolved "https://registry.npmjs.org/@solana/web3.js/-/web3.js-1.31.0.tgz"
   integrity sha512-7nHHx1JNFnrt15e9y8m38I/EJCbaB+bFC3KZVM1+QhybCikFxGMtGA5r7PDC3GEL1R2RZA8yKoLkDKo3vzzqnw==
@@ -2411,13 +2383,6 @@ find-up@^4.0.0, find-up@^4.1.0:
   dependencies:
     locate-path "^5.0.0"
     path-exists "^4.0.0"
-
-find@^0.3.0:
-  version "0.3.0"
-  resolved "https://registry.npmjs.org/find/-/find-0.3.0.tgz"
-  integrity sha512-iSd+O4OEYV/I36Zl8MdYJO0xD82wH528SaCieTVHhclgiYNe9y+yPKSwK+A7/WsmHL1EZ+pYUJBXWTL5qofksw==
-  dependencies:
-    traverse-chain "~0.1.0"
 
 follow-redirects@^1.14.0:
   version "1.14.7"
@@ -3818,22 +3783,6 @@ queue-microtask@^1.2.2:
   resolved "https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz"
   integrity sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==
 
-raindrops-cli@^0.0.7:
-  version "0.0.7"
-  resolved "https://registry.npmjs.org/raindrops-cli/-/raindrops-cli-0.0.7.tgz"
-  integrity sha512-NR7FdNOFxdwZcPnCkVmqp5kQqOZyCeHAcaoh2VW6S8DYQU/i0cbmEr30rmf/uP3LISin4OAs7WDmlGlWLOjDFg==
-  dependencies:
-    "@metaplex/js" "^4.11.5"
-    "@project-serum/anchor" "^0.20.1"
-    "@solana/spl-token" "^0.1.8"
-    borsh "^0.4.0"
-    commander "^8.1.0"
-    form-data "^4.0.0"
-    jsonschema "^1.4.0"
-    lodash "^4.17.21"
-    loglevel "^1.7.1"
-    node-fetch "^2.6.1"
-
 rc@^1.2.7:
   version "1.2.8"
   resolved "https://registry.npmjs.org/rc/-/rc-1.2.8.tgz"
@@ -4345,11 +4294,6 @@ tr46@~0.0.3:
   version "0.0.3"
   resolved "https://registry.npmjs.org/tr46/-/tr46-0.0.3.tgz"
   integrity sha1-gYT9NH2snNwYWZLzpmIuFLnZq2o=
-
-traverse-chain@~0.1.0:
-  version "0.1.0"
-  resolved "https://registry.npmjs.org/traverse-chain/-/traverse-chain-0.1.0.tgz"
-  integrity sha1-YdvC1Ttp/2CRoSoWj9fUMxB+QPE=
 
 tslib@2.3.1, tslib@^2.0.3:
   version "2.3.1"
