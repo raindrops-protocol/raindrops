@@ -1268,6 +1268,26 @@
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"
 
+"@raindrops-protocol/sol-command@^0.3.0":
+  version "0.3.0"
+  resolved "https://npm.pkg.github.com/download/@raindrops-protocol/sol-command/0.3.0/d6b68c34732db768954bdf57007a57b6a26c90088894fe26968b8755469bffb8#ea55b38767ec9f8731f066945b97e71b8340f963"
+  integrity sha512-9zmhddNyN/nX2yX1mBhRpCp09gEH0CRZWRVaruPnvG8KbRkW8wko4EhoxxIuluDAbXOaEXVfJBJOhk7aF03EbA==
+  dependencies:
+    "@project-serum/anchor" "^0.24.2"
+    commander "^9.2.0"
+    loglevel "^1.8.0"
+    typescript "^4.3.5"
+
+"@raindrops-protocol/sol-kit@^0.1.65":
+  version "0.1.65"
+  resolved "https://npm.pkg.github.com/download/@raindrops-protocol/sol-kit/0.1.65/c400d6ae37089c702ac283a99dd5f74f097764ab156e0b27867b2e5f33b5e15b#fcc37bb242ff57c4b949883b6510772fac648323"
+  integrity sha512-4uBK9oc1f/VNInG1zaEQM7udGAezEYqDtuRuBW44ANPtuCknWO4ZjXayFrJdEk6FWu1YYAWTD/3vFIk9vCYtpQ==
+  dependencies:
+    "@project-serum/anchor" "^0.24.2"
+    borsh "^0.4.0"
+    loglevel "^1.8.0"
+    typescript "^4.3.5"
+
 "@sinonjs/commons@^1.7.0":
   version "1.8.3"
   resolved "https://registry.npmjs.org/@sinonjs/commons/-/commons-1.8.3.tgz"
@@ -2007,6 +2027,11 @@ commander@^8.1.0:
   version "8.3.0"
   resolved "https://registry.npmjs.org/commander/-/commander-8.3.0.tgz"
   integrity sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==
+
+commander@^9.2.0:
+  version "9.3.0"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-9.3.0.tgz#f619114a5a2d2054e0d9ff1b31d5ccf89255e26b"
+  integrity sha512-hv95iU5uXPbK83mjrJKuZyFM/LBAoCV/XhVGkS5Je6tl7sxr6A0ITMw5WoRV46/UaJ46Nllm3Xt7IaJhXTIkzw==
 
 concat-map@0.0.1:
   version "0.0.1"
@@ -3338,9 +3363,9 @@ lodash@^4.17.20, lodash@^4.17.21, lodash@^4.7.0:
   resolved "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz"
   integrity sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
 
-loglevel@^1.7.1:
+loglevel@^1.7.1, loglevel@^1.8.0:
   version "1.8.0"
-  resolved "https://registry.npmjs.org/loglevel/-/loglevel-1.8.0.tgz"
+  resolved "https://registry.yarnpkg.com/loglevel/-/loglevel-1.8.0.tgz#e7ec73a57e1e7b419cb6c6ac06bf050b67356114"
   integrity sha512-G6A/nJLRgWOuuwdNuA6koovfEV1YpqqAG4pRUlFaz3jj2QNZ8M4vBqnVA+HBTmU/AMNUtlOsMmSpF6NyOjztbA==
 
 lower-case@^2.0.2:

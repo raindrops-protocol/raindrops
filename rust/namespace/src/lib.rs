@@ -53,6 +53,7 @@ pub mod namespace {
         ctx: Context<'_, '_, '_, 'info, InitializeNamespace<'info>>,
         args: InitializeNamespaceArgs,
     ) -> Result<()> {
+        msg!("initialize_namespace");
         let InitializeNamespaceArgs {
             desired_namespace_array_size,
             uuid,
@@ -84,6 +85,7 @@ pub mod namespace {
         let mint = &ctx.accounts.mint;
         let master_edition = &ctx.accounts.master_edition;
 
+        msg!("assert_metadata_valid");
         assert_metadata_valid(metadata, Some(master_edition), &mint.key())?;
 
         if desired_namespace_array_size > 0 {
@@ -114,6 +116,7 @@ pub mod namespace {
         namespace.artifacts_cached = 0;
         namespace.artifacts_added = 0;
 
+        msg!("ok");
         Ok(())
     }
 
@@ -566,13 +569,21 @@ FILTER_SIZE + //
 #[derive(Accounts)]
 #[instruction(args: InitializeNamespaceArgs)]
 pub struct InitializeNamespace<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), mint.key().as_ref()], payer=payer, bump, space=args.desired_namespace_array_size as usize * NAMESPACE_AND_INDEX_SIZE + MIN_NAMESPACE_SIZE + 4)]
+    #[account(
+        init,
+        seeds=[PREFIX.as_bytes(), mint.key().as_ref()],
+        payer=payer,
+        bump,
+        space=args.desired_namespace_array_size as usize * NAMESPACE_AND_INDEX_SIZE + MIN_NAMESPACE_SIZE + 4)
+    ]
     namespace: Account<'info, Namespace>,
     mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
     master_edition: UncheckedAccount<'info>,
+
     #[account(mut)]
     payer: Signer<'info>,
+
     token_program: Program<'info, Token>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,

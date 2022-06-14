@@ -34,3 +34,4 @@ js/packages/web/.env
 traits
 traits-configuration.json
 test-ledger/
+tools/scripts/keypairs
