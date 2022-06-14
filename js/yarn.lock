@@ -1278,10 +1278,10 @@
     loglevel "^1.8.0"
     typescript "^4.3.5"
 
-"@raindrops-protocol/sol-kit@^0.1.64":
-  version "0.1.64"
-  resolved "https://npm.pkg.github.com/download/@raindrops-protocol/sol-kit/0.1.64/ae6395bb7910b94650095f886e9c8c844ae113d9eeff7e449e3026d4ae925134#7708a89279b4fc01383418581f3b62640c133d98"
-  integrity sha512-t3m+mo+sZimMxHldA/RiQQoUvnVrv5uc7vDeEwQQJGPiN2aZ0fyAOEuuhNz0toBsCMwPcO7TGTLmzMfAZ92q8w==
+"@raindrops-protocol/sol-kit@^0.1.65":
+  version "0.1.65"
+  resolved "https://npm.pkg.github.com/download/@raindrops-protocol/sol-kit/0.1.65/c400d6ae37089c702ac283a99dd5f74f097764ab156e0b27867b2e5f33b5e15b#fcc37bb242ff57c4b949883b6510772fac648323"
+  integrity sha512-4uBK9oc1f/VNInG1zaEQM7udGAezEYqDtuRuBW44ANPtuCknWO4ZjXayFrJdEk6FWu1YYAWTD/3vFIk9vCYtpQ==
   dependencies:
     "@project-serum/anchor" "^0.24.2"
     borsh "^0.4.0"
