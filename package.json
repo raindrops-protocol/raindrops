@@ -1,0 +1,13 @@
+{
+  "name": "@raindrops-protocol/raindrops",
+  "version": "0.1.0",
+  "private": true,
+  "license": "ISC",
+  "scripts": {
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+      "@metaplex-foundation/amman": "^0.10.0"
+  }
+}
