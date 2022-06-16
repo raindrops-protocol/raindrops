@@ -30,6 +30,11 @@ module.exports = {
   relay: {
     enabled: process.env.CI == null,
     killlRunningRelay: true,
+    // accountProviders: {
+    //   "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV": {
+    //     fromAccountInfo
+    //   }
+    // },
   },
   storage: {
     enabled: process.env.CI == null,

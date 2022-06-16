@@ -19,8 +19,12 @@ solana config set --keypair ./keypairs/namespace1.json
 # amman account namespace1
 
 ## Create namespace mint
-amman run -l namespace1-mint -l tx-create-namespace1-mint -- spl-token create-token --mint-authority ./keypairs/namespace1.json
-amman run -l namespace1-whitelist-mint -l tx-create-namespace1-whitelist-mint -- spl-token create-token --mint-authority ./keypairs/namespace1.json
+amman run -l mint-namespace1mint1 -l tx-create-namespace1-mint -- spl-token create-token --decimals 0 --mint-authority ./keypairs/namespace1.json
+amman run -l mint-namespace1whitelist1mint1 -l tx-create-namespace1-whitelist-mint -- spl-token create-token --mint-authority ./keypairs/namespace1.json
+
+## Mint namepsace mint token to namespace wallet
+amman run -l ata-namespace1token1 -l tx-create-ata-namespace1-mint-namespace1 --  spl-token create-account +mint-namespace1mint1 --owner +namespace1
+amman run -l tx-mint-namespace1token1-to-ata-namespace1 -t -- spl-token mint +mint-namespace1mint1 1 +ata-namespace1token1 --mint-authority ./keypairs/namespace1.json
 
 ## Token Creation
 

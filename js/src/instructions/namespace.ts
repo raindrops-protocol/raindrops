@@ -25,6 +25,18 @@ export interface InitializeNamespaceArgs {
   whitelistedStakingMints: web3.PublicKey[];
 }
 
+export interface UpdateNamespaceArgs {
+  prettyName: string | null;
+  permissivenessSettings: PermissivenessSettings | null;
+  whitelistedStakingMints: web3.PublicKey[] | null;
+}
+
+export interface UpdateNamespaceAccounts {
+  mint: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+}
+
 export class Instruction extends SolKitInstruction {
   constructor(args: { program: Program.Program }) {
     super(args);
@@ -57,6 +69,31 @@ export class Instruction extends SolKitInstruction {
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
+        })
+        .remainingAccounts(remainingAccounts)
+        .instruction(),
+    ];
+  }
+
+  async updateNamespace(
+    args: UpdateNamespaceArgs,
+    accounts: UpdateNamespaceAccounts,
+  ) {
+    const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
+
+    const remainingAccounts = args.whitelistedStakingMints.map(
+      (mint) => {
+        return { pubkey: mint, isWritable: false, isSigner: false };
+      }
+    );
+
+    return [
+      await this.program.client.methods
+        .updateNamespace(args)
+        .accounts({
+          namespace: namespacePDA,
+          namespaceToken: accounts.namespaceToken,
+          tokenHolder: accounts.tokenHolder,
         })
         .remainingAccounts(remainingAccounts)
         .instruction(),

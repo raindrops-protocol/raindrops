@@ -1,6 +1,6 @@
 {
   "uuid": "e3e52d",
-  "mint": "7JJUCZFDgNUuCqKGuCHFLpnNR2CynXKpXY7VXMD9ACzT",
+  "mint": "Exr4E56htinshjpxHyAibJyKy5CxCGihyhWVmie6aAHY",
   "metadata": "Dijj7s7BkPS7Zr75YnnNgJRZQ5y18BcyUx66B6VN1WqX",
   "masterEdition": "Dijj7s7BkPS7Zr75YnnNgJRZQ5y18BcyUx66B6VN1WqX",
   "prettyName": "Trash with Frens",
@@ -26,7 +26,6 @@
     }
   },
   "whitelistedStakingMints": [
-    "8SEtLzq9XzirZEWBitZ1hXkrj4idrN3GdMCyzDmXqKCG",
-    "8U4SGDrrBFxtsc9EGKuSA1cto8rd63ALZiS78uo72qx4"
+    "AeVUZ6ZHBZhCHVyg7CtfE7ysRgH45iMD4k3CRLM37ffH"
   ]
 }

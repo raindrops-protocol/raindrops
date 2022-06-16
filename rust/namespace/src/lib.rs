@@ -275,7 +275,7 @@ pub mod namespace {
 
     pub fn create_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, CreateNamespaceGatekeeper<'info>>,
-        bump: u8,
+        _bump: u8,
     ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
         namespace_gatekeeper.bump = *ctx.bumps.get("namespace_gatekeeper").unwrap();
@@ -414,16 +414,16 @@ pub mod namespace {
     }
 
     pub fn item_validation<'info>(
-        ctx: Context<'_, '_, '_, 'info, ItemValidation<'info>>,
-        args: ValidationArgs,
+        _ctx: Context<'_, '_, '_, 'info, ItemValidation<'info>>,
+        _args: ValidationArgs,
     ) -> Result<()> {
         // Dummy
         Ok(())
     }
 
     pub fn match_validation<'info>(
-        ctx: Context<'_, '_, '_, 'info, MatchValidation<'info>>,
-        args: MatchValidationArgs,
+        _ctx: Context<'_, '_, '_, 'info, MatchValidation<'info>>,
+        _args: MatchValidationArgs,
     ) -> Result<()> {
         // Dummy
         Ok(())
@@ -591,9 +591,19 @@ pub struct InitializeNamespace<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateNamespace<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    #[account(
+        mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            namespace_token.mint.as_ref()
+        ],
+        bump=namespace.bump
+    )]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(
+        // Check to make sure the token owner is the signer, and that the token is an nft, decimals == 0
+        constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1
+    )]
     namespace_token: Account<'info, TokenAccount>,
     token_holder: Signer<'info>,
 }
