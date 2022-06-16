@@ -39,4 +39,19 @@ export class NamespaceProgram extends Program.Program {
     const namespaceObj = await this.client.account.namespace.fetch(namespacePDA);
     return new Namespace(namespacePDA, namespaceObj);
   };
+
+  async updateNamespace(
+    args: NamespaceInstruction.UpdateNamespaceArgs,
+    accounts: NamespaceInstruction.UpdateNamespaceAccounts,
+  ): Promise<void> {
+    const instruction = await this.instruction.updateNamespace(
+      args,
+      accounts
+    );
+
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
 };
