@@ -655,10 +655,7 @@ pub mod item {
             let mint_authority_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 2];
             let token_program_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 1];
             assert_keys_equal(*token_program_info.key, spl_token::id())?;
-            assert_mint_authority_matches_mint(
-                &new_item_mint.mint_authority,
-                mint_authority_info,
-            )?;
+            assert_mint_authority_matches_mint(&new_item_mint.mint_authority, mint_authority_info)?;
             // give minting for the item to the item's class since we will need it
             // to produce the fungible tokens when completed. Can also then be reused.
             if mint_authority_info.key != &item_class.key() {
@@ -912,7 +909,11 @@ pub mod item {
             component_scope,
             count_check: false,
         })?;
-        msg!("component_mint craft_class_mint {} {}", chosen_component.mint, craft_item_class_mint);
+        msg!(
+            "component_mint craft_class_mint {} {}",
+            chosen_component.mint,
+            craft_item_class_mint
+        );
         assert_keys_equal(chosen_component.mint, craft_item_class_mint)?;
         msg!("mint keys are equal");
 
@@ -1388,12 +1389,12 @@ pub mod item {
             account_mint: Some(&item_mint.key()),
         })?;
 
-
         if let ItemClassType::Consumable {
             max_uses,
             item_usage_type,
             ..
-        } = &usage.item_class_type {
+        } = &usage.item_class_type
+        {
             if let Some(max) = max_uses {
                 if max <= &usage_state.uses && item_usage_type == &ItemUsageType::Destruction {
                     spl_token_burn(TokenBurnParams {
@@ -2596,7 +2597,6 @@ pub enum ChildUpdatePropagationPermissivenessType {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
 pub enum InheritanceState {
-
     NotInherited,
     Inherited,
     Overridden,
