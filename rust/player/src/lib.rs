@@ -2,9 +2,7 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
-        get_mask_and_index_for_seq, spl_token_burn, spl_token_mint_to, spl_token_transfer,
-        TokenBurnParams, TokenTransferParams,
+        update_player_class_with_inherited_information
     },
     anchor_lang::{
         prelude::*,
@@ -22,6 +20,7 @@ use {
         mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
     },
     spl_token::instruction::{initialize_account2, mint_to},
+    raindrops_item::{PermissivenessType, Permissiveness, InheritanceState, Inherited, NamespaceAndIndex, Boolean, Callback}
 };
 
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
@@ -113,7 +112,7 @@ pub struct CreatePlayerClassArgs {
     pub update_permissiveness_to_use: Option<PermissivenessType>,
     pub store_mint: bool,
     pub store_metadata_fields: bool,
-    pub item_class_data: PlayerClassData,
+    pub player_class_data: PlayerClassData,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -148,6 +147,122 @@ pub struct UpdatePlayerArgs {
 #[program]
 pub mod player {
     use super::*;
+
+    pub fn create_player_class<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CreatePlayerClass<'info>>,
+        args: CreatePlayerClassArgs,
+    ) -> Result<()> {
+        let CreatePlayerClassArgs {
+            class_index,
+            parent_class_index,
+            desired_namespace_array_size,
+            update_permissiveness_to_use,
+            store_mint,
+            store_metadata_fields,
+            parent_of_parent_class_index,
+            mut player_class_data,
+            ..
+        } = args;
+
+        let player_class = &mut ctx.accounts.player_class;
+        let player_class_info = player_class.to_account_info();
+        let player_mint = &ctx.accounts.player_mint;
+        let metadata = &ctx.accounts.metadata;
+        let edition = &ctx.accounts.edition;
+        let parent = &ctx.accounts.parent;
+        
+        msg!("assert_metadata_valid");
+        raindrops_item::utils::assert_metadata_valid(
+            &metadata.to_account_info(),
+            Some(&edition.to_account_info()),
+            &player_mint.key(),
+        )?;
+
+        msg!("namespaces");
+        if desired_namespace_array_size > 0 {
+            let mut namespace_arr = vec![];
+
+            for _n in 0..desired_namespace_array_size {
+                namespace_arr.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    indexed: false,
+                    inherited: InheritanceState::NotInherited,
+                });
+            }
+
+            player_class.namespaces = Some(namespace_arr);
+        } else {
+            player_class.namespaces = None
+        }
+
+        msg!("2");
+        let parent_info = parent.to_account_info();
+        if !parent.data_is_empty()
+            && parent_info.owner == ctx.program_id
+            && parent.key() != player_class.key()
+        {
+            msg!("2 parent is not empty");
+            let mut parent_deserialized: Account<'_, PlayerClass> = Account::try_from(&parent_info)?;
+
+            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: parent,
+                remaining_accounts: ctx.remaining_accounts,
+                permissiveness_to_use: &update_permissiveness_to_use,
+                permissiveness_array: &parent_deserialized.data.settings.update_permissiveness,
+                class_index: parent_of_parent_class_index,
+                index: parent_class_index.unwrap(),
+                account_mint: None,
+            })?;
+
+            player_class.parent = Some(parent.key());
+
+            parent_deserialized.existing_children = parent_deserialized
+                .existing_children
+                .checked_add(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+
+            update_player_class_with_inherited_information(
+                player_class,
+                &mut player_class_data,
+                &parent_deserialized,
+                &parent_deserialized.data,
+            );
+        } else {
+            msg!("2 assert_permissiveness_access");
+            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: &player_class_info,
+                remaining_accounts: ctx.remaining_accounts,
+                permissiveness_to_use: &Some(PermissivenessType::UpdateAuthority),
+                permissiveness_array: &Some(vec![Permissiveness {
+                    permissiveness_type: PermissivenessType::UpdateAuthority,
+                    inherited: InheritanceState::NotInherited,
+                }]),
+                class_index: parent_of_parent_class_index,
+                index: class_index,
+                account_mint: Some(&player_mint.key()),
+            })?;
+        }
+
+        msg!("store_metadata_fields");
+        player_class.bump = *ctx.bumps.get("player_class").unwrap();
+        if store_metadata_fields {
+            player_class.metadata = Some(metadata.key());
+            player_class.edition = Some(edition.key());
+        }
+
+        msg!("store_mint");
+        if store_mint {
+            player_class.mint = Some(player_mint.key());
+        }
+
+        player_class.data = player_class_data;
+
+        Ok(())
+    }
+
+ 
 }
 
 #[derive(Accounts)]
@@ -574,19 +689,6 @@ pub struct EquippedItem {
     category: String,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
-pub struct Permissiveness {
-    pub inherited: InheritanceState,
-    pub permissiveness_type: PermissivenessType,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
-pub enum PermissivenessType {
-    TokenHolder,
-    ParentTokenHolder,
-    UpdateAuthority,
-    Anybody,
-}
 
 pub const MAX_NAMESPACES: usize = 10;
 
@@ -597,10 +699,18 @@ pub struct ChildUpdatePropagationPermissiveness {
     pub child_update_propagation_permissiveness_type: ChildUpdatePropagationPermissivenessType,
 }
 
+
+impl Inherited for ChildUpdatePropagationPermissiveness {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum ChildUpdatePropagationPermissivenessType {
-    Usages,
-    Components,
     UpdatePermissiveness,
     InstanceUpdatePermissiveness,
     BuildPermissiveness,
@@ -609,19 +719,10 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
-    FreeBuildPermissiveness,
     EquippingItemsPermissiveness,
     AddingItemsPermissiveness,
-    UnequippingItemsPermissiveness,
-    RemovingItemsPermissiveness,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
-pub enum InheritanceState {
-    NotInherited,
-    Inherited,
-    Overriden,
-}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlayerCategory {
@@ -641,24 +742,6 @@ pub struct BodyPart {
     inherited: InheritanceState,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct NamespaceAndIndex {
-    namespace: Pubkey,
-    indexed: bool,
-    inherited: InheritanceState,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct Boolean {
-    pub inherited: InheritanceState,
-    pub boolean: bool,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Callback {
-    pub key: Pubkey,
-    pub code: u64,
-}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlayerClassData {
@@ -669,10 +752,9 @@ pub struct PlayerClassData {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlayerClassSettings {
     pub default_category: Option<PlayerCategory>,
-    pub free_build: Option<Boolean>,
     pub children_must_be_editions: Option<Boolean>,
     pub builder_must_be_holder: Option<Boolean>,
-    pub update_permissiveness: Vec<Permissiveness>,
+    pub update_permissiveness: Option<Vec<Permissiveness>>,
     pub instance_update_permissiveness: Option<Vec<Permissiveness>>,
     pub build_permissiveness: Option<Vec<Permissiveness>>,
     pub equip_item_permissiveness: Option<Vec<Permissiveness>>,
@@ -686,7 +768,7 @@ pub struct PlayerClassSettings {
     pub staking_permissiveness: Option<Vec<Permissiveness>>,
     // if not set, assumed to use staking permissiveness
     pub unstaking_permissiveness: Option<Vec<Permissiveness>>,
-    pub child_update_propagation_permissiveness: Vec<ChildUpdatePropagationPermissiveness>,
+    pub child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
 }
 
 pub const MIN_PLAYER_CLASS_SIZE: usize = 8 + // key
@@ -696,10 +778,9 @@ pub const MIN_PLAYER_CLASS_SIZE: usize = 8 + // key
 1 + // metadata
 1 + // edition
 1 + // default category
-1 + // free_build
 1 + // children must be editions
 1 + // builder must be holder
-4 + // update permissiveness
+1 + // update permissiveness
 1 + // instance update permissiveness
 1 + // build permissiveness
 1 + // equip item perm
@@ -845,15 +926,7 @@ pub struct PlayerItemActivationMarker {
     pub activated_at: u64,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum BasicItemEffectType {
-    Increment,
-    Decrement,
-    IncrementPercent,
-    DecrementPercent,
-    IncrementPercentFromBase,
-    DecrementPercentFromBase,
-}
+
 
 #[error_code]
 pub enum ErrorCode {

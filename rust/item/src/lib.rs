@@ -328,6 +328,24 @@ pub mod item {
             &item_mint.key(),
         )?;
         msg!("2");
+
+        msg!("namespaces");
+        if desired_namespace_array_size > 0 {
+            let mut namespace_arr = vec![];
+
+            for _n in 0..desired_namespace_array_size {
+                namespace_arr.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    indexed: false,
+                    inherited: InheritanceState::NotInherited,
+                });
+            }
+
+            item_class.namespaces = Some(namespace_arr);
+        } else {
+            item_class.namespaces = None
+        }
+
         let parent_info = parent.to_account_info();
         if !parent.data_is_empty()
             && parent_info.owner == ctx.program_id
@@ -395,23 +413,6 @@ pub mod item {
         msg!("store_mint");
         if store_mint {
             item_class.mint = Some(item_mint.key());
-        }
-
-        msg!("namespaces");
-        if desired_namespace_array_size > 0 {
-            let mut namespace_arr = vec![];
-
-            for _n in 0..desired_namespace_array_size {
-                namespace_arr.push(NamespaceAndIndex {
-                    namespace: anchor_lang::solana_program::system_program::id(),
-                    indexed: false,
-                    inherited: InheritanceState::NotInherited,
-                });
-            }
-
-            item_class.namespaces = Some(namespace_arr);
-        } else {
-            item_class.namespaces = None
         }
 
         msg!("write_data");
