@@ -442,18 +442,16 @@ pub mod item {
 
         msg!("assert_permissiveness_access check");
         let mut new_item_class_data = if let Some(icd) = item_class_data {
-            if !ctx.remaining_accounts.is_empty() {
-                assert_permissiveness_access(AssertPermissivenessAccessArgs {
-                    program_id: ctx.program_id,
-                    given_account: &item_class.to_account_info(),
-                    remaining_accounts: ctx.remaining_accounts,
-                    permissiveness_to_use: &update_permissiveness_to_use,
-                    permissiveness_array: &original_item_class_data.settings.update_permissiveness,
-                    index: class_index,
-                    class_index: parent_class_index,
-                    account_mint: Some(&item_mint.key()),
-                })?;
-            }
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: &item_class.to_account_info(),
+                remaining_accounts: ctx.remaining_accounts,
+                permissiveness_to_use: &update_permissiveness_to_use,
+                permissiveness_array: &original_item_class_data.settings.update_permissiveness,
+                index: class_index,
+                class_index: parent_class_index,
+                account_mint: Some(&item_mint.key()),
+            })?;
 
             icd
         } else {

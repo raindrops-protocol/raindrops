@@ -121,6 +121,34 @@ pub fn update_player_class_with_inherited_information(
                             overridable: update_perm.overridable,
                         });
                     },
+                    ChildUpdatePropagationPermissivenessType::BasicStatTemplates => {
+                        player_class_data.config.basic_stats = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.config.basic_stats,
+                            child_items: &player_class_data.config.basic_stats,
+                            overridable: update_perm.overridable,
+                        });
+                    },
+                    ChildUpdatePropagationPermissivenessType::DefaultCategory => {
+                        player_class_data.settings.default_category = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.settings.default_category,
+                            child: &player_class_data.settings.default_category,
+                            overridable: update_perm.overridable,
+                        });
+                    },
+                    ChildUpdatePropagationPermissivenessType::StatsUri => {
+                        player_class_data.config.starting_stats_uri = propagate_parent(PropagateParentArgs {
+                            parent: &parent_item_data.config.starting_stats_uri,
+                            child: &player_class_data.config.starting_stats_uri,
+                            overridable: update_perm.overridable,
+                        });
+                    },
+                    ChildUpdatePropagationPermissivenessType::BodyParts => {
+                        player_class_data.config.body_parts = propagate_parent_array(PropagateParentArrayArgs {
+                            parent_items: &parent_item_data.config.body_parts,
+                            child_items: &player_class_data.config.body_parts,
+                            overridable: update_perm.overridable,
+                        });
+                    },
                 }
             }
         }

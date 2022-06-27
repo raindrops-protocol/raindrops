@@ -20,7 +20,7 @@ use {
         mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
     },
     spl_token::instruction::{initialize_account2, mint_to},
-    raindrops_item::{PermissivenessType, Permissiveness, InheritanceState, Inherited, NamespaceAndIndex, Boolean, Callback}
+    raindrops_item::{PermissivenessType, Permissiveness, InheritanceState, Inherited, NamespaceAndIndex, Boolean, Callback, utils::{assert_keys_equal}}
 };
 
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
@@ -263,6 +263,66 @@ pub mod player {
     }
 
  
+    pub fn update_player_class<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdatePlayerClass<'info>>,
+        args: UpdatePlayerClassArgs,
+    ) -> Result<()> {
+        let UpdatePlayerClassArgs {
+            class_index,
+            update_permissiveness_to_use,
+            player_class_data,
+            parent_class_index,
+        } = args;
+
+        let player_class = &mut ctx.accounts.player_class;
+        let player_mint = &ctx.accounts.player_mint;
+        let parent = &ctx.accounts.parent;
+
+        msg!("player_class_data");
+        let original_player_class_data = player_class.data.clone();
+
+        msg!("assert_permissiveness_access check");
+        let mut new_player_class_data = if let Some(icd) = player_class_data {
+            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: &player_class.to_account_info(),
+                remaining_accounts: ctx.remaining_accounts,
+                permissiveness_to_use: &update_permissiveness_to_use,
+                permissiveness_array: &original_player_class_data.settings.update_permissiveness,
+                index: class_index,
+                class_index: parent_class_index,
+                account_mint: Some(&player_mint.key()),
+            })?;
+            
+
+            icd
+        } else {
+            original_player_class_data
+        };
+        // The only case where only one account is passed in is when you are just
+        // requesting a permissionless inheritance update.
+        if parent.key() != System::id() {
+            if let Some(ic_parent) = player_class.parent {
+                assert_keys_equal(parent.key(), ic_parent)?;
+            } else {
+                return Err(error!(ErrorCode::NoParentPresent));
+            }
+            let parent_deserialized: Account<'_, PlayerClass> = Account::try_from(parent)?;
+            update_player_class_with_inherited_information(
+                player_class,
+                &mut new_player_class_data,
+                &parent_deserialized,
+                &parent_deserialized.data,
+            );
+        } else if player_class.parent.is_some() {
+            return Err(error!(ErrorCode::ExpectedParent));
+        }
+
+        player_class.data = new_player_class_data;
+
+        Ok(())
+    }
+
 }
 
 #[derive(Accounts)]
@@ -683,9 +743,9 @@ pub struct Root {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EquippedItem {
+    index: u16,
     item: Pubkey,
     amount: u64,
-    body_part: String,
     category: String,
 }
 
@@ -709,6 +769,43 @@ impl Inherited for ChildUpdatePropagationPermissiveness {
     }
 }
 
+impl Inherited for BasicStatTemplate {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
+impl Inherited for BodyPart {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
+impl Inherited for PlayerCategory {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
+impl Inherited for StatsUri {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum ChildUpdatePropagationPermissivenessType {
     UpdatePermissiveness,
@@ -721,6 +818,10 @@ pub enum ChildUpdatePropagationPermissivenessType {
     Namespaces,
     EquippingItemsPermissiveness,
     AddingItemsPermissiveness,
+    BasicStatTemplates,
+    DefaultCategory,
+    BodyParts,
+    StatsUri
 }
 
 
@@ -738,8 +839,9 @@ pub struct StatsUri {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BodyPart {
-    body_part: String,
-    inherited: InheritanceState,
+    pub index: u16,
+    pub body_part: String,
+    pub inherited: InheritanceState,
 }
 
 
@@ -793,8 +895,8 @@ pub const MIN_PLAYER_CLASS_SIZE: usize = 8 + // key
 1 + // staking unperms
 1 + // child update prop
 1 + // starting stats
-4 + // basic stats
-4 + // body parts
+1 + // basic stats
+1 + // body parts
 1 + // equip callback
 1 + // add to pack callback
 8 + // existing children
@@ -803,8 +905,8 @@ pub const MIN_PLAYER_CLASS_SIZE: usize = 8 + // key
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlayerClassConfig {
     pub starting_stats_uri: Option<StatsUri>,
-    pub basic_stats: Vec<BasicStatTemplate>,
-    pub body_parts: Vec<BodyPart>,
+    pub basic_stats: Option<Vec<BasicStatTemplate>>,
+    pub body_parts: Option<Vec<BodyPart>>,
     pub equip_validation: Option<Callback>,
     pub add_to_pack_validation: Option<Callback>,
 }
@@ -863,8 +965,8 @@ pub struct PlayerData {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BasicStatTemplate {
-    pub name: String,
     pub index: u16,
+    pub name: String,
     pub stat_type: BasicStatType,
     pub inherited: InheritanceState,
 }
@@ -946,4 +1048,8 @@ pub enum ErrorCode {
     TokenBurnFailed,
     #[msg("Derived key is invalid")]
     DerivedKeyInvalid,
+    #[msg("No parent present")]
+    NoParentPresent,
+    #[msg("Expected parent")]
+    ExpectedParent
 }
