@@ -323,6 +323,56 @@ pub mod player {
         Ok(())
     }
 
+    pub fn drain_player_class<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, DrainPlayerClass<'info>>,
+        args: DrainPlayerClassArgs,
+    ) -> Result<()> {
+        let DrainPlayerClassArgs {
+            class_index,
+            update_permissiveness_to_use,
+            player_class_mint,
+            parent_class_index,
+        } = args;
+        let player_class = &mut ctx.accounts.player_class;
+        let receiver = &ctx.accounts.receiver;
+        let parent = &ctx.accounts.parent_class;
+
+        raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &update_permissiveness_to_use,
+            permissiveness_array: &player_class.data.settings.update_permissiveness,
+            index: class_index,
+            class_index: parent_class_index,
+            account_mint: Some(&player_class_mint.key()),
+        })?;
+
+        require!(player_class.existing_children == 0, ChildrenStillExist);
+
+        if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
+            let mut parent_deserialized: Account<'_, PlayerClass> =
+                Account::try_from(&parent.to_account_info())?;
+
+            parent_deserialized.existing_children = parent_deserialized
+                .existing_children
+                .checked_sub(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        let player_class_info = player_class.to_account_info();
+        let snapshot: u64 = player_class_info.lamports();
+
+        **player_class_info.lamports.borrow_mut() = 0;
+
+        **receiver.lamports.borrow_mut() = receiver
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
+
 }
 
 #[derive(Accounts)]
@@ -1051,5 +1101,7 @@ pub enum ErrorCode {
     #[msg("No parent present")]
     NoParentPresent,
     #[msg("Expected parent")]
-    ExpectedParent
+    ExpectedParent,
+    #[msg("You need to kill the children before killing the parent")]
+    ChildrenStillExist
 }
