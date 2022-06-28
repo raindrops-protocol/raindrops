@@ -3,7 +3,8 @@ use {
     crate::{ChildUpdatePropagationPermissivenessType, BasicStatType, PlayerClass, Player, BasicStatState, BasicStat, PlayerClassData},
     anchor_lang::{
         error,
-        prelude::{msg, Account, AccountInfo, Pubkey, Rent, Result, SolanaSysvar},
+        require, 
+        prelude::{msg, Account, AccountInfo, Pubkey, Rent, Result, SolanaSysvar, UncheckedAccount},
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
@@ -159,6 +160,18 @@ pub fn update_player_class_with_inherited_information(
     }
 }
 
+pub fn assert_builder_must_be_holder_check(
+    player_class_data: &PlayerClassData,
+    new_player_token_holder: &UncheckedAccount,
+) -> Result<()> {
+    if let Some(b) = &player_class_data.settings.builder_must_be_holder {
+        if b.boolean {
+            require!(new_player_token_holder.is_signer, MustBeHolderToBuild)
+        }
+    }
+
+    Ok(())
+}
 
 
 pub fn propagate_player_class_data_fields_to_player_data(

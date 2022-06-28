@@ -2,7 +2,8 @@ pub mod utils;
 
 use {
     crate::utils::{
-        update_player_class_with_inherited_information, propagate_player_class_data_fields_to_player_data
+        assert_builder_must_be_holder_check, propagate_player_class_data_fields_to_player_data,
+        update_player_class_with_inherited_information,
     },
     anchor_lang::{
         prelude::*,
@@ -19,8 +20,15 @@ use {
         create_master_edition, create_metadata_accounts,
         mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
     },
+    raindrops_item::{
+        utils::{
+            assert_keys_equal, assert_metadata_valid, assert_permissiveness_access,
+            AssertPermissivenessAccessArgs,
+        },
+        Boolean, Callback, InheritanceState, Inherited, NamespaceAndIndex, Permissiveness,
+        PermissivenessType,
+    },
     spl_token::instruction::{initialize_account2, mint_to},
-    raindrops_item::{PermissivenessType, Permissiveness, InheritanceState, Inherited, NamespaceAndIndex, Boolean, Callback, utils::{assert_keys_equal}}
 };
 
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
@@ -101,7 +109,6 @@ pub struct UsageInfo {
     pub usage_state: raindrops_item::ItemUsageState,
 }
 
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreatePlayerClassArgs {
     pub class_index: u64,
@@ -142,7 +149,7 @@ pub struct UpdatePlayerArgs {
     pub player_mint: Pubkey,
     pub update_permissiveness_to_use: Option<PermissivenessType>,
     pub player_class_mint: Pubkey,
-    pub new_data: Option<PlayerData>
+    pub new_data: Option<PlayerData>,
 }
 
 #[program]
@@ -171,7 +178,7 @@ pub mod player {
         let metadata = &ctx.accounts.metadata;
         let edition = &ctx.accounts.edition;
         let parent = &ctx.accounts.parent;
-        
+
         msg!("assert_metadata_valid");
         raindrops_item::utils::assert_metadata_valid(
             &metadata.to_account_info(),
@@ -203,9 +210,10 @@ pub mod player {
             && parent.key() != player_class.key()
         {
             msg!("2 parent is not empty");
-            let mut parent_deserialized: Account<'_, PlayerClass> = Account::try_from(&parent_info)?;
+            let mut parent_deserialized: Account<'_, PlayerClass> =
+                Account::try_from(&parent_info)?;
 
-            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: parent,
                 remaining_accounts: ctx.remaining_accounts,
@@ -231,7 +239,7 @@ pub mod player {
             );
         } else {
             msg!("2 assert_permissiveness_access");
-            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: &player_class_info,
                 remaining_accounts: ctx.remaining_accounts,
@@ -263,7 +271,6 @@ pub mod player {
         Ok(())
     }
 
- 
     pub fn update_player_class<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdatePlayerClass<'info>>,
         args: UpdatePlayerClassArgs,
@@ -284,7 +291,7 @@ pub mod player {
 
         msg!("assert_permissiveness_access check");
         let mut new_player_class_data = if let Some(icd) = player_class_data {
-            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: &player_class.to_account_info(),
                 remaining_accounts: ctx.remaining_accounts,
@@ -294,7 +301,6 @@ pub mod player {
                 class_index: parent_class_index,
                 account_mint: Some(&player_mint.key()),
             })?;
-            
 
             icd
         } else {
@@ -338,7 +344,7 @@ pub mod player {
         let receiver = &ctx.accounts.receiver;
         let parent = &ctx.accounts.parent_class;
 
-        raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &player_class.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
@@ -374,7 +380,6 @@ pub mod player {
         Ok(())
     }
 
-
     pub fn drain_player<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DrainPlayer<'info>>,
         args: DrainPlayerArgs,
@@ -391,7 +396,7 @@ pub mod player {
             ..
         } = args;
 
-        raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &player.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
@@ -422,7 +427,6 @@ pub mod player {
         Ok(())
     }
 
-
     pub fn update_player<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdatePlayer<'info>>,
         args: UpdatePlayerArgs,
@@ -440,7 +444,7 @@ pub mod player {
         } = args;
 
         if let Some(data) = new_data {
-            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+            assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: &player.to_account_info(),
                 remaining_accounts: ctx.remaining_accounts,
@@ -455,6 +459,75 @@ pub mod player {
         }
 
         propagate_player_class_data_fields_to_player_data(player, player_class);
+
+        Ok(())
+    }
+
+    pub fn build_player<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, BuildPlayer<'info>>,
+        args: BuildPlayerArgs,
+    ) -> Result<()> {
+        msg!("complete_item_escrow_build_phase");
+        let player_class = &mut ctx.accounts.player_class;
+        let new_player = &mut ctx.accounts.new_player;
+        let new_player_mint = &ctx.accounts.new_player_mint;
+        let new_player_token_holder = &ctx.accounts.new_player_token_holder;
+        let metadata = &ctx.accounts.new_player_metadata;
+        let edition = &ctx.accounts.new_player_edition;
+
+        let BuildPlayerArgs {
+            class_index,
+            player_class_mint,
+            build_permissiveness_to_use,
+            store_mint,
+            store_metadata_fields,
+            parent_class_index,
+            ..
+        } = args;
+
+        msg!("assert_metadata_valid");
+        assert_metadata_valid(
+            &metadata.to_account_info(),
+            Some(&edition.to_account_info()),
+            &new_player_mint.key(),
+        )?;
+
+        msg!("assert_builder_must_be_holder_check");
+        assert_builder_must_be_holder_check(&player_class.data, new_player_token_holder)?;
+
+        msg!("assert_permissiveness_access");
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player_class.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &build_permissiveness_to_use,
+            permissiveness_array: &player_class.data.settings.build_permissiveness,
+            index: class_index,
+            class_index: parent_class_index,
+            account_mint: Some(&player_class_mint),
+        })?;
+
+        new_player.bump = *ctx.bumps.get("new_player").unwrap();
+        new_player.padding = 1;
+        new_player.class_index = class_index;
+        new_player.parent = player_class.key();
+
+        if store_mint {
+            new_player.mint = Some(new_player_mint.key());
+        }
+
+        if store_metadata_fields {
+            new_player.metadata = Some(metadata.key());
+            new_player.edition = Some(edition.key());
+        }
+
+        msg!("propagate_player_class_data_fields_to_player_data");
+        propagate_player_class_data_fields_to_player_data(new_player, player_class);
+
+        player_class.existing_children = player_class
+            .existing_children
+            .checked_add(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         Ok(())
     }
@@ -625,7 +698,7 @@ pub struct AddItem<'info> {
     #[account(constraint=player.parent == player_class.key())]
     player_class: Account<'info, PlayerClass>,
     #[account(
-        mut, 
+        mut,
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
             item_mint.key().as_ref(),
@@ -666,7 +739,6 @@ pub struct AddItem<'info> {
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after for add item permissiveness
 }
 
-
 #[derive(Accounts)]
 #[instruction(args: RemoveItemArgs)]
 pub struct RemoveItem<'info> {
@@ -674,7 +746,7 @@ pub struct RemoveItem<'info> {
     #[account(constraint=player.parent == player_class.key())]
     player_class: Account<'info, PlayerClass>,
     #[account(
-        mut, 
+        mut,
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
             item_mint.key().as_ref(),
@@ -710,7 +782,6 @@ pub struct RemoveItem<'info> {
     validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after for add item permissiveness
 }
-
 
 #[derive(Accounts)]
 #[instruction(args: ToggleEquipItemArgs)]
@@ -769,7 +840,6 @@ pub struct DrainPlayerClass<'info> {
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for this
 }
 
-
 #[derive(Accounts)]
 #[instruction(args: DrainPlayerArgs)]
 pub struct DrainPlayer<'info> {
@@ -814,7 +884,7 @@ pub struct BuildPlayer<'info> {
     )]
     player_class: Box<Account<'info, PlayerClass>>,
     #[account(
-        init_if_needed,
+        init,
         seeds=[
             PREFIX.as_bytes(),
             new_player_mint.key().as_ref(),
@@ -838,7 +908,6 @@ pub struct BuildPlayer<'info> {
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
-    token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
@@ -884,7 +953,6 @@ pub struct EquippedItem {
     category: String,
 }
 
-
 pub const MAX_NAMESPACES: usize = 10;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -893,7 +961,6 @@ pub struct ChildUpdatePropagationPermissiveness {
     pub inherited: InheritanceState,
     pub child_update_propagation_permissiveness_type: ChildUpdatePropagationPermissivenessType,
 }
-
 
 impl Inherited for ChildUpdatePropagationPermissiveness {
     fn set_inherited(&mut self, i: InheritanceState) {
@@ -940,7 +1007,6 @@ impl Inherited for StatsUri {
     }
 }
 
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum ChildUpdatePropagationPermissivenessType {
     UpdatePermissiveness,
@@ -956,9 +1022,8 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BasicStatTemplates,
     DefaultCategory,
     BodyParts,
-    StatsUri
+    StatsUri,
 }
-
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlayerCategory {
@@ -978,7 +1043,6 @@ pub struct BodyPart {
     pub body_part: String,
     pub inherited: InheritanceState,
 }
-
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlayerClassData {
@@ -1056,7 +1120,7 @@ pub struct PlayerClass {
     pub edition: Option<Pubkey>,
     pub data: PlayerClassData,
     pub existing_children: u64,
-    pub bump: u8
+    pub bump: u8,
 }
 
 pub const MIN_PLAYER_SIZE: usize = 8 + // key
@@ -1078,7 +1142,7 @@ pub const MIN_PLAYER_SIZE: usize = 8 + // key
 #[account]
 pub struct Player {
     pub namespaces: Option<Vec<NamespaceAndIndex>>,
-    // extra byte that is always 1 to simulate same structure as item class.
+    // extra byte that is always 1 to simulate same structure as player class.
     pub padding: u8,
     pub parent: Pubkey,
     pub class_index: u64,
@@ -1143,7 +1207,7 @@ pub enum BasicStatState {
     Integer { default: i64, current: i64 },
     Bool { default: bool, current: bool },
     String { default: String, current: String },
-    Null
+    Null,
 }
 
 const PLAYER_ITEM_ACTIVATION_MARKER_SPACE: usize = 8 + // key
@@ -1163,8 +1227,6 @@ pub struct PlayerItemActivationMarker {
     pub amount: u64,
     pub activated_at: u64,
 }
-
-
 
 #[error_code]
 pub enum ErrorCode {
@@ -1191,5 +1253,7 @@ pub enum ErrorCode {
     #[msg("You need to kill the children before killing the parent")]
     ChildrenStillExist,
     #[msg("Unstake tokens first")]
-    UnstakeTokensFirst
+    UnstakeTokensFirst,
+    #[msg("Must be holder to build")]
+    MustBeHolderToBuild,
 }
