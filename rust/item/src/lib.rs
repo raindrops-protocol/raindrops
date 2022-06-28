@@ -553,7 +553,7 @@ pub mod item {
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
-            given_account: &item_class.to_account_info(),
+            given_account: &item.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &update_permissiveness_to_use,
             permissiveness_array: &item_class

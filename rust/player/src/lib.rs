@@ -2,7 +2,7 @@ pub mod utils;
 
 use {
     crate::utils::{
-        update_player_class_with_inherited_information
+        update_player_class_with_inherited_information, propagate_player_class_data_fields_to_player_data
     },
     anchor_lang::{
         prelude::*,
@@ -140,6 +140,7 @@ pub struct UpdatePlayerArgs {
     pub class_index: u64,
     pub index: u64,
     pub player_mint: Pubkey,
+    pub update_permissiveness_to_use: Option<PermissivenessType>,
     pub player_class_mint: Pubkey,
     pub new_data: Option<PlayerData>
 }
@@ -392,7 +393,7 @@ pub mod player {
 
         raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
-            given_account: &player_class.to_account_info(),
+            given_account: &player.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &update_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.update_permissiveness,
@@ -417,6 +418,43 @@ pub mod player {
             .lamports()
             .checked_add(snapshot)
             .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
+
+
+    pub fn update_player<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdatePlayer<'info>>,
+        args: UpdatePlayerArgs,
+    ) -> Result<()> {
+        let player_class = &mut ctx.accounts.player_class;
+        let player = &mut ctx.accounts.player;
+
+        let UpdatePlayerArgs {
+            index,
+            class_index,
+            player_mint,
+            update_permissiveness_to_use,
+            new_data,
+            ..
+        } = args;
+
+        if let Some(data) = new_data {
+            raindrops_item::utils::assert_permissiveness_access(raindrops_item::utils::AssertPermissivenessAccessArgs {
+                program_id: ctx.program_id,
+                given_account: &player.to_account_info(),
+                remaining_accounts: ctx.remaining_accounts,
+                permissiveness_to_use: &update_permissiveness_to_use,
+                permissiveness_array: &player_class.data.settings.update_permissiveness,
+                index,
+                class_index: Some(class_index),
+                account_mint: Some(&player_mint.key()),
+            })?;
+
+            player.data = data;
+        }
+
+        propagate_player_class_data_fields_to_player_data(player, player_class);
 
         Ok(())
     }
@@ -1034,7 +1072,7 @@ pub const MIN_PLAYER_SIZE: usize = 8 + // key
 8 + // tokens staked
 1 + // category
 4 + // equipped items
-4; // basic stats
+1; // basic stats
 
 /// seed ['player', player program, mint, namespace] also
 #[account]
@@ -1057,7 +1095,7 @@ pub struct Player {
 pub struct PlayerData {
     pub stats_uri: Option<StatsUri>,
     pub category: Option<PlayerCategory>,
-    pub basic_stats: Vec<BasicStat>,
+    pub basic_stats: Option<Vec<BasicStat>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1075,7 +1113,7 @@ pub struct BasicStat {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Threshold(pub String, pub u64);
+pub struct Threshold(pub String, pub u8);
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicStatType {
@@ -1101,10 +1139,11 @@ pub enum BasicStatType {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicStatState {
-    Enum { initial: u8, current: u8 },
-    Integer { initial: i64, current: i64 },
-    Bool { initial: bool, current: bool },
-    String { initial: String, current: String },
+    Enum { default: u8, current: u8 },
+    Integer { default: i64, current: i64 },
+    Bool { default: bool, current: bool },
+    String { default: String, current: String },
+    Null
 }
 
 const PLAYER_ITEM_ACTIVATION_MARKER_SPACE: usize = 8 + // key
