@@ -1,18 +1,24 @@
 
+
 use {
-    crate::{ChildUpdatePropagationPermissivenessType, BasicStatType, PlayerClass, Player, BasicStatState, BasicStat, PlayerClassData},
+    crate::{ChildUpdatePropagationPermissivenessType, BasicStatType, PlayerClass, Player, BasicStatState, BasicStat, PlayerClassData, AddOrRemoveItemValidationArgs},
     anchor_lang::{
         error,
+        AnchorSerialize,
+        ToAccountInfo,
+        Key,
         require, 
-        prelude::{msg, Account, AccountInfo, Pubkey, Rent, Result, SolanaSysvar, UncheckedAccount},
+        prelude::{msg, Account, AccountInfo,AccountMeta, Pubkey, Rent, Result, SolanaSysvar, UncheckedAccount},
         solana_program::{
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
             system_instruction,
+            instruction::Instruction
         },
     },
+    anchor_spl::token::{TokenAccount, Mint},
     std::convert::TryInto,
-    raindrops_item::utils::{propagate_parent_array, propagate_parent, PropagateParentArgs, PropagateParentArrayArgs}
+    raindrops_item::{Item, ItemClass,PermissivenessType, utils::{propagate_parent_array, propagate_parent, assert_keys_equal, PropagateParentArgs, PropagateParentArrayArgs}}
 };
 
 pub fn update_player_class_with_inherited_information(
@@ -173,6 +179,88 @@ pub fn assert_builder_must_be_holder_check(
     Ok(())
 }
 
+pub struct RunAddItemValidationArgs<'a, 'b, 'c, 'info> {
+    pub player_class: &'b Account<'info, PlayerClass>,
+    pub item_class: &'b Account<'info, ItemClass>,
+    pub item: &'b Account<'info, Item>,
+    pub item_account: &'b Account<'info, TokenAccount>,
+    pub player_item_account: &'b Account<'info, TokenAccount>,
+    pub player: &'b Account<'info, Player>,
+    pub item_mint: &'b Account<'info, Mint>,
+    pub validation_program: &'c UncheckedAccount<'info>,
+    pub player_mint: &'a Pubkey,
+    pub add_item_permissiveness_to_use: Option<PermissivenessType> ,
+    pub amount: u64
+}
+
+pub fn run_add_item_validation<'a, 'b, 'c, 'info>(args: RunAddItemValidationArgs<'a, 'b, 'c, 'info>) -> Result<()> {
+
+    let RunAddItemValidationArgs { 
+        player_class, 
+        item_class, 
+        item, 
+        item_account, 
+        player_item_account, 
+        player, 
+        item_mint, 
+        validation_program, 
+        player_mint, 
+        add_item_permissiveness_to_use, 
+        amount 
+    } = args;
+
+    if let Some(validation) = &player_class.data.config.add_to_pack_validation {
+        let item_class_info = item_class.to_account_info();
+        let item_info = item.to_account_info();
+        let item_account_info = item_account.to_account_info();
+        let player_item_account_info = player_item_account.to_account_info();
+        let player_info = player.to_account_info();
+        let player_class_info = player_class.to_account_info();
+        let item_mint_info = item_mint.to_account_info();
+        let accounts = vec![
+            item_info,
+            item_class_info,
+            player_info,
+            player_class_info,
+            item_account_info,
+            player_item_account_info,
+            item_mint_info,
+            validation_program.to_account_info(),
+        ];
+        assert_keys_equal(validation_program.key(), validation.key)?;
+
+        let keys = vec![
+            AccountMeta::new_readonly(item.key(), false),
+            AccountMeta::new_readonly(item_class.key(), false),
+            AccountMeta::new_readonly(player.key(), false),
+            AccountMeta::new_readonly(player_class.key(), false),
+            AccountMeta::new_readonly(item_account.key(), false),
+            AccountMeta::new_readonly(player_item_account.key(), false),
+            AccountMeta::new_readonly(item_mint.key(), false),
+        ];
+
+        invoke(
+            &Instruction {
+                program_id: validation.key,
+                accounts: keys,
+                data: AnchorSerialize::try_to_vec(&AddOrRemoveItemValidationArgs {
+                    instruction: raindrops_item::utils::sighash(
+                        "global",
+                        "add_item_validation",
+                    ),
+                    extra_identifier: validation.code,
+                    player_mint: *player_mint,
+                    add_item_permissiveness_to_use: add_item_permissiveness_to_use.clone(),
+                    amount,
+                })?,
+            },
+            &accounts,
+        )?;
+    }
+
+    Ok(())
+
+}
 
 pub fn propagate_player_class_data_fields_to_player_data(
     player: &mut Account<Player>,

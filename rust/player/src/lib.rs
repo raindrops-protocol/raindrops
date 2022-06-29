@@ -3,11 +3,13 @@ pub mod utils;
 use {
     crate::utils::{
         assert_builder_must_be_holder_check, propagate_player_class_data_fields_to_player_data,
-        update_player_class_with_inherited_information,
+        run_add_item_validation, update_player_class_with_inherited_information,
+        RunAddItemValidationArgs,
     },
     anchor_lang::{
         prelude::*,
         solana_program::{
+            instruction::Instruction,
             program::{invoke, invoke_signed},
             program_option::COption,
             program_pack::Pack,
@@ -15,7 +17,7 @@ use {
         },
         AnchorDeserialize, AnchorSerialize,
     },
-    anchor_spl::token::{Mint, Token, TokenAccount},
+    anchor_spl::token::{close_account, CloseAccount, Mint, Token, TokenAccount},
     metaplex_token_metadata::instruction::{
         create_master_edition, create_metadata_accounts,
         mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
@@ -23,7 +25,7 @@ use {
     raindrops_item::{
         utils::{
             assert_keys_equal, assert_metadata_valid, assert_permissiveness_access,
-            AssertPermissivenessAccessArgs,
+            spl_token_transfer, AssertPermissivenessAccessArgs, TokenTransferParams,
         },
         Boolean, Callback, InheritanceState, Inherited, NamespaceAndIndex, Permissiveness,
         PermissivenessType,
@@ -34,6 +36,16 @@ use {
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 pub const PREFIX: &str = "player";
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct AddOrRemoveItemValidationArgs {
+    // For enum detection on the other end.
+    pub instruction: [u8; 8],
+    pub extra_identifier: u64,
+    pub amount: u64,
+    pub player_mint: Pubkey,
+    pub add_item_permissiveness_to_use: Option<PermissivenessType>,
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AddItemEffectArgs {
@@ -54,6 +66,8 @@ pub struct SubtractItemEffectArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AddItemArgs {
     pub item_index: u64,
+    pub index: u64,
+    pub player_mint: Pubkey,
     pub amount: u64,
     pub add_item_permissiveness_to_use: Option<PermissivenessType>,
 }
@@ -154,6 +168,7 @@ pub struct UpdatePlayerArgs {
 
 #[program]
 pub mod player {
+
     use super::*;
 
     pub fn create_player_class<'a, 'b, 'c, 'info>(
@@ -531,6 +546,77 @@ pub mod player {
 
         Ok(())
     }
+
+    pub fn add_item<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, AddItem<'info>>,
+        args: AddItemArgs,
+    ) -> Result<()> {
+        let AddItemArgs {
+            amount,
+            add_item_permissiveness_to_use,
+            player_mint,
+            index,
+            ..
+        } = args;
+
+        let player = &ctx.accounts.player;
+        let player_class = &ctx.accounts.player_class;
+        let item = &ctx.accounts.item;
+        let item_mint = &ctx.accounts.item_mint;
+        let item_class = &ctx.accounts.item_class;
+        let item_account = &ctx.accounts.item_account;
+        let item_transfer_authority = &ctx.accounts.item_transfer_authority;
+        let player_item_account = &ctx.accounts.player_item_account;
+        let validation_program = &ctx.accounts.validation_program;
+        let token_program = &ctx.accounts.token_program;
+        let payer = &ctx.accounts.payer;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &add_item_permissiveness_to_use,
+            permissiveness_array: &player_class.data.settings.add_item_permissiveness,
+            index: index,
+            class_index: Some(player.class_index),
+            account_mint: Some(&player_mint),
+        })?;
+
+        run_add_item_validation(RunAddItemValidationArgs {
+            player_class,
+            item_class,
+            item,
+            item_account,
+            player_item_account,
+            player,
+            item_mint,
+            validation_program,
+            player_mint: &player_mint,
+            add_item_permissiveness_to_use,
+            amount,
+        })?;
+
+        spl_token_transfer(TokenTransferParams {
+            source: item_account.to_account_info(),
+            destination: player_item_account.to_account_info(),
+            amount,
+            authority: item_transfer_authority.to_account_info(),
+            authority_signer_seeds: &[],
+            token_program: token_program.to_account_info(),
+        })?;
+
+        if item_account.amount == 0 && item_account.owner == payer.key() {
+            let cpi_accounts = CloseAccount {
+                account: item_account.to_account_info(),
+                destination: payer.to_account_info(),
+                authority: payer.to_account_info(),
+            };
+            let context = CpiContext::new(token_program.to_account_info(), cpi_accounts);
+
+            close_account(context)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -694,6 +780,14 @@ pub struct UseItem<'info> {
 #[derive(Accounts)]
 #[instruction(args: AddItemArgs)]
 pub struct AddItem<'info> {
+    #[account(
+        seeds=[
+            PREFIX.as_bytes(),
+            args.player_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        bump=player.bump
+    )]
     player: Account<'info, Player>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Account<'info, PlayerClass>,
@@ -705,7 +799,6 @@ pub struct AddItem<'info> {
             &args.item_index.to_le_bytes(),
         ],
         seeds::program=raindrops_item::id(),
-        constraint=item.parent == item_class.key(),
         bump=item.bump
     )]
     item: Account<'info, raindrops_item::Item>,
