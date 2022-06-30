@@ -3,8 +3,7 @@ pub mod utils;
 use {
     crate::utils::{
         assert_builder_must_be_holder_check, propagate_player_class_data_fields_to_player_data,
-        run_add_item_validation, update_player_class_with_inherited_information,
-        RunAddItemValidationArgs,
+        run_item_validation, update_player_class_with_inherited_information, RunItemValidationArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -44,7 +43,7 @@ pub struct AddOrRemoveItemValidationArgs {
     pub extra_identifier: u64,
     pub amount: u64,
     pub player_mint: Pubkey,
-    pub add_item_permissiveness_to_use: Option<PermissivenessType>,
+    pub item_permissiveness_to_use: Option<PermissivenessType>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -75,6 +74,8 @@ pub struct AddItemArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RemoveItemArgs {
     pub item_index: u64,
+    pub index: u64,
+    pub player_mint: Pubkey,
     pub amount: u64,
     pub remove_item_permissiveness_to_use: Option<PermissivenessType>,
 }
@@ -582,7 +583,7 @@ pub mod player {
             account_mint: Some(&player_mint),
         })?;
 
-        run_add_item_validation(RunAddItemValidationArgs {
+        run_item_validation(RunItemValidationArgs {
             player_class,
             item_class,
             item,
@@ -592,9 +593,15 @@ pub mod player {
             item_mint,
             validation_program,
             player_mint: &player_mint,
-            add_item_permissiveness_to_use,
+            item_permissiveness_to_use: add_item_permissiveness_to_use,
             amount,
+            add: true,
         })?;
+
+        let new_amount = item_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         spl_token_transfer(TokenTransferParams {
             source: item_account.to_account_info(),
@@ -605,7 +612,7 @@ pub mod player {
             token_program: token_program.to_account_info(),
         })?;
 
-        if item_account.amount == 0 && item_account.owner == payer.key() {
+        if new_amount == 0 && item_account.owner == payer.key() {
             let cpi_accounts = CloseAccount {
                 account: item_account.to_account_info(),
                 destination: payer.to_account_info(),
@@ -614,6 +621,102 @@ pub mod player {
             let context = CpiContext::new(token_program.to_account_info(), cpi_accounts);
 
             close_account(context)?;
+        }
+        Ok(())
+    }
+
+    pub fn remove_item<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, RemoveItem<'info>>,
+        args: RemoveItemArgs,
+    ) -> Result<()> {
+        let RemoveItemArgs {
+            amount,
+            remove_item_permissiveness_to_use,
+            player_mint,
+            index,
+            ..
+        } = args;
+
+        let player = &ctx.accounts.player;
+        let player_class = &ctx.accounts.player_class;
+        let item = &ctx.accounts.item;
+        let item_mint = &ctx.accounts.item_mint;
+        let item_class = &ctx.accounts.item_class;
+        let item_account = &ctx.accounts.item_account;
+        let player_item_account = &ctx.accounts.player_item_account;
+        let validation_program = &ctx.accounts.validation_program;
+        let token_program = &ctx.accounts.token_program;
+        let payer = &ctx.accounts.payer;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &remove_item_permissiveness_to_use,
+            permissiveness_array: &player_class.data.settings.remove_item_permissiveness,
+            index: index,
+            class_index: Some(player.class_index),
+            account_mint: Some(&player_mint),
+        })?;
+
+        run_item_validation(RunItemValidationArgs {
+            player_class,
+            item_class,
+            item,
+            item_account,
+            player_item_account,
+            player,
+            item_mint,
+            validation_program,
+            player_mint: &player_mint,
+            item_permissiveness_to_use: remove_item_permissiveness_to_use,
+            amount,
+            add: false,
+        })?;
+
+        let mut residual_amount = player_item_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(ErrorCode::CannotRemoveThisMuch)?;
+
+        for equipped_item in &player.equipped_items {
+            if equipped_item.item == item.key() {
+                residual_amount = residual_amount
+                    .checked_sub(equipped_item.amount)
+                    .ok_or(ErrorCode::CannotRemoveThisMuch)?;
+            }
+        }
+
+        let player_seeds = &[
+            PREFIX.as_bytes(),
+            player_mint.as_ref(),
+            &index.to_le_bytes(),
+            &[player.bump],
+        ];
+
+        let new_amount = player_item_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        spl_token_transfer(TokenTransferParams {
+            source: player_item_account.to_account_info(),
+            destination: item_account.to_account_info(),
+            amount,
+            authority: player.to_account_info(),
+            authority_signer_seeds: player_seeds,
+            token_program: token_program.to_account_info(),
+        })?;
+
+        if new_amount == 0 {
+            let cpi_accounts = CloseAccount {
+                account: player_item_account.to_account_info(),
+                destination: payer.to_account_info(),
+                authority: player.to_account_info(),
+            };
+            let context = CpiContext::new(token_program.to_account_info(), cpi_accounts);
+
+            close_account(context.with_signer(&[&player_seeds[..]]))?;
         }
         Ok(())
     }
@@ -792,7 +895,6 @@ pub struct AddItem<'info> {
     #[account(constraint=player.parent == player_class.key())]
     player_class: Account<'info, PlayerClass>,
     #[account(
-        mut,
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
             item_mint.key().as_ref(),
@@ -835,18 +937,24 @@ pub struct AddItem<'info> {
 #[derive(Accounts)]
 #[instruction(args: RemoveItemArgs)]
 pub struct RemoveItem<'info> {
+    #[account(
+        seeds=[
+            PREFIX.as_bytes(),
+            args.player_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        bump=player.bump
+    )]
     player: Account<'info, Player>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Account<'info, PlayerClass>,
     #[account(
-        mut,
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
             item_mint.key().as_ref(),
             &args.item_index.to_le_bytes(),
         ],
         seeds::program=raindrops_item::id(),
-        constraint=item.parent == item_class.key(),
         bump=item.bump
     )]
     item: Account<'info, raindrops_item::Item>,
@@ -1040,7 +1148,6 @@ pub struct Root {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EquippedItem {
-    index: u16,
     item: Pubkey,
     amount: u64,
     category: String,
@@ -1349,4 +1456,6 @@ pub enum ErrorCode {
     UnstakeTokensFirst,
     #[msg("Must be holder to build")]
     MustBeHolderToBuild,
+    #[msg("Cannot remove this much of this item because there is not enough of it or too much of it is equipped")]
+    CannotRemoveThisMuch,
 }

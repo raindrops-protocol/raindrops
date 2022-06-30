@@ -179,7 +179,7 @@ pub fn assert_builder_must_be_holder_check(
     Ok(())
 }
 
-pub struct RunAddItemValidationArgs<'a, 'b, 'c, 'info> {
+pub struct RunItemValidationArgs<'a, 'b, 'c, 'info> {
     pub player_class: &'b Account<'info, PlayerClass>,
     pub item_class: &'b Account<'info, ItemClass>,
     pub item: &'b Account<'info, Item>,
@@ -189,13 +189,14 @@ pub struct RunAddItemValidationArgs<'a, 'b, 'c, 'info> {
     pub item_mint: &'b Account<'info, Mint>,
     pub validation_program: &'c UncheckedAccount<'info>,
     pub player_mint: &'a Pubkey,
-    pub add_item_permissiveness_to_use: Option<PermissivenessType> ,
-    pub amount: u64
+    pub item_permissiveness_to_use: Option<PermissivenessType> ,
+    pub amount: u64,
+    pub add: bool,
 }
 
-pub fn run_add_item_validation<'a, 'b, 'c, 'info>(args: RunAddItemValidationArgs<'a, 'b, 'c, 'info>) -> Result<()> {
+pub fn run_item_validation<'a, 'b, 'c, 'info>(args: RunItemValidationArgs<'a, 'b, 'c, 'info>) -> Result<()> {
 
-    let RunAddItemValidationArgs { 
+    let RunItemValidationArgs { 
         player_class, 
         item_class, 
         item, 
@@ -205,8 +206,9 @@ pub fn run_add_item_validation<'a, 'b, 'c, 'info>(args: RunAddItemValidationArgs
         item_mint, 
         validation_program, 
         player_mint, 
-        add_item_permissiveness_to_use, 
-        amount 
+        item_permissiveness_to_use, 
+        amount ,
+        add
     } = args;
 
     if let Some(validation) = &player_class.data.config.add_to_pack_validation {
@@ -239,6 +241,7 @@ pub fn run_add_item_validation<'a, 'b, 'c, 'info>(args: RunAddItemValidationArgs
             AccountMeta::new_readonly(item_mint.key(), false),
         ];
 
+        let name = if add { "add_item_validation" } else { "remove_item_validation" };
         invoke(
             &Instruction {
                 program_id: validation.key,
@@ -246,11 +249,11 @@ pub fn run_add_item_validation<'a, 'b, 'c, 'info>(args: RunAddItemValidationArgs
                 data: AnchorSerialize::try_to_vec(&AddOrRemoveItemValidationArgs {
                     instruction: raindrops_item::utils::sighash(
                         "global",
-                        "add_item_validation",
+                        name,
                     ),
                     extra_identifier: validation.code,
                     player_mint: *player_mint,
-                    add_item_permissiveness_to_use: add_item_permissiveness_to_use.clone(),
+                    item_permissiveness_to_use: item_permissiveness_to_use.clone(),
                     amount,
                 })?,
             },
