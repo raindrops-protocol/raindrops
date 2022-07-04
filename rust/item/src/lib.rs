@@ -2507,7 +2507,7 @@ pub enum ItemUsageType {
     Infinite,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
 pub enum BasicItemEffectType {
     Increment,
     Decrement,

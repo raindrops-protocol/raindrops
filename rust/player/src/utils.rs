@@ -1,24 +1,34 @@
-
-
 use {
-    crate::{ChildUpdatePropagationPermissivenessType, BasicStatType, PlayerClass, Player, BasicStatState, BasicStat, PlayerClassData, AddOrRemoveItemValidationArgs},
+    crate::{
+        AddOrRemoveItemValidationArgs, BasicStat, BasicStatState, BasicStatType, BodyPart,
+        ChildUpdatePropagationPermissivenessType, EquippedItem, ErrorCode, ItemUsageInfo, Player,
+        PlayerClass, PlayerClassData, StatDiff, StatDiffType,
+    },
     anchor_lang::{
         error,
-        AnchorSerialize,
-        ToAccountInfo,
-        Key,
-        require, 
-        prelude::{msg, Account, AccountInfo,AccountMeta, Pubkey, Rent, Result, SolanaSysvar, UncheckedAccount},
+        prelude::{
+            msg, Account, AccountInfo, AccountMeta, Pubkey, Rent, Result, SolanaSysvar,
+            UncheckedAccount,
+        },
+        require,
         solana_program::{
+            instruction::Instruction,
             program::{invoke, invoke_signed},
             program_pack::{IsInitialized, Pack},
             system_instruction,
-            instruction::Instruction
         },
+        AnchorSerialize, Key, ToAccountInfo,
     },
-    anchor_spl::token::{TokenAccount, Mint},
+    anchor_spl::token::{Mint, TokenAccount},
+    raindrops_item::{
+        utils::{
+            assert_keys_equal, propagate_parent, propagate_parent_array, PropagateParentArgs,
+            PropagateParentArrayArgs,
+        },
+        BasicItemEffect, BasicItemEffectType, Item, ItemClass, ItemClassData, ItemUsage,
+        ItemUsageType, PermissivenessType,
+    },
     std::convert::TryInto,
-    raindrops_item::{Item, ItemClass,PermissivenessType, utils::{propagate_parent_array, propagate_parent, assert_keys_equal, PropagateParentArgs, PropagateParentArrayArgs}}
 };
 
 pub fn update_player_class_with_inherited_information(
@@ -34,7 +44,6 @@ pub fn update_player_class_with_inherited_information(
         Some(cupp) => {
             for update_perm in cupp {
                 match update_perm.child_update_propagation_permissiveness_type {
-                   
                     ChildUpdatePropagationPermissivenessType::StakingPermissiveness => {
                         player_class_data.settings.staking_permissiveness = propagate_parent_array(PropagateParentArrayArgs {
                             parent_items: &parent_item_data.settings.staking_permissiveness,
@@ -189,26 +198,27 @@ pub struct RunItemValidationArgs<'a, 'b, 'c, 'info> {
     pub item_mint: &'b Account<'info, Mint>,
     pub validation_program: &'c UncheckedAccount<'info>,
     pub player_mint: &'a Pubkey,
-    pub item_permissiveness_to_use: Option<PermissivenessType> ,
+    pub item_permissiveness_to_use: Option<PermissivenessType>,
     pub amount: u64,
     pub add: bool,
 }
 
-pub fn run_item_validation<'a, 'b, 'c, 'info>(args: RunItemValidationArgs<'a, 'b, 'c, 'info>) -> Result<()> {
-
-    let RunItemValidationArgs { 
-        player_class, 
-        item_class, 
-        item, 
-        item_account, 
-        player_item_account, 
-        player, 
-        item_mint, 
-        validation_program, 
-        player_mint, 
-        item_permissiveness_to_use, 
-        amount ,
-        add
+pub fn run_item_validation<'a, 'b, 'c, 'info>(
+    args: RunItemValidationArgs<'a, 'b, 'c, 'info>,
+) -> Result<()> {
+    let RunItemValidationArgs {
+        player_class,
+        item_class,
+        item,
+        item_account,
+        player_item_account,
+        player,
+        item_mint,
+        validation_program,
+        player_mint,
+        item_permissiveness_to_use,
+        amount,
+        add,
     } = args;
 
     if let Some(validation) = &player_class.data.config.add_to_pack_validation {
@@ -241,16 +251,17 @@ pub fn run_item_validation<'a, 'b, 'c, 'info>(args: RunItemValidationArgs<'a, 'b
             AccountMeta::new_readonly(item_mint.key(), false),
         ];
 
-        let name = if add { "add_item_validation" } else { "remove_item_validation" };
+        let name = if add {
+            "add_item_validation"
+        } else {
+            "remove_item_validation"
+        };
         invoke(
             &Instruction {
                 program_id: validation.key,
                 accounts: keys,
                 data: AnchorSerialize::try_to_vec(&AddOrRemoveItemValidationArgs {
-                    instruction: raindrops_item::utils::sighash(
-                        "global",
-                        name,
-                    ),
+                    instruction: raindrops_item::utils::sighash("global", name),
                     extra_identifier: validation.code,
                     player_mint: *player_mint,
                     item_permissiveness_to_use: item_permissiveness_to_use.clone(),
@@ -262,7 +273,6 @@ pub fn run_item_validation<'a, 'b, 'c, 'info>(args: RunItemValidationArgs<'a, 'b
     }
 
     Ok(())
-
 }
 
 pub fn propagate_player_class_data_fields_to_player_data(
@@ -280,109 +290,705 @@ pub fn propagate_player_class_data_fields_to_player_data(
     }
 
     if let Some(player_stats) = &player_class.data.config.basic_stats {
-
         let mut states_length = 0;
         if let Some(states) = &player.data.basic_stats {
             states_length = states.len();
         }
 
         let mut existing_values: Vec<&BasicStat> =
-            vec![&BasicStat { index: 0, state: BasicStatState::Null }; std::cmp::max(player_stats.len(), states_length)];
+            vec![
+                &BasicStat {
+                    index: 0,
+                    state: BasicStatState::Null,
+                    diffs: None
+                };
+                std::cmp::max(player_stats.len(), states_length)
+            ];
 
         if let Some(states) = &player.data.basic_stats {
-            for i in 0..states.len() { 
+            for i in 0..states.len() {
                 existing_values[states[i].index as usize] = &states[i];
-            } 
+            }
         }
-        
-        let mut new_values: Vec<BasicStat> =
-            vec![BasicStat { index: 0, state: BasicStatState::Null }; std::cmp::max(player_stats.len(), states_length)];
+
+        let mut new_values: Vec<BasicStat> = vec![
+            BasicStat {
+                index: 0,
+                state: BasicStatState::Null,
+                diffs: None
+            };
+            std::cmp::max(player_stats.len(), states_length)
+        ];
 
         for i in 0..player_stats.len() {
             let existing = existing_values[player_stats[i].index as usize];
             new_values[player_stats[i].index as usize] = BasicStat {
                 index: player_stats[i].index,
+                diffs: existing.diffs.clone(),
                 state: match &player_stats[i].stat_type {
-                    BasicStatType::Enum { starting, values } => {
-                        match existing.state {
-                            BasicStatState::Enum { default, current } =>{ 
-                                let mut found = false;
-                                let mut found_default = false;
-                                for val in values {
-                                    if val.1 == current {
-                                        found = true;
-                                    }
-                                    if val.1 == default {
-                                        found_default = true;
-                                    }
-                                }    
-                                BasicStatState::Enum { 
-                                    default: if found_default {
-                                        default
-                                    } else {
-                                        *starting
-                                    }, current: if found {
-                                        current
-                                    } else {
-                                        *starting
-                                    } 
+                    BasicStatType::Enum { starting, values } => match existing.state {
+                        BasicStatState::Enum { current } => {
+                            let mut found = false;
+                            for val in values {
+                                if val.1 == current {
+                                    found = true;
                                 }
-                                
-                            },
-                            _ => BasicStatState::Enum { default: *starting, current: *starting }
+                            }
+                            BasicStatState::Enum {
+                                current: if found { current } else { *starting },
+                            }
                         }
-                        
+                        _ => BasicStatState::Enum { current: *starting },
                     },
-                    BasicStatType::Integer { min, max, starting, .. } => {
-                        match existing.state {
-                            BasicStatState::Integer { default, current } =>{ 
-                                let mut new_default = default;
-                                let mut new_current = current;
-                                if let Some(m) = max {
-                                    if current > *m {
-                                        new_current = *m;
-                                    } 
-                                    if default > *m {
-                                        new_default = *m;
-                                    }
+                    BasicStatType::Integer {
+                        min, max, starting, ..
+                    } => match existing.state {
+                        BasicStatState::Integer {
+                            calculated,
+                            current,
+                        } => {
+                            let mut new_calculated = calculated;
+                            let mut new_current = current;
+                            if let Some(m) = max {
+                                if current > *m {
+                                    new_current = *m;
                                 }
+                                if calculated > *m {
+                                    new_calculated = *m;
+                                }
+                            }
 
-                                if let Some(m) = min {
-                                    if current < *m {
-                                        new_current = *m;
-                                    } 
-                                    if default < *m {
-                                        new_default = *m;
-                                    }
+                            if let Some(m) = min {
+                                if current < *m {
+                                    new_current = *m;
                                 }
+                                if calculated < *m {
+                                    new_calculated = *m;
+                                }
+                            }
 
-                                BasicStatState::Integer { default: new_default, current: new_current }
-                                
-                            },
-                            _ => BasicStatState::Integer { default: *starting, current: *starting }
+                            BasicStatState::Integer {
+                                calculated: new_calculated,
+                                current: new_current,
+                            }
                         }
+                        _ => BasicStatState::Integer {
+                            calculated: *starting,
+                            current: *starting,
+                        },
                     },
-                    BasicStatType::Bool { starting, .. } => {
-                        match existing.state {
-                            BasicStatState::Bool {  current, .. } =>{ 
-                                BasicStatState::Bool { default: *starting, current } 
-                            },
-                            _ => BasicStatState::Bool { default: *starting, current: *starting }
-                        }
+                    BasicStatType::Bool { starting, .. } => match existing.state {
+                        BasicStatState::Bool { current, .. } => BasicStatState::Bool { current },
+                        _ => BasicStatState::Bool { current: *starting },
                     },
-                    BasicStatType::String { starting } =>{
-                        match &existing.state {
-                            BasicStatState::String {  current, ..} => { 
-                                BasicStatState::String { default: starting.clone(), current: current.clone() } 
-                            },
-                            _ => BasicStatState::String { default: starting.clone(), current: starting.clone() }
-                        }
+                    BasicStatType::String { starting } => match &existing.state {
+                        BasicStatState::String { current, .. } => BasicStatState::String {
+                            current: current.clone(),
+                        },
+                        _ => BasicStatState::String {
+                            current: starting.clone(),
+                        },
                     },
-                }
+                },
             }
         }
-    
 
         player.data.basic_stats = Some(new_values);
     }
+}
+
+pub struct VerifyItemUsageAppropriateForBodyPartArgs<'a> {
+    pub used_body_part: &'a BodyPart,
+    pub item_usage_index: u16,
+    pub item_usage_info: Option<ItemUsageInfo>,
+    pub item_class_data: ItemClassData,
+    pub equipping: bool,
+    pub total_equipped_for_this_item: u64,
+    pub total_equipped_for_this_body_part_for_this_item: u64,
+    pub total_equipped_for_this_body_part: u64,
+    pub equipped_items: &'a Vec<EquippedItem>,
+}
+
+pub fn verify_item_usage_appropriate_for_body_part(
+    args: VerifyItemUsageAppropriateForBodyPartArgs,
+) -> Result<ItemUsage> {
+    let VerifyItemUsageAppropriateForBodyPartArgs {
+        used_body_part,
+        item_usage_index,
+        item_usage_info,
+        item_class_data,
+        equipping,
+        total_equipped_for_this_item,
+        total_equipped_for_this_body_part_for_this_item,
+        total_equipped_for_this_body_part,
+        equipped_items,
+    } = args;
+
+    if let Some(tis) = used_body_part.total_item_spots {
+        if total_equipped_for_this_body_part > tis && equipping {
+            return Err(ErrorCode::BodyPartContainsTooMany.into());
+        }
+    }
+
+    let usage_to_check = if let Some(ui) = item_usage_info {
+        if let Some(root) = item_class_data.config.usage_root {
+            let ItemUsageInfo {
+                item_usage_proof,
+                item_usage,
+            } = ui;
+            let chief_node = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x00],
+                &AnchorSerialize::try_to_vec(&item_usage)?,
+            ]);
+            require!(
+                raindrops_item::utils::verify(&item_usage_proof, &root.root, chief_node.0),
+                InvalidProof
+            );
+            item_usage
+        } else {
+            return Err(ErrorCode::UsageRootNotPresent.into());
+        }
+    } else if let Some(usages) = &item_class_data.config.usages {
+        if usages.is_empty() {
+            return Err(error!(ErrorCode::CannotEquipItemWithoutUsageOrMerkle));
+        } else {
+            let mut found = false;
+            let mut item_usage = &usages[0];
+            for u in usages {
+                if u.index == item_usage_index {
+                    item_usage = u;
+                    found = true;
+                    break;
+                }
+            }
+
+            if !found {
+                return Err(ErrorCode::FoundNoMatchingUsage.into());
+            }
+            item_usage.clone()
+        }
+    } else {
+        return Err(ErrorCode::ItemContainsNoUsages.into());
+    };
+
+    if usage_to_check.do_not_pair_with_self && equipping && total_equipped_for_this_item > 0 {
+        return Err(ErrorCode::ItemCannotBePairedWithSelf.into());
+    }
+
+    if let Some(dnp_list) = usage_to_check.dnp {
+        if equipping {
+            for dnp_item in &dnp_list {
+                for equipped_item in equipped_items {
+                    if equipped_item.item == dnp_item.key {
+                        return Err(ErrorCode::ItemCannotBeEquippedWithDNPEntry.into());
+                    }
+                }
+            }
+        }
+    }
+
+    match &usage_to_check.item_class_type {
+        raindrops_item::ItemClassType::Wearable {
+            body_part,
+            limit_per_part,
+        } => {
+            let mut found = false;
+            for part in body_part {
+                if &used_body_part.body_part == part {
+                    found = true;
+                    if let Some(lpp) = limit_per_part {
+                        if total_equipped_for_this_body_part_for_this_item > *lpp && equipping {
+                            return Err(ErrorCode::BodyPartContainsTooManyOfThisType.into());
+                        }
+                    }
+                    break;
+                }
+            }
+            if !found {
+                return Err(ErrorCode::BodyPartNotEligible.into());
+            }
+        }
+        raindrops_item::ItemClassType::Consumable { .. } => {
+            return Err(ErrorCode::CannotEquipConsumable.into())
+        }
+    }
+
+    return Ok(usage_to_check);
+}
+
+pub struct RunToggleEquipItemValidationArgs<'a, 'b, 'c, 'info> {
+    pub item_class: &'b Account<'info, ItemClass>,
+    pub item: &'b Account<'info, Item>,
+    pub player_item_account: &'b Account<'info, TokenAccount>,
+    pub validation_program: &'c UncheckedAccount<'info>,
+    pub permissiveness_to_use: Option<PermissivenessType>,
+    pub amount: u64,
+    pub item_usage: ItemUsage,
+    pub item_index: u64,
+    pub item_class_index: u64,
+    pub usage_index: u16,
+    pub item_class_mint: &'a Pubkey,
+}
+
+pub fn run_toggle_equip_item_validation<'a, 'b, 'c, 'info>(
+    args: RunToggleEquipItemValidationArgs<'a, 'b, 'c, 'info>,
+) -> Result<()> {
+    let RunToggleEquipItemValidationArgs {
+        item_class,
+        item,
+        player_item_account,
+        validation_program,
+        permissiveness_to_use,
+        amount,
+        item_usage,
+        item_index,
+        item_class_index,
+        usage_index,
+        item_class_mint,
+    } = args;
+
+    if let Some(validation) = item_usage.validation {
+        let item_class_info = item_class.to_account_info();
+        let item_info = item.to_account_info();
+        let item_account_info = player_item_account.to_account_info();
+        let accounts = vec![
+            item_class_info,
+            item_info,
+            item_account_info,
+            validation_program.to_account_info(),
+        ];
+        assert_keys_equal(validation_program.key(), validation.key)?;
+
+        let keys = vec![
+            AccountMeta::new_readonly(item_class.key(), false),
+            AccountMeta::new_readonly(item.key(), false),
+            AccountMeta::new_readonly(player_item_account.key(), false),
+        ];
+
+        invoke(
+            &Instruction {
+                program_id: validation.key,
+                accounts: keys,
+                data: AnchorSerialize::try_to_vec(&raindrops_item::ValidationArgs {
+                    instruction: raindrops_item::utils::sighash("global", "item_validation"),
+                    extra_identifier: validation.code,
+                    usage_permissiveness_to_use: permissiveness_to_use.clone(),
+                    index: item_index,
+                    amount,
+                    usage_info: None,
+                    usage_index,
+                    class_index: item_class_index,
+                    item_class_mint: *item_class_mint,
+                })?,
+            },
+            &accounts,
+        )?;
+    }
+
+    Ok(())
+}
+
+pub struct BuildNewEquippedItemsAndProvideCountsArgs<'b, 'info> {
+    pub player: &'b Account<'info, Player>,
+    pub item: &'b Account<'info, Item>,
+    pub body_part_index: u16,
+    pub amount: u64,
+    pub equipping: bool,
+}
+
+pub struct BuildNewEquippedItemsReturn {
+    pub total_equipped_for_this_item: u64,
+    pub total_equipped_for_this_body_part_for_this_item: u64,
+    pub total_equipped_for_this_body_part: u64,
+    pub new_eq_items: Vec<EquippedItem>,
+}
+
+pub fn build_new_equipped_items_and_provide_counts<'b, 'info>(
+    args: BuildNewEquippedItemsAndProvideCountsArgs,
+) -> Result<BuildNewEquippedItemsReturn> {
+    let BuildNewEquippedItemsAndProvideCountsArgs {
+        player,
+        item,
+        body_part_index,
+        amount,
+        equipping,
+    } = args;
+    let mut new_eq_items = vec![];
+    let mut moving_amount = amount;
+    let mut total_equipped_for_this_item: u64 = 0;
+    let mut total_equipped_for_this_body_part_for_this_item: u64 = 0;
+    let mut total_equipped_for_this_body_part: u64 = 0;
+    for ei in &player.equipped_items {
+        if ei.item == item.key() {
+            total_equipped_for_this_item = total_equipped_for_this_item
+                .checked_add(ei.amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        if ei.index == body_part_index {
+            total_equipped_for_this_body_part = total_equipped_for_this_body_part
+                .checked_add(ei.amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+
+            if ei.item == item.key() {
+                let new_item = EquippedItem {
+                    index: ei.index,
+                    item: ei.item,
+                    amount: if equipping {
+                        moving_amount = 0;
+                        ei.amount
+                            .checked_add(moving_amount)
+                            .ok_or(ErrorCode::NumericalOverflowError)?
+                    } else {
+                        if ei.amount < moving_amount {
+                            moving_amount = moving_amount
+                                .checked_sub(ei.amount)
+                                .ok_or(ErrorCode::NumericalOverflowError)?;
+                            0
+                        } else {
+                            moving_amount = 0;
+                            ei.amount
+                                .checked_sub(moving_amount)
+                                .ok_or(ErrorCode::NumericalOverflowError)?
+                        }
+                    },
+                };
+                total_equipped_for_this_body_part_for_this_item =
+                    total_equipped_for_this_body_part_for_this_item
+                        .checked_add(new_item.amount)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+                if new_item.amount > 0 {
+                    new_eq_items.push(new_item);
+                }
+            } else {
+                new_eq_items.push(EquippedItem {
+                    index: ei.index,
+                    item: ei.item,
+                    amount: ei.amount,
+                })
+            }
+        } else {
+            new_eq_items.push(EquippedItem {
+                index: ei.index,
+                item: ei.item,
+                amount: ei.amount,
+            })
+        }
+    }
+
+    if moving_amount > 0 {
+        if equipping {
+            new_eq_items.push(EquippedItem {
+                index: body_part_index,
+                item: item.key(),
+                amount: moving_amount,
+            });
+            total_equipped_for_this_body_part_for_this_item =
+                total_equipped_for_this_body_part_for_this_item
+                    .checked_add(moving_amount)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+            total_equipped_for_this_body_part = total_equipped_for_this_body_part
+                .checked_add(moving_amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+            total_equipped_for_this_item = total_equipped_for_this_item
+                .checked_add(moving_amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        } else {
+            return Err(ErrorCode::CannotUnequipThisMuch.into());
+        }
+    }
+
+    Ok(BuildNewEquippedItemsReturn {
+        new_eq_items,
+        total_equipped_for_this_body_part,
+        total_equipped_for_this_item,
+        total_equipped_for_this_body_part_for_this_item,
+    })
+}
+
+pub fn find_used_body_part_from_index(
+    player_class: &Account<PlayerClass>,
+    body_part_index: u16,
+) -> Result<BodyPart> {
+    if let Some(bp) = &player_class.data.config.body_parts {
+        if bp.is_empty() {
+            return Err(ErrorCode::NoBodyPartsToEquip.into());
+        } else {
+            let mut body_part = &bp[0];
+            let mut found = false;
+            for b in bp {
+                if b.index == body_part_index {
+                    body_part = b;
+                    found = true;
+                    break;
+                }
+            }
+
+            if !found {
+                return Err(ErrorCode::UnableToFindBodyPartByIndex.into());
+            }
+
+            return Ok(body_part.clone());
+        }
+    };
+    return Err(ErrorCode::NoBodyPartsToEquip.into());
+}
+
+pub struct ToggleItemToBasicStatsArgs<'b, 'c, 'info> {
+    player: &'b Account<'info, Player>,
+    player_class: &'b Account<'info, PlayerClass>,
+    item_class: &'b Account<'info, ItemClass>,
+    item: &'b Account<'info, Item>,
+    item_usage: &'c ItemUsage,
+    total_active_amount: u64,
+    amount_change: u64,
+    adding: bool,
+    stat_diff_type: StatDiffType,
+    index: u16,
+}
+
+pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
+    args: ToggleItemToBasicStatsArgs<'b, 'c, 'info>,
+) -> Result<()> {
+    let ToggleItemToBasicStatsArgs {
+        player,
+        player_class,
+        item_class,
+        item,
+        item_usage,
+        adding,
+        total_active_amount,
+        amount_change,
+        stat_diff_type,
+        index,
+    } = args;
+    // for an item without active duration, is permanent increase
+    // for an equipment, no active duration, is temproary until removal
+    // for item with active duration, is by definition an NFT, so wont be more than one
+    // for equipment, can be SFT, but then nothing can be staked on it, and if it isnt SFT, it can be staked
+    // so staking issues only an issue when one of ones being used, which means if you are adding or removing
+    // you can treat as having no staking adjusters because is an SFT (and thus each contributes equally)
+    // or you can treat as having only one so staking adjuster will be 100% added or 100% wiped out.
+    // therefore, this works.
+
+    if let Some(bies) = &item_usage.basic_item_effects {
+        if let Some(bsts) = &player_class.data.config.basic_stats {
+            if let Some(bss) = &mut player.data.basic_stats {
+                for bst in bsts {
+                    // guaranteed to be at this index due to way player is created or updated
+
+                    let bs = &mut bss[bst.index as usize];
+
+                    if !adding {
+                        // when removing an effect we just need index and type, and amount to remove...
+                        let new_diffs = vec![];
+                        if let Some(diffs) = bs.diffs {
+                            for mut stat in diffs {
+                                if stat.stat_diff_type == stat_diff_type && stat.index == index {
+                                    let new_amount = total_active_amount
+                                        .checked_sub(amount_change)
+                                        .ok_or(ErrorCode::NumericalOverflowError)?;
+                                    if new_amount > 0 {
+                                        stat.diff = stat
+                                            .diff
+                                            .checked_mul(new_amount as i64)
+                                            .ok_or(ErrorCode::NumericalOverflowError)?;
+                                        stat.diff = stat
+                                            .diff
+                                            .checked_div(total_active_amount as i64)
+                                            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                                        if stat.diff > 0 {
+                                            new_diffs.push(stat)
+                                        }
+                                    }
+                                } else {
+                                    new_diffs.push(stat)
+                                }
+                            }
+                            bs.diffs = Some(new_diffs);
+                        }
+                    } else {
+                        for bie in bies {
+                            if bie.stat == bst.name {
+                                let modded_amount =
+                                    get_modded_amount_given_tokens_staked_on_item(item, bie)?;
+
+                                if bie.active_duration.is_none()
+                                    && stat_diff_type == StatDiffType::Consumable
+                                {
+                                    permanently_alter_stat(
+                                        bs,
+                                        bie.item_effect_type,
+                                        modded_amount,
+                                    )?;
+                                } else {
+                                    // add or modify
+                                }
+                            }
+                        }
+                    }
+
+                    //need to again do this loop for calculations...
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+struct AddOrModifyDiffToStatArgs<'a> {
+    pub bs: &'a mut BasicStat,
+    pub biet: BasicItemEffectType,
+    pub modded_amount: i64,
+    pub stat_diff_type: StatDiffType,
+    pub index: u16,
+}
+pub fn add_or_modify_diff_to_stat(args: AddOrModifyDiffToStatArgs) -> Result<()> {
+    // If it has an active duration OR is armor then is a (diff)
+    // and becomes part of calculated
+    let AddOrModifyDiffToStatArgs {
+        bs,
+        biet,
+        modded_amount,
+        stat_diff_type,
+        index,
+    } = args;
+
+    if bs.diffs.is_none() {
+        bs.diffs = Some(vec![StatDiff {
+            stat_diff_type,
+            diff: 0,
+            index,
+        }])
+    }
+
+    let mut diff = if let Some(diffs) = &mut bs.diffs {
+        if diffs.is_empty() {
+            diffs.push(StatDiff {
+                stat_diff_type,
+                diff: 0,
+                index,
+            });
+            &mut diffs[0]
+        } else {
+            let mut found = false;
+            let mut found_diff_index: usize = 0;
+            for i in 0..diffs.len() {
+                let stat = &mut diffs[i];
+                if stat.stat_diff_type == stat_diff_type && stat.index == index {
+                    found = true;
+                    found_diff_index = i;
+                    break;
+                }
+            }
+            if !found {
+                diffs.push(StatDiff {
+                    stat_diff_type,
+                    diff: 0,
+                    index,
+                });
+            }
+
+            &mut diffs[found_diff_index]
+        }
+    } else {
+        return Err(ErrorCode::Unreachable.into());
+    };
+
+    // Now diff is in the diffs array, whether added or found, and we can edit it.
+
+    match bs.state {
+        BasicStatState::Integer { .. } => match biet {
+            BasicItemEffectType::Increment | BasicItemEffectType::Decrement => todo!(),
+            BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
+                todo!()
+            }
+            BasicItemEffectType::IncrementPercentFromBase
+            | BasicItemEffectType::DecrementPercentFromBase => todo!(),
+        },
+        _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
+    }
+
+    Ok(())
+}
+
+pub fn permanently_alter_stat(
+    bs: &mut BasicStat,
+    biet: BasicItemEffectType,
+    modded_amount: i64,
+) -> Result<()> {
+    bs.state = match bs.state {
+        BasicStatState::Integer {
+            current,
+            calculated,
+        } => match biet {
+            BasicItemEffectType::Increment | BasicItemEffectType::Decrement => {
+                BasicStatState::Integer {
+                    current: current
+                        .checked_add(modded_amount)
+                        .ok_or(ErrorCode::NumericalOverflowError)?,
+                    calculated: calculated,
+                }
+            }
+
+            BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
+                BasicStatState::Integer {
+                    current: current
+                        .checked_add(
+                            modded_amount
+                                .checked_mul(current)
+                                .ok_or(ErrorCode::NumericalOverflowError)?
+                                .checked_div(100)
+                                .ok_or(ErrorCode::NumericalOverflowError)?,
+                        )
+                        .ok_or(ErrorCode::NumericalOverflowError)?,
+                    calculated: calculated,
+                }
+            }
+            BasicItemEffectType::IncrementPercentFromBase
+            | BasicItemEffectType::DecrementPercentFromBase => {
+                todo!()
+            }
+        },
+        _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
+    };
+
+    Ok(())
+}
+
+pub fn get_modded_amount_given_tokens_staked_on_item(
+    item: &Account<Item>,
+    bie: &BasicItemEffect,
+) -> Result<i64> {
+    let mut modded_amount: i64 = bie.amount as i64;
+
+    if item.tokens_staked > 0 {
+        let mut to_add: u64 = item.tokens_staked;
+        if let Some(san) = bie.staking_amount_numerator {
+            to_add = to_add
+                .checked_mul(san)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+        if let Some(sad) = bie.staking_amount_divisor {
+            to_add = to_add
+                .checked_div(sad)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        modded_amount = modded_amount
+            .checked_add(to_add as i64)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+    }
+
+    if bie.item_effect_type == BasicItemEffectType::Decrement
+        || bie.item_effect_type == BasicItemEffectType::DecrementPercent
+        || bie.item_effect_type == BasicItemEffectType::DecrementPercentFromBase
+    {
+        modded_amount = modded_amount
+            .checked_mul(-1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+    }
+
+    Ok(modded_amount)
 }

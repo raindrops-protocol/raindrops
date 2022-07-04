@@ -2,8 +2,13 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_builder_must_be_holder_check, propagate_player_class_data_fields_to_player_data,
-        run_item_validation, update_player_class_with_inherited_information, RunItemValidationArgs,
+        assert_builder_must_be_holder_check, build_new_equipped_items_and_provide_counts,
+        find_used_body_part_from_index, propagate_player_class_data_fields_to_player_data,
+        run_item_validation, run_toggle_equip_item_validation,
+        update_player_class_with_inherited_information,
+        verify_item_usage_appropriate_for_body_part, BuildNewEquippedItemsAndProvideCountsArgs,
+        BuildNewEquippedItemsReturn, RunItemValidationArgs, RunToggleEquipItemValidationArgs,
+        VerifyItemUsageAppropriateForBodyPartArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -84,17 +89,22 @@ pub struct RemoveItemArgs {
 pub struct ToggleEquipItemArgs {
     pub item_index: u64,
     pub item_mint: Pubkey,
+    pub item_class_mint: Pubkey,
+    pub index: u64,
+    pub player_mint: Pubkey,
     pub amount: u64,
     pub equipping: bool,
+    pub body_part_index: u16,
     pub equip_item_permissiveness_to_use: Option<PermissivenessType>,
+    pub item_usage_index: u16,
+    // Use this if using roots
+    pub item_usage_info: Option<ItemUsageInfo>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct UnequipItemArgs {
-    pub item_index: u64,
-    pub item_mint: Pubkey,
-    pub amount: u64,
-    pub unequip_item_permissiveness_to_use: Option<PermissivenessType>,
+pub struct ItemUsageInfo {
+    pub item_usage_proof: Vec<[u8; 32]>,
+    pub item_usage: raindrops_item::ItemUsage,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -169,6 +179,7 @@ pub struct UpdatePlayerArgs {
 
 #[program]
 pub mod player {
+    use std::borrow::Borrow;
 
     use super::*;
 
@@ -483,7 +494,6 @@ pub mod player {
         ctx: Context<'a, 'b, 'c, 'info, BuildPlayer<'info>>,
         args: BuildPlayerArgs,
     ) -> Result<()> {
-        msg!("complete_item_escrow_build_phase");
         let player_class = &mut ctx.accounts.player_class;
         let new_player = &mut ctx.accounts.new_player;
         let new_player_mint = &ctx.accounts.new_player_mint;
@@ -718,6 +728,98 @@ pub mod player {
 
             close_account(context.with_signer(&[&player_seeds[..]]))?;
         }
+        Ok(())
+    }
+
+    pub fn toggle_equip_item<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ToggleEquipItem<'info>>,
+        args: ToggleEquipItemArgs,
+    ) -> Result<()> {
+        let ToggleEquipItemArgs {
+            item_index,
+            index,
+            item_class_mint,
+            amount,
+            equipping,
+            equip_item_permissiveness_to_use,
+            player_mint,
+            body_part_index,
+            item_usage_index,
+            item_usage_info,
+            ..
+        } = args;
+
+        let player = &mut ctx.accounts.player;
+        let player_class = &ctx.accounts.player_class;
+        let item = &ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
+        let player_item_account = &ctx.accounts.player_item_account;
+        let validation_program = &ctx.accounts.validation_program;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &equip_item_permissiveness_to_use,
+            permissiveness_array: if equipping {
+                &player_class.data.settings.equip_item_permissiveness
+            } else {
+                &player_class.data.settings.unequip_item_permissiveness
+            },
+            index: index,
+            class_index: Some(player.class_index),
+            account_mint: Some(&player_mint),
+        })?;
+
+        let BuildNewEquippedItemsReturn {
+            total_equipped_for_this_item,
+            total_equipped_for_this_body_part_for_this_item,
+            total_equipped_for_this_body_part,
+            new_eq_items,
+        } = build_new_equipped_items_and_provide_counts(
+            BuildNewEquippedItemsAndProvideCountsArgs {
+                player,
+                item,
+                body_part_index,
+                amount,
+                equipping,
+            },
+        )?;
+
+        let used_body_part = find_used_body_part_from_index(player_class, body_part_index)?;
+        let item_class_data =
+            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
+
+        let item_usage = verify_item_usage_appropriate_for_body_part(
+            VerifyItemUsageAppropriateForBodyPartArgs {
+                used_body_part: &used_body_part,
+                item_usage_index,
+                item_usage_info,
+                item_class_data,
+                equipping,
+                total_equipped_for_this_item,
+                total_equipped_for_this_body_part_for_this_item,
+                total_equipped_for_this_body_part,
+                equipped_items: &new_eq_items,
+            },
+        )?;
+
+        run_toggle_equip_item_validation(RunToggleEquipItemValidationArgs {
+            item_class,
+            item,
+            player_item_account,
+            validation_program,
+            permissiveness_to_use: equip_item_permissiveness_to_use,
+            amount,
+            item_usage,
+            item_index,
+            item_class_index: item.class_index,
+            usage_index: item_usage_index,
+            item_class_mint: &item_class_mint,
+        })?;
+
+        player.equipped_items = new_eq_items;
+
         Ok(())
     }
 }
@@ -998,11 +1100,19 @@ pub struct ToggleEquipItem<'info> {
             &args.item_index.to_le_bytes(),
         ],
         seeds::program=raindrops_item::id(),
-        constraint=item.parent == item_class.key(),
         bump=item.bump
     )]
     item: Account<'info, raindrops_item::Item>,
-    #[account(constraint=item.parent == item_class.key())]
+    #[account(
+        seeds=[
+            raindrops_item::PREFIX.as_bytes(),
+            args.item_class_mint.as_ref(),
+            &item.class_index.to_le_bytes(),
+        ],
+        seeds::program=raindrops_item::id(),
+        constraint=item.parent == item_class.key(),
+        bump=item_class.bump
+    )]
     item_class: Account<'info, raindrops_item::ItemClass>,
     #[account(
         seeds=[
@@ -1150,7 +1260,7 @@ pub struct Root {
 pub struct EquippedItem {
     item: Pubkey,
     amount: u64,
-    category: String,
+    index: u16,
 }
 
 pub const MAX_NAMESPACES: usize = 10;
@@ -1241,6 +1351,7 @@ pub struct StatsUri {
 pub struct BodyPart {
     pub index: u16,
     pub body_part: String,
+    pub total_item_spots: Option<u64>,
     pub inherited: InheritanceState,
 }
 
@@ -1374,6 +1485,7 @@ pub struct BasicStatTemplate {
 pub struct BasicStat {
     pub index: u16,
     pub state: BasicStatState,
+    pub diffs: Option<Vec<StatDiff>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1403,11 +1515,26 @@ pub enum BasicStatType {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicStatState {
-    Enum { default: u8, current: u8 },
-    Integer { default: i64, current: i64 },
-    Bool { default: bool, current: bool },
-    String { default: String, current: String },
+    Enum { current: u8 },
+    Integer { current: i64, calculated: i64 },
+    Bool { current: bool },
+    String { current: String },
     Null,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct StatDiff {
+    pub stat_diff_type: StatDiffType,
+    // Refers to equipped item index or active_item_counter
+    // on item activation marker
+    pub index: u16,
+    pub diff: i64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+pub enum StatDiffType {
+    Wearable,
+    Consumable,
 }
 
 const PLAYER_ITEM_ACTIVATION_MARKER_SPACE: usize = 8 + // key
@@ -1416,7 +1543,8 @@ const PLAYER_ITEM_ACTIVATION_MARKER_SPACE: usize = 8 + // key
 32 + //item
 2 + // usage index
 8 + // amount
-8; // activated_at
+8 +  // activated_at
+2; // active_item_coiunter
 
 #[account]
 pub struct PlayerItemActivationMarker {
@@ -1426,6 +1554,7 @@ pub struct PlayerItemActivationMarker {
     pub usage_index: u16,
     pub amount: u64,
     pub activated_at: u64,
+    pub active_item_counter: u16,
 }
 
 #[error_code]
@@ -1458,4 +1587,38 @@ pub enum ErrorCode {
     MustBeHolderToBuild,
     #[msg("Cannot remove this much of this item because there is not enough of it or too much of it is equipped")]
     CannotRemoveThisMuch,
+    #[msg("This item lacks a usage root")]
+    UsageRootNotPresent,
+    #[msg("Invalid proof")]
+    InvalidProof,
+    #[msg("Item contains no usages")]
+    ItemContainsNoUsages,
+    #[msg("Found no item usage matching this index")]
+    FoundNoMatchingUsage,
+    #[msg("Cannot equip consumable")]
+    CannotEquipConsumable,
+    #[msg("This body part cannot equip this item")]
+    BodyPartNotEligible,
+    #[msg("Cannot unequip this much")]
+    CannotUnequipThisMuch,
+    #[msg("Body part contains too many items of this type on it")]
+    BodyPartContainsTooManyOfThisType,
+    #[msg("Body part contains too many items")]
+    BodyPartContainsTooMany,
+    #[msg("Cannot equip item without usage or merkle")]
+    CannotEquipItemWithoutUsageOrMerkle,
+    #[msg("No body parts to equip")]
+    NoBodyPartsToEquip,
+    #[msg("Unable to find body part with this index")]
+    UnableToFindBodyPartByIndex,
+    #[msg("Item cannot be paired with self")]
+    ItemCannotBePairedWithSelf,
+    #[msg("Item cannot be equipped because a DNP entry is also equipped")]
+    ItemCannotBeEquippedWithDNPEntry,
+    #[msg("Template stat type does not match stat of player, try updating player permissionlessly before running this command again")]
+    BasicStatTemplateTypeDoesNotMatchBasicStatType,
+    #[msg("Cannot numerically alter this type of stat")]
+    CannotAlterThisTypeNumerically,
+    #[msg("Unreachable code")]
+    Unreachable,
 }
