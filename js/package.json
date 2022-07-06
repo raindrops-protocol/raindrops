@@ -1,6 +1,6 @@
 {
   "name": "raindrops-cli",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "main": "./build/main",
   "typings": "./build/main",
   "license": "MIT",
