@@ -72,7 +72,7 @@ export const getItemPDA = async (
   index: BN
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
-    [Buffer.from(ITEM_PREFIX), mint.toBuffer(), index.toBuffer("le", 8)],
+    [Buffer.from(ITEM_PREFIX), mint.toBuffer(), index.toArrayLike(Buffer, "le", 8)],
     ITEM_ID
   );
 };
@@ -82,7 +82,7 @@ export const getPlayerPDA = async (
   index: BN
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
-    [Buffer.from(PLAYER_PREFIX), mint.toBuffer(), index.toBuffer("le", 8)],
+    [Buffer.from(PLAYER_PREFIX), mint.toBuffer(), index.toArrayLike(Buffer, "le", 8)],
     PLAYER_ID
   );
 };
@@ -97,9 +97,9 @@ export const getItemActivationMarker = async (args: {
     [
       Buffer.from(ITEM_PREFIX),
       args.itemMint.toBuffer(),
-      args.index.toBuffer("le", 8),
-      args.usageIndex.toBuffer("le", 8),
-      args.amount.toBuffer("le", 8),
+      args.index.toArrayLike(Buffer, "le", 8),
+      args.usageIndex.toArrayLike(Buffer, "le", 8),
+      args.amount.toArrayLike(Buffer, "le", 8),
       Buffer.from(MARKER),
     ],
     ITEM_ID
@@ -119,10 +119,10 @@ export const getCraftItemCounter = async (args: {
     [
       Buffer.from(ITEM_PREFIX),
       args.itemClassMint.toBuffer(),
-      args.classIndex.toBuffer("le", 8),
+      args.classIndex.toArrayLike(Buffer, "le", 8),
       args.newItemMint.toBuffer(),
-      args.craftEscrowIndex.toBuffer("le", 8),
-      args.craftItemIndex.toBuffer("le", 8),
+      args.craftEscrowIndex.toArrayLike(Buffer, "le", 8),
+      args.craftItemIndex.toArrayLike(Buffer, "le", 8),
       args.craftItemMint.toBuffer(),
       Buffer.from(args.componentScope),
     ],
@@ -147,15 +147,15 @@ export const getCraftItemEscrow = async (args: {
     [
       Buffer.from(ITEM_PREFIX),
       args.itemClassMint.toBuffer(),
-      args.classIndex.toBuffer("le", 8),
+      args.classIndex.toArrayLike(Buffer, "le", 8),
       args.payer.toBuffer(),
       args.newItemMint.toBuffer(),
       args.craftItemToken.toBuffer(),
-      args.craftEscrowIndex.toBuffer("le", 8),
-      args.craftIndex.toBuffer("le", 8),
+      args.craftEscrowIndex.toArrayLike(Buffer, "le", 8),
+      args.craftIndex.toArrayLike(Buffer, "le", 8),
       args.craftItemMint.toBuffer(),
-      args.amountToMake.toBuffer("le", 8),
-      args.amountToContributeFromThisContributor.toBuffer("le", 8),
+      args.amountToMake.toArrayLike(Buffer, "le", 8),
+      args.amountToContributeFromThisContributor.toArrayLike(Buffer, "le", 8),
       Buffer.from(args.componentScope),
     ],
     ITEM_ID
@@ -176,12 +176,12 @@ export const getItemEscrow = async (args: {
     [
       Buffer.from(ITEM_PREFIX),
       args.itemClassMint.toBuffer(),
-      args.classIndex.toBuffer("le", 8),
+      args.classIndex.toArrayLike(Buffer, "le", 8),
       args.payer.toBuffer(),
       args.newItemMint.toBuffer(),
       args.newItemToken.toBuffer(),
-      args.craftEscrowIndex.toBuffer("le", 8),
-      args.amountToMake.toBuffer("le", 8),
+      args.craftEscrowIndex.toArrayLike(Buffer, "le", 8),
+      args.amountToMake.toArrayLike(Buffer, "le", 8),
       Buffer.from(args.componentScope),
     ],
     ITEM_ID
