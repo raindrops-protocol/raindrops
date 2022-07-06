@@ -1268,20 +1268,20 @@
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"
 
-"@raindrops-protocol/sol-command@^0.3.0":
-  version "0.3.0"
-  resolved "https://npm.pkg.github.com/download/@raindrops-protocol/sol-command/0.3.0/d6b68c34732db768954bdf57007a57b6a26c90088894fe26968b8755469bffb8#ea55b38767ec9f8731f066945b97e71b8340f963"
-  integrity sha512-9zmhddNyN/nX2yX1mBhRpCp09gEH0CRZWRVaruPnvG8KbRkW8wko4EhoxxIuluDAbXOaEXVfJBJOhk7aF03EbA==
+"@raindrops-protocol/sol-command@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@raindrops-protocol/sol-command/-/sol-command-0.4.0.tgz#66ddd50381d654b88dd4e96f274028424e110f98"
+  integrity sha512-hwzpQqBTD1V7jJ3Y7a8wmua7ymHKyLHnBO7KVEa6IBewv9gy8hm/4Wbj1teDA6TcC0/+OMRPqWR6tyyuLGUFGw==
   dependencies:
     "@project-serum/anchor" "^0.24.2"
     commander "^9.2.0"
     loglevel "^1.8.0"
     typescript "^4.3.5"
 
-"@raindrops-protocol/sol-kit@^0.1.65":
-  version "0.1.65"
-  resolved "https://npm.pkg.github.com/download/@raindrops-protocol/sol-kit/0.1.65/c400d6ae37089c702ac283a99dd5f74f097764ab156e0b27867b2e5f33b5e15b#fcc37bb242ff57c4b949883b6510772fac648323"
-  integrity sha512-4uBK9oc1f/VNInG1zaEQM7udGAezEYqDtuRuBW44ANPtuCknWO4ZjXayFrJdEk6FWu1YYAWTD/3vFIk9vCYtpQ==
+"@raindrops-protocol/sol-kit@^0.1.71":
+  version "0.1.71"
+  resolved "https://registry.yarnpkg.com/@raindrops-protocol/sol-kit/-/sol-kit-0.1.71.tgz#e60a4f3a013bd78e89f99876c73de04f9f46ad9f"
+  integrity sha512-oUI38mImSEPBe6aT9h46EcqvcyYE6skm04zNHYzUaNWdVgxiiJBeQnGm3HnitKhCDLrLYZqhuaRu9JLmkXCk3w==
   dependencies:
     "@project-serum/anchor" "^0.24.2"
     borsh "^0.4.0"
