@@ -475,9 +475,9 @@ pub fn verify_item_usage_appropriate_for_body_part(
         return Err(ErrorCode::ItemCannotBePairedWithSelf.into());
     }
 
-    if let Some(dnp_list) = usage_to_check.dnp {
+    if let Some(dnp_list) = &usage_to_check.dnp {
         if equipping {
-            for dnp_item in &dnp_list {
+            for dnp_item in dnp_list {
                 for equipped_item in equipped_items {
                     if equipped_item.item == dnp_item.key {
                         return Err(ErrorCode::ItemCannotBeEquippedWithDNPEntry.into());
