@@ -31,8 +31,8 @@ use {
             assert_keys_equal, assert_metadata_valid, assert_permissiveness_access,
             spl_token_transfer, AssertPermissivenessAccessArgs, TokenTransferParams,
         },
-        Boolean, Callback, InheritanceState, Inherited, NamespaceAndIndex, Permissiveness,
-        PermissivenessType,
+        BasicItemEffectType, Boolean, Callback, InheritanceState, Inherited, NamespaceAndIndex,
+        Permissiveness, PermissivenessType,
     },
     spl_token::instruction::{initialize_account2, mint_to},
 };
@@ -1522,9 +1522,10 @@ pub enum BasicStatState {
     Null,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub struct StatDiff {
     pub stat_diff_type: StatDiffType,
+    pub item_effect_type: BasicItemEffectType,
     // Refers to equipped item index or active_item_counter
     // on item activation marker
     pub index: u16,

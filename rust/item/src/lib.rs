@@ -2608,7 +2608,7 @@ pub struct NamespaceAndIndex {
     pub inherited: InheritanceState,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub struct DNPItem {
     pub key: Pubkey,
     pub inherited: InheritanceState,
