@@ -621,6 +621,19 @@ export class MatchesProgram {
     );
   }
 
+  async disburseTokensByOracleInstructions(
+    args: DisburseTokensByOracleArgs,
+    accounts: DisburseTokensByOracleAccounts,
+    additionalArgs: DisburseTokensByOracleAdditionalArgs
+  ) {
+    const { instructions, signers } =
+      await this.instruction.disburseTokensByOracle(
+        args,
+        accounts,
+        additionalArgs
+      );
+    return {instructions, signers}
+  }
   async drainMatch(
     args: DrainMatchArgs,
     accounts: DrainMatchAccounts,
@@ -677,6 +690,20 @@ export class MatchesProgram {
     );
   }
 
+  async joinMatchInstructions(
+    args: JoinMatchArgs,
+    accounts: JoinMatchAccounts,
+    additionalArgs: JoinMatchAdditionalArgs
+  ) {
+    const { instructions, signers } = await this.instruction.joinMatch(
+      args,
+      accounts,
+      additionalArgs
+    );
+
+    return { instructions, signers }
+  }
+
   async leaveMatch(
     args: LeaveMatchArgs,
     accounts: LeaveMatchAccounts,
@@ -694,6 +721,19 @@ export class MatchesProgram {
       instructions,
       signers
     );
+  }
+  async leaveMatchInstructions(
+    args: LeaveMatchArgs,
+    accounts: LeaveMatchAccounts,
+    additionalArgs: LeaveMatchAdditionalArgs
+  ) {
+    const { instructions, signers } = await this.instruction.leaveMatch(
+      args,
+      accounts,
+      additionalArgs
+    );
+
+    return { instructions, signers }
   }
 
   async updateMatch(
@@ -714,6 +754,18 @@ export class MatchesProgram {
     );
   }
 
+  async updateMatchInstructions(
+    args: UpdateMatchArgs,
+    accounts: UpdateMatchAccounts,
+    _additionalArgs = {}
+  ) {
+    const { instructions, signers } = await this.instruction.updateMatch(
+      args,
+      accounts
+    );
+
+    return { instructions, signers }
+  }
   async updateMatchFromOracle(
     args = {},
     accounts: UpdateMatchFromOracleAccounts,
@@ -728,6 +780,17 @@ export class MatchesProgram {
       instructions,
       signers
     );
+  }
+
+  async updateMatchFromOracleInstructions(
+    args = {},
+    accounts: UpdateMatchFromOracleAccounts,
+    _additionalArgs = {}
+  ) {
+    const { instructions, signers } =
+      await this.instruction.updateMatchFromOracle(args, accounts);
+
+    return { instructions, signers }
   }
 
   async createOrUpdateOracle(
@@ -745,6 +808,18 @@ export class MatchesProgram {
       signers
     );
   }
+
+  async createOrUpdateOracleInstructions(
+    args: CreateOrUpdateOracleArgs,
+    _accounts = {},
+    _additionalArgs = {}
+  ) {
+    const { instructions, signers } =
+      await this.instruction.createOrUpdateOracle(args);
+
+    return { instructions, signers }
+  }
+
 }
 
 export async function getMatchesProgram(
