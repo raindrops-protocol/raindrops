@@ -300,7 +300,6 @@ pub fn propagate_player_class_data_fields_to_player_data(
                 &BasicStat {
                     index: 0,
                     state: BasicStatState::Null,
-                    diffs: None
                 };
                 std::cmp::max(player_stats.len(), states_length)
             ];
@@ -315,7 +314,6 @@ pub fn propagate_player_class_data_fields_to_player_data(
             BasicStat {
                 index: 0,
                 state: BasicStatState::Null,
-                diffs: None
             };
             std::cmp::max(player_stats.len(), states_length)
         ];
@@ -324,73 +322,57 @@ pub fn propagate_player_class_data_fields_to_player_data(
             let existing = existing_values[player_stats[i].index as usize];
             new_values[player_stats[i].index as usize] = BasicStat {
                 index: player_stats[i].index,
-                diffs: existing.diffs.clone(),
-                state: match &player_stats[i].stat_type {
-                    BasicStatType::Enum { starting, values } => match existing.state {
-                        BasicStatState::Enum { current } => {
-                            let mut found = false;
-                            for val in values {
-                                if val.1 == current {
-                                    found = true;
-                                }
-                            }
-                            BasicStatState::Enum {
-                                current: if found { current } else { *starting },
+                state: BasicStatState::Null,
+            };
+            let bs = &mut new_values[player_stats[i].index as usize];
+
+            match &player_stats[i].stat_type {
+                BasicStatType::Enum { starting, values } => match existing.state {
+                    BasicStatState::Enum { current } => {
+                        let mut found = false;
+                        for val in values {
+                            if val.1 == current {
+                                found = true;
                             }
                         }
-                        _ => BasicStatState::Enum { current: *starting },
-                    },
-                    BasicStatType::Integer {
-                        min, max, starting, ..
-                    } => match existing.state {
-                        BasicStatState::Integer {
-                            calculated,
-                            current,
-                        } => {
-                            let mut new_calculated = calculated;
-                            let mut new_current = current;
-                            if let Some(m) = max {
-                                if current > *m {
-                                    new_current = *m;
-                                }
-                                if calculated > *m {
-                                    new_calculated = *m;
-                                }
-                            }
-
-                            if let Some(m) = min {
-                                if current < *m {
-                                    new_current = *m;
-                                }
-                                if calculated < *m {
-                                    new_calculated = *m;
-                                }
-                            }
-
-                            BasicStatState::Integer {
-                                calculated: new_calculated,
-                                current: new_current,
-                            }
-                        }
-                        _ => BasicStatState::Integer {
-                            calculated: *starting,
-                            current: *starting,
-                        },
-                    },
-                    BasicStatType::Bool { starting, .. } => match existing.state {
-                        BasicStatState::Bool { current, .. } => BasicStatState::Bool { current },
-                        _ => BasicStatState::Bool { current: *starting },
-                    },
-                    BasicStatType::String { starting } => match &existing.state {
-                        BasicStatState::String { current, .. } => BasicStatState::String {
-                            current: current.clone(),
-                        },
-                        _ => BasicStatState::String {
-                            current: starting.clone(),
-                        },
-                    },
+                        bs.state = BasicStatState::Enum {
+                            current: if found { current } else { *starting },
+                        };
+                    }
+                    _ => bs.state = BasicStatState::Enum { current: *starting },
                 },
-            }
+                BasicStatType::Integer { .. } => match existing.state {
+                    BasicStatState::Integer { current, .. } => {
+                        rebalance_basic_stat(RebalanceBasicStatArgs {
+                            basic_stat: bs,
+                            basic_stat_template: &player_stats[i],
+                            current_change: exi,
+                            ci_change: 0,
+                            new_calculated_divisor: 1,
+                            new_calculated_numerator: 1,
+                        })?
+                    }
+                    _ => return Err(ErrorCode::Unreachable.into()),
+                },
+                BasicStatType::Bool { starting, .. } => match existing.state {
+                    BasicStatState::Bool { current, .. } => {
+                        bs.state = BasicStatState::Bool { current }
+                    }
+                    _ => bs.state = BasicStatState::Bool { current: *starting },
+                },
+                BasicStatType::String { starting } => match &existing.state {
+                    BasicStatState::String { current, .. } => {
+                        bs.state = BasicStatState::String {
+                            current: current.clone(),
+                        }
+                    }
+                    _ => {
+                        bs.state = BasicStatState::String {
+                            current: starting.clone(),
+                        }
+                    }
+                },
+            };
         }
 
         player.data.basic_stats = Some(new_values);
@@ -739,13 +721,10 @@ pub struct ToggleItemToBasicStatsArgs<'b, 'c, 'info> {
     player_class: &'b Account<'info, PlayerClass>,
     item: &'b Account<'info, Item>,
     item_usage: &'c ItemUsage,
-    total_active_amount: u64,
     amount_change: u64,
     adding: bool,
     stat_diff_type: StatDiffType,
-    index: u16,
 }
-
 pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
     args: ToggleItemToBasicStatsArgs<'b, 'c, 'info>,
 ) -> Result<()> {
@@ -755,10 +734,8 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
         item,
         item_usage,
         adding,
-        total_active_amount,
         amount_change,
         stat_diff_type,
-        index,
     } = args;
     // for an item without active duration, is permanent increase
     // for an equipment, no active duration, is temproary until removal
@@ -776,47 +753,39 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
                     // guaranteed to be at this index due to way player is created or updated
 
                     let bs = &mut bss[bst.index as usize];
+                    for bie in bies {
+                        if bie.stat == bst.name {
+                            let modded_amount = get_modded_amount_given_tokens_staked_on_item(
+                                GetModdedAmountGivenTokensStakedOnItemArgs {
+                                    amount: amount_change,
+                                    item,
+                                    bie,
+                                    adding,
+                                },
+                            )?;
 
-                    if !adding {
-                        // when removing an effect we just need index and type, and amount to remove...
-                        remove_item_effect_from_diffs(RemoveItemEffectFromDiffsArgs {
-                            bs,
-                            index,
-                            total_active_amount,
-                            amount_change,
-                            stat_diff_type,
-                        })?;
-                    } else {
-                        for bie in bies {
-                            if bie.stat == bst.name {
-                                let modded_amount =
-                                    get_modded_amount_given_tokens_staked_on_item(item, bie)?;
-
-                                if bie.active_duration.is_none()
-                                    && stat_diff_type == StatDiffType::Consumable
-                                {
-                                    permanently_alter_stat(
+                            if bie.active_duration.is_none()
+                                && stat_diff_type == StatDiffType::Consumable
+                            {
+                                if adding {
+                                    rebalance_stat_permanently(RebalanceStatPermanentlyArgs {
+                                        bie,
                                         bs,
-                                        bie.item_effect_type,
+                                        bst,
                                         modded_amount,
-                                    )?;
-                                } else {
-                                    add_or_modify_diff_to_stat(AddOrModifyDiffToStatArgs {
-                                        bs,
-                                        biet: bie.item_effect_type,
-                                        modded_amount,
-                                        stat_diff_type,
-                                        index,
                                     })?;
-                                }
-                                // Per item, can only apply one effect to a given stat
-                                break;
+                                } // there is no removing a consumable with no active duration, it is permanent...
+                            } else {
+                                rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
+                                    bie,
+                                    bs,
+                                    bst,
+                                    modded_amount,
+                                    adding,
+                                })?;
                             }
                         }
                     }
-
-                    // recalc calculated...
-                    recalculate_stat_from_diffs(bst, bs)?;
                 }
             }
         }
@@ -824,251 +793,297 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
     Ok(())
 }
 
-pub fn recalculate_all_stats_from_diffs(
-    player_class: &Account<PlayerClass>,
-    player: &mut Account<Player>,
-) -> Result<()> {
-    if let Some(bsts) = &player_class.data.config.basic_stats {
-        if let Some(bss) = &player.data.basic_stats {
-            for bst in bsts {
-                let bs = &mut bss[bst.index as usize];
-                recalculate_stat_from_diffs(bst, bs)?;
-            }
-        }
-    }
-
-    Ok(())
+pub struct RebalanceStatPermanentlyArgs<'a> {
+    pub bie: &'a BasicItemEffect,
+    pub bs: &'a mut BasicStat,
+    pub bst: &'a BasicStatTemplate,
+    pub modded_amount: i64,
 }
-pub fn recalculate_stat_from_diffs(bst: &BasicStatTemplate, bs: &mut BasicStat) -> Result<()> {
-    if let Some(stats) = &bs.diffs {
-        match bs.state {
-            BasicStatState::Integer { current, .. } => {
-                let mut new_calculated = current;
-                for diff in stats {
-                    match diff.item_effect_type {
-                        BasicItemEffectType::Increment | BasicItemEffectType::Decrement => {
-                            new_calculated = new_calculated
-                                .checked_add(diff.diff)
-                                .ok_or(ErrorCode::NumericalOverflowError)?;
-                        }
-                        BasicItemEffectType::IncrementPercentFromBase
-                        | BasicItemEffectType::DecrementPercentFromBase => {
-                            new_calculated = new_calculated
-                                .checked_add(
-                                    current
-                                        .checked_mul(
-                                            100i64
-                                                .checked_add(diff.diff)
-                                                .ok_or(ErrorCode::NumericalOverflowError)?,
-                                        )
-                                        .ok_or(ErrorCode::NumericalOverflowError)?
-                                        .checked_div(100)
-                                        .ok_or(ErrorCode::NumericalOverflowError)?,
-                                )
-                                .ok_or(ErrorCode::NumericalOverflowError)?
-                        }
 
-                        BasicItemEffectType::IncrementPercent
-                        | BasicItemEffectType::DecrementPercent => {
-                            // Skip these in first pass, we apply percentages after the absolutes
-                            // are applied.
-                        }
-                    }
-                }
-                for diff in stats {
-                    match diff.item_effect_type {
-                        BasicItemEffectType::IncrementPercent
-                        | BasicItemEffectType::DecrementPercent => {
-                            new_calculated = new_calculated
+pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<()> {
+    let RebalanceStatPermanentlyArgs {
+        bie,
+        bs,
+        bst,
+        modded_amount,
+    } = args;
+    match bie.item_effect_type {
+        BasicItemEffectType::Increment | BasicItemEffectType::Decrement => {
+            rebalance_basic_stat(RebalanceBasicStatArgs {
+                basic_stat: bs,
+                basic_stat_template: bst,
+                current_change: modded_amount,
+                ci_change: 0,
+                new_calculated_divisor: 1,
+                new_calculated_numerator: 1,
+            })?
+        }
+        BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
+            match bs.state {
+                BasicStatState::Integer {
+                    current,
+
+                    calculated,
+                    ..
+                } => rebalance_basic_stat(RebalanceBasicStatArgs {
+                    basic_stat: bs,
+                    basic_stat_template: bst,
+                    current_change: current
+                        .checked_add(
+                            calculated
                                 .checked_mul(
                                     100i64
-                                        .checked_add(diff.diff)
+                                        .checked_add(modded_amount)
                                         .ok_or(ErrorCode::NumericalOverflowError)?,
                                 )
-                                .ok_or(ErrorCode::NumericalOverflowError)?
-                                .checked_div(100i64)
-                                .ok_or(ErrorCode::NumericalOverflowError)?;
-                        }
-                        _ => {
-                            // Skip, already applied in first pass
-                        }
-                    }
-                }
-
-                match bst.stat_type {
-                    BasicStatType::Integer { min, max, .. } => {
-                        if let Some(m) = max {
-                            new_calculated = std::cmp::min(m, new_calculated);
-                        }
-
-                        if let Some(m) = min {
-                            new_calculated = std::cmp::max(m, new_calculated);
-                        }
-                    }
-                    _ => {
-                        // Skip, will never be true
-                    }
-                }
-
-                bs.state = BasicStatState::Integer {
-                    current,
-                    calculated: new_calculated,
-                }
-            }
-            _ => {
-                // do nothing, nothing to recalculate
-            }
-        }
-    }
-
-    Ok(())
-}
-
-struct RemoveItemEffectFromDiffsArgs<'a> {
-    pub bs: &'a mut BasicStat,
-    pub index: u16,
-    pub total_active_amount: u64,
-    pub amount_change: u64,
-    pub stat_diff_type: StatDiffType,
-}
-
-pub fn remove_item_effect_from_diffs(args: RemoveItemEffectFromDiffsArgs) -> Result<()> {
-    let RemoveItemEffectFromDiffsArgs {
-        bs,
-        index,
-        total_active_amount,
-        amount_change,
-        stat_diff_type,
-    } = args;
-    let mut new_diffs = vec![];
-    if let Some(diffs) = &mut bs.diffs {
-        for mut stat in diffs {
-            if stat.stat_diff_type == stat_diff_type && stat.index == index {
-                let new_amount = total_active_amount
-                    .checked_sub(amount_change)
-                    .ok_or(ErrorCode::NumericalOverflowError)?;
-                if new_amount > 0 {
-                    stat.diff = stat
-                        .diff
-                        .checked_mul(new_amount as i64)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-                    stat.diff = stat
-                        .diff
-                        .checked_div(total_active_amount as i64)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-                    if stat.diff > 0 {
-                        new_diffs.push(*stat)
-                    }
-                }
-            } else {
-                new_diffs.push(*stat)
-            }
-        }
-        bs.diffs = Some(new_diffs);
-    }
-    Ok(())
-}
-
-struct AddOrModifyDiffToStatArgs<'a> {
-    pub bs: &'a mut BasicStat,
-    pub biet: BasicItemEffectType,
-    pub modded_amount: i64,
-    pub stat_diff_type: StatDiffType,
-    pub index: u16,
-}
-pub fn add_or_modify_diff_to_stat(args: AddOrModifyDiffToStatArgs) -> Result<()> {
-    // If it has an active duration OR is armor then is a (diff)
-    // and becomes part of calculated
-    let AddOrModifyDiffToStatArgs {
-        bs,
-        biet,
-        modded_amount,
-        stat_diff_type,
-        index,
-    } = args;
-
-    if let Some(diffs) = &mut bs.diffs {
-        let mut found = false;
-        for i in 0..diffs.len() {
-            let stat = &mut diffs[i];
-            if stat.stat_diff_type == stat_diff_type && stat.index == index {
-                found = true;
-                stat.diff = stat
-                    .diff
-                    .checked_add(modded_amount)
-                    .ok_or(ErrorCode::NumericalOverflowError)?;
-                break;
-            }
-        }
-        if !found {
-            diffs.push(StatDiff {
-                stat_diff_type,
-                diff: modded_amount,
-                item_effect_type: biet.clone(),
-                index,
-            });
-        }
-    } else {
-        bs.diffs = Some(vec![StatDiff {
-            stat_diff_type,
-            diff: modded_amount,
-            item_effect_type: biet.clone(),
-            index,
-        }])
-    }
-
-    Ok(())
-}
-
-pub fn permanently_alter_stat(
-    bs: &mut BasicStat,
-    biet: BasicItemEffectType,
-    modded_amount: i64,
-) -> Result<()> {
-    bs.state = match bs.state {
-        BasicStatState::Integer {
-            current,
-            calculated,
-        } => match biet {
-            BasicItemEffectType::Increment | BasicItemEffectType::Decrement => {
-                BasicStatState::Integer {
-                    current: current
-                        .checked_add(modded_amount)
-                        .ok_or(ErrorCode::NumericalOverflowError)?,
-                    calculated: calculated,
-                }
-            }
-
-            BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
-                BasicStatState::Integer {
-                    current: current
-                        .checked_add(
-                            modded_amount
-                                .checked_mul(current)
                                 .ok_or(ErrorCode::NumericalOverflowError)?
                                 .checked_div(100)
                                 .ok_or(ErrorCode::NumericalOverflowError)?,
                         )
                         .ok_or(ErrorCode::NumericalOverflowError)?,
-                    calculated: calculated,
-                }
+                    ci_change: 0,
+                    new_calculated_divisor: 1,
+                    new_calculated_numerator: 1,
+                })?,
+                _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
             }
-            BasicItemEffectType::IncrementPercentFromBase
-            | BasicItemEffectType::DecrementPercentFromBase => {
-                todo!()
+        }
+        BasicItemEffectType::IncrementPercentFromBase
+        | BasicItemEffectType::DecrementPercentFromBase => match bs.state {
+            BasicStatState::Integer { current, .. } => {
+                rebalance_basic_stat(RebalanceBasicStatArgs {
+                    basic_stat: bs,
+                    basic_stat_template: bst,
+                    current_change: modded_amount
+                        .checked_mul(current)
+                        .ok_or(ErrorCode::NumericalOverflowError)?
+                        .checked_div(100)
+                        .ok_or(ErrorCode::NumericalOverflowError)?,
+                    ci_change: 0,
+                    new_calculated_divisor: 1,
+                    new_calculated_numerator: 1,
+                })?
             }
+            _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
         },
-        _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
-    };
+    }
+    Ok(())
+}
+
+pub struct RebalanceStatTemporarilyArgs<'a> {
+    pub bie: &'a BasicItemEffect,
+    pub bs: &'a mut BasicStat,
+    pub bst: &'a BasicStatTemplate,
+    pub modded_amount: i64,
+    pub adding: bool,
+}
+
+pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<()> {
+    let RebalanceStatTemporarilyArgs {
+        bie,
+        bs,
+        bst,
+        modded_amount,
+        adding,
+    } = args;
+    match bie.item_effect_type {
+        BasicItemEffectType::Increment | BasicItemEffectType::Decrement => {
+            rebalance_basic_stat(RebalanceBasicStatArgs {
+                basic_stat: bs,
+                basic_stat_template: bst,
+                current_change: 0,
+                ci_change: modded_amount,
+                new_calculated_divisor: 1,
+                new_calculated_numerator: 1,
+            })?
+        }
+        BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
+            let mut adjusted_modded = modded_amount;
+            if !adding {
+                // we dont need the negative sign here, since we're dividing
+                adjusted_modded = modded_amount
+                    .checked_mul(-1)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+            }
+            rebalance_basic_stat(RebalanceBasicStatArgs {
+                basic_stat: bs,
+                basic_stat_template: bst,
+                current_change: 0,
+                ci_change: 0,
+                new_calculated_numerator: if adding {
+                    100i64
+                        .checked_add(adjusted_modded)
+                        .ok_or(ErrorCode::NumericalOverflowError)?
+                } else {
+                    100
+                },
+                new_calculated_divisor: if adding {
+                    100
+                } else {
+                    100i64
+                        .checked_add(modded_amount)
+                        .ok_or(ErrorCode::NumericalOverflowError)?
+                },
+            })?
+        }
+        BasicItemEffectType::IncrementPercentFromBase
+        | BasicItemEffectType::DecrementPercentFromBase => match bs.state {
+            BasicStatState::Integer { current, .. } => {
+                rebalance_basic_stat(RebalanceBasicStatArgs {
+                    basic_stat: bs,
+                    basic_stat_template: bst,
+                    current_change: 0,
+                    ci_change: modded_amount
+                        .checked_mul(current)
+                        .ok_or(ErrorCode::NumericalOverflowError)?
+                        .checked_div(100)
+                        .ok_or(ErrorCode::NumericalOverflowError)?,
+                    new_calculated_divisor: 1,
+                    new_calculated_numerator: 1,
+                })?
+            }
+            _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
+        },
+    }
 
     Ok(())
 }
 
-pub fn get_modded_amount_given_tokens_staked_on_item(
-    item: &Account<Item>,
-    bie: &BasicItemEffect,
+pub struct RebalanceBasicStatArgs<'a> {
+    basic_stat: &'a mut BasicStat,
+    basic_stat_template: &'a BasicStatTemplate,
+    current_change: i64,
+    ci_change: i64,
+    new_calculated_numerator: i64,
+    new_calculated_divisor: i64,
+}
+pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
+    let RebalanceBasicStatArgs {
+        basic_stat,
+        basic_stat_template,
+        current_change,
+        ci_change,
+        new_calculated_numerator,
+        new_calculated_divisor,
+    } = args;
+    match basic_stat.state {
+        BasicStatState::Integer {
+            current,
+            calculated_intermediate,
+            calculated,
+        } => {
+            match basic_stat_template.stat_type {
+                BasicStatType::Integer { min, max, .. } => {
+                    let mut new_current = current
+                        .checked_add(current_change)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    if let Some(m) = max {
+                        new_current = std::cmp::min(m, new_current);
+                    }
+
+                    if let Some(m) = min {
+                        new_current = std::cmp::max(m, new_current);
+                    }
+
+                    let mut new_calculated_intermediate = calculated_intermediate
+                        .checked_add(ci_change)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    new_calculated_intermediate = new_calculated_intermediate
+                        .checked_add(current_change)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    if let Some(m) = max {
+                        new_calculated_intermediate = std::cmp::min(m, new_calculated_intermediate);
+                    }
+
+                    if let Some(m) = min {
+                        new_calculated_intermediate = std::cmp::max(m, new_calculated_intermediate);
+                    }
+
+                    let mut new_calculated = calculated
+                        .checked_mul(new_calculated_intermediate)
+                        .ok_or(ErrorCode::NumericalOverflowError)?
+                        .checked_div(calculated_intermediate)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    new_calculated = new_calculated
+                        .checked_mul(new_calculated_numerator)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    new_calculated = new_calculated
+                        .checked_div(new_calculated_divisor)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    if let Some(m) = max {
+                        new_calculated = std::cmp::min(m, new_calculated);
+                    }
+
+                    if let Some(m) = min {
+                        new_calculated = std::cmp::max(m, new_calculated);
+                    }
+
+                    basic_stat.state = BasicStatState::Integer {
+                        current: new_current,
+                        calculated_intermediate: new_calculated_intermediate,
+                        calculated: new_calculated,
+                    };
+                }
+                _ => {
+                    // Skip, will never be true
+                }
+            }
+        }
+        _ => {
+            // Do nothing
+        }
+    }
+    Ok(())
+}
+
+pub fn recalculate_all_stats(
+    player_class: &Account<PlayerClass>,
+    player: &mut Account<Player>,
+) -> Result<()> {
+    if let Some(bsts) = &player_class.data.config.basic_stats {
+        if let Some(bss) = &mut player.data.basic_stats {
+            for bst in bsts {
+                let bs = &mut bss[bst.index as usize];
+                rebalance_basic_stat(RebalanceBasicStatArgs {
+                    basic_stat: bs,
+                    basic_stat_template: bst,
+                    current_change: 0,
+                    ci_change: 0,
+                    new_calculated_divisor: 1,
+                    new_calculated_numerator: 1,
+                })?
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub struct GetModdedAmountGivenTokensStakedOnItemArgs<'a, 'b, 'info> {
+    pub amount: u64,
+    pub item: &'b Account<'info, Item>,
+    pub bie: &'a BasicItemEffect,
+    pub adding: bool,
+}
+pub fn get_modded_amount_given_tokens_staked_on_item<'a, 'b, 'info>(
+    args: GetModdedAmountGivenTokensStakedOnItemArgs<'a, 'b, 'info>,
 ) -> Result<i64> {
-    let mut modded_amount: i64 = bie.amount as i64;
+    let GetModdedAmountGivenTokensStakedOnItemArgs {
+        amount,
+        item,
+        bie,
+        adding,
+    } = args;
+
+    let mut modded_amount: i64 = (amount as i64)
+        .checked_mul(bie.amount as i64)
+        .ok_or(ErrorCode::NumericalOverflowError)?;
 
     if item.tokens_staked > 0 {
         let mut to_add: u64 = item.tokens_staked;
@@ -1092,6 +1107,12 @@ pub fn get_modded_amount_given_tokens_staked_on_item(
         || bie.item_effect_type == BasicItemEffectType::DecrementPercent
         || bie.item_effect_type == BasicItemEffectType::DecrementPercentFromBase
     {
+        modded_amount = modded_amount
+            .checked_mul(-1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+    }
+
+    if !adding {
         modded_amount = modded_amount
             .checked_mul(-1)
             .ok_or(ErrorCode::NumericalOverflowError)?;

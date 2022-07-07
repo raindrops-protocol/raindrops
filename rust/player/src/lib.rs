@@ -1485,7 +1485,6 @@ pub struct BasicStatTemplate {
 pub struct BasicStat {
     pub index: u16,
     pub state: BasicStatState,
-    pub diffs: Option<Vec<StatDiff>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1515,21 +1514,21 @@ pub enum BasicStatType {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicStatState {
-    Enum { current: u8 },
-    Integer { current: i64, calculated: i64 },
-    Bool { current: bool },
-    String { current: String },
+    Enum {
+        current: u8,
+    },
+    Integer {
+        current: i64,
+        calculated_intermediate: i64,
+        calculated: i64,
+    },
+    Bool {
+        current: bool,
+    },
+    String {
+        current: String,
+    },
     Null,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
-pub struct StatDiff {
-    pub stat_diff_type: StatDiffType,
-    pub item_effect_type: BasicItemEffectType,
-    // Refers to equipped item index or active_item_counter
-    // on item activation marker
-    pub index: u16,
-    pub diff: i64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
