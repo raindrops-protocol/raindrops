@@ -2,7 +2,7 @@ use {
     crate::{
         AddOrRemoveItemValidationArgs, BasicStat, BasicStatState, BasicStatTemplate, BasicStatType,
         BodyPart, ChildUpdatePropagationPermissivenessType, EquippedItem, ErrorCode, ItemUsageInfo,
-        Player, PlayerClass, PlayerClassData, StatDiff, StatDiffType,
+        Player, PlayerClass, PlayerClassData, StatDiffType,
     },
     anchor_lang::{
         error,
@@ -322,57 +322,82 @@ pub fn propagate_player_class_data_fields_to_player_data(
             let existing = existing_values[player_stats[i].index as usize];
             new_values[player_stats[i].index as usize] = BasicStat {
                 index: player_stats[i].index,
-                state: BasicStatState::Null,
-            };
-            let bs = &mut new_values[player_stats[i].index as usize];
-
-            match &player_stats[i].stat_type {
-                BasicStatType::Enum { starting, values } => match existing.state {
-                    BasicStatState::Enum { current } => {
-                        let mut found = false;
-                        for val in values {
-                            if val.1 == current {
-                                found = true;
+                state: match &player_stats[i].stat_type {
+                    BasicStatType::Enum { starting, values } => match existing.state {
+                        BasicStatState::Enum { current } => {
+                            let mut found = false;
+                            for val in values {
+                                if val.1 == current {
+                                    found = true;
+                                }
+                            }
+                            BasicStatState::Enum {
+                                current: if found { current } else { *starting },
                             }
                         }
-                        bs.state = BasicStatState::Enum {
-                            current: if found { current } else { *starting },
-                        };
-                    }
-                    _ => bs.state = BasicStatState::Enum { current: *starting },
-                },
-                BasicStatType::Integer { .. } => match existing.state {
-                    BasicStatState::Integer { current, .. } => {
-                        rebalance_basic_stat(RebalanceBasicStatArgs {
-                            basic_stat: bs,
-                            basic_stat_template: &player_stats[i],
-                            current_change: exi,
-                            ci_change: 0,
-                            new_calculated_divisor: 1,
-                            new_calculated_numerator: 1,
-                        })?
-                    }
-                    _ => return Err(ErrorCode::Unreachable.into()),
-                },
-                BasicStatType::Bool { starting, .. } => match existing.state {
-                    BasicStatState::Bool { current, .. } => {
-                        bs.state = BasicStatState::Bool { current }
-                    }
-                    _ => bs.state = BasicStatState::Bool { current: *starting },
-                },
-                BasicStatType::String { starting } => match &existing.state {
-                    BasicStatState::String { current, .. } => {
-                        bs.state = BasicStatState::String {
+                        _ => BasicStatState::Enum { current: *starting },
+                    },
+                    BasicStatType::Integer {
+                        min, max, starting, ..
+                    } => match existing.state {
+                        BasicStatState::Integer {
+                            calculated,
+                            calculated_intermediate,
+                            current,
+                        } => {
+                            let mut new_calculated = calculated;
+                            let mut new_current = current;
+                            let mut new_ci = calculated_intermediate;
+                            if let Some(m) = max {
+                                if current > *m {
+                                    new_current = *m;
+                                }
+                                if new_ci > *m {
+                                    new_current = *m;
+                                }
+                                if calculated > *m {
+                                    new_calculated = *m;
+                                }
+                            }
+
+                            if let Some(m) = min {
+                                if current < *m {
+                                    new_current = *m;
+                                }
+                                if calculated_intermediate < *m {
+                                    new_ci = *m;
+                                }
+                                if calculated < *m {
+                                    new_calculated = *m;
+                                }
+                            }
+
+                            BasicStatState::Integer {
+                                calculated: new_calculated,
+                                calculated_intermediate: new_ci,
+                                current: new_current,
+                            }
+                        }
+                        _ => BasicStatState::Integer {
+                            calculated: *starting,
+                            calculated_intermediate: *starting,
+                            current: *starting,
+                        },
+                    },
+                    BasicStatType::Bool { starting, .. } => match existing.state {
+                        BasicStatState::Bool { current, .. } => BasicStatState::Bool { current },
+                        _ => BasicStatState::Bool { current: *starting },
+                    },
+                    BasicStatType::String { starting } => match &existing.state {
+                        BasicStatState::String { current, .. } => BasicStatState::String {
                             current: current.clone(),
-                        }
-                    }
-                    _ => {
-                        bs.state = BasicStatState::String {
+                        },
+                        _ => BasicStatState::String {
                             current: starting.clone(),
-                        }
-                    }
+                        },
+                    },
                 },
-            };
+            }
         }
 
         player.data.basic_stats = Some(new_values);
@@ -505,7 +530,7 @@ pub struct RunToggleEquipItemValidationArgs<'a, 'b, 'c, 'info> {
     pub validation_program: &'c UncheckedAccount<'info>,
     pub permissiveness_to_use: Option<PermissivenessType>,
     pub amount: u64,
-    pub item_usage: ItemUsage,
+    pub item_usage: &'a ItemUsage,
     pub item_index: u64,
     pub item_class_index: u64,
     pub usage_index: u16,
@@ -529,7 +554,7 @@ pub fn run_toggle_equip_item_validation<'a, 'b, 'c, 'info>(
         item_class_mint,
     } = args;
 
-    if let Some(validation) = item_usage.validation {
+    if let Some(validation) = &item_usage.validation {
         let item_class_info = item_class.to_account_info();
         let item_info = item.to_account_info();
         let item_account_info = player_item_account.to_account_info();
@@ -717,13 +742,13 @@ pub fn find_used_body_part_from_index(
 }
 
 pub struct ToggleItemToBasicStatsArgs<'b, 'c, 'info> {
-    player: &'b mut Account<'info, Player>,
-    player_class: &'b Account<'info, PlayerClass>,
-    item: &'b Account<'info, Item>,
-    item_usage: &'c ItemUsage,
-    amount_change: u64,
-    adding: bool,
-    stat_diff_type: StatDiffType,
+    pub player: &'b mut Account<'info, Player>,
+    pub player_class: &'b Account<'info, PlayerClass>,
+    pub item: &'b Account<'info, Item>,
+    pub item_usage: &'c ItemUsage,
+    pub amount_change: u64,
+    pub adding: bool,
+    pub stat_diff_type: StatDiffType,
 }
 pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
     args: ToggleItemToBasicStatsArgs<'b, 'c, 'info>,
@@ -1042,22 +1067,54 @@ pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn recalculate_all_stats(
+pub fn map_new_stats_into_player(
     player_class: &Account<PlayerClass>,
     player: &mut Account<Player>,
+    new_stats: &Option<Vec<BasicStat>>,
 ) -> Result<()> {
     if let Some(bsts) = &player_class.data.config.basic_stats {
         if let Some(bss) = &mut player.data.basic_stats {
-            for bst in bsts {
-                let bs = &mut bss[bst.index as usize];
-                rebalance_basic_stat(RebalanceBasicStatArgs {
-                    basic_stat: bs,
-                    basic_stat_template: bst,
-                    current_change: 0,
-                    ci_change: 0,
-                    new_calculated_divisor: 1,
-                    new_calculated_numerator: 1,
-                })?
+            if let Some(new_bss) = new_stats {
+                for bst in bsts {
+                    let bs = &mut bss[bst.index as usize];
+
+                    for new_bs in new_bss {
+                        if new_bs.index == bs.index {
+                            match bs.state {
+                                BasicStatState::Integer {
+                                    current: old_current,
+                                    ..
+                                } => {
+                                    match new_bs.state {
+                                        BasicStatState::Integer {
+                                            current: new_current,
+                                            ..
+                                        } => {
+                                            rebalance_basic_stat(RebalanceBasicStatArgs {
+                                                basic_stat: bs,
+                                                basic_stat_template: bst,
+                                                current_change: new_current
+                                                    .checked_sub(old_current)
+                                                    .ok_or(ErrorCode::NumericalOverflowError)?,
+                                                ci_change: 0,
+                                                new_calculated_divisor: 1,
+                                                new_calculated_numerator: 1,
+                                            })?;
+                                        }
+                                        _ => {
+                                            // skip
+                                        }
+                                    }
+                                    break;
+                                }
+
+                                _ => {
+                                    bs.state = new_bs.state.clone();
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

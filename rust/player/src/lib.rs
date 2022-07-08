@@ -3,12 +3,13 @@ pub mod utils;
 use {
     crate::utils::{
         assert_builder_must_be_holder_check, build_new_equipped_items_and_provide_counts,
-        find_used_body_part_from_index, propagate_player_class_data_fields_to_player_data,
-        run_item_validation, run_toggle_equip_item_validation,
+        find_used_body_part_from_index, map_new_stats_into_player,
+        propagate_player_class_data_fields_to_player_data, run_item_validation,
+        run_toggle_equip_item_validation, toggle_item_to_basic_stats,
         update_player_class_with_inherited_information,
         verify_item_usage_appropriate_for_body_part, BuildNewEquippedItemsAndProvideCountsArgs,
         BuildNewEquippedItemsReturn, RunItemValidationArgs, RunToggleEquipItemValidationArgs,
-        VerifyItemUsageAppropriateForBodyPartArgs,
+        ToggleItemToBasicStatsArgs, VerifyItemUsageAppropriateForBodyPartArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -482,7 +483,9 @@ pub mod player {
                 account_mint: Some(&player_mint.key()),
             })?;
 
-            player.data = data;
+            map_new_stats_into_player(player_class, player, &data.basic_stats)?;
+            player.data.stats_uri = data.stats_uri;
+            player.data.category = data.category;
         }
 
         propagate_player_class_data_fields_to_player_data(player, player_class);
@@ -811,7 +814,7 @@ pub mod player {
             validation_program,
             permissiveness_to_use: equip_item_permissiveness_to_use,
             amount,
-            item_usage,
+            item_usage: &item_usage,
             item_index,
             item_class_index: item.class_index,
             usage_index: item_usage_index,
@@ -819,6 +822,16 @@ pub mod player {
         })?;
 
         player.equipped_items = new_eq_items;
+
+        toggle_item_to_basic_stats(ToggleItemToBasicStatsArgs {
+            player,
+            player_class,
+            item,
+            item_usage: &item_usage,
+            amount_change: amount,
+            adding: equipping,
+            stat_diff_type: StatDiffType::Wearable,
+        })?;
 
         Ok(())
     }
