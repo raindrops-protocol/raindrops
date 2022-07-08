@@ -3,13 +3,14 @@ pub mod utils;
 use {
     crate::utils::{
         assert_builder_must_be_holder_check, build_new_equipped_items_and_provide_counts,
-        find_used_body_part_from_index, map_new_stats_into_player,
-        propagate_player_class_data_fields_to_player_data, run_item_validation,
+        end_item_activation, find_used_body_part_from_index, map_new_stats_into_player,
+        propagate_player_class_data_fields_to_player_data, run_item_callback, run_item_validation,
         run_toggle_equip_item_validation, toggle_item_to_basic_stats,
         update_player_class_with_inherited_information,
         verify_item_usage_appropriate_for_body_part, BuildNewEquippedItemsAndProvideCountsArgs,
-        BuildNewEquippedItemsReturn, RunItemValidationArgs, RunToggleEquipItemValidationArgs,
-        ToggleItemToBasicStatsArgs, VerifyItemUsageAppropriateForBodyPartArgs,
+        BuildNewEquippedItemsReturn, EndItemActivationArgs, RunItemCallbackArgs,
+        RunItemValidationArgs, RunToggleEquipItemValidationArgs, ToggleItemToBasicStatsArgs,
+        VerifyItemUsageAppropriateForBodyPartArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -29,11 +30,12 @@ use {
     },
     raindrops_item::{
         utils::{
-            assert_keys_equal, assert_metadata_valid, assert_permissiveness_access,
-            spl_token_transfer, AssertPermissivenessAccessArgs, TokenTransferParams,
+            assert_keys_equal, assert_metadata_valid, assert_permissiveness_access, get_item_usage,
+            spl_token_transfer, AssertPermissivenessAccessArgs, GetItemUsageArgs,
+            TokenTransferParams,
         },
-        BasicItemEffectType, Boolean, Callback, InheritanceState, Inherited, NamespaceAndIndex,
-        Permissiveness, PermissivenessType,
+        BasicItemEffectType, Boolean, Callback, InheritanceState, Inherited, ItemUsage,
+        NamespaceAndIndex, Permissiveness, PermissivenessType,
     },
     spl_token::instruction::{initialize_account2, mint_to},
 };
@@ -41,6 +43,21 @@ use {
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 pub const PREFIX: &str = "player";
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
+    pub instruction: [u8; 8],
+    pub item_class_mint: Pubkey,
+    pub item_mint: Pubkey,
+    pub usage_permissiveness_to_use: Option<PermissivenessType>,
+    pub usage_index: u16,
+    pub index: u64,
+    pub class_index: u64,
+    pub amount: u64,
+    // Required if using roots
+    pub usage_proof: Option<Vec<[u8; 32]>>,
+    pub usage: Option<ItemUsage>,
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AddOrRemoveItemValidationArgs {
@@ -53,19 +70,35 @@ pub struct AddOrRemoveItemValidationArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UseItemCallbackArgs {
+    // For enum detection on the other end.
+    pub instruction: [u8; 8],
+    pub extra_identifier: u64,
+    pub amount: u64,
+    pub item_usage: ItemUsage,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AddItemEffectArgs {
     pub item_index: u64,
+    pub item_class_index: u64,
+    pub index: u64,
+    pub player_mint: Pubkey,
     pub item_mint: Pubkey,
-    pub amount: u64,
-    pub usage_index: u16,
+    pub item_class_mint: Pubkey,
+    pub item_usage_index: u16,
     // Use this if using roots
-    pub usage_info: Option<UsageInfo>,
+    pub item_usage_proof: Option<Vec<[u8; 32]>>,
+    pub item_usage: Option<ItemUsage>,
+    pub permissiveness_to_use: Option<PermissivenessType>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SubtractItemEffectArgs {
+    pub item_usage_index: u16,
     // Use this if using roots
-    pub usage_info: Option<UsageInfo>,
+    pub item_usage_proof: Option<Vec<[u8; 32]>>,
+    pub item_usage: Option<ItemUsage>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -99,13 +132,8 @@ pub struct ToggleEquipItemArgs {
     pub equip_item_permissiveness_to_use: Option<PermissivenessType>,
     pub item_usage_index: u16,
     // Use this if using roots
-    pub item_usage_info: Option<ItemUsageInfo>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ItemUsageInfo {
-    pub item_usage_proof: Vec<[u8; 32]>,
-    pub item_usage: raindrops_item::ItemUsage,
+    pub item_usage_proof: Option<Vec<[u8; 32]>>,
+    pub item_usage: Option<ItemUsage>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -734,6 +762,109 @@ pub mod player {
         Ok(())
     }
 
+    pub fn add_item_effect<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, AddItemEffect<'info>>,
+        args: AddItemEffectArgs,
+    ) -> Result<()> {
+        let AddItemEffectArgs {
+            index,
+            player_mint,
+            item_usage_index,
+            item_usage,
+            item_usage_proof,
+            permissiveness_to_use,
+            item_index,
+            item_mint,
+            item_class_mint,
+            item_class_index,
+        } = args;
+
+        let player = &mut ctx.accounts.player;
+        let player_class = &ctx.accounts.player_class;
+        let player_item_activation_marker = &mut ctx.accounts.player_item_activation_marker;
+        let item_activation_marker = &ctx.accounts.item_activation_marker;
+        let item = &ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
+        let callback_program = &ctx.accounts.callback_program;
+        let item_program = &ctx.accounts.item_program;
+        let payer = &ctx.accounts.payer;
+        let remaining_accounts = &ctx.remaining_accounts;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &permissiveness_to_use,
+            permissiveness_array: &player_class.data.settings.use_item_permissiveness,
+            index,
+            class_index: Some(player.class_index),
+            account_mint: Some(&player_mint.key()),
+        })?;
+
+        player_item_activation_marker.activated_at = item_activation_marker.unix_timestamp;
+        player_item_activation_marker.active_item_counter = player
+            .active_item_counter
+            .checked_add(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+        player.active_item_counter = player_item_activation_marker.active_item_counter;
+        player_item_activation_marker.amount = item_activation_marker.amount;
+        player_item_activation_marker.bump =
+            *ctx.bumps.get("player_item_activation_marker").unwrap();
+        player_item_activation_marker.player = player.key();
+        player_item_activation_marker.item = item.key();
+        player_item_activation_marker.usage_index = item_usage_index;
+
+        let item_usage_to_use = get_item_usage(GetItemUsageArgs {
+            item_class,
+            usage_index: item_usage_index,
+            usage_proof: item_usage_proof.clone(),
+            usage: item_usage.clone(),
+        })?;
+
+        run_item_callback(RunItemCallbackArgs {
+            player_class,
+            item_class,
+            item,
+            player,
+            callback_program,
+            item_usage: &item_usage_to_use,
+            amount: player_item_activation_marker.amount,
+        })?;
+
+        toggle_item_to_basic_stats(ToggleItemToBasicStatsArgs {
+            player,
+            player_class,
+            item,
+            item_usage: &item_usage_to_use,
+            amount_change: player_item_activation_marker.amount,
+            adding: true,
+            stat_diff_type: StatDiffType::Consumable,
+        })?;
+
+        end_item_activation(EndItemActivationArgs {
+            item,
+            item_class,
+            item_activation_marker,
+            receiver: payer,
+            remaining_accounts,
+            item_class_mint: &item_class_mint,
+            item_mint: &item_mint,
+            usage_permissiveness_to_use: permissiveness_to_use,
+            item_usage_index,
+            item_index,
+            item_class_index,
+            amount: player_item_activation_marker.amount,
+            item_usage_proof,
+            item_usage,
+            item_program,
+            player,
+            player_mint: &player_mint,
+            index,
+        })?;
+
+        Ok(())
+    }
+
     pub fn toggle_equip_item<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, ToggleEquipItem<'info>>,
         args: ToggleEquipItemArgs,
@@ -748,7 +879,8 @@ pub mod player {
             player_mint,
             body_part_index,
             item_usage_index,
-            item_usage_info,
+            item_usage,
+            item_usage_proof,
             ..
         } = args;
 
@@ -790,15 +922,14 @@ pub mod player {
         )?;
 
         let used_body_part = find_used_body_part_from_index(player_class, body_part_index)?;
-        let item_class_data =
-            item_class.item_class_data(&item_class.to_account_info().data.borrow())?;
 
         let item_usage = verify_item_usage_appropriate_for_body_part(
             VerifyItemUsageAppropriateForBodyPartArgs {
                 used_body_part: &used_body_part,
                 item_usage_index,
-                item_usage_info,
-                item_class_data,
+                item_usage,
+                item_usage_proof,
+                item_class,
                 equipping,
                 total_equipped_for_this_item,
                 total_equipped_for_this_body_part_for_this_item,
@@ -896,7 +1027,8 @@ pub struct SubtractItemEffect<'info> {
         seeds=[
             PREFIX.as_bytes(),
             player_item_activation_marker.item.as_ref(),
-            &(player_item_activation_marker.usage_index as u64).to_le_bytes(),
+            &(player_item_activation_marker.usage_index as u64).to_le_bytes(),            &(player_item_activation_marker.usage_index as u64).to_le_bytes(),
+            &(player_item_activation_marker.amount as u64).to_le_bytes(),
             raindrops_item::MARKER.as_bytes()
         ],
         bump=player_item_activation_marker.bump
@@ -914,7 +1046,15 @@ pub struct SubtractItemEffect<'info> {
 #[derive(Accounts)]
 #[instruction(args: AddItemEffectArgs)]
 pub struct AddItemEffect<'info> {
-    #[account(mut, constraint=player.key() == player_item_activation_marker.player)]
+    #[account(
+        seeds=[
+            PREFIX.as_bytes(),
+            args.player_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        constraint=player.key() == item_activation_marker.target.unwrap(),
+        bump=player.bump
+    )]
     player: Account<'info, Player>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Account<'info, PlayerClass>,
@@ -923,7 +1063,8 @@ pub struct AddItemEffect<'info> {
         seeds=[
             PREFIX.as_bytes(),
             item.key().as_ref(),
-            &(args.usage_index as u64).to_le_bytes(),
+            &(args.item_usage_index as u64).to_le_bytes(),
+            &item_activation_marker.amount.to_le_bytes(),
             raindrops_item::MARKER.as_bytes()
         ],
         bump,
@@ -937,8 +1078,8 @@ pub struct AddItemEffect<'info> {
             raindrops_item::PREFIX.as_bytes(),
             args.item_mint.as_ref(),
             &args.item_index.to_le_bytes(),
-            &(args.usage_index as u64).to_le_bytes(),
-            &args.amount.to_le_bytes(),
+            &(args.item_usage_index as u64).to_le_bytes(),
+            &item_activation_marker.amount.to_le_bytes(),
             raindrops_item::MARKER.as_bytes()
         ],
         seeds::program=raindrops_item::id(),
@@ -946,6 +1087,7 @@ pub struct AddItemEffect<'info> {
     )]
     item_activation_marker: Account<'info, raindrops_item::ItemActivationMarker>,
     #[account(
+        mut,
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
             args.item_mint.as_ref(),
@@ -955,12 +1097,27 @@ pub struct AddItemEffect<'info> {
         bump=item.bump
     )]
     item: Account<'info, raindrops_item::Item>,
-    #[account(constraint=item.parent == item_class.key())]
+    #[account(
+        mut,
+        seeds=[
+            raindrops_item::PREFIX.as_bytes(),
+            args.item_class_mint.as_ref(),
+            &args.item_class_index.to_le_bytes(),
+        ],
+        constraint=item.parent == item_class.key(),
+        seeds::program=raindrops_item::id(),
+        bump=item_class.bump
+    )]
     item_class: Account<'info, raindrops_item::ItemClass>,
     // Will use funds from item activation marker to seed player activation marker
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
+    #[account(constraint=item_program.key() == raindrops_item::id())]
+    item_program: UncheckedAccount<'info>,
+    // System program if there is no callback to call
+    // if there is, pass up the callback program
+    callback_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after
     // These will be used to close the item activation marker once its been read into this program
 }
@@ -1149,7 +1306,7 @@ pub struct DrainPlayerClass<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            args.player_class_mint.key().as_ref(),
+            args.player_class_mint.as_ref(),
             &args.class_index.to_le_bytes()
         ],
         bump=player_class.bump
@@ -1171,7 +1328,7 @@ pub struct DrainPlayer<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            args.player_mint.key().as_ref(),
+            args.player_mint.as_ref(),
             &args.index.to_le_bytes()
         ],
         bump=player.bump
@@ -1181,7 +1338,7 @@ pub struct DrainPlayer<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            args.player_class_mint.key().as_ref(),
+            args.player_class_mint.as_ref(),
             &args.class_index.to_le_bytes()
         ],
         bump=player_class.bump,
@@ -1384,6 +1541,7 @@ pub struct PlayerClassSettings {
     pub build_permissiveness: Option<Vec<Permissiveness>>,
     pub equip_item_permissiveness: Option<Vec<Permissiveness>>,
     pub add_item_permissiveness: Option<Vec<Permissiveness>>,
+    pub use_item_permissiveness: Option<Vec<Permissiveness>>,
     // if not set, assumed to use equip permissiveness
     pub unequip_item_permissiveness: Option<Vec<Permissiveness>>,
     // if not set, assumed to use remove item permissiveness
@@ -1475,6 +1633,7 @@ pub struct Player {
     pub edition: Option<Pubkey>,
     pub bump: u8,
     pub tokens_staked: u64,
+    pub active_item_counter: u64,
     pub data: PlayerData,
     pub equipped_items: Vec<EquippedItem>,
 }
@@ -1557,7 +1716,7 @@ const PLAYER_ITEM_ACTIVATION_MARKER_SPACE: usize = 8 + // key
 2 + // usage index
 8 + // amount
 8 +  // activated_at
-2; // active_item_coiunter
+8; // active_item_coiunter
 
 #[account]
 pub struct PlayerItemActivationMarker {
@@ -1567,7 +1726,7 @@ pub struct PlayerItemActivationMarker {
     pub usage_index: u16,
     pub amount: u64,
     pub activated_at: u64,
-    pub active_item_counter: u16,
+    pub active_item_counter: u64,
 }
 
 #[error_code]

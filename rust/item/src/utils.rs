@@ -756,25 +756,31 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                     }
                 }
             } else {
-                // Default is metadata update authority.
-                // metadata_update_authority [signer]
-                // metadata [readable]
-                // mint [readable] OR none if already present in the main array
-                let metadata_update_authority = &remaining_accounts[0];
-                let metadata = &remaining_accounts[1];
+                //  default is token holder. most common usecase.
+                //  token_account [readable]
+                //  token_holder [signer]
+                //  mint [readable] OR none if already present in the main array
+                let token_account = &remaining_accounts[0];
+                let token_holder = &remaining_accounts[1];
                 let mint = if let Some(m) = account_mint {
                     *m
                 } else {
                     remaining_accounts[2].key()
                 };
 
-                assert_signer(metadata_update_authority)?;
+                assert_signer(token_holder)?;
 
-                assert_metadata_valid(metadata, None, &mint)?;
+                let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
 
-                let update_authority = grab_update_authority(metadata)?;
+                if acct.amount == 0 {
+                    return Err(error!(ErrorCode::InsufficientBalance));
+                }
 
-                assert_keys_equal(update_authority, *metadata_update_authority.key)?;
+                assert_derivation(
+                    program_id,
+                    given_account,
+                    &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
+                )?;
             }
         }
         None => return Err(error!(ErrorCode::MustSpecifyPermissivenessType)),
@@ -1019,7 +1025,8 @@ pub fn assert_valid_item_settings_for_edition_type(
                     item_usage_type,
                     cooldown_duration,
                     ..
-                } = &usage.item_class_type {
+                } = &usage.item_class_type
+                {
                     if let Some(max) = max_uses {
                         if max > &1 {
                             // cant have a fungible mint with more than one use. Impossible to track state per token.
@@ -1188,9 +1195,7 @@ pub struct TransferMintAuthorityArgs<'b, 'info> {
     pub mint: &'b Account<'info, Mint>,
 }
 
-pub fn transfer_mint_authority(
-    args: TransferMintAuthorityArgs,
-) -> Result<()> {
+pub fn transfer_mint_authority(args: TransferMintAuthorityArgs) -> Result<()> {
     let TransferMintAuthorityArgs {
         item_class_key,
         item_class_info,
@@ -1610,7 +1615,8 @@ pub fn enact_valid_state_change(
         max_uses,
         cooldown_duration,
         ..
-    } = item_usage.item_class_type {
+    } = item_usage.item_class_type
+    {
         if let Some(max) = max_uses {
             require!(item_usage_state.uses <= max, MaxUsesReached)
         }

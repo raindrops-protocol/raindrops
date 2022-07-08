@@ -1,13 +1,14 @@
 use {
     crate::{
         AddOrRemoveItemValidationArgs, BasicStat, BasicStatState, BasicStatTemplate, BasicStatType,
-        BodyPart, ChildUpdatePropagationPermissivenessType, EquippedItem, ErrorCode, ItemUsageInfo,
-        Player, PlayerClass, PlayerClassData, StatDiffType,
+        BodyPart, ChildUpdatePropagationPermissivenessType,
+        CopyEndItemActivationBecauseAnchorSucksSometimesArgs, EquippedItem, ErrorCode, Player,
+        PlayerClass, PlayerClassData, StatDiffType, UseItemCallbackArgs, PREFIX,
     },
     anchor_lang::{
         error,
         prelude::{
-            msg, Account, AccountInfo, AccountMeta, Pubkey, Rent, Result, SolanaSysvar,
+            msg, Account, AccountInfo, AccountMeta, Pubkey, Rent, Result, Signer, SolanaSysvar,
             UncheckedAccount,
         },
         require,
@@ -22,11 +23,11 @@ use {
     anchor_spl::token::{Mint, TokenAccount},
     raindrops_item::{
         utils::{
-            assert_keys_equal, propagate_parent, propagate_parent_array, PropagateParentArgs,
-            PropagateParentArrayArgs,
+            assert_keys_equal, get_item_usage, propagate_parent, propagate_parent_array, sighash,
+            GetItemUsageArgs, PropagateParentArgs, PropagateParentArrayArgs,
         },
-        BasicItemEffect, BasicItemEffectType, Item, ItemClass, ItemClassData, ItemUsage,
-        ItemUsageType, PermissivenessType,
+        BasicItemEffect, BasicItemEffectType, Item, ItemActivationMarker, ItemClass, ItemClassData,
+        ItemUsage, ItemUsageType, PermissivenessType,
     },
     std::convert::TryInto,
 };
@@ -183,6 +184,66 @@ pub fn assert_builder_must_be_holder_check(
         if b.boolean {
             require!(new_player_token_holder.is_signer, MustBeHolderToBuild)
         }
+    }
+
+    Ok(())
+}
+
+pub struct RunItemCallbackArgs<'b, 'c, 'info> {
+    pub player_class: &'b Account<'info, PlayerClass>,
+    pub item_class: &'b Account<'info, ItemClass>,
+    pub item: &'b Account<'info, Item>,
+    pub player: &'b Account<'info, Player>,
+    pub callback_program: &'c UncheckedAccount<'info>,
+    pub item_usage: &'b ItemUsage,
+    pub amount: u64,
+}
+
+pub fn run_item_callback<'b, 'c, 'info>(args: RunItemCallbackArgs<'b, 'c, 'info>) -> Result<()> {
+    let RunItemCallbackArgs {
+        player_class,
+        item_class,
+        item,
+        player,
+        amount,
+        callback_program,
+        item_usage,
+    } = args;
+
+    if let Some(callback) = &player_class.data.config.add_to_pack_validation {
+        let item_class_info = item_class.to_account_info();
+        let item_info = item.to_account_info();
+        let player_info = player.to_account_info();
+        let player_class_info = player_class.to_account_info();
+        let accounts = vec![
+            item_info,
+            item_class_info,
+            player_info,
+            player_class_info,
+            callback_program.to_account_info(),
+        ];
+        assert_keys_equal(callback_program.key(), callback.key)?;
+
+        let keys = vec![
+            AccountMeta::new_readonly(item.key(), false),
+            AccountMeta::new_readonly(item_class.key(), false),
+            AccountMeta::new_readonly(player.key(), false),
+            AccountMeta::new_readonly(player_class.key(), false),
+        ];
+
+        invoke(
+            &Instruction {
+                program_id: callback.key,
+                accounts: keys,
+                data: AnchorSerialize::try_to_vec(&UseItemCallbackArgs {
+                    instruction: raindrops_item::utils::sighash("global", "use_item_callback"),
+                    extra_identifier: callback.code,
+                    amount,
+                    item_usage: item_usage.clone(),
+                })?,
+            },
+            &accounts,
+        )?;
     }
 
     Ok(())
@@ -404,11 +465,12 @@ pub fn propagate_player_class_data_fields_to_player_data(
     }
 }
 
-pub struct VerifyItemUsageAppropriateForBodyPartArgs<'a> {
+pub struct VerifyItemUsageAppropriateForBodyPartArgs<'a, 'b, 'info> {
     pub used_body_part: &'a BodyPart,
     pub item_usage_index: u16,
-    pub item_usage_info: Option<ItemUsageInfo>,
-    pub item_class_data: ItemClassData,
+    pub item_usage_proof: Option<Vec<[u8; 32]>>,
+    pub item_usage: Option<ItemUsage>,
+    pub item_class: &'b Account<'info, ItemClass>,
     pub equipping: bool,
     pub total_equipped_for_this_item: u64,
     pub total_equipped_for_this_body_part_for_this_item: u64,
@@ -416,14 +478,15 @@ pub struct VerifyItemUsageAppropriateForBodyPartArgs<'a> {
     pub equipped_items: &'a Vec<EquippedItem>,
 }
 
-pub fn verify_item_usage_appropriate_for_body_part(
-    args: VerifyItemUsageAppropriateForBodyPartArgs,
+pub fn verify_item_usage_appropriate_for_body_part<'a, 'b, 'info>(
+    args: VerifyItemUsageAppropriateForBodyPartArgs<'a, 'b, 'info>,
 ) -> Result<ItemUsage> {
     let VerifyItemUsageAppropriateForBodyPartArgs {
         used_body_part,
         item_usage_index,
-        item_usage_info,
-        item_class_data,
+        item_usage,
+        item_usage_proof,
+        item_class,
         equipping,
         total_equipped_for_this_item,
         total_equipped_for_this_body_part_for_this_item,
@@ -437,46 +500,12 @@ pub fn verify_item_usage_appropriate_for_body_part(
         }
     }
 
-    let usage_to_check = if let Some(ui) = item_usage_info {
-        if let Some(root) = item_class_data.config.usage_root {
-            let ItemUsageInfo {
-                item_usage_proof,
-                item_usage,
-            } = ui;
-            let chief_node = anchor_lang::solana_program::keccak::hashv(&[
-                &[0x00],
-                &AnchorSerialize::try_to_vec(&item_usage)?,
-            ]);
-            require!(
-                raindrops_item::utils::verify(&item_usage_proof, &root.root, chief_node.0),
-                InvalidProof
-            );
-            item_usage
-        } else {
-            return Err(ErrorCode::UsageRootNotPresent.into());
-        }
-    } else if let Some(usages) = &item_class_data.config.usages {
-        if usages.is_empty() {
-            return Err(error!(ErrorCode::CannotEquipItemWithoutUsageOrMerkle));
-        } else {
-            let mut found = false;
-            let mut item_usage = &usages[0];
-            for u in usages {
-                if u.index == item_usage_index {
-                    item_usage = u;
-                    found = true;
-                    break;
-                }
-            }
-
-            if !found {
-                return Err(ErrorCode::FoundNoMatchingUsage.into());
-            }
-            item_usage.clone()
-        }
-    } else {
-        return Err(ErrorCode::ItemContainsNoUsages.into());
-    };
+    let usage_to_check = get_item_usage(GetItemUsageArgs {
+        item_class,
+        usage_index: item_usage_index,
+        usage_proof: item_usage_proof,
+        usage: item_usage,
+    })?;
 
     if usage_to_check.do_not_pair_with_self && equipping && total_equipped_for_this_item > 0 {
         return Err(ErrorCode::ItemCannotBePairedWithSelf.into());
@@ -1176,4 +1205,101 @@ pub fn get_modded_amount_given_tokens_staked_on_item<'a, 'b, 'info>(
     }
 
     Ok(modded_amount)
+}
+
+pub struct EndItemActivationArgs<'b, 'c, 'info> {
+    pub item: &'b Account<'info, Item>,
+    pub item_class: &'b Account<'info, ItemClass>,
+    pub item_activation_marker: &'b Account<'info, ItemActivationMarker>,
+    pub receiver: &'c Signer<'info>,
+    pub remaining_accounts: &'c [AccountInfo<'info>],
+    pub item_class_mint: &'c Pubkey,
+    pub item_mint: &'c Pubkey,
+    pub usage_permissiveness_to_use: Option<PermissivenessType>,
+    pub item_usage_index: u16,
+    pub item_index: u64,
+    pub item_class_index: u64,
+    pub amount: u64,
+    // Required if using roots
+    pub item_usage_proof: Option<Vec<[u8; 32]>>,
+    pub item_usage: Option<ItemUsage>,
+    pub item_program: &'c UncheckedAccount<'info>,
+    pub player: &'b Account<'info, Player>,
+    pub player_mint: &'c Pubkey,
+    pub index: u64,
+}
+
+pub fn end_item_activation<'b, 'c, 'info>(
+    args: EndItemActivationArgs<'b, 'c, 'info>,
+) -> Result<()> {
+    let EndItemActivationArgs {
+        item,
+        item_class,
+        item_activation_marker,
+        receiver,
+        remaining_accounts,
+        item_class_mint,
+        item_mint,
+        usage_permissiveness_to_use,
+        item_usage_index,
+        item_index,
+        item_class_index,
+        amount,
+        item_usage_proof,
+        item_usage,
+        item_program,
+        player,
+        player_mint,
+        index,
+    } = args;
+
+    let mut keys = vec![
+        AccountMeta::new(item.key(), false),
+        AccountMeta::new_readonly(item_class.key(), false),
+        AccountMeta::new(item_activation_marker.key(), false),
+        AccountMeta::new(receiver.key(), true),
+    ];
+    let mut account_infos = vec![
+        item.to_account_info(),
+        item_class.to_account_info(),
+        item_activation_marker.to_account_info(),
+        receiver.to_account_info(),
+    ];
+
+    for key in remaining_accounts {
+        if key.is_writable {
+            keys.push(AccountMeta::new(key.key(), key.is_signer))
+        } else {
+            keys.push(AccountMeta::new_readonly(key.key(), key.is_signer))
+        }
+        account_infos.push(key.to_account_info())
+    }
+
+    Ok(invoke_signed(
+        &Instruction {
+            program_id: item_program.key(),
+            accounts: keys,
+            data: AnchorSerialize::try_to_vec(
+                &CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
+                    instruction: sighash("global", "end_item_activation"),
+                    item_class_mint: *item_class_mint,
+                    item_mint: *item_mint,
+                    usage_permissiveness_to_use,
+                    usage_index: item_usage_index,
+                    index: item_index,
+                    class_index: item_class_index,
+                    amount,
+                    usage_proof: item_usage_proof,
+                    usage: item_usage,
+                },
+            )?,
+        },
+        &account_infos,
+        &[&[
+            PREFIX.as_bytes(),
+            player_mint.as_ref(),
+            &index.to_le_bytes(),
+            &[player.bump],
+        ]],
+    )?)
 }

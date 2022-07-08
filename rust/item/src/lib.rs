@@ -198,6 +198,7 @@ pub struct BeginItemActivationArgs {
     pub usage_permissiveness_to_use: Option<PermissivenessType>,
     pub amount: u64,
     pub usage_index: u16,
+    pub target: Option<Pubkey>,
     // Use this if using roots
     pub usage_info: Option<UsageInfo>,
 }
@@ -1309,6 +1310,7 @@ pub mod item {
             class_index,
             item_class_mint,
             amount,
+            target,
             ..
         } = args;
 
@@ -1316,10 +1318,9 @@ pub mod item {
         require!(item_account.amount >= amount, InsufficientBalance);
 
         item_activation_marker.bump = *ctx.bumps.get("item_activation_marker").unwrap();
+        item_activation_marker.target = target;
 
-        if amount > 1 {
-            item_activation_marker.amount = Some(amount);
-        }
+        item_activation_marker.amount = amount;
 
         let (usage, usage_state) =
             verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
@@ -2274,7 +2275,7 @@ pub struct BeginItemActivation<'info> {
         ],
         bump,
         space=args.item_marker_space as usize,
-        constraint=args.item_marker_space >  8+1+1+1+8 && args.item_marker_space <= 8+1+1+1+8+2+2+2+32+9,
+        constraint=args.item_marker_space >  8+8+1+1+8+1 && args.item_marker_space <= 8+8+1+1+33+8+2+2+2+32+9,
         payer=payer
     )]
     item_activation_marker: Box<Account<'info, ItemActivationMarker>>,
@@ -2594,7 +2595,7 @@ pub enum ChildUpdatePropagationPermissivenessType {
     FreeBuildPermissiveness,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug, Copy)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,
@@ -2791,11 +2792,12 @@ pub struct CraftItemCounter {
 pub struct ItemActivationMarker {
     pub bump: u8,
     pub valid_for_use: bool,
-    pub amount: Option<u64>,
+    pub amount: u64,
     // In the case we need to reset root, we want to use
     // timestamp from original activation
     pub unix_timestamp: u64,
     pub proof_counter: Option<ItemActivationMarkerProofCounter>,
+    pub target: Option<Pubkey>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
