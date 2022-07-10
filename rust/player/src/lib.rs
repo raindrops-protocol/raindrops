@@ -34,7 +34,7 @@ use {
             spl_token_transfer, AssertPermissivenessAccessArgs, GetItemUsageArgs,
             TokenTransferParams,
         },
-        BasicItemEffectType, Boolean, Callback, InheritanceState, Inherited, ItemUsage,
+        BasicItemEffect, Boolean, Callback, InheritanceState, Inherited, ItemUsage,
         NamespaceAndIndex, Permissiveness, PermissivenessType,
     },
     spl_token::instruction::{initialize_account2, mint_to},
@@ -87,15 +87,8 @@ pub struct AddItemEffectArgs {
     pub item_mint: Pubkey,
     pub item_class_mint: Pubkey,
     pub item_usage_index: u16,
-    // Use this if using roots
-    pub item_usage_proof: Option<Vec<[u8; 32]>>,
-    pub item_usage: Option<ItemUsage>,
     pub permissiveness_to_use: Option<PermissivenessType>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct SubtractItemEffectArgs {
-    pub item_usage_index: u16,
+    pub space: usize,
     // Use this if using roots
     pub item_usage_proof: Option<Vec<[u8; 32]>>,
     pub item_usage: Option<ItemUsage>,
@@ -208,7 +201,6 @@ pub struct UpdatePlayerArgs {
 
 #[program]
 pub mod player {
-    use std::borrow::Borrow;
 
     use super::*;
 
@@ -762,6 +754,44 @@ pub mod player {
         Ok(())
     }
 
+    pub fn subtract_item_effect<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, SubtractItemEffect<'info>>,
+    ) -> Result<()> {
+        let player = &mut ctx.accounts.player;
+        let player_class = &ctx.accounts.player_class;
+        let player_item_activation_marker = &mut ctx.accounts.player_item_activation_marker;
+        let item = &ctx.accounts.item;
+        let receiver = &ctx.accounts.receiver;
+        let clock = &ctx.accounts.clock;
+
+        // how do we know if item should have effect removed yet? we have it on the item act
+        // marker and duration on the item usage...check and throw error.
+        let no_more_waiting = toggle_item_to_basic_stats(ToggleItemToBasicStatsArgs {
+            player,
+            player_class,
+            item,
+            basic_item_effects: &player_item_activation_marker.basic_item_effects.clone(),
+            amount_change: player_item_activation_marker.amount,
+            adding: false,
+            stat_diff_type: StatDiffType::Consumable,
+            bie_bitmap: &mut player_item_activation_marker.removed_bie_bitmap,
+            unix_timestamp: clock.unix_timestamp,
+        })?;
+
+        if no_more_waiting {
+            let player_item_activation_marker_info =
+                player_item_activation_marker.to_account_info();
+            let snapshot: u64 = player_item_activation_marker_info.lamports();
+            **player_item_activation_marker_info.lamports.borrow_mut() = 0;
+
+            **receiver.lamports.borrow_mut() = receiver
+                .lamports()
+                .checked_add(snapshot)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+        Ok(())
+    }
+
     pub fn add_item_effect<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, AddItemEffect<'info>>,
         args: AddItemEffectArgs,
@@ -777,6 +807,7 @@ pub mod player {
             item_mint,
             item_class_mint,
             item_class_index,
+            ..
         } = args;
 
         let player = &mut ctx.accounts.player;
@@ -789,6 +820,8 @@ pub mod player {
         let item_program = &ctx.accounts.item_program;
         let payer = &ctx.accounts.payer;
         let remaining_accounts = &ctx.remaining_accounts;
+
+        require!(item_activation_marker.valid_for_use, NotValidForUseYet);
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
@@ -812,7 +845,6 @@ pub mod player {
             *ctx.bumps.get("player_item_activation_marker").unwrap();
         player_item_activation_marker.player = player.key();
         player_item_activation_marker.item = item.key();
-        player_item_activation_marker.usage_index = item_usage_index;
 
         let item_usage_to_use = get_item_usage(GetItemUsageArgs {
             item_class,
@@ -820,6 +852,17 @@ pub mod player {
             usage_proof: item_usage_proof.clone(),
             usage: item_usage.clone(),
         })?;
+
+        player_item_activation_marker.usage_index = item_usage_index;
+        player_item_activation_marker.basic_item_effects =
+            item_usage_to_use.basic_item_effects.clone();
+        if let Some(bie) = &item_usage_to_use.basic_item_effects {
+            let bie_size = bie
+                .len()
+                .checked_div(8)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+            player_item_activation_marker.removed_bie_bitmap = Some(vec![0u8; bie_size]);
+        }
 
         run_item_callback(RunItemCallbackArgs {
             player_class,
@@ -835,10 +878,12 @@ pub mod player {
             player,
             player_class,
             item,
-            item_usage: &item_usage_to_use,
+            basic_item_effects: &item_usage_to_use.basic_item_effects,
             amount_change: player_item_activation_marker.amount,
             adding: true,
             stat_diff_type: StatDiffType::Consumable,
+            bie_bitmap: &mut player_item_activation_marker.removed_bie_bitmap,
+            unix_timestamp: 0,
         })?;
 
         end_item_activation(EndItemActivationArgs {
@@ -958,10 +1003,12 @@ pub mod player {
             player,
             player_class,
             item,
-            item_usage: &item_usage,
+            basic_item_effects: &item_usage.basic_item_effects,
             amount_change: amount,
             adding: equipping,
             stat_diff_type: StatDiffType::Wearable,
+            bie_bitmap: &mut None,
+            unix_timestamp: 0,
         })?;
 
         Ok(())
@@ -1027,7 +1074,7 @@ pub struct SubtractItemEffect<'info> {
         seeds=[
             PREFIX.as_bytes(),
             player_item_activation_marker.item.as_ref(),
-            &(player_item_activation_marker.usage_index as u64).to_le_bytes(),            &(player_item_activation_marker.usage_index as u64).to_le_bytes(),
+            &(player_item_activation_marker.usage_index as u64).to_le_bytes(),
             &(player_item_activation_marker.amount as u64).to_le_bytes(),
             raindrops_item::MARKER.as_bytes()
         ],
@@ -1036,11 +1083,10 @@ pub struct SubtractItemEffect<'info> {
     player_item_activation_marker: Account<'info, PlayerItemActivationMarker>,
     #[account(constraint=player_item_activation_marker.item == item.key())]
     item: Account<'info, raindrops_item::Item>,
-    #[account(constraint=item.parent == item_class.key())]
-    item_class: Account<'info, raindrops_item::ItemClass>,
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
+    clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]
@@ -1069,7 +1115,8 @@ pub struct AddItemEffect<'info> {
         ],
         bump,
         payer=payer,
-        space=PLAYER_ITEM_ACTIVATION_MARKER_SPACE
+        constraint=args.space >= PLAYER_ITEM_ACTIVATION_MARKER_MIN_SPACE,
+        space=args.space
     )]
     player_item_activation_marker: Account<'info, PlayerItemActivationMarker>,
     #[account(
@@ -1709,11 +1756,13 @@ pub enum StatDiffType {
     Consumable,
 }
 
-const PLAYER_ITEM_ACTIVATION_MARKER_SPACE: usize = 8 + // key
+const PLAYER_ITEM_ACTIVATION_MARKER_MIN_SPACE: usize = 8 + // key
 1 + //bump
 32 + //player
 32 + //item
 2 + // usage index
+1 + // basic item effects option
+1 + // bie bitmap option
 8 + // amount
 8 +  // activated_at
 8; // active_item_coiunter
@@ -1724,6 +1773,8 @@ pub struct PlayerItemActivationMarker {
     pub player: Pubkey,
     pub item: Pubkey,
     pub usage_index: u16,
+    pub basic_item_effects: Option<Vec<BasicItemEffect>>,
+    pub removed_bie_bitmap: Option<Vec<u8>>,
     pub amount: u64,
     pub activated_at: u64,
     pub active_item_counter: u64,
@@ -1793,4 +1844,6 @@ pub enum ErrorCode {
     CannotAlterThisTypeNumerically,
     #[msg("Unreachable code")]
     Unreachable,
+    #[msg("Not valid for use yet")]
+    NotValidForUseYet,
 }

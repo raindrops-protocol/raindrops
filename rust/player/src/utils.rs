@@ -774,22 +774,26 @@ pub struct ToggleItemToBasicStatsArgs<'b, 'c, 'info> {
     pub player: &'b mut Account<'info, Player>,
     pub player_class: &'b Account<'info, PlayerClass>,
     pub item: &'b Account<'info, Item>,
-    pub item_usage: &'c ItemUsage,
+    pub basic_item_effects: &'c Option<Vec<BasicItemEffect>>,
     pub amount_change: u64,
     pub adding: bool,
     pub stat_diff_type: StatDiffType,
+    pub bie_bitmap: &'c mut Option<Vec<u8>>,
+    pub unix_timestamp: i64,
 }
 pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
     args: ToggleItemToBasicStatsArgs<'b, 'c, 'info>,
-) -> Result<()> {
+) -> Result<bool> {
     let ToggleItemToBasicStatsArgs {
         player,
         player_class,
         item,
-        item_usage,
+        basic_item_effects,
         adding,
         amount_change,
         stat_diff_type,
+        bie_bitmap,
+        unix_timestamp,
     } = args;
     // for an item without active duration, is permanent increase
     // for an equipment, no active duration, is temproary until removal
@@ -800,13 +804,15 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
     // or you can treat as having only one so staking adjuster will be 100% added or 100% wiped out.
     // therefore, this works.
 
-    if let Some(bies) = &item_usage.basic_item_effects {
+    let mut no_more_waiting = true;
+    if let Some(bies) = basic_item_effects {
         if let Some(bsts) = &player_class.data.config.basic_stats {
             if let Some(bss) = &mut player.data.basic_stats {
                 for bst in bsts {
                     // guaranteed to be at this index due to way player is created or updated
 
                     let bs = &mut bss[bst.index as usize];
+                    let mut i: usize = 0;
                     for bie in bies {
                         if bie.stat == bst.name {
                             let modded_amount = get_modded_amount_given_tokens_staked_on_item(
@@ -830,23 +836,131 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
                                     })?;
                                 } // there is no removing a consumable with no active duration, it is permanent...
                             } else {
-                                rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
-                                    bie,
-                                    bs,
-                                    bst,
-                                    modded_amount,
-                                    adding,
-                                })?;
+                                if !adding && stat_diff_type == StatDiffType::Consumable {
+                                    no_more_waiting = no_more_waiting
+                                        && rebalance_stat_for_consumable_with_duration(
+                                            RebalanceStatForConsumableWithDurationArgs {
+                                                bie_bitmap,
+                                                unix_timestamp,
+                                                bs,
+                                                bie,
+                                                bst,
+                                                modded_amount,
+                                                adding,
+                                                item,
+                                                i,
+                                            },
+                                        )?
+                                } else {
+                                    rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
+                                        bie,
+                                        bs,
+                                        bst,
+                                        modded_amount,
+                                        adding,
+                                    })?;
+                                }
                             }
                         }
+                        i += 1;
                     }
                 }
             }
         }
     }
-    Ok(())
+    Ok(no_more_waiting)
 }
 
+struct RebalanceStatForConsumableWithDurationArgs<'b, 'c, 'info> {
+    pub bie_bitmap: &'c mut Option<Vec<u8>>,
+    pub unix_timestamp: i64,
+    pub bs: &'c mut BasicStat,
+    pub bie: &'c BasicItemEffect,
+    pub bst: &'c BasicStatTemplate,
+    pub modded_amount: i64,
+    pub adding: bool,
+    pub item: &'b Account<'info, Item>,
+    pub i: usize,
+}
+
+fn rebalance_stat_for_consumable_with_duration<'b, 'c, 'info>(
+    args: RebalanceStatForConsumableWithDurationArgs<'b, 'c, 'info>,
+) -> Result<bool> {
+    let RebalanceStatForConsumableWithDurationArgs {
+        bie_bitmap,
+        unix_timestamp,
+        bs,
+        bie,
+        bst,
+        modded_amount,
+        adding,
+        item,
+        i,
+    } = args;
+    if let Some(arr) = bie_bitmap {
+        // check to see if we have removed already.
+        let (index_in_bie, mask) = get_index_and_mask_for_bie(i, arr)?;
+        let entry = arr[index_in_bie];
+        let applied_mask = entry & mask;
+
+        if applied_mask == 0 {
+            // ok it has not been taken, we can remove IF the date is right. do that next.
+            if let Some(active) = bie.active_duration {
+                let modded_duration = get_modded_duration(active, item, bie)?;
+                if unix_timestamp > modded_duration {
+                    arr[index_in_bie] = arr[index_in_bie] | mask;
+                    rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
+                        bie,
+                        bs,
+                        bst,
+                        modded_amount,
+                        adding,
+                    })?;
+                } else {
+                    return Ok(false);
+                }
+            }
+        }
+    }
+
+    Ok(true)
+}
+
+pub fn get_modded_duration(
+    active: u64,
+    item: &Account<Item>,
+    bie: &BasicItemEffect,
+) -> Result<i64> {
+    let mut modded_duration = active;
+
+    if item.tokens_staked > 0 {
+        let mut to_add: u64 = item.tokens_staked;
+        if let Some(san) = bie.staking_duration_numerator {
+            to_add = to_add
+                .checked_mul(san)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+        if let Some(sad) = bie.staking_duration_divisor {
+            to_add = to_add
+                .checked_div(sad)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        modded_duration = modded_duration
+            .checked_add(to_add)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+    }
+
+    Ok(modded_duration as i64)
+}
+
+pub fn get_index_and_mask_for_bie(i: usize, arr: &Vec<u8>) -> Result<(usize, u8)> {
+    let index_in_bie_arr = i.checked_div(8).ok_or(ErrorCode::NumericalOverflowError)?;
+    let entry = arr[index_in_bie_arr];
+    let offset_from_right = 7 - i.checked_rem(8).ok_or(ErrorCode::NumericalOverflowError)?;
+    let mask = u8::pow(2, offset_from_right as u32);
+    Ok((index_in_bie_arr, mask))
+}
 pub struct RebalanceStatPermanentlyArgs<'a> {
     pub bie: &'a BasicItemEffect,
     pub bs: &'a mut BasicStat,
