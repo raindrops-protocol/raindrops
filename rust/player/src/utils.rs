@@ -3,8 +3,10 @@ use {
         AddOrRemoveItemValidationArgs, BasicStat, BasicStatState, BasicStatTemplate, BasicStatType,
         BodyPart, ChildUpdatePropagationPermissivenessType,
         CopyBeginItemActivationBecauseAnchorSucksSometimesArgs,
-        CopyEndItemActivationBecauseAnchorSucksSometimesArgs, EquippedItem, ErrorCode, Player,
-        PlayerClass, PlayerClassData, StatDiffType, UseItemArgs, UseItemCallbackArgs, PREFIX,
+        CopyEndItemActivationBecauseAnchorSucksSometimesArgs,
+        CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs, EquippedItem,
+        ErrorCode, Player, PlayerClass, PlayerClassData, StatDiffType,
+        UpdateValidForUseIfWarmupPassedOnItemArgs, UseItemArgs, UseItemCallbackArgs, PREFIX,
     },
     anchor_lang::{
         error,
@@ -1522,6 +1524,84 @@ pub fn begin_item_activation<'b, 'c, 'info>(
                     item_marker_space,
                     target,
                     usage_info: item_usage_info,
+                },
+            )?,
+        },
+        &account_infos,
+        &[&[
+            PREFIX.as_bytes(),
+            player_mint.as_ref(),
+            &index.to_le_bytes(),
+            &[player.bump],
+        ]],
+    )?)
+}
+
+pub struct UpdateValidForUseIfWarmupPassedArgs<'b, 'c, 'info> {
+    pub item: &'c UncheckedAccount<'info>,
+    pub item_class: &'c UncheckedAccount<'info>,
+    pub item_activation_marker: &'c UncheckedAccount<'info>,
+    pub item_program: &'c UncheckedAccount<'info>,
+    pub clock: &'c Sysvar<'info, Clock>,
+    pub player: &'b Account<'info, Player>,
+    pub update_args: UpdateValidForUseIfWarmupPassedOnItemArgs,
+}
+
+pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
+    args: UpdateValidForUseIfWarmupPassedArgs<'b, 'c, 'info>,
+) -> Result<()> {
+    let UpdateValidForUseIfWarmupPassedArgs {
+        item,
+        item_class,
+        item_activation_marker,
+        item_program,
+        clock,
+        player,
+        update_args,
+    } = args;
+
+    let UpdateValidForUseIfWarmupPassedOnItemArgs {
+        item_mint,
+        item_index,
+        item_usage_index,
+        item_class_index,
+        amount,
+        item_class_mint,
+        index,
+        player_mint,
+        usage_proof,
+        usage,
+        ..
+    } = update_args;
+
+    let mut keys = vec![
+        AccountMeta::new_readonly(item.key(), false),
+        AccountMeta::new_readonly(item_class.key(), false),
+        AccountMeta::new(item_activation_marker.key(), false),
+        AccountMeta::new_readonly(clock.key(), false),
+    ];
+    let mut account_infos = vec![
+        item.to_account_info(),
+        item_class.to_account_info(),
+        item_activation_marker.to_account_info(),
+        clock.to_account_info(),
+    ];
+
+    Ok(invoke_signed(
+        &Instruction {
+            program_id: item_program.key(),
+            accounts: keys,
+            data: AnchorSerialize::try_to_vec(
+                &CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs {
+                    instruction: sighash("global", "update_valid_for_use_if_warmup_passed"),
+                    item_class_mint: item_class_mint,
+                    usage_index: item_usage_index,
+                    index: item_index,
+                    class_index: item_class_index,
+                    amount,
+                    item_mint,
+                    usage_proof,
+                    usage,
                 },
             )?,
         },
