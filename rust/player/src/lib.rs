@@ -2,14 +2,16 @@ pub mod utils;
 
 use {
     crate::utils::{
-        assert_builder_must_be_holder_check, build_new_equipped_items_and_provide_counts,
-        end_item_activation, find_used_body_part_from_index, map_new_stats_into_player,
+        assert_builder_must_be_holder_check, begin_item_activation,
+        build_new_equipped_items_and_provide_counts, end_item_activation,
+        find_used_body_part_from_index, map_new_stats_into_player,
         propagate_player_class_data_fields_to_player_data, run_item_callback, run_item_validation,
         run_toggle_equip_item_validation, toggle_item_to_basic_stats,
         update_player_class_with_inherited_information,
-        verify_item_usage_appropriate_for_body_part, BuildNewEquippedItemsAndProvideCountsArgs,
-        BuildNewEquippedItemsReturn, EndItemActivationArgs, RunItemCallbackArgs,
-        RunItemValidationArgs, RunToggleEquipItemValidationArgs, ToggleItemToBasicStatsArgs,
+        verify_item_usage_appropriate_for_body_part, BeginItemActivationArgs,
+        BuildNewEquippedItemsAndProvideCountsArgs, BuildNewEquippedItemsReturn,
+        EndItemActivationArgs, RunItemCallbackArgs, RunItemValidationArgs,
+        RunToggleEquipItemValidationArgs, ToggleItemToBasicStatsArgs,
         VerifyItemUsageAppropriateForBodyPartArgs,
     },
     anchor_lang::{
@@ -57,6 +59,22 @@ pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     // Required if using roots
     pub usage_proof: Option<Vec<[u8; 32]>>,
     pub usage: Option<ItemUsage>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
+    pub instruction: [u8; 8],
+    pub class_index: u64,
+    pub index: u64,
+    pub item_class_mint: Pubkey,
+    // How much space to use for the item marker
+    pub item_marker_space: u8,
+    pub usage_permissiveness_to_use: Option<PermissivenessType>,
+    pub amount: u64,
+    pub usage_index: u16,
+    pub target: Option<Pubkey>,
+    // Use this if using roots
+    pub usage_info: Option<raindrops_item::UsageInfo>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -197,6 +215,23 @@ pub struct UpdatePlayerArgs {
     pub update_permissiveness_to_use: Option<PermissivenessType>,
     pub player_class_mint: Pubkey,
     pub new_data: Option<PlayerData>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UseItemArgs {
+    pub item_class_index: u64,
+    pub item_index: u64,
+    pub item_class_mint: Pubkey,
+    // How much space to use for the item marker
+    pub item_marker_space: u8,
+    pub usage_permissiveness_to_use: Option<PermissivenessType>,
+    pub amount: u64,
+    pub item_usage_index: u16,
+    pub target: Option<Pubkey>,
+    pub index: u64,
+    pub player_mint: Pubkey,
+    // Use this if using roots
+    pub item_usage_info: Option<raindrops_item::UsageInfo>,
 }
 
 #[program]
@@ -754,6 +789,56 @@ pub mod player {
         Ok(())
     }
 
+    pub fn use_item<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UseItem<'info>>,
+        args: UseItemArgs,
+    ) -> Result<()> {
+        let player_class = &ctx.accounts.player_class;
+        let player = &ctx.accounts.player;
+        let item = &ctx.accounts.item;
+        let item_class = &ctx.accounts.item_class;
+        let item_activation_marker = &ctx.accounts.item_activation_marker;
+        let item_mint = &ctx.accounts.item_mint;
+        let player_item_account = &ctx.accounts.player_item_account;
+        let payer = &ctx.accounts.payer;
+        let item_program = &ctx.accounts.item_program;
+        let system_program = &ctx.accounts.system_program;
+        let clock = &ctx.accounts.clock;
+        let rent = &ctx.accounts.rent;
+        let validation_program = &ctx.accounts.validation_program;
+        let remaining_accounts = &ctx.remaining_accounts;
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &args.usage_permissiveness_to_use,
+            permissiveness_array: &player_class.data.settings.use_item_permissiveness,
+            index: args.index,
+            class_index: Some(player.class_index),
+            account_mint: Some(&args.player_mint),
+        })?;
+
+        begin_item_activation(BeginItemActivationArgs {
+            item,
+            item_class,
+            item_activation_marker,
+            item_mint,
+            player_item_account,
+            payer,
+            remaining_accounts,
+            item_program,
+            system_program,
+            clock,
+            rent,
+            validation_program,
+            player,
+            use_item_args: args,
+        })?;
+
+        Ok(())
+    }
+
     pub fn subtract_item_effect<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, SubtractItemEffect<'info>>,
     ) -> Result<()> {
@@ -1170,8 +1255,16 @@ pub struct AddItemEffect<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(args: raindrops_item::BeginItemActivationArgs)]
+#[instruction(args: UseItemArgs)]
 pub struct UseItem<'info> {
+    #[account(
+        seeds=[
+            PREFIX.as_bytes(),
+            args.player_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        bump=player.bump
+    )]
     player: Account<'info, Player>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Account<'info, PlayerClass>,
@@ -1179,8 +1272,16 @@ pub struct UseItem<'info> {
     item: UncheckedAccount<'info>,
     item_class: UncheckedAccount<'info>,
     item_mint: UncheckedAccount<'info>,
-    #[account(mut)]
-    item_account: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            item.key().as_ref(),
+            player.key().as_ref()
+        ],
+        bump
+    )]
+    player_item_account: UncheckedAccount<'info>,
     // Size needs to be >= 20 and <= 66
     #[account(mut)]
     item_activation_marker: UncheckedAccount<'info>,
@@ -1190,6 +1291,8 @@ pub struct UseItem<'info> {
     payer: Signer<'info>,
     player_program: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
+    #[account(constraint=item_program.key() == raindrops_item::id())]
+    item_program: UncheckedAccount<'info>,
     token_program: Program<'info, anchor_spl::token::Token>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,

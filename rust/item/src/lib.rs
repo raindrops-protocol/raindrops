@@ -2283,10 +2283,6 @@ pub struct BeginItemActivation<'info> {
     // however this signer should match one of the signers in COMMON REMAINING ACCOUNTS
     #[account(mut)]
     payer: Signer<'info>,
-    #[account(
-        constraint = player_program.key() == Pubkey::from_str(PLAYER_ID).unwrap()
-    )]
-    player_program: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,

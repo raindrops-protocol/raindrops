@@ -973,7 +973,6 @@ export class ItemProgram {
           itemTransferAuthority: itemTransferAuthority.publicKey,
           itemActivationMarker,
           payer: (this.program.provider as AnchorProvider).wallet.publicKey,
-          playerProgram: PLAYER_ID,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
