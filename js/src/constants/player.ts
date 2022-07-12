@@ -1,1 +1,1 @@
-export const PREFIX: string = "player";
+export const PREFIX = "player";
