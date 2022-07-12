@@ -26,7 +26,6 @@ import {
   getMetadata,
 } from "../utils/pda";
 import { InheritanceState, PermissivenessType } from "../state/common";
-import { overArgs } from "lodash";
 
 programCommand("create_item_class")
   .requiredOption(
