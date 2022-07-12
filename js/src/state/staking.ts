@@ -33,30 +33,30 @@ export class ChildUpdatePropagationPermissiveness {
 }
 
 export class ArtifactClassData {
-  childrenMustBeEditions: null | boolean;
-  builderMustBeHolder: null | boolean;
-  updatePermissiveness: null | Permissiveness[];
-  buildPermissiveness: null | Permissiveness[];
-  stakingWarmUpDuration: null | BN;
-  stakingCooldownDuration: null | BN;
-  stakingPermissiveness: null | Permissiveness[];
-  unstakingPermissiveness: null | Permissiveness[];
+  childrenMustBeEditions: boolean | null;
+  builderMustBeHolder: boolean | null;
+  updatePermissiveness: Permissiveness[] | null;
+  buildPermissiveness: Permissiveness[] | null;
+  stakingWarmUpDuration: BN | null;
+  stakingCooldownDuration: BN | null;
+  stakingPermissiveness: Permissiveness[] | null;
+  unstakingPermissiveness: Permissiveness[] | null;
   childUpdatePropagationPermissiveness:
-    | null
-    | ChildUpdatePropagationPermissiveness[];
+    | ChildUpdatePropagationPermissiveness[]
+    | null;
 
   constructor(args: {
-    childrenMustBeEditions: null | boolean;
-    builderMustBeHolder: null | boolean;
-    updatePermissiveness: null | Permissiveness[];
-    buildPermissiveness: null | Permissiveness[];
-    stakingWarmUpDuration: null | BN;
-    stakingCooldownDuration: null | BN;
-    stakingPermissiveness: null | Permissiveness[];
-    unstakingPermissiveness: null | Permissiveness[];
+    childrenMustBeEditions: boolean | null;
+    builderMustBeHolder: boolean | null;
+    updatePermissiveness: Permissiveness[] | null;
+    buildPermissiveness: Permissiveness[] | null;
+    stakingWarmUpDuration: BN | null;
+    stakingCooldownDuration: BN | null;
+    stakingPermissiveness: Permissiveness[] | null;
+    unstakingPermissiveness: Permissiveness[] | null;
     childUpdatePropagationPermissiveness:
-      | null
-      | ChildUpdatePropagationPermissiveness[];
+      | ChildUpdatePropagationPermissiveness[]
+      | null;
   }) {
     this.childrenMustBeEditions = args.childrenMustBeEditions;
     this.builderMustBeHolder = args.builderMustBeHolder;
@@ -72,21 +72,21 @@ export class ArtifactClassData {
 }
 
 export class ArtifactClass {
-  namespaces: null | NamespaceAndIndex[];
-  parent: null | web3.PublicKey;
-  mint: null | web3.PublicKey;
-  metadata: null | web3.PublicKey;
-  edition: null | web3.PublicKey;
+  namespaces: NamespaceAndIndex[] | null;
+  parent: web3.PublicKey | null;
+  mint: web3.PublicKey | null;
+  metadata: web3.PublicKey | null;
+  edition: web3.PublicKey | null;
   bump: number;
   existingChildren: BN;
   data: ArtifactClassData;
 
   constructor(args: {
-    namespaces: null | NamespaceAndIndex[];
-    parent: null | web3.PublicKey;
-    mint: null | web3.PublicKey;
-    metadata: null | web3.PublicKey;
-    edition: null | web3.PublicKey;
+    namespaces: NamespaceAndIndex[] | null;
+    parent: web3.PublicKey | null;
+    mint: web3.PublicKey | null;
+    metadata: web3.PublicKey | null;
+    edition: web3.PublicKey | null;
     bump: number;
     existingChildren: BN;
     data: ArtifactClassData;
@@ -115,20 +115,20 @@ export class StakingCounter {
 }
 
 export class Artifact {
-  namespaces: null | NamespaceAndIndex[];
-  parent: null | web3.PublicKey;
-  mint: null | web3.PublicKey;
-  metadata: null | web3.PublicKey;
-  edition: null | web3.PublicKey;
+  namespaces: NamespaceAndIndex[] | null;
+  parent: web3.PublicKey | null;
+  mint: web3.PublicKey | null;
+  metadata: web3.PublicKey | null;
+  edition: web3.PublicKey | null;
   bump: number;
   tokenStaked: BN;
 
   constructor(args: {
-    namespaces: null | NamespaceAndIndex[];
-    parent: null | web3.PublicKey;
-    mint: null | web3.PublicKey;
-    metadata: null | web3.PublicKey;
-    edition: null | web3.PublicKey;
+    namespaces: NamespaceAndIndex[] | null;
+    parent: web3.PublicKey | null;
+    mint: web3.PublicKey | null;
+    metadata: web3.PublicKey | null;
+    edition: web3.PublicKey | null;
     bump: number;
     tokenStaked: BN;
   }) {
