@@ -2,17 +2,16 @@ import {
   web3,
   Program,
   BN,
-  Provider,
-  Wallet,
   AnchorProvider,
   Address,
 } from "@project-serum/anchor";
-import { SystemProgram } from "@solana/web3.js";
+import { AccountMeta, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { isNull } from "lodash.isnull";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { ITEM_ID, PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../state/common";
-import { decodeItemClass, ItemClass } from "../state/item";
+import { Component, decodeItemClass, ItemClass, ItemUsage } from "../state/item";
 import {
   getAtaForMint,
   getCraftItemCounter,
@@ -45,13 +44,13 @@ function convertNumsToBNs(data: any) {
         data.itemClassData.settings.stakingCooldownDuration
       );
 
-    data.itemClassData.config.components?.forEach((k) => {
+    data.itemClassData.config.components?.forEach((k : Component) => {
       if (k.timeToBuild != null) {
         k.timeToBuild = new BN(k.timeToBuild);
       }
     });
 
-    data.itemClassData.config.usages?.forEach((k) => {
+    data.itemClassData.config.usages?.forEach((k : ItemUsage) => {
       if (k.validation != null && k.validation != undefined) {
         k.validation.key = new web3.PublicKey(k.validation.key);
         k.validation.code = new BN(k.validation.code);
@@ -75,6 +74,7 @@ function convertNumsToBNs(data: any) {
         }
       }
 
+      // QUESTION: Why do we need to reuse 'u' here? It is changing type
       u = k.itemClassType.wearable;
       if (u) {
         if (u.limitPerPart) {
@@ -89,7 +89,7 @@ export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
   key: web3.PublicKey;
   object: ItemClass;
   data: Buffer;
-  classIndex: number;
+  classIndex: number; // QUESTION: Is this used?
 
   constructor(args: {
     program: ItemProgram;
@@ -410,12 +410,14 @@ export class ItemProgram {
       this.program.provider as AnchorProvider
     ).connection.getAccountInfo(itemClass);
 
+    // QUESTION: data is optional, what should we do if it's not populated?
     const ic = decodeItemClass(itemClassObj.data);
     ic.program = this.program;
 
     return new ItemClassWrapper({
       program: this,
       key: itemClass,
+      // TODO: Update based on above question
       data: itemClassObj.data,
       object: ic,
     });
@@ -432,7 +434,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint
+        parent: accounts.parentMint && !isNull(args.parentClassIndex)
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -502,7 +504,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint
+        parent: accounts.parentMint && !isNull(args.parentClassIndex)
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -646,7 +648,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint
+        parent: accounts.parentMint && !isNull(args.parentClassIndex)
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -660,6 +662,8 @@ export class ItemProgram {
     )[0];
     const craftItemTokenAccount = (
       await getAtaForMint(
+        // QUESTION: accounts.craftItemTokenMint is possibly null (see type AddCraftItemToEscrowAccounts)
+        // Is this correct? What do we do if it is null?
         accounts.craftItemTokenMint,
         (this.program.provider as AnchorProvider).wallet.publicKey
       )
@@ -671,7 +675,7 @@ export class ItemProgram {
       craftIndex: args.craftItemIndex,
       craftEscrowIndex: args.craftEscrowIndex,
       newItemMint: args.newItemMint,
-      craftItemMint: accounts.craftItemTokenMint,
+      craftItemMint: accounts.craftItemTokenMint, // TODO: update based on above question
       craftItemToken: craftItemTokenAccount,
       payer: (this.program.provider as AnchorProvider).wallet.publicKey,
       amountToMake: args.amountToMake,
@@ -686,7 +690,7 @@ export class ItemProgram {
       craftItemIndex: args.craftItemIndex,
       craftEscrowIndex: args.craftEscrowIndex,
       newItemMint: args.newItemMint,
-      craftItemMint: accounts.craftItemTokenMint,
+      craftItemMint: accounts.craftItemTokenMint, // TODO: update based on above question
       componentScope: args.componentScope,
     });
 
@@ -714,7 +718,7 @@ export class ItemProgram {
     )[0];
 
     const craftItem = (
-      await getItemPDA(accounts.craftItemTokenMint, args.craftItemIndex)
+      await getItemPDA(accounts.craftItemTokenMint, args.craftItemIndex) // TODO: update based on above question
     )[0];
     const craftItemObj = await this.program.account.item.fetch(craftItem);
     const instructions = [],
@@ -753,7 +757,7 @@ export class ItemProgram {
             args.originator ||
             (this.program.provider as AnchorProvider).wallet.publicKey,
           craftItemTokenAccountEscrow: craftItemEscrow,
-          craftItemTokenMint: accounts.craftItemTokenMint,
+          craftItemTokenMint: accounts.craftItemTokenMint, // TODO: update based on above question
           craftItemTokenAccount,
           craftItem,
           craftItemClass: craftItemObj.parent as Address,
@@ -796,7 +800,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint
+        parent: accounts.parentMint && !isNull(args.parentClassIndex)
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -926,13 +930,13 @@ export class ItemProgram {
         amount: args.amount,
       });
 
-    const instructions = [],
+    const instructions : TransactionInstruction[] = [],
       signers = [];
     const itemTransferAuthority =
       accounts.itemTransferAuthority || web3.Keypair.generate();
 
     if (
-      accounts.itemAccount.equals(
+      accounts.itemAccount.equals( // QUESTION: accounts.itemAccount is possibly null - what should we do if it is?
         (
           await getAtaForMint(
             accounts.itemMint,
@@ -946,7 +950,7 @@ export class ItemProgram {
       instructions.push(
         Token.createApproveInstruction(
           TOKEN_PROGRAM_ID,
-          accounts.itemAccount,
+          accounts.itemAccount, // TODO: update based on above question
           itemTransferAuthority.publicKey,
           (this.program.provider as AnchorProvider).wallet.publicKey,
           [],
@@ -963,13 +967,13 @@ export class ItemProgram {
     );
 
     instructions.push(
-      this.program.methods
+      await this.program.methods
         .beginItemActivation(args)
         .accounts({
           itemClass: itemClassKey,
           itemMint: accounts.itemMint,
           item: itemKey,
-          itemAccount: accounts.itemAccount,
+          itemAccount: accounts.itemAccount as Address,
           itemTransferAuthority: itemTransferAuthority.publicKey,
           itemActivationMarker,
           payer: (this.program.provider as AnchorProvider).wallet.publicKey,
@@ -978,11 +982,11 @@ export class ItemProgram {
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
-          validationProgram: itemClass.object.itemClassData.config.usages[
+          validationProgram: itemClass.object.itemClassData.config.usages?.[
             args.usageIndex
           ].validation
             ? new web3.PublicKey(
-                itemClass.object.itemClassData.config.usages[
+                itemClass.object.itemClassData.config.usages?.[
                   args.usageIndex
                 ].validation.key
               )
@@ -993,7 +997,7 @@ export class ItemProgram {
     );
 
     if (
-      accounts.itemAccount.equals(
+      accounts.itemAccount.equals( // TODO: update based on above question
         (
           await getAtaForMint(
             accounts.itemMint,
@@ -1005,7 +1009,7 @@ export class ItemProgram {
       instructions.push(
         Token.createRevokeInstruction(
           TOKEN_PROGRAM_ID,
-          accounts.itemAccount,
+          accounts.itemAccount, // TODO: update based on above question
           (this.program.provider as AnchorProvider).wallet.publicKey,
           []
         )
@@ -1099,7 +1103,7 @@ export class ItemProgram {
       .drainItemEscrow(args)
       .accounts({
         itemEscrow,
-        originator: accounts.originator,
+        originator: accounts.originator as Address,
       })
       .rpc();
   }
@@ -1115,11 +1119,12 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint
-          ? (
-              await getItemPDA(accounts.parentMint, args.parentClassIndex)
-            )[0]
-          : null,
+        parent:
+          accounts.parentMint && !isNull(args.parentClassIndex)
+            ? (
+                await getItemPDA(accounts.parentMint, args.parentClassIndex)
+              )[0]
+            : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
         program: this.program,
       });
@@ -1255,7 +1260,7 @@ export class ItemProgram {
     accounts: UpdateItemClassAccounts,
     additionalArgs: UpdateItemClassAdditionalArgs
   ): Promise<web3.PublicKey> {
-    const remainingAccounts = additionalArgs.permissionless
+    const remainingAccounts : AccountMeta[] = additionalArgs.permissionless
       ? [{ pubkey: accounts.parent, isWritable: false, isSigner: false }]
       : await generateRemainingAccountsGivenPermissivenessToUse({
           permissivenessToUse: args.updatePermissivenessToUse,
@@ -1303,7 +1308,7 @@ export async function getItemProgram(
     preflightCommitment: "recent",
   });
 
-  const idl = await Program.fetchIdl(ITEM_ID, provider);
+  const idl = await Program.fetchIdl(ITEM_ID, provider); // QUESTION: What should we do if idl is null (no accountInfo)?
 
   const program = new Program(idl, ITEM_ID, provider);
 

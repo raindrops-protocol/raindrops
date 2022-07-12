@@ -50,6 +50,7 @@
     "form-data": "^4.0.0",
     "jsonschema": "^1.4.0",
     "lodash": "^4.17.21",
+    "lodash.isnull": "^3.0.0",
     "loglevel": "^1.7.1",
     "node-fetch": "^2.6.1"
   },
