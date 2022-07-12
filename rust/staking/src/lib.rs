@@ -332,7 +332,7 @@ pub mod staking {
         )?;
 
         require!(staking_counter.event_type == 1, IncorrectStakingCounterType);
-        require!(staking_counter.event_start > 0, StakingWarmupNotStarted);
+        require!(staking_counter.event_start > 0, StakingCooldownNotStarted);
 
         if let Some(duration) = artifact_class.data.staking_cooldown_duration {
             require!(
@@ -648,6 +648,8 @@ pub enum ErrorCode {
     StakingWarmupNotFinished,
     #[msg("Attempting to use a staking counter going in the wrong direction")]
     IncorrectStakingCounterType,
+    #[msg("Staking cooldown not started")]
+    StakingCooldownNotStarted,
     #[msg("Staking cooldown not finished")]
     StakingCooldownNotFinished,
     #[msg("Invalid program owner")]
