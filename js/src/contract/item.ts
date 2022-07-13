@@ -5,8 +5,7 @@ import {
   AnchorProvider,
   Address,
 } from "@project-serum/anchor";
-import { AccountMeta, SystemProgram, TransactionInstruction } from "@solana/web3.js";
-import { isNull } from "lodash.isnull";
+import { AccountMeta, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { ITEM_ID, PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
@@ -61,24 +60,23 @@ function convertNumsToBNs(data: any) {
         k.callback.code = new BN(k.callback.code);
       }
 
-      let u = k.itemClassType.consumable;
+      let c = k.itemClassType.consumable;
 
-      if (u) {
-        if (u.maxUses != null) u.maxUses = new BN(u.maxUses);
-        if (u.maxPlayersPerUse != null)
-          u.maxPlayersPerUse = new BN(u.maxPlayersPerUse);
-        if (u.warmupDuration != null)
-          u.warmupDuration = new BN(u.warmupDuration);
-        if (u.cooldownDuration != null) {
-          u.cooldownDuration = new BN(u.cooldownDuration);
+      if (c) {
+        if (c.maxUses != null) c.maxUses = new BN(c.maxUses);
+        if (c.maxPlayersPerUse != null)
+          c.maxPlayersPerUse = new BN(c.maxPlayersPerUse);
+        if (c.warmupDuration != null)
+          c.warmupDuration = new BN(c.warmupDuration);
+        if (c.cooldownDuration != null) {
+          c.cooldownDuration = new BN(c.cooldownDuration);
         }
       }
 
-      // QUESTION: Why do we need to reuse 'u' here? It is changing type
-      u = k.itemClassType.wearable;
-      if (u) {
-        if (u.limitPerPart) {
-          u.limitPerPart = new BN(u.limitPerPart);
+      let w = k.itemClassType.wearable;
+      if (w) {
+        if (w.limitPerPart) {
+          w.limitPerPart = new BN(w.limitPerPart);
         }
       }
     });
@@ -89,7 +87,6 @@ export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
   key: web3.PublicKey;
   object: ItemClass;
   data: Buffer;
-  classIndex: number; // QUESTION: Is this used?
 
   constructor(args: {
     program: ItemProgram;
@@ -318,7 +315,7 @@ export interface AddCraftItemToEscrowAccounts {
   itemClassMint: web3.PublicKey;
   newItemToken: web3.PublicKey | null;
   newItemTokenHolder: web3.PublicKey | null;
-  craftItemTokenMint: web3.PublicKey | null;
+  craftItemTokenMint: web3.PublicKey;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
@@ -402,7 +399,7 @@ export class ItemProgram {
   async fetchItemClass(
     mint: web3.PublicKey,
     index: BN
-  ): Promise<ItemClassWrapper> {
+  ): Promise<ItemClassWrapper | null> {
     let itemClass = (await getItemPDA(mint, index))[0];
 
     // Need a manual deserializer due to our hack we had to do.
@@ -410,14 +407,15 @@ export class ItemProgram {
       this.program.provider as AnchorProvider
     ).connection.getAccountInfo(itemClass);
 
-    // QUESTION: data is optional, what should we do if it's not populated?
+    if (!itemClassObj?.data) {
+      return Promise.resolve(null)
+    }
     const ic = decodeItemClass(itemClassObj.data);
     ic.program = this.program;
 
     return new ItemClassWrapper({
       program: this,
       key: itemClass,
-      // TODO: Update based on above question
       data: itemClassObj.data,
       object: ic,
     });
@@ -434,7 +432,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint && !isNull(args.parentClassIndex)
+        parent: accounts.parentMint && !!args.parentClassIndex
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -504,7 +502,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint && !isNull(args.parentClassIndex)
+        parent: accounts.parentMint && !!args.parentClassIndex
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -648,7 +646,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint && !isNull(args.parentClassIndex)
+        parent: accounts.parentMint && !!args.parentClassIndex
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -662,8 +660,6 @@ export class ItemProgram {
     )[0];
     const craftItemTokenAccount = (
       await getAtaForMint(
-        // QUESTION: accounts.craftItemTokenMint is possibly null (see type AddCraftItemToEscrowAccounts)
-        // Is this correct? What do we do if it is null?
         accounts.craftItemTokenMint,
         (this.program.provider as AnchorProvider).wallet.publicKey
       )
@@ -675,7 +671,7 @@ export class ItemProgram {
       craftIndex: args.craftItemIndex,
       craftEscrowIndex: args.craftEscrowIndex,
       newItemMint: args.newItemMint,
-      craftItemMint: accounts.craftItemTokenMint, // TODO: update based on above question
+      craftItemMint: accounts.craftItemTokenMint,
       craftItemToken: craftItemTokenAccount,
       payer: (this.program.provider as AnchorProvider).wallet.publicKey,
       amountToMake: args.amountToMake,
@@ -690,7 +686,7 @@ export class ItemProgram {
       craftItemIndex: args.craftItemIndex,
       craftEscrowIndex: args.craftEscrowIndex,
       newItemMint: args.newItemMint,
-      craftItemMint: accounts.craftItemTokenMint, // TODO: update based on above question
+      craftItemMint: accounts.craftItemTokenMint,
       componentScope: args.componentScope,
     });
 
@@ -718,7 +714,7 @@ export class ItemProgram {
     )[0];
 
     const craftItem = (
-      await getItemPDA(accounts.craftItemTokenMint, args.craftItemIndex) // TODO: update based on above question
+      await getItemPDA(accounts.craftItemTokenMint, args.craftItemIndex)
     )[0];
     const craftItemObj = await this.program.account.item.fetch(craftItem);
     const instructions = [],
@@ -757,7 +753,7 @@ export class ItemProgram {
             args.originator ||
             (this.program.provider as AnchorProvider).wallet.publicKey,
           craftItemTokenAccountEscrow: craftItemEscrow,
-          craftItemTokenMint: accounts.craftItemTokenMint, // TODO: update based on above question
+          craftItemTokenMint: accounts.craftItemTokenMint,
           craftItemTokenAccount,
           craftItem,
           craftItemClass: craftItemObj.parent as Address,
@@ -800,7 +796,7 @@ export class ItemProgram {
         tokenMint: accounts.itemClassMint,
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
-        parent: accounts.parentMint && !isNull(args.parentClassIndex)
+        parent: accounts.parentMint && !!args.parentClassIndex
           ? (
               await getItemPDA(accounts.parentMint, args.parentClassIndex)
             )[0]
@@ -936,7 +932,7 @@ export class ItemProgram {
       accounts.itemTransferAuthority || web3.Keypair.generate();
 
     if (
-      accounts.itemAccount.equals( // QUESTION: accounts.itemAccount is possibly null - what should we do if it is?
+      accounts.itemAccount && accounts.itemAccount.equals(
         (
           await getAtaForMint(
             accounts.itemMint,
@@ -950,7 +946,7 @@ export class ItemProgram {
       instructions.push(
         Token.createApproveInstruction(
           TOKEN_PROGRAM_ID,
-          accounts.itemAccount, // TODO: update based on above question
+          accounts.itemAccount,
           itemTransferAuthority.publicKey,
           (this.program.provider as AnchorProvider).wallet.publicKey,
           [],
@@ -965,6 +961,19 @@ export class ItemProgram {
       args.itemClassMint,
       args.classIndex
     );
+
+    if (!itemClass) {
+      throw new Error("Item class could not be found, please double check the specified itemClassMint and classIndex");
+    }
+
+    const validationKey =
+      itemClass.object.itemClassData.config.usages?.[args.usageIndex].validation
+        ?.key;
+    const validationProgram : PublicKey = !!validationKey
+      ? new web3.PublicKey(
+          validationKey
+        )
+      : SystemProgram.programId;
 
     instructions.push(
       await this.program.methods
@@ -982,22 +991,14 @@ export class ItemProgram {
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
-          validationProgram: itemClass.object.itemClassData.config.usages?.[
-            args.usageIndex
-          ].validation
-            ? new web3.PublicKey(
-                itemClass.object.itemClassData.config.usages?.[
-                  args.usageIndex
-                ].validation.key
-              )
-            : SystemProgram.programId,
+          validationProgram,
         })
         .remainingAccounts(remainingAccounts)
         .instruction()
     );
 
     if (
-      accounts.itemAccount.equals( // TODO: update based on above question
+      accounts.itemAccount && accounts.itemAccount.equals(
         (
           await getAtaForMint(
             accounts.itemMint,
@@ -1009,7 +1010,7 @@ export class ItemProgram {
       instructions.push(
         Token.createRevokeInstruction(
           TOKEN_PROGRAM_ID,
-          accounts.itemAccount, // TODO: update based on above question
+          accounts.itemAccount,
           (this.program.provider as AnchorProvider).wallet.publicKey,
           []
         )
@@ -1120,7 +1121,7 @@ export class ItemProgram {
         parentMint: accounts.parentMint,
         parentIndex: args.parentClassIndex,
         parent:
-          accounts.parentMint && !isNull(args.parentClassIndex)
+          accounts.parentMint && !!args.parentClassIndex
             ? (
                 await getItemPDA(accounts.parentMint, args.parentClassIndex)
               )[0]
@@ -1260,7 +1261,7 @@ export class ItemProgram {
     accounts: UpdateItemClassAccounts,
     additionalArgs: UpdateItemClassAdditionalArgs
   ): Promise<web3.PublicKey> {
-    const remainingAccounts : AccountMeta[] = additionalArgs.permissionless
+    const remainingAccounts : AccountMeta[] = additionalArgs.permissionless && accounts.parent
       ? [{ pubkey: accounts.parent, isWritable: false, isSigner: false }]
       : await generateRemainingAccountsGivenPermissivenessToUse({
           permissivenessToUse: args.updatePermissivenessToUse,
@@ -1308,7 +1309,10 @@ export async function getItemProgram(
     preflightCommitment: "recent",
   });
 
-  const idl = await Program.fetchIdl(ITEM_ID, provider); // QUESTION: What should we do if idl is null (no accountInfo)?
+  const idl = await Program.fetchIdl(ITEM_ID, provider);
+  if (!idl) {
+    throw new Error("idl does not exist");
+  }
 
   const program = new Program(idl, ITEM_ID, provider);
 
