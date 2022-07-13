@@ -1,36 +1,9 @@
 import { BN, web3 } from "@project-serum/anchor";
-import { InheritanceState, NamespaceAndIndex, Permissiveness } from "./common";
-
-export enum ChildUpdatePropagationPermissivenessType {
-  DefaultItemCategory,
-  Usages,
-  Components,
-  UpdatePermissiveness,
-  BuildPermissiveness,
+import {
   ChildUpdatePropagationPermissiveness,
-  ChildrenMustBeEditionsPermissiveness,
-  BuilderMustBeHolderPermissiveness,
-  StakingPermissiveness,
-  Namespaces,
-  UsagePermissiveness,
-}
-
-export class ChildUpdatePropagationPermissiveness {
-  overridable: boolean;
-  inherited: InheritanceState;
-  childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType;
-
-  constructor(args: {
-    overridable: boolean;
-    inherited: InheritanceState;
-    childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType;
-  }) {
-    this.overridable = args.overridable;
-    this.inherited = args.inherited;
-    this.childUpdatePropagationPermissivenessType =
-      args.childUpdatePropagationPermissivenessType;
-  }
-}
+  NamespaceAndIndex,
+  Permissiveness,
+} from "./common";
 
 export class ArtifactClassData {
   childrenMustBeEditions: boolean | null;
