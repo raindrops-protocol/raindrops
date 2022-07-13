@@ -31,7 +31,7 @@ import { getCluster } from "../utils/connection";
 import { Token } from "@solana/spl-token";
 import { sendTransactionWithRetry } from "../utils/transactions";
 
-function convertNumsToBNs(data: any) {
+export function convertNumsToBNs(data: any) {
   if (data.itemClassData) {
     if (data.itemClassData.settings.stakingWarmUpDuration)
       data.itemClassData.settings.stakingWarmUpDuration = new BN(
@@ -75,7 +75,7 @@ function convertNumsToBNs(data: any) {
 
       let w = k.itemClassType.wearable;
       if (w) {
-        if (w.limitPerPart) {
+        if (w.limitPerPart) { // QUESTION: This will not be converted if 0 - is that intended?
           w.limitPerPart = new BN(w.limitPerPart);
         }
       }

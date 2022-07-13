@@ -17,9 +17,9 @@
     "suppressImplicitAnyIndexErrors": true,
     "resolveJsonModule": true,
     "lib": ["dom", "es2019"],
-    "types": ["node"]
+    "types": ["jest", "node"]
   },
-  "exclude": ["node_modules", "typings/browser", "typings/browser.d.ts"],
+  "exclude": ["node_modules", "typings/browser", "typings/browser.d.ts", "src/**/*.test.ts"],
   "atom": {
     "rewriteTsconfig": false
   }
