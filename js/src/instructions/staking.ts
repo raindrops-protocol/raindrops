@@ -28,6 +28,7 @@ export interface BeginArtifactStakeWarmupAccounts {
   artifact: web3.PublicKey;
   stakingTokenAccount: web3.PublicKey;
   stakingMint: web3.PublicKey;
+  stakingTransferAuthority: web3.Keypair;
   namespace: web3.PublicKey;
 }
 
@@ -109,15 +110,13 @@ export class Instruction extends SolKitInstruction {
       stakingIndex: args.stakingIndex,
     });
 
-    const stakingTransferAuthority = web3.Keypair.generate();
-
     // TODO: add remaining accounts
 
     return [
       Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
         accounts.stakingTokenAccount,
-        stakingTransferAuthority.publicKey,
+        accounts.stakingTransferAuthority.publicKey,
         (this.program.client.provider as AnchorProvider).wallet.publicKey,
         [],
         args.stakingAmount.toNumber()
@@ -131,7 +130,7 @@ export class Instruction extends SolKitInstruction {
           artifactIntermediaryStakingCounter,
           stakingTokenAccount: accounts.stakingTokenAccount,
           stakingMint: accounts.stakingMint,
-          stakingTransferAuthority: stakingTransferAuthority.publicKey,
+          stakingTransferAuthority: accounts.stakingTransferAuthority.publicKey,
           namespace: accounts.namespace,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
