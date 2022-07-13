@@ -516,7 +516,6 @@ pub struct ChildUpdatePropagationPermissiveness {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum ChildUpdatePropagationPermissivenessType {
-    DefaultItemCategory,
     Usages,
     Components,
     UpdatePermissiveness,
@@ -526,7 +525,7 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
-    UsagePermissiveness,
+    FreeBuildPermissiveness,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
