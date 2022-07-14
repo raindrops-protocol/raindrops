@@ -1,5 +1,5 @@
 import { BN, web3 } from "@project-serum/anchor";
-import { CLI, Wallet } from "@raindrops-protocol/sol-command";
+import { CLI, Wallet } from "@raindrop-studios/sol-command";
 import log from "loglevel";
 import { StakingProgram } from "../contract/staking";
 

@@ -1,5 +1,5 @@
 import { web3 } from "@project-serum/anchor";
-import { Program } from "@raindrops-protocol/sol-kit";
+import { Program } from "@raindrop-studios/sol-kit";
 import { STAKING_ID } from "../constants/programIds";
 import { PREFIX } from "../constants/staking";
 import * as StakingInstruction from "../instructions/staking";

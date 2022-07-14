@@ -2,7 +2,7 @@ import { AnchorProvider, BN, web3 } from "@project-serum/anchor";
 import {
   Program,
   Instruction as SolKitInstruction,
-} from "@raindrops-protocol/sol-kit";
+} from "@raindrop-studios/sol-kit";
 import { Token } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "../constants/programIds";
