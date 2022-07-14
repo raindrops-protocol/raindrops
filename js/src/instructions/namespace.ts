@@ -4,7 +4,7 @@ import {
   Program,
   Instruction as SolKitInstruction,
   InstructionUtils
-} from "@raindrops-protocol/sol-kit";
+} from "@raindrop-studios/sol-kit";
 
 import { getNamespacePDA } from "../utils/pda";
 import { TOKEN_PROGRAM_ID } from "../constants/programIds";

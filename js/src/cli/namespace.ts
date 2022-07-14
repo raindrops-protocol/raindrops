@@ -1,5 +1,5 @@
 #!/usr/bin/env ts-node
-import { Wallet, CLI } from "@raindrops-protocol/sol-command";
+import { Wallet, CLI } from "@raindrop-studios/sol-command";
 import { AnchorProvider, web3 } from "@project-serum/anchor";
 import log from "loglevel";
 
