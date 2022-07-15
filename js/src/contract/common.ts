@@ -102,6 +102,82 @@ export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
   return remainingAccounts;
 }
 
+export async function generateRemainingAccountsForGivenPermissivenessToUse(args: {
+  permissivenessToUse: AnchorPermissivenessType | null;
+  tokenAccount: web3.PublicKey;
+  tokenMint: web3.PublicKey;
+  parentClassAccount: web3.PublicKey | null;
+  parentClassMint: web3.PublicKey | null;
+  parentClass: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+  owner: web3.PublicKey;
+}): Promise<
+  { pubkey: web3.PublicKey; isWritable: boolean; isSigner: boolean }[]
+> {
+  const {
+    permissivenessToUse,
+    tokenAccount,
+    tokenMint,
+    parentClassAccount,
+    parentClassMint,
+    parentClass,
+    metadataUpdateAuthority,
+    owner,
+  } = args;
+
+  const remainingAccounts: {
+    pubkey: web3.PublicKey;
+    isWritable: boolean;
+    isSigner: boolean;
+  }[] = [];
+  if (permissivenessToUse.tokenHolder) {
+    remainingAccounts.push({
+      pubkey: tokenAccount,
+      isWritable: false,
+      isSigner: false,
+    });
+    remainingAccounts.push({
+      pubkey: owner,
+      isWritable: false,
+      isSigner: true,
+    });
+  } else if (permissivenessToUse.parentTokenHolder) {
+    remainingAccounts.push({
+      pubkey: parentClassAccount,
+      isWritable: false,
+      isSigner: false,
+    });
+    remainingAccounts.push({
+      pubkey: owner,
+      isWritable: false,
+      isSigner: true,
+    });
+    remainingAccounts.push({
+      pubkey: parentClass,
+      isWritable: false,
+      isSigner: false,
+    });
+    remainingAccounts.push({
+      pubkey: parentClassMint,
+      isWritable: false,
+      isSigner: false,
+    });
+  } else if (permissivenessToUse.updateAuthority || !permissivenessToUse) {
+    remainingAccounts.push({
+      pubkey: metadataUpdateAuthority || owner,
+      isWritable: false,
+      isSigner: true,
+    });
+    remainingAccounts.push({
+      pubkey: await getMetadata(tokenMint),
+      isWritable: false,
+      isSigner: false,
+    });
+  }
+
+  return remainingAccounts;
+}
+
 // Creating a class uses the parent (if set) update permissivenesses and as such
 // produces slightly different remainingAccounts. So this method is used instead for class creation.
 // If parent is set, defaults to using update authority as a permissiveness to make the new token class.

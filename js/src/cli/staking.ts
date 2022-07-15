@@ -18,6 +18,9 @@ CLI.programCommandWithConfig(
     const { txid } = await stakingProgram.beginArtifactStakeWarmup(
       {
         classIndex: new BN(config.classIndex),
+        parentClassIndex: config.parentClassIndex
+          ? new BN(config.parentClassIndex)
+          : null,
         index: new BN(config.index),
         stakingIndex: new BN(config.stakingIndex),
         artifactClassMint: new web3.PublicKey(config.artifactClassMint),
@@ -28,9 +31,21 @@ CLI.programCommandWithConfig(
       {
         artifactClass: new web3.PublicKey(config.artifactClass),
         artifact: new web3.PublicKey(config.artifact),
-        stakingTokenAccount: new web3.PublicKey(config.stakingTokenAccount),
+        stakingAccount: new web3.PublicKey(config.stakingAccount),
         stakingMint: new web3.PublicKey(config.stakingMint),
         stakingTransferAuthority: web3.Keypair.generate(),
+        parentClassAccount: config.parentClassAccount
+          ? new web3.PublicKey(config.parentClassAccount)
+          : null,
+        parentClassMint: config.parentClassMint
+          ? new web3.PublicKey(config.parentClassMint)
+          : null,
+        parentClass: config.parentClass
+          ? new web3.PublicKey(config.parentClass)
+          : null,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : null,
         namespace: new web3.PublicKey(config.namespace),
       }
     );
@@ -88,6 +103,9 @@ CLI.programCommandWithConfig(
     const { txid } = await stakingProgram.beginArtifactStakeCooldown(
       {
         classIndex: new BN(config.classIndex),
+        parentClassIndex: config.parentClassIndex
+          ? new BN(config.parentClassIndex)
+          : null,
         index: new BN(config.index),
         stakingIndex: new BN(config.stakingIndex),
         artifactClassMint: new web3.PublicKey(config.artifactClassMint),
@@ -100,6 +118,18 @@ CLI.programCommandWithConfig(
         artifact: new web3.PublicKey(config.artifact),
         stakingAccount: new web3.PublicKey(config.stakingAccount),
         stakingMint: new web3.PublicKey(config.stakingMint),
+        parentClassAccount: config.parentClassAccount
+          ? new web3.PublicKey(config.parentClassAccount)
+          : null,
+        parentClassMint: config.parentClassMint
+          ? new web3.PublicKey(config.parentClassMint)
+          : null,
+        parentClass: config.parentClass
+          ? new web3.PublicKey(config.parentClass)
+          : null,
+        metadataUpdateAuthority: config.metadataUpdateAuthority
+          ? new web3.PublicKey(config.metadataUpdateAuthority)
+          : null,
       }
     );
 
