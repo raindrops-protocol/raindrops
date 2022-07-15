@@ -2,22 +2,8 @@ pub mod utils;
 
 use {
     crate::utils::*,
-    anchor_lang::{
-        prelude::*,
-        solana_program::{
-            instruction::Instruction,
-            program::{invoke, invoke_signed},
-            program_option::COption,
-            program_pack::Pack,
-            system_instruction, system_program,
-        },
-        AnchorDeserialize, AnchorSerialize,
-    },
+    anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{close_account, CloseAccount, Mint, Token, TokenAccount},
-    metaplex_token_metadata::instruction::{
-        create_master_edition, create_metadata_accounts,
-        mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
-    },
     raindrops_item::{
         utils::{
             assert_keys_equal, assert_metadata_valid, assert_permissiveness_access, get_item_usage,
@@ -27,10 +13,9 @@ use {
         BasicItemEffect, Boolean, Callback, InheritanceState, Inherited, ItemUsage,
         NamespaceAndIndex, Permissiveness, PermissivenessType,
     },
-    spl_token::instruction::{initialize_account2, mint_to},
 };
 
-anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+anchor_lang::declare_id!("p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1");
 
 pub const PREFIX: &str = "player";
 
@@ -216,7 +201,7 @@ pub struct UpdatePlayerArgs {
     pub player_mint: Pubkey,
     pub update_permissiveness_to_use: Option<PermissivenessType>,
     pub player_class_mint: Pubkey,
-    pub new_data: Option<PlayerData>,
+    pub new_data: Vec<u8>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -415,7 +400,8 @@ pub mod player {
             } else {
                 return Err(error!(ErrorCode::NoParentPresent));
             }
-            let parent_deserialized: Account<'_, PlayerClass> = Account::try_from(parent)?;
+            let parent_deserialized: Box<Account<'_, PlayerClass>> =
+                Box::new(Account::try_from(parent)?);
             update_player_class_with_inherited_information(
                 player_class,
                 &mut new_player_class_data,
@@ -544,7 +530,8 @@ pub mod player {
             ..
         } = args;
 
-        if let Some(data) = new_data {
+        if new_data.len() > 0 {
+            let data: PlayerData = AnchorDeserialize::try_from_slice(&new_data)?;
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: &player.to_account_info(),
@@ -1167,8 +1154,8 @@ pub struct CreatePlayerClass<'info> {
         payer=payer,
         constraint=args.space as usize >= MIN_PLAYER_CLASS_SIZE
     )]
-    player_class: Account<'info, PlayerClass>,
-    player_mint: Account<'info, Mint>,
+    player_class: Box<Account<'info, PlayerClass>>,
+    player_mint: Box<Account<'info, Mint>>,
     metadata: UncheckedAccount<'info>,
     edition: UncheckedAccount<'info>,
     // is the parent item class (if there is one.) Otherwise use same player class.
@@ -1194,8 +1181,8 @@ pub struct UpdatePlayerClass<'info> {
         ],
         bump=player_class.bump
     )]
-    player_class: Account<'info, PlayerClass>,
-    player_mint: Account<'info, Mint>,
+    player_class: Box<Account<'info, PlayerClass>>,
+    player_mint: Box<Account<'info, Mint>>,
     // Pass up system if you dont have a parent
     parent: UncheckedAccount<'info>,
     // These below only needed if trying to do something other than permissionelss inheritance propagation
@@ -1205,9 +1192,9 @@ pub struct UpdatePlayerClass<'info> {
 #[derive(Accounts)]
 pub struct SubtractItemEffect<'info> {
     #[account(mut, constraint=player.key() == player_item_activation_marker.player)]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(
         mut,
         seeds=[
@@ -1219,9 +1206,9 @@ pub struct SubtractItemEffect<'info> {
         ],
         bump=player_item_activation_marker.bump
     )]
-    player_item_activation_marker: Account<'info, PlayerItemActivationMarker>,
+    player_item_activation_marker: Box<Account<'info, PlayerItemActivationMarker>>,
     #[account(constraint=player_item_activation_marker.item == item.key())]
-    item: Account<'info, raindrops_item::Item>,
+    item: Box<Account<'info, raindrops_item::Item>>,
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
@@ -1240,9 +1227,9 @@ pub struct AddItemEffect<'info> {
         constraint=player.key() == item_activation_marker.target.unwrap(),
         bump=player.bump
     )]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(
         init,
         seeds=[
@@ -1257,7 +1244,7 @@ pub struct AddItemEffect<'info> {
         constraint=args.space >= PLAYER_ITEM_ACTIVATION_MARKER_MIN_SPACE,
         space=args.space
     )]
-    player_item_activation_marker: Account<'info, PlayerItemActivationMarker>,
+    player_item_activation_marker: Box<Account<'info, PlayerItemActivationMarker>>,
     #[account(
         mut,
         seeds=[
@@ -1271,7 +1258,7 @@ pub struct AddItemEffect<'info> {
         seeds::program=raindrops_item::id(),
         bump=item_activation_marker.bump
     )]
-    item_activation_marker: Account<'info, raindrops_item::ItemActivationMarker>,
+    item_activation_marker: Box<Account<'info, raindrops_item::ItemActivationMarker>>,
     #[account(
         mut,
         seeds=[
@@ -1282,7 +1269,7 @@ pub struct AddItemEffect<'info> {
         seeds::program=raindrops_item::id(),
         bump=item.bump
     )]
-    item: Account<'info, raindrops_item::Item>,
+    item: Box<Account<'info, raindrops_item::Item>>,
     #[account(
         mut,
         seeds=[
@@ -1294,7 +1281,7 @@ pub struct AddItemEffect<'info> {
         seeds::program=raindrops_item::id(),
         bump=item_class.bump
     )]
-    item_class: Account<'info, raindrops_item::ItemClass>,
+    item_class: Box<Account<'info, raindrops_item::ItemClass>>,
     // Will use funds from item activation marker to seed player activation marker
     #[account(mut)]
     payer: Signer<'info>,
@@ -1319,9 +1306,9 @@ pub struct UseItem<'info> {
         ],
         bump=player.bump
     )]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(mut)]
     item: UncheckedAccount<'info>,
     item_class: UncheckedAccount<'info>,
@@ -1366,9 +1353,9 @@ pub struct UpdateValidForUseIfWarmupPassedOnItem<'info> {
         ],
         bump=player.bump
     )]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(mut)]
     item: UncheckedAccount<'info>,
     item_class: UncheckedAccount<'info>,
@@ -1391,9 +1378,9 @@ pub struct AddItem<'info> {
         ],
         bump=player.bump
     )]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
@@ -1403,12 +1390,12 @@ pub struct AddItem<'info> {
         seeds::program=raindrops_item::id(),
         bump=item.bump
     )]
-    item: Account<'info, raindrops_item::Item>,
+    item: Box<Account<'info, raindrops_item::Item>>,
     #[account(constraint=item.parent == item_class.key())]
-    item_class: Account<'info, raindrops_item::ItemClass>,
-    item_mint: Account<'info, Mint>,
+    item_class: Box<Account<'info, raindrops_item::ItemClass>>,
+    item_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint=item_account.mint == item_mint.key())]
-    item_account: Account<'info, TokenAccount>,
+    item_account: Box<Account<'info, TokenAccount>>,
     item_transfer_authority: Signer<'info>,
     #[account(
         init_if_needed,
@@ -1422,7 +1409,7 @@ pub struct AddItem<'info> {
         token::authority = player,
         payer=payer
     )]
-    player_item_account: Account<'info, TokenAccount>,
+    player_item_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -1445,9 +1432,9 @@ pub struct RemoveItem<'info> {
         ],
         bump=player.bump
     )]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
@@ -1457,12 +1444,12 @@ pub struct RemoveItem<'info> {
         seeds::program=raindrops_item::id(),
         bump=item.bump
     )]
-    item: Account<'info, raindrops_item::Item>,
+    item: Box<Account<'info, raindrops_item::Item>>,
     #[account(constraint=item.parent == item_class.key())]
-    item_class: Account<'info, raindrops_item::ItemClass>,
-    item_mint: Account<'info, Mint>,
+    item_class: Box<Account<'info, raindrops_item::ItemClass>>,
+    item_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint=item_account.mint == item_mint.key())]
-    item_account: Account<'info, TokenAccount>,
+    item_account: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
         seeds=[
@@ -1472,7 +1459,7 @@ pub struct RemoveItem<'info> {
         ],
         bump
     )]
-    player_item_account: Account<'info, TokenAccount>,
+    player_item_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -1488,9 +1475,9 @@ pub struct RemoveItem<'info> {
 #[instruction(args: ToggleEquipItemArgs)]
 pub struct ToggleEquipItem<'info> {
     #[account(mut)]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
@@ -1500,7 +1487,7 @@ pub struct ToggleEquipItem<'info> {
         seeds::program=raindrops_item::id(),
         bump=item.bump
     )]
-    item: Account<'info, raindrops_item::Item>,
+    item: Box<Account<'info, raindrops_item::Item>>,
     #[account(
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
@@ -1511,7 +1498,7 @@ pub struct ToggleEquipItem<'info> {
         constraint=item.parent == item_class.key(),
         bump=item_class.bump
     )]
-    item_class: Account<'info, raindrops_item::ItemClass>,
+    item_class: Box<Account<'info, raindrops_item::ItemClass>>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1520,7 +1507,7 @@ pub struct ToggleEquipItem<'info> {
         ],
         bump
     )]
-    player_item_account: Account<'info, TokenAccount>,
+    player_item_account: Box<Account<'info, TokenAccount>>,
     // System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,

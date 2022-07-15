@@ -9,9 +9,10 @@ wallet = "~/.config/solana/id.json"
 item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
 matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+player = "p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1"
 
 [scripts]
 test = "ts-mocha -p ./tsconfig.json -t 1000000 test/*.ts"
 
 [workspace]
-members = ["item", "namespace", "matches"]
+members = ["item", "namespace", "matches", "player"]

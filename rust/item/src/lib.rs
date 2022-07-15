@@ -19,7 +19,6 @@ use {
     },
     anchor_spl::token::{Mint, Token, TokenAccount},
     arrayref::array_ref,
-    std::str::FromStr,
 };
 anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
 pub const PREFIX: &str = "item";

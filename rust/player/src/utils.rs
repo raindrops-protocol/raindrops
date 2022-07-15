@@ -9,17 +9,14 @@ use {
         UpdateValidForUseIfWarmupPassedOnItemArgs, UseItemArgs, UseItemCallbackArgs, PREFIX,
     },
     anchor_lang::{
-        error,
         prelude::{
-            msg, Account, AccountInfo, AccountMeta, Clock, Program, Pubkey, Rent, Result, Signer,
-            SolanaSysvar, System, Sysvar, UncheckedAccount,
+            Account, AccountInfo, AccountMeta, Clock, Program, Pubkey, Rent, Result, Signer,
+            System, Sysvar, UncheckedAccount,
         },
         require,
         solana_program::{
             instruction::Instruction,
             program::{invoke, invoke_signed},
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
         },
         AnchorSerialize, Key, ToAccountInfo,
     },
@@ -29,10 +26,9 @@ use {
             assert_keys_equal, get_item_usage, propagate_parent, propagate_parent_array, sighash,
             GetItemUsageArgs, PropagateParentArgs, PropagateParentArrayArgs,
         },
-        BasicItemEffect, BasicItemEffectType, Item, ItemActivationMarker, ItemClass, ItemClassData,
-        ItemUsage, ItemUsageType, PermissivenessType,
+        BasicItemEffect, BasicItemEffectType, Item, ItemActivationMarker, ItemClass, ItemUsage,
+        PermissivenessType,
     },
-    std::convert::TryInto,
 };
 
 pub fn update_player_class_with_inherited_information(
@@ -902,7 +898,7 @@ fn rebalance_stat_for_consumable_with_duration<'b, 'c, 'info>(
     } = args;
     if let Some(arr) = bie_bitmap {
         // check to see if we have removed already.
-        let (index_in_bie, mask) = get_index_and_mask_for_bie(i, arr)?;
+        let (index_in_bie, mask) = get_index_and_mask_for_bie(i)?;
         let entry = arr[index_in_bie];
         let applied_mask = entry & mask;
 
@@ -957,9 +953,8 @@ pub fn get_modded_duration(
     Ok(modded_duration as i64)
 }
 
-pub fn get_index_and_mask_for_bie(i: usize, arr: &Vec<u8>) -> Result<(usize, u8)> {
+pub fn get_index_and_mask_for_bie(i: usize) -> Result<(usize, u8)> {
     let index_in_bie_arr = i.checked_div(8).ok_or(ErrorCode::NumericalOverflowError)?;
-    let entry = arr[index_in_bie_arr];
     let offset_from_right = 7 - i.checked_rem(8).ok_or(ErrorCode::NumericalOverflowError)?;
     let mask = u8::pow(2, offset_from_right as u32);
     Ok((index_in_bie_arr, mask))
@@ -1574,13 +1569,13 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
         ..
     } = update_args;
 
-    let mut keys = vec![
+    let keys = vec![
         AccountMeta::new_readonly(item.key(), false),
         AccountMeta::new_readonly(item_class.key(), false),
         AccountMeta::new(item_activation_marker.key(), false),
         AccountMeta::new_readonly(clock.key(), false),
     ];
-    let mut account_infos = vec![
+    let account_infos = vec![
         item.to_account_info(),
         item_class.to_account_info(),
         item_activation_marker.to_account_info(),
