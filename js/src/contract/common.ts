@@ -1,4 +1,5 @@
 import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
+import { Program as SolKitProgram } from "@raindrops-protocol/sol-kit";
 import { Program, web3, BN, AnchorProvider } from "@project-serum/anchor";
 import { getAtaForMint, getItemPDA, getMetadata } from "../utils/pda";
 
@@ -119,7 +120,7 @@ export async function generateRemainingAccountsForCreateClass(args: {
   parentOfParentClass: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
   parentUpdateAuthority: web3.PublicKey | null;
-  program: Program;
+  program: SolKitProgram.Program;
 }): Promise<
   { pubkey: web3.PublicKey; isWritable: boolean; isSigner: boolean }[]
 > {
@@ -144,7 +145,7 @@ export async function generateRemainingAccountsForCreateClass(args: {
     remainingAccounts.push({
       pubkey:
         metadataUpdateAuthority ||
-        (program.provider as AnchorProvider).wallet.publicKey,
+        (program.client.provider as AnchorProvider).wallet.publicKey,
       isWritable: false,
       isSigner: true,
     });
@@ -157,10 +158,10 @@ export async function generateRemainingAccountsForCreateClass(args: {
     const tokenAccount = (
       await getAtaForMint(
         parentMint,
-        (program.provider as AnchorProvider).wallet.publicKey
+        (program.client.provider as AnchorProvider).wallet.publicKey
       )
     )[0];
-    const tokenHolder = (program.provider as AnchorProvider).wallet.publicKey;
+    const tokenHolder = (program.client.provider as AnchorProvider).wallet.publicKey;
     remainingAccounts.push({
       pubkey: tokenAccount,
       isWritable: false,
@@ -180,10 +181,10 @@ export async function generateRemainingAccountsForCreateClass(args: {
     const parentToken = (
       await getAtaForMint(
         parentOfParentClassMint,
-        (program.provider as AnchorProvider).wallet.publicKey
+        (program.client.provider as AnchorProvider).wallet.publicKey
       )
     )[0];
-    const parentHolder = (program.provider as AnchorProvider).wallet.publicKey;
+    const parentHolder = (program.client.provider as AnchorProvider).wallet.publicKey;
     const parentClass =
       parentOfParentClass ||
       (await getItemPDA(parentOfParentClassMint, parentOfParentClassIndex))[0];
@@ -211,7 +212,7 @@ export async function generateRemainingAccountsForCreateClass(args: {
     remainingAccounts.push({
       pubkey:
         parentUpdateAuthority ||
-        (program.provider as AnchorProvider).wallet.publicKey,
+        (program.client.provider as AnchorProvider).wallet.publicKey,
       isWritable: false,
       isSigner: true,
     });

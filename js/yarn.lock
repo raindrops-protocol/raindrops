@@ -1505,10 +1505,10 @@
     loglevel "^1.8.0"
     typescript "^4.3.5"
 
-"@raindrop-studios/sol-kit@^0.1.71":
-  version "0.1.71"
-  resolved "https://registry.yarnpkg.com/@raindrop-studios/sol-kit/-/sol-kit-0.1.71.tgz#63ae7ffdeb5877593144b497a5f4ec19bf849878"
-  integrity sha512-bcUo8aB/ZGqtM+XRuP4B3qrGiXKO099l2DIMIkkBBTZbvlowcabBzzMOnwnCodnyXiElIYEImqdGZuR93PnKkw==
+"@raindrop-studios/sol-kit@^0.1.72":
+  version "0.1.72"
+  resolved "https://registry.yarnpkg.com/@raindrop-studios/sol-kit/-/sol-kit-0.1.72.tgz#b82dcea0d54cd70106c499ae06f71d39b29d4dd1"
+  integrity sha512-5x8rDOKoiq5JvRKxzHfF+EhBjMvRBeQugwHnOuUxfpXtokkjfL134s3Nl5bifluya46Mqjs3CySFoaME/oncHA==
   dependencies:
     "@project-serum/anchor" "^0.24.2"
     borsh "^0.4.0"

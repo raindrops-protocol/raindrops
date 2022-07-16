@@ -1,6 +1,9 @@
 import { jest } from "@jest/globals";
 
-import { BN, Program, web3 } from "@project-serum/anchor";
+import { BN, web3, Program as AnchorProgram } from "@project-serum/anchor";
+import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { Token } from "@solana/spl-token";
+import { InstructionUtils, Program } from "@raindrop-studios/sol-kit";
 import { ITEM_ID } from "../../constants/programIds";
 import {
   getAtaForMint,
@@ -11,190 +14,30 @@ import {
   getMetadata,
 } from "../../utils/pda";
 import { decodeItemClass, ItemClass } from "../../state/item";
-import {
-  convertNumsToBNs,
-  DeactivateItemEscrowArgs,
-  getItemProgram,
-  ItemClassWrapper,
-  ItemProgram,
-} from "../item";
+import { DeactivateItemEscrowArgs } from "../../instructions/item";
+import { getItemProgram, ItemClassWrapper, ItemProgram } from "../item";
 import { generateRemainingAccountsGivenPermissivenessToUse } from "../common";
-import { PublicKey } from "@solana/web3.js";
 
 jest.mock("../../utils/pda");
 jest.mock("../../state/item");
 jest.mock("../common");
-
-describe("convertNumsToBNs", () => {
-  let data: any = {};
-  beforeEach(() => {
-    data = {
-      itemClassData: {
-        settings: {
-          stakingWarmUpDuration: 45,
-          stakingCooldownDuration: 32,
-        },
-        config: {
-          components: [
-            {
-              timeToBuild: 2,
-            },
-            {
-              timeToBuild: 9,
-            },
-          ],
-          usages: [
-            {
-              validation: undefined,
-              callback: undefined,
-              itemClassType: {
-                consumable: {
-                  maxUses: null,
-                  maxPlayersPerUse: null,
-                  warmupDuration: null,
-                  cooldownDuration: null,
-                },
-                wearable: {
-                  limitPerPart: null,
-                },
-              },
-            },
-            {
-              validation: {
-                key: "Faxb4sjJfL5wXMtEL2vhnzKHyYnywspSz4PWTLuaZ4cm",
-                code: 4,
-              },
-              callback: {
-                key: "Faxb4sjJfL5wXMtEL2vhnzKHyYnywspSz4PWTLuaZ4cm",
-                code: 1024,
-              },
-              itemClassType: {
-                consumable: {
-                  maxUses: 0,
-                  maxPlayersPerUse: 1,
-                  warmupDuration: 2,
-                  cooldownDuration: 3,
-                },
-                wearable: {
-                  limitPerPart: 4,
-                },
-              },
-            },
-            {
-              validation: undefined,
-              callback: null,
-              itemClassType: {
-                consumable: null,
-                wearable: null,
-              },
-            },
-          ],
-        },
-      },
-    };
-  });
-  it("does nothing if itemClassData not populated", () => {
-    const keyNotPresent = { not: "itemClassData" };
-    const isNull = { itemClassData: null };
-    expect(() => convertNumsToBNs(keyNotPresent)).not.toThrow();
-    expect(() => convertNumsToBNs(isNull)).not.toThrow();
-  });
-  it("converts staking durations", () => {
-    convertNumsToBNs(data);
-    expect(data.itemClassData.settings.stakingWarmUpDuration).toEqual(
-      new BN(45)
-    );
-    expect(data.itemClassData.settings.stakingCooldownDuration).toEqual(
-      new BN(32)
-    );
-  });
-  it("converts component time to build", () => {
-    convertNumsToBNs(data);
-    expect(data.itemClassData.config.components[0].timeToBuild).toEqual(
-      new BN(2)
-    );
-    expect(data.itemClassData.config.components[1].timeToBuild).toEqual(
-      new BN(9)
-    );
-  });
-  it("converts usage validation", () => {
-    convertNumsToBNs(data);
-    expect(data.itemClassData.config.usages[0].validation).toBeUndefined();
-    expect(data.itemClassData.config.usages[1].validation.key).toEqual(
-      new web3.PublicKey("Faxb4sjJfL5wXMtEL2vhnzKHyYnywspSz4PWTLuaZ4cm")
-    );
-    expect(data.itemClassData.config.usages[1].validation.code).toEqual(
-      new BN(4)
-    );
-  });
-  it("converts usage callback", () => {
-    convertNumsToBNs(data);
-    expect(data.itemClassData.config.usages[0].callback).toBeUndefined();
-    expect(data.itemClassData.config.usages[1].callback.key).toEqual(
-      new web3.PublicKey("Faxb4sjJfL5wXMtEL2vhnzKHyYnywspSz4PWTLuaZ4cm")
-    );
-    expect(data.itemClassData.config.usages[1].callback.code).toEqual(
-      new BN(1024)
-    );
-    expect(data.itemClassData.config.usages[2].callback).toBeNull();
-  });
-  it("converts usage consumable", () => {
-    convertNumsToBNs(data);
-    expect(
-      data.itemClassData.config.usages[0].itemClassType.consumable.maxUses
-    ).toBeNull();
-    expect(
-      data.itemClassData.config.usages[0].itemClassType.consumable
-        .maxPlayersPerUse
-    ).toBeNull();
-    expect(
-      data.itemClassData.config.usages[0].itemClassType.consumable
-        .warmupDuration
-    ).toBeNull();
-    expect(
-      data.itemClassData.config.usages[0].itemClassType.consumable
-        .cooldownDuration
-    ).toBeNull();
-    expect(
-      data.itemClassData.config.usages[1].itemClassType.consumable.maxUses
-    ).toEqual(new BN(0));
-    expect(
-      data.itemClassData.config.usages[1].itemClassType.consumable
-        .maxPlayersPerUse
-    ).toEqual(new BN(1));
-    expect(
-      data.itemClassData.config.usages[1].itemClassType.consumable
-        .warmupDuration
-    ).toEqual(new BN(2));
-    expect(
-      data.itemClassData.config.usages[1].itemClassType.consumable
-        .cooldownDuration
-    ).toEqual(new BN(3));
-    expect(
-      data.itemClassData.config.usages[2].itemClassType.consumable
-    ).toBeNull();
-  });
-  it("converts usage wearable", () => {
-    convertNumsToBNs(data);
-    expect(
-      data.itemClassData.config.usages[0].itemClassType.wearable.limitPerPart
-    ).toBeNull();
-    expect(
-      data.itemClassData.config.usages[1].itemClassType.wearable.limitPerPart
-    ).toEqual(new BN(4));
-    expect(
-      data.itemClassData.config.usages[2].itemClassType.wearable
-    ).toBeNull();
-  });
-});
-
-describe("getItemProgram", () => {
-  // TODO: Mock out the live stuff here, it is pretty slow
-  it("returns ItemProgram", async () => {
-    const itemProgram = await getItemProgram(new web3.Keypair(), "devnet", "");
-    expect(itemProgram).toBeInstanceOf(ItemProgram);
-    expect(itemProgram.id).toBe(ITEM_ID);
-  });
+jest.mock("@raindrop-studios/sol-kit", () => {
+  const SolKitMock = jest.requireActual("@raindrop-studios/sol-kit");
+  // @ts-ignore
+  class NoSendProgram extends SolKitMock.Program.Program {
+    sendWithRetry(
+      instructions: Array<TransactionInstruction>,
+      signers: Array<Keypair> = [],
+      options: { commitment: web3.Commitment; timeout?: number } = {
+        commitment: "confirmed",
+      }
+    ) {
+      return;
+    }
+  }
+  // @ts-ignore
+  SolKitMock.Program.Program = NoSendProgram;
+  return SolKitMock;
 });
 
 describe("ItemProgram", () => {
@@ -220,8 +63,10 @@ describe("ItemProgram", () => {
   const newItemTokenHolder = new web3.PublicKey(
     "HqYW5kvNPPSimhHTDJcJxqkTDRzy4tfdH59vgvkg5eRA"
   );
-  const rpcMock = jest.fn();
-  const remainingAccountsMock = jest.fn().mockReturnValue({ rpc: rpcMock });
+  const instructionMock = jest.fn();
+  const remainingAccountsMock = jest
+    .fn()
+    .mockReturnValue({ instruction: instructionMock });
   const accountsMock = jest
     .fn()
     .mockReturnValue({ remainingAccounts: remainingAccountsMock });
@@ -256,16 +101,15 @@ describe("ItemProgram", () => {
   const itemClassData = {
     data: Buffer.from("something"),
   };
-  const itemClass = new ItemClass();
-  const itemProgram = new ItemProgram({
-    id: publicKey,
-    program: program as unknown as Program,
-  });
+  const itemClass = {} as ItemClass;
+  let itemProgram: ItemProgram;
   const index = new BN(4);
+  beforeAll(async () => {
+    itemProgram = new ItemProgram();
+    itemProgram.client = program as unknown as AnchorProgram;
+  });
   beforeEach(() => {
     data = undefined;
-  });
-  beforeEach(() => {
     (getItemPDA as jest.Mock).mockClear().mockReturnValue([itemClassData]);
     (decodeItemClass as jest.Mock).mockClear().mockReturnValue(itemClass);
     (getItemEscrow as jest.Mock)
@@ -275,13 +119,9 @@ describe("ItemProgram", () => {
       .mockClear()
       .mockReturnValue([newItemMint, null]);
   });
-  it("sets id and program in constructor", () => {
-    const constructeItemProgram = new ItemProgram({
-      id: publicKey,
-      program: program as unknown as Program,
-    });
-    expect(constructeItemProgram.id).toBe(publicKey);
-    expect(constructeItemProgram.program).toBe(program);
+  it("sets id", () => {
+    const constructedItemProgram = new ItemProgram();
+    expect(constructedItemProgram.id).toBe(ITEM_ID);
   });
   describe("fetchItemClass", () => {
     beforeEach(() => {
@@ -447,9 +287,9 @@ describe("ItemProgram", () => {
         (accountsMock as jest.Mock).mock.lastCall[0].newItemTokenHolder
       ).toBe(publicKey);
     });
-    it("calls rpc", async () => {
+    it("calls instruction", async () => {
       await itemProgram.createItemEscrow(args, accounts, additionalArgs);
-      expect(rpcMock).toHaveBeenCalled();
+      expect(instructionMock).toHaveBeenCalled();
     });
   });
   describe("completeItemEscrowBuildPhase", () => {
@@ -640,13 +480,13 @@ describe("ItemProgram", () => {
         publicKey
       );
     });
-    it("calls rpc", async () => {
+    it("calls instruction", async () => {
       await itemProgram.completeItemEscrowBuildPhase(
         args,
         accounts,
         additionalArgs
       );
-      expect(rpcMock).toHaveBeenCalled();
+      expect(instructionMock).toHaveBeenCalled();
     });
     it("gets new item metadata", async () => {
       await itemProgram.completeItemEscrowBuildPhase(
@@ -720,9 +560,9 @@ describe("ItemProgram", () => {
         (remainingAccountsMock as jest.Mock).mock.lastCall[0].originator
       ).toBe(publicKey);
     });
-    it("calls rpc", async () => {
+    it("calls instruction", async () => {
       await itemProgram.deactivateItemEscrow(args, accounts, additionalArgs);
-      expect(rpcMock).toHaveBeenCalled();
+      expect(instructionMock).toHaveBeenCalled();
     });
   });
   describe("updateValidForUseIfWarmupPassed", () => {
@@ -781,13 +621,13 @@ describe("ItemProgram", () => {
       );
       expect(updateValidForUseIfWarmupPassedMock).toHaveBeenCalledWith(args);
     });
-    it("calls rpc", async () => {
+    it("calls instruction", async () => {
       await itemProgram.updateValidForUseIfWarmupPassed(
         args,
         accounts,
         additionalArgs
       );
-      expect(rpcMock).toHaveBeenCalled();
+      expect(instructionMock).toHaveBeenCalled();
     });
   });
 });
