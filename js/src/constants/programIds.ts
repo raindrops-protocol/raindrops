@@ -17,7 +17,7 @@ export const MATCHES_ID = new web3.PublicKey(
 );
 
 export const STAKING_ID = new web3.PublicKey(
-  "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
+  "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 );
 
 export const WRAPPED_SOL_MINT = new web3.PublicKey(
