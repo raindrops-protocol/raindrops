@@ -30,6 +30,16 @@ pub struct BeginArtifactStakeWarmupArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct EndArtifactStakeWarmupArgs {
+    pub class_index: u64,
+    pub index: u64,
+    pub staking_index: u64,
+    pub artifact_class_mint: Pubkey,
+    pub artifact_mint: Pubkey,
+    pub staking_amount: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BeginArtifactStakeCooldownArgs {
     pub class_index: u64,
     pub parent_class_index: Option<u64>,
@@ -39,16 +49,6 @@ pub struct BeginArtifactStakeCooldownArgs {
     pub artifact_mint: Pubkey,
     pub amount_to_unstake: u64,
     pub staking_permissiveness_to_use: Option<PermissivenessType>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct EndArtifactStakeWarmupArgs {
-    pub class_index: u64,
-    pub index: u64,
-    pub staking_index: u64,
-    pub artifact_class_mint: Pubkey,
-    pub artifact_mint: Pubkey,
-    pub staking_amount: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
