@@ -3,10 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "license": "ISC",
-  "workspaces": [
-    "js",
-    "rust"
-  ],
   "scripts": {},
   "dependencies": {},
   "devDependencies": {
