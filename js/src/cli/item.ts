@@ -673,7 +673,7 @@ programCommand("show_item_build")
       })
     )[0];
 
-    const itemEscrow = (await anchorProgram.program.account.itemEscrow.fetch(
+    const itemEscrow = (await anchorProgram.client.account.itemEscrow.fetch(
       itemEscrowKey
     )) as any;
     log.setLevel("info");
@@ -709,11 +709,11 @@ programCommand("show_item")
 
     const itemKey = (await getItemPDA(actualMint, actualIndex))[0];
 
-    const item = (await anchorProgram.program.account.item.fetch(
+    const item = (await anchorProgram.client.account.item.fetch(
       itemKey
     )) as any;
 
-    const itemParent = (await anchorProgram.program.account.itemClass.fetch(
+    const itemParent = (await anchorProgram.client.account.itemClass.fetch(
       item.parent
     )) as any;
     log.setLevel("info");
@@ -1200,7 +1200,7 @@ programCommand("update_item")
       await getItemPDA(new web3.PublicKey(itemMint), new BN(itemIndex || 0))
     )[0];
 
-    const itemObj = await anchorProgram.program.account.item.fetch(item);
+    const itemObj = await anchorProgram.client.account.item.fetch(item);
 
     await anchorProgram.updateItem(
       {

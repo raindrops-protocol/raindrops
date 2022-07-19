@@ -1,5 +1,5 @@
 import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
-import { Program as SolKitProgram } from "@raindrops-protocol/sol-kit";
+import { Program as SolKitProgram } from "@raindrop-studios/sol-kit";
 import { Program, web3, BN, AnchorProvider } from "@project-serum/anchor";
 import { getAtaForMint, getItemPDA, getMetadata } from "../utils/pda";
 

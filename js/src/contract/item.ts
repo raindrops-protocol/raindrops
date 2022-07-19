@@ -129,8 +129,8 @@ export class ItemProgram extends Program.Program {
 
   async updateValidForUseIfWarmupPassed(
     args: ItemInstruction.UpdateValidForUseIfWarmupPassedArgs,
-    accounts: ItemInstruction.UpdateValidForUseIfWarmupPassedAccounts,
-    additionalArgs: ItemInstruction.UpdateValidForUseIfWarmupPassedAdditionalArgs,
+    accounts: ItemInstruction.UpdateValidForUseIfWarmupPassedAccounts = {},
+    additionalArgs: ItemInstruction.UpdateValidForUseIfWarmupPassedAdditionalArgs = {},
     options?: SendOptions
   ): Promise<{
     txid: string;
@@ -232,7 +232,7 @@ export class ItemProgram extends Program.Program {
   async endItemActivation(
     args: ItemInstruction.EndItemActivationArgs,
     accounts: ItemInstruction.EndItemActivationAccounts,
-    additionalArgs: ItemInstruction.EndItemActivationAdditionalArgs,
+    additionalArgs: ItemInstruction.EndItemActivationAdditionalArgs = {},
     options?: SendOptions
   ): Promise<{
     txid: string;
@@ -249,7 +249,7 @@ export class ItemProgram extends Program.Program {
   async drainItemEscrow(
     args: ItemInstruction.DrainItemEscrowArgs,
     accounts: ItemInstruction.DrainItemEscrowAccounts,
-    additionalArgs: ItemInstruction.DrainItemEscrowAdditionalArgs,
+    additionalArgs: ItemInstruction.DrainItemEscrowAdditionalArgs = {},
     options?: SendOptions
   ): Promise<{
     txid: string;
