@@ -6,11 +6,12 @@ import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
 import { decodeItemClass, ItemClass } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
+import { PREFIX } from "../constants/item";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
+  static PREFIX = PREFIX;
   PROGRAM_ID = ITEM_ID;
-  // QUESTION: Should we specify a PREFIX here?
 
   constructor() {
     super();
@@ -145,7 +146,7 @@ export class ItemProgram extends Program.Program {
 
   async addCraftItemToEscrow(
     args: ItemInstruction.AddCraftItemToEscrowArgs,
-    accounts: ItemInstruction.AddCraftItemToEscrowAccounts,
+    accounts: Omit<ItemInstruction.AddCraftItemToEscrowAccounts,'craftItemTransferAuthority'>,
     additionalArgs: ItemInstruction.AddCraftItemToEscrowAdditionalArgs,
     options?: SendOptions
   ): Promise<{
@@ -153,7 +154,7 @@ export class ItemProgram extends Program.Program {
     slot: number;
   }> {
     const signers = [];
-    const craftItemTransferAuthority = web3.Keypair.generate(); // Pulling this up out of the instruction - is that ok?
+    const craftItemTransferAuthority = web3.Keypair.generate();
     signers.push(craftItemTransferAuthority);
 
     const instructions = await this.instruction.addCraftItemToEscrow(
@@ -196,7 +197,7 @@ export class ItemProgram extends Program.Program {
   }> {
     const signers = [];
     const itemTransferAuthority =
-      accounts.itemTransferAuthority || web3.Keypair.generate(); // Pulling this up out of the instruction - is that ok?
+      accounts.itemTransferAuthority || web3.Keypair.generate();
     if (
       accounts.itemAccount &&
       accounts.itemAccount.equals(
@@ -327,7 +328,7 @@ export async function getItemProgram(
   customRpcUrl: string
 ): Promise<ItemProgram> {
   return Program.Program.getProgramWithWallet(
-    ItemProgram, // QUESTION - What should go here?
+    ItemProgram,
     anchorWallet as Wallet,
     env,
     customRpcUrl
