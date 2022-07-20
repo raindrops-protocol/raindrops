@@ -216,8 +216,8 @@ export class ItemProgram extends Program.Program {
       args.classIndex
     );
     if (!itemClass) {
-      throw new Error(
-        "Item class could not be found, please double check the specified itemClassMint and classIndex"
+      throw new ItemClassNotFoundError(
+        "Please double check the specified itemClassMint and classIndex"
       );
     }
 
@@ -327,10 +327,20 @@ export async function getItemProgram(
   env: string,
   customRpcUrl: string
 ): Promise<ItemProgram> {
-  return Program.Program.getProgramWithWallet(
+  return ItemProgram.getProgramWithWallet(
     ItemProgram,
     anchorWallet as Wallet,
     env,
     customRpcUrl
   );
+}
+
+export class ItemClassNotFoundError extends Error {
+  constructor(message: string) {
+    super(`ItemClass Not Found: ${message}`);
+
+    // Set the prototype explicitly
+    // Ref: https://github.com/Microsoft/TypeScript-wiki/blob/main/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
+    Object.setPrototypeOf(this, Error.prototype);
+  }
 }

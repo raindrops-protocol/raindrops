@@ -682,6 +682,9 @@ export class Instruction extends SolKitInstruction {
         )[0]
       )
     ) {
+      if (!itemTransferAuthority) {
+        throw new Error("itemTransferAuthority must be specified if itemAccount is itemMint's ATA")
+      }
       instructions.push(
         Token.createApproveInstruction(
           TOKEN_PROGRAM_ID,
@@ -711,7 +714,7 @@ export class Instruction extends SolKitInstruction {
           itemMint: accounts.itemMint,
           item: itemKey,
           itemAccount: accounts.itemAccount as Address,
-          itemTransferAuthority: itemTransferAuthority.publicKey,
+          itemTransferAuthority: itemTransferAuthority?.publicKey,
           itemActivationMarker,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
@@ -933,7 +936,6 @@ export class Instruction extends SolKitInstruction {
         })
         .instruction(),
     ];
-    // QUESTION: This used to return itemKey - is that used anywhere?
   }
 }
 
