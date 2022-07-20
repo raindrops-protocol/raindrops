@@ -211,7 +211,7 @@ pub struct UseItemArgs {
     pub item_class_mint: Pubkey,
     // How much space to use for the item marker
     pub item_marker_space: u8,
-    pub usage_permissiveness_to_use: Option<PermissivenessType>,
+    pub use_item_permissiveness_to_use: Option<PermissivenessType>,
     pub amount: u64,
     pub item_usage_index: u16,
     pub target: Option<Pubkey>,
@@ -833,7 +833,7 @@ pub mod player {
             program_id: ctx.program_id,
             given_account: &player.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &args.usage_permissiveness_to_use,
+            permissiveness_to_use: &args.use_item_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.use_item_permissiveness,
             index: args.index,
             class_index: Some(player.class_index),

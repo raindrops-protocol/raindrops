@@ -4,6 +4,7 @@ import {
   PublicKey,
   SystemProgram,
   SYSVAR_CLOCK_PUBKEY,
+  SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import {
   Program,
@@ -41,6 +42,32 @@ export interface ToggleEquipItemArgs {
   // not implemented yet sdk-side
   itemUsageProof: null;
   itemUsage: null;
+}
+
+export interface UseItemArgs {
+  itemIndex: BN;
+  itemClassIndex: BN;
+  itemClassMint: PublicKey;
+  itemMarkerSpace: number;
+  useItemPermissivenessToUse: null | AnchorPermissivenessType;
+  amount: BN;
+  itemUsageIndex: number;
+  target: null | PublicKey;
+  index: BN;
+  playerMint: PublicKey;
+  // TODO null for now, no merkle yet on sdk leel
+  itemUsageInfo: null;
+}
+
+export interface UseItemAccounts {
+  itemMint: PublicKey;
+  validationProgram: PublicKey;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
+export interface UseItemAdditionalArgs {
+  playerClassMint: PublicKey;
+  classIndex: BN;
 }
 
 export interface AddItemEffectArgs {
@@ -580,6 +607,81 @@ export class Instruction extends SolKitInstruction {
             playerItemAccount: (
               await getPlayerItemAccount({ item, player })
             )[0],
+            validationProgram:
+              accounts.validationProgram || SystemProgram.programId,
+          })
+          .remainingAccounts(remainingAccounts)
+          .instruction(),
+      ],
+      signers: [],
+    };
+  }
+
+  async useItem(
+    args: UseItemArgs,
+    accounts: UseItemAccounts,
+    additionalArgs: UseItemAdditionalArgs
+  ) {
+    const parent = (
+      await getPlayerPDA(
+        additionalArgs.playerClassMint,
+        additionalArgs.classIndex
+      )
+    )[0];
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.useItemPermissivenessToUse,
+        tokenMint: args.playerMint,
+        parentMint: additionalArgs.playerClassMint,
+        parentIndex: additionalArgs.classIndex,
+        parent,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program.client,
+      });
+
+    InstructionUtils.convertNumbersToBNs(args, [
+      "itemIndex",
+      "itemClassIndex",
+      "amount",
+      "itemMarkerSpace",
+      "itemUsageIndex",
+      "index",
+    ]);
+
+    const playerKey = (await getPlayerPDA(args.playerMint, args.index))[0];
+
+    const item = (await getItemPDA(accounts.itemMint, args.itemIndex))[0];
+
+    return {
+      instructions: [
+        await this.program.client.methods
+          .useItem(args)
+          .accounts({
+            player: playerKey,
+            playerClass: parent,
+            item,
+            itemClass: (
+              await getItemPDA(args.itemClassMint, args.itemClassIndex)
+            )[0],
+            itemMint: accounts.itemMint,
+            playerItemAccount: (
+              await getPlayerItemAccount({ item, player: playerKey })
+            )[0],
+            itemActivationMarker: (
+              await getItemActivationMarker({
+                itemMint: accounts.itemMint,
+                index: args.itemIndex,
+                usageIndex: new BN(args.itemUsageIndex),
+                amount: args.amount,
+              })
+            )[0],
+            payer: (this.program.client.provider as AnchorProvider).wallet
+              .publicKey,
+            systemProgram: SystemProgram.programId,
+            itemProgram: ITEM_ID,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            clock: SYSVAR_CLOCK_PUBKEY,
+            rent: SYSVAR_RENT_PUBKEY,
             validationProgram:
               accounts.validationProgram || SystemProgram.programId,
           })

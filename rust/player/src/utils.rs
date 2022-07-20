@@ -1455,7 +1455,7 @@ pub fn begin_item_activation<'b, 'c, 'info>(
 
     let UseItemArgs {
         item_class_mint,
-        usage_permissiveness_to_use,
+        use_item_permissiveness_to_use,
         item_usage_index,
         item_index,
         item_class_index,
@@ -1511,7 +1511,7 @@ pub fn begin_item_activation<'b, 'c, 'info>(
                 &CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
                     instruction: sighash("global", "begin_item_activation"),
                     item_class_mint: item_class_mint,
-                    usage_permissiveness_to_use,
+                    usage_permissiveness_to_use: use_item_permissiveness_to_use,
                     usage_index: item_usage_index,
                     index: item_index,
                     class_index: item_class_index,
