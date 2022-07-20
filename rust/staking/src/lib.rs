@@ -1,58 +1,62 @@
 pub mod utils;
 
 use {
-    crate::utils::{
-        assert_is_proper_class, assert_is_proper_instance, assert_part_of_namespace,
-        assert_permissiveness_access, close_token_account, spl_token_transfer,
-        AssertPermissivenessAccessArgs, TokenTransferParams,
-    },
+    crate::utils::{assert_is_proper_class, assert_is_proper_instance},
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{Mint, Token, TokenAccount},
+    raindrops_item::{
+        utils::{
+            assert_part_of_namespace, assert_permissiveness_access, close_token_account,
+            spl_token_transfer, AssertPermissivenessAccessArgs, TokenTransferParams,
+        },
+        Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
+        PermissivenessType,
+    },
 };
-anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
+anchor_lang::declare_id!("stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4");
 pub const PREFIX: &str = "staking";
 pub const STAKING_COUNTER: &str = "counter";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BeginArtifactStakeWarmupArgs {
-    class_index: u64,
-    index: u64,
-    staking_index: u64,
-    artifact_class_mint: Pubkey,
-    artifact_mint: Pubkey,
-    staking_amount: u64,
-    staking_permissiveness_to_use: Option<Permissiveness>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct BeginArtifactStakeCooldownArgs {
-    class_index: u64,
-    index: u64,
-    staking_index: u64,
-    artifact_class_mint: Pubkey,
-    artifact_mint: Pubkey,
-    amount_to_unstake: u64,
-    staking_permissiveness_to_use: Option<Permissiveness>,
+    pub class_index: u64,
+    pub parent_class_index: Option<u64>,
+    pub index: u64,
+    pub staking_index: u64,
+    pub artifact_class_mint: Pubkey,
+    pub artifact_mint: Pubkey,
+    pub staking_amount: u64,
+    pub staking_permissiveness_to_use: Option<PermissivenessType>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EndArtifactStakeWarmupArgs {
-    class_index: u64,
-    index: u64,
-    staking_index: u64,
-    artifact_class_mint: Pubkey,
-    artifact_mint: Pubkey,
-    staking_amount: u64,
+    pub class_index: u64,
+    pub index: u64,
+    pub staking_index: u64,
+    pub artifact_class_mint: Pubkey,
+    pub artifact_mint: Pubkey,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BeginArtifactStakeCooldownArgs {
+    pub class_index: u64,
+    pub parent_class_index: Option<u64>,
+    pub index: u64,
+    pub staking_index: u64,
+    pub artifact_class_mint: Pubkey,
+    pub artifact_mint: Pubkey,
+    pub staking_permissiveness_to_use: Option<PermissivenessType>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EndArtifactStakeCooldownArgs {
-    class_index: u64,
-    index: u64,
-    staking_index: u64,
-    staking_mint: Pubkey,
-    artifact_class_mint: Pubkey,
-    artifact_mint: Pubkey,
+    pub class_index: u64,
+    pub index: u64,
+    pub staking_index: u64,
+    pub staking_mint: Pubkey,
+    pub artifact_class_mint: Pubkey,
+    pub artifact_mint: Pubkey,
 }
 
 #[program]
@@ -70,13 +74,14 @@ pub mod staking {
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
         let staking_mint = &ctx.accounts.staking_mint;
-        let staking_account = &ctx.accounts.staking_token_account;
+        let staking_account = &ctx.accounts.staking_account;
         let staking_transfer_authority = &ctx.accounts.staking_transfer_authority;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
 
         let BeginArtifactStakeWarmupArgs {
             class_index,
+            parent_class_index,
             artifact_class_mint,
             staking_amount,
             staking_permissiveness_to_use,
@@ -104,6 +109,7 @@ pub mod staking {
             permissiveness_to_use: &staking_permissiveness_to_use,
             permissiveness_array: &artifact_class.data.staking_permissiveness,
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
         })?;
 
@@ -145,7 +151,6 @@ pub mod staking {
             class_index,
             index,
             artifact_class_mint,
-            staking_amount,
             artifact_mint,
             ..
         } = args;
@@ -182,6 +187,7 @@ pub mod staking {
         ];
 
         let artifact_info = artifact_unchecked.to_account_info();
+        let staking_amount = staking_escrow.amount;
 
         spl_token_transfer(TokenTransferParams {
             source: staking_escrow.to_account_info(),
@@ -203,7 +209,7 @@ pub mod staking {
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         close_token_account(
-            staking_escrow,
+            &staking_escrow.to_account_info(),
             payer,
             token_program,
             &artifact_unchecked.to_account_info(),
@@ -236,9 +242,9 @@ pub mod staking {
 
         let BeginArtifactStakeCooldownArgs {
             class_index,
+            parent_class_index,
             index,
             artifact_class_mint,
-            amount_to_unstake,
             staking_permissiveness_to_use,
             artifact_mint,
             ..
@@ -265,6 +271,7 @@ pub mod staking {
                 &artifact_class.data.staking_permissiveness
             },
             index: class_index,
+            class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
         })?;
 
@@ -274,6 +281,8 @@ pub mod staking {
             &index.to_le_bytes(),
             &[artifact.bump],
         ];
+
+        let amount_to_unstake = artifact_mint_staking_account.amount;
 
         spl_token_transfer(TokenTransferParams {
             source: artifact_mint_staking_account.to_account_info(),
@@ -332,7 +341,7 @@ pub mod staking {
         )?;
 
         require!(staking_counter.event_type == 1, IncorrectStakingCounterType);
-        require!(staking_counter.event_start > 0, StakingWarmupNotStarted);
+        require!(staking_counter.event_start > 0, StakingCooldownNotStarted);
 
         if let Some(duration) = artifact_class.data.staking_cooldown_duration {
             require!(
@@ -374,7 +383,7 @@ pub mod staking {
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         close_token_account(
-            staking_escrow,
+            &staking_escrow.to_account_info(),
             payer,
             token_program,
             &artifact_unchecked.to_account_info(),
@@ -410,8 +419,8 @@ pub struct BeginArtifactStakeWarmup<'info> {
     artifact_intermediary_staking_account: Account<'info, TokenAccount>,
     #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(),args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump, space=8+1+8+1, payer=payer)]
     artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
-    #[account(constraint=staking_token_account.mint == staking_mint.key())]
-    staking_token_account: Account<'info, TokenAccount>,
+    #[account(constraint=staking_account.mint == staking_mint.key())]
+    staking_account: Account<'info, TokenAccount>,
     staking_mint: Account<'info, Mint>,
     staking_transfer_authority: Signer<'info>,
     namespace: UncheckedAccount<'info>,
@@ -443,8 +452,8 @@ pub struct EndArtifactStakeWarmup<'info> {
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
     clock: Sysvar<'info, Clock>,
-    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
+
 #[derive(Accounts)]
 #[instruction(args: BeginArtifactStakeCooldownArgs)]
 pub struct BeginArtifactStakeCooldown<'info> {
@@ -462,7 +471,7 @@ pub struct BeginArtifactStakeCooldown<'info> {
     #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes(), staking_account.key().as_ref()], bump, space=8+1+8+1, payer=payer)]
     artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump)]
-    artifact_mint_staking_account: UncheckedAccount<'info>,
+    artifact_mint_staking_account: Account<'info, TokenAccount>,
     #[account(mut, constraint=staking_account.mint == staking_mint.key())]
     staking_account: Account<'info, TokenAccount>,
     staking_mint: Account<'info, Mint>,
@@ -490,112 +499,56 @@ pub struct EndArtifactStakeCooldown<'info> {
     payer: Signer<'info>,
     token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
-    // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub struct Permissiveness {
-    inherited: InheritanceState,
-    permissiveness_type: PermissivenessType,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum PermissivenessType {
-    TokenHolder,
-    ParentTokenHolder,
-    UpdateAuthority,
-    Anybody,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ChildUpdatePropagationPermissiveness {
-    overridable: bool,
-    inherited: InheritanceState,
-    child_update_propagation_permissiveness_type: ChildUpdatePropagationPermissivenessType,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ChildUpdatePropagationPermissivenessType {
-    DefaultItemCategory,
-    Usages,
-    Components,
-    UpdatePermissiveness,
-    BuildPermissiveness,
-    ChildUpdatePropagationPermissiveness,
-    ChildrenMustBeEditionsPermissiveness,
-    BuilderMustBeHolderPermissiveness,
-    StakingPermissiveness,
-    Namespaces,
-    UsagePermissiveness,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum InheritanceState {
-    NotInherited,
-    Inherited,
-    Overridden,
-}
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct NamespaceAndIndex {
-    namespace: Pubkey,
-    indexed: bool,
-    inherited: InheritanceState,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Boolean {
-    inherited: InheritanceState,
-    boolean: bool,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ArtifactClassData {
-    children_must_be_editions: Option<Boolean>,
-    builder_must_be_holder: Option<Boolean>,
-    update_permissiveness: Option<Vec<Permissiveness>>,
-    build_permissiveness: Option<Vec<Permissiveness>>,
-    staking_warm_up_duration: Option<u64>,
-    staking_cooldown_duration: Option<u64>,
-    staking_permissiveness: Option<Vec<Permissiveness>>,
-    // if not set, assumed to use staking permissiveness
-    unstaking_permissiveness: Option<Vec<Permissiveness>>,
-    child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
-}
-
-#[account]
-pub struct ArtifactClass {
-    namespaces: Option<Vec<NamespaceAndIndex>>,
-    parent: Option<Pubkey>,
-    mint: Option<Pubkey>,
-    metadata: Option<Pubkey>,
-    /// If not present, only Destruction/Infinite consumption types are allowed,
-    /// And no cooldowns because we can't easily track a cooldown
-    /// on a mint with more than 1 coin.
-    edition: Option<Pubkey>,
-    bump: u8,
-    existing_children: u64,
-    data: ArtifactClassData,
 }
 
 #[account]
 pub struct StakingCounter {
-    bump: u8,
-    event_start: i64,
-    event_type: u8,
+    pub bump: u8,
+    pub event_start: i64,
+    pub event_type: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ArtifactClassData {
+    pub children_must_be_editions: Option<Boolean>,
+    pub builder_must_be_holder: Option<Boolean>,
+    pub update_permissiveness: Option<Vec<Permissiveness>>,
+    pub build_permissiveness: Option<Vec<Permissiveness>>,
+    pub staking_warm_up_duration: Option<u64>,
+    pub staking_cooldown_duration: Option<u64>,
+    pub staking_permissiveness: Option<Vec<Permissiveness>>,
+    // if not set, assumed to use staking permissiveness
+    pub unstaking_permissiveness: Option<Vec<Permissiveness>>,
+    pub child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
+}
+
+#[account]
+pub struct ArtifactClass {
+    pub namespaces: Option<Vec<NamespaceAndIndex>>,
+    pub parent: Option<Pubkey>,
+    pub mint: Option<Pubkey>,
+    pub metadata: Option<Pubkey>,
+    /// If not present, only Destruction/Infinite consumption types are allowed,
+    /// And no cooldowns because we can't easily track a cooldown
+    /// on a mint with more than 1 coin.
+    pub edition: Option<Pubkey>,
+    pub bump: u8,
+    pub existing_children: u64,
+    pub data: ArtifactClassData,
 }
 
 #[account]
 pub struct Artifact {
-    namespaces: Option<Vec<NamespaceAndIndex>>,
-    parent: Pubkey,
-    mint: Option<Pubkey>,
-    metadata: Option<Pubkey>,
+    pub namespaces: Option<Vec<NamespaceAndIndex>>,
+    pub parent: Pubkey,
+    pub mint: Option<Pubkey>,
+    pub metadata: Option<Pubkey>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
     /// on a mint with more than 1 coin.
-    edition: Option<Pubkey>,
-    bump: u8,
-    tokens_staked: u64,
+    pub edition: Option<Pubkey>,
+    pub bump: u8,
+    pub tokens_staked: u64,
 }
 
 #[error_code]
@@ -648,6 +601,8 @@ pub enum ErrorCode {
     StakingWarmupNotFinished,
     #[msg("Attempting to use a staking counter going in the wrong direction")]
     IncorrectStakingCounterType,
+    #[msg("Staking cooldown not started")]
+    StakingCooldownNotStarted,
     #[msg("Staking cooldown not finished")]
     StakingCooldownNotFinished,
     #[msg("Invalid program owner")]

@@ -1,2 +1,2 @@
-export const PREFIX: string = "item";
-export const MARKER: string = "marker";
+export const PREFIX = "item";
+export const MARKER = "marker";

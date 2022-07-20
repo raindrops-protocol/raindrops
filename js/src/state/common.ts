@@ -13,6 +13,23 @@ export class Permissiveness {
   }
 }
 
+export class ChildUpdatePropagationPermissiveness {
+  overridable: boolean;
+  inherited: InheritanceState;
+  childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType;
+
+  constructor(args: {
+    overridable: boolean;
+    inherited: InheritanceState;
+    childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType;
+  }) {
+    this.overridable = args.overridable;
+    this.inherited = args.inherited;
+    this.childUpdatePropagationPermissivenessType =
+      args.childUpdatePropagationPermissivenessType;
+  }
+}
+
 export class InheritedBoolean {
   inherited: InheritanceState;
   boolean: boolean;
@@ -22,6 +39,7 @@ export class InheritedBoolean {
     this.boolean = args.boolean;
   }
 }
+
 export enum PermissivenessType {
   TokenHolder,
   ParentTokenHolder,
@@ -34,6 +52,19 @@ export interface AnchorPermissivenessType {
   parentTokenHolder?: boolean;
   updateAuthority?: boolean;
   anybody?: boolean;
+}
+
+export enum ChildUpdatePropagationPermissivenessType {
+  Usages,
+  Components,
+  UpdatePermissiveness,
+  BuildPermissiveness,
+  ChildUpdatePropagationPermissiveness,
+  ChildrenMustBeEditionsPermissiveness,
+  BuilderMustBeHolderPermissiveness,
+  StakingPermissiveness,
+  Namespaces,
+  FreeBuildPermissiveness,
 }
 
 export function toAnchor(enumVal: any, enumClass: any): any {

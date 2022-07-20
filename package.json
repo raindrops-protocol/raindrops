@@ -3,11 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "license": "ISC",
-  "scripts": {
-  },
-  "dependencies": {
-  },
+  "scripts": {},
+  "dependencies": {},
   "devDependencies": {
-      "@metaplex-foundation/amman": "^0.10.0"
+    "@metaplex-foundation/amman": "^0.10.0"
   }
 }

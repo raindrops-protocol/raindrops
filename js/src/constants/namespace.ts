@@ -1,1 +1,1 @@
-export const PREFIX: string = "namespace";
+export const PREFIX = "namespace";

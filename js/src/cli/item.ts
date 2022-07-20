@@ -9,7 +9,6 @@ import { SystemProgram } from "@solana/web3.js";
 import { getItemProgram } from "../contract/item";
 import {
   BasicItemEffectType,
-  ChildUpdatePropagationPermissivenessType,
   ComponentCondition,
   Consumable,
   ItemClassData,
@@ -25,7 +24,11 @@ import {
   getItemPDA,
   getMetadata,
 } from "../utils/pda";
-import { InheritanceState, PermissivenessType } from "../state/common";
+import {
+  ChildUpdatePropagationPermissivenessType,
+  InheritanceState,
+  PermissivenessType,
+} from "../state/common";
 import { overArgs } from "lodash";
 
 programCommand("create_item_class")
