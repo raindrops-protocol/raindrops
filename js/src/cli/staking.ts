@@ -74,7 +74,6 @@ CLI.programCommandWithConfig(
         stakingIndex: new BN(config.stakingIndex),
         artifactClassMint: new web3.PublicKey(config.artifactClassMint),
         artifactMint: new web3.PublicKey(config.artifactMint),
-        stakingAmount: new BN(config.stakingAmount),
       },
       {
         artifactClass: new web3.PublicKey(config.artifactClass),
@@ -110,7 +109,6 @@ CLI.programCommandWithConfig(
         stakingIndex: new BN(config.stakingIndex),
         artifactClassMint: new web3.PublicKey(config.artifactClassMint),
         artifactMint: new web3.PublicKey(config.artifactMint),
-        amountToUnstake: new BN(config.amountToUnstake),
         stakingPermissivenessToUse: config.Permissiveness || null,
       },
       {

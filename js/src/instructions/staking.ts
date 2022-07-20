@@ -44,7 +44,6 @@ export interface EndArtifactStakeWarmupArgs {
   stakingIndex: BN;
   artifactClassMint: web3.PublicKey;
   artifactMint: web3.PublicKey;
-  stakingAmount: BN;
 }
 
 export interface EndArtifactStakeWarmupAccounts {
@@ -60,7 +59,6 @@ export interface BeginArtifactStakeCooldownArgs {
   stakingIndex: BN;
   artifactClassMint: web3.PublicKey;
   artifactMint: web3.PublicKey;
-  amountToUnstake: BN;
   stakingPermissivenessToUse: AnchorPermissivenessType | null;
 }
 

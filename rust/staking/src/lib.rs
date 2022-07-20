@@ -36,7 +36,6 @@ pub struct EndArtifactStakeWarmupArgs {
     pub staking_index: u64,
     pub artifact_class_mint: Pubkey,
     pub artifact_mint: Pubkey,
-    pub staking_amount: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -47,7 +46,6 @@ pub struct BeginArtifactStakeCooldownArgs {
     pub staking_index: u64,
     pub artifact_class_mint: Pubkey,
     pub artifact_mint: Pubkey,
-    pub amount_to_unstake: u64,
     pub staking_permissiveness_to_use: Option<PermissivenessType>,
 }
 
@@ -153,7 +151,6 @@ pub mod staking {
             class_index,
             index,
             artifact_class_mint,
-            staking_amount,
             artifact_mint,
             ..
         } = args;
@@ -190,6 +187,7 @@ pub mod staking {
         ];
 
         let artifact_info = artifact_unchecked.to_account_info();
+        let staking_amount = staking_escrow.amount;
 
         spl_token_transfer(TokenTransferParams {
             source: staking_escrow.to_account_info(),
@@ -247,7 +245,6 @@ pub mod staking {
             parent_class_index,
             index,
             artifact_class_mint,
-            amount_to_unstake,
             staking_permissiveness_to_use,
             artifact_mint,
             ..
@@ -284,6 +281,8 @@ pub mod staking {
             &index.to_le_bytes(),
             &[artifact.bump],
         ];
+
+        let amount_to_unstake = artifact_mint_staking_account.amount;
 
         spl_token_transfer(TokenTransferParams {
             source: artifact_mint_staking_account.to_account_info(),
@@ -472,7 +471,7 @@ pub struct BeginArtifactStakeCooldown<'info> {
     #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes(), staking_account.key().as_ref()], bump, space=8+1+8+1, payer=payer)]
     artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump)]
-    artifact_mint_staking_account: UncheckedAccount<'info>,
+    artifact_mint_staking_account: Account<'info, TokenAccount>,
     #[account(mut, constraint=staking_account.mint == staking_mint.key())]
     staking_account: Account<'info, TokenAccount>,
     staking_mint: Account<'info, Mint>,
@@ -504,52 +503,52 @@ pub struct EndArtifactStakeCooldown<'info> {
 
 #[account]
 pub struct StakingCounter {
-    bump: u8,
-    event_start: i64,
-    event_type: u8,
+    pub bump: u8,
+    pub event_start: i64,
+    pub event_type: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ArtifactClassData {
-    children_must_be_editions: Option<Boolean>,
-    builder_must_be_holder: Option<Boolean>,
-    update_permissiveness: Option<Vec<Permissiveness>>,
-    build_permissiveness: Option<Vec<Permissiveness>>,
-    staking_warm_up_duration: Option<u64>,
-    staking_cooldown_duration: Option<u64>,
-    staking_permissiveness: Option<Vec<Permissiveness>>,
+    pub children_must_be_editions: Option<Boolean>,
+    pub builder_must_be_holder: Option<Boolean>,
+    pub update_permissiveness: Option<Vec<Permissiveness>>,
+    pub build_permissiveness: Option<Vec<Permissiveness>>,
+    pub staking_warm_up_duration: Option<u64>,
+    pub staking_cooldown_duration: Option<u64>,
+    pub staking_permissiveness: Option<Vec<Permissiveness>>,
     // if not set, assumed to use staking permissiveness
-    unstaking_permissiveness: Option<Vec<Permissiveness>>,
-    child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
+    pub unstaking_permissiveness: Option<Vec<Permissiveness>>,
+    pub child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
 }
 
 #[account]
 pub struct ArtifactClass {
-    namespaces: Option<Vec<NamespaceAndIndex>>,
-    parent: Option<Pubkey>,
-    mint: Option<Pubkey>,
-    metadata: Option<Pubkey>,
+    pub namespaces: Option<Vec<NamespaceAndIndex>>,
+    pub parent: Option<Pubkey>,
+    pub mint: Option<Pubkey>,
+    pub metadata: Option<Pubkey>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
     /// on a mint with more than 1 coin.
-    edition: Option<Pubkey>,
-    bump: u8,
-    existing_children: u64,
-    data: ArtifactClassData,
+    pub edition: Option<Pubkey>,
+    pub bump: u8,
+    pub existing_children: u64,
+    pub data: ArtifactClassData,
 }
 
 #[account]
 pub struct Artifact {
-    namespaces: Option<Vec<NamespaceAndIndex>>,
-    parent: Pubkey,
-    mint: Option<Pubkey>,
-    metadata: Option<Pubkey>,
+    pub namespaces: Option<Vec<NamespaceAndIndex>>,
+    pub parent: Pubkey,
+    pub mint: Option<Pubkey>,
+    pub metadata: Option<Pubkey>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
     /// on a mint with more than 1 coin.
-    edition: Option<Pubkey>,
-    bump: u8,
-    tokens_staked: u64,
+    pub edition: Option<Pubkey>,
+    pub bump: u8,
+    pub tokens_staked: u64,
 }
 
 #[error_code]
