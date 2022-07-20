@@ -92,7 +92,7 @@ pub struct AddItemEffectArgs {
     pub item_mint: Pubkey,
     pub item_class_mint: Pubkey,
     pub item_usage_index: u16,
-    pub permissiveness_to_use: Option<PermissivenessType>,
+    pub use_item_permissiveness_to_use: Option<PermissivenessType>,
     pub space: usize,
     // Use this if using roots
     pub item_usage_proof: Option<Vec<[u8; 32]>>,
@@ -495,6 +495,12 @@ pub mod player {
         })?;
 
         require!(player.tokens_staked == 0, UnstakeTokensFirst);
+        require!(player.equipped_items.len() == 0, RemoveEquipmentFirst);
+        require!(player.active_item_counter == 0, DeactivateAllItemsFirst);
+        require!(
+            player.items_in_backpack == 0,
+            RemoveAllItemsFromBackpackFirst
+        );
 
         player_class.existing_children = player_class
             .existing_children
@@ -633,7 +639,7 @@ pub mod player {
             ..
         } = args;
 
-        let player = &ctx.accounts.player;
+        let player = &mut ctx.accounts.player;
         let player_class = &ctx.accounts.player_class;
         let item = &ctx.accounts.item;
         let item_mint = &ctx.accounts.item_mint;
@@ -670,6 +676,11 @@ pub mod player {
             amount,
             add: true,
         })?;
+
+        player.items_in_backpack = player
+            .items_in_backpack
+            .checked_add(amount)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         let new_amount = item_account
             .amount
@@ -710,7 +721,7 @@ pub mod player {
             ..
         } = args;
 
-        let player = &ctx.accounts.player;
+        let player = &mut ctx.accounts.player;
         let player_class = &ctx.accounts.player_class;
         let item = &ctx.accounts.item;
         let item_mint = &ctx.accounts.item_mint;
@@ -746,6 +757,11 @@ pub mod player {
             amount,
             add: false,
         })?;
+
+        player.items_in_backpack = player
+            .items_in_backpack
+            .checked_sub(amount)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         let mut residual_amount = player_item_account
             .amount
@@ -928,7 +944,7 @@ pub mod player {
             item_usage_index,
             item_usage,
             item_usage_proof,
-            permissiveness_to_use,
+            use_item_permissiveness_to_use,
             item_index,
             item_mint,
             item_class_mint,
@@ -953,7 +969,7 @@ pub mod player {
             program_id: ctx.program_id,
             given_account: &player.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &permissiveness_to_use,
+            permissiveness_to_use: &use_item_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.use_item_permissiveness,
             index,
             class_index: Some(player.class_index),
@@ -1020,7 +1036,7 @@ pub mod player {
             remaining_accounts,
             item_class_mint: &item_class_mint,
             item_mint: &item_mint,
-            usage_permissiveness_to_use: permissiveness_to_use,
+            usage_permissiveness_to_use: use_item_permissiveness_to_use,
             item_usage_index,
             item_index,
             item_class_index,
@@ -1200,6 +1216,7 @@ pub struct SubtractItemEffect<'info> {
         seeds=[
             PREFIX.as_bytes(),
             player_item_activation_marker.item.as_ref(),
+            player.key().as_ref(),
             &(player_item_activation_marker.usage_index as u64).to_le_bytes(),
             &(player_item_activation_marker.amount as u64).to_le_bytes(),
             raindrops_item::MARKER.as_bytes()
@@ -1235,6 +1252,7 @@ pub struct AddItemEffect<'info> {
         seeds=[
             PREFIX.as_bytes(),
             item.key().as_ref(),
+            player.key().as_ref(),
             &(args.item_usage_index as u64).to_le_bytes(),
             &item_activation_marker.amount.to_le_bytes(),
             raindrops_item::MARKER.as_bytes()
@@ -1370,7 +1388,7 @@ pub struct UpdateValidForUseIfWarmupPassedOnItem<'info> {
 #[derive(Accounts)]
 #[instruction(args: AddItemArgs)]
 pub struct AddItem<'info> {
-    #[account(
+    #[account(mut,
         seeds=[
             PREFIX.as_bytes(),
             args.player_mint.key().as_ref(),
@@ -1424,7 +1442,7 @@ pub struct AddItem<'info> {
 #[derive(Accounts)]
 #[instruction(args: RemoveItemArgs)]
 pub struct RemoveItem<'info> {
-    #[account(
+    #[account(mut,
         seeds=[
             PREFIX.as_bytes(),
             args.player_mint.key().as_ref(),
@@ -1831,6 +1849,8 @@ pub const MIN_PLAYER_SIZE: usize = 8 + // key
 1 + // stats uri
 1 + //bump
 8 + // tokens staked
+8 + // active items 
+8 + // item types in backpack
 1 + // category
 4 + // equipped items
 1; // basic stats
@@ -1849,6 +1869,7 @@ pub struct Player {
     pub bump: u8,
     pub tokens_staked: u64,
     pub active_item_counter: u64,
+    pub items_in_backpack: u64,
     pub data: PlayerData,
     pub equipped_items: Vec<EquippedItem>,
 }
@@ -2014,4 +2035,10 @@ pub enum ErrorCode {
     Unreachable,
     #[msg("Not valid for use yet")]
     NotValidForUseYet,
+    #[msg("Remove equipped items first")]
+    RemoveEquipmentFirst,
+    #[msg("Deactivate all items first")]
+    DeactivateAllItemsFirst,
+    #[msg("Remove all items from backpack first")]
+    RemoveAllItemsFromBackpackFirst,
 }

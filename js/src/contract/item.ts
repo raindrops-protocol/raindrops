@@ -1177,7 +1177,7 @@ export class ItemProgram {
   async createItemClass(
     args: CreateItemClassArgs,
     accounts: CreateItemClassAccounts,
-    additionalArgs: CreateItemClassAdditionalArgs
+    _additionalArgs = {}
   ): Promise<web3.PublicKey> {
     const remainingAccounts = await generateRemainingAccountsForCreateClass({
       permissivenessToUse: args.updatePermissivenessToUse,

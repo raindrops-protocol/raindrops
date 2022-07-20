@@ -254,7 +254,7 @@ pub struct RunItemValidationArgs<'a, 'b, 'c, 'info> {
     pub item: &'b Account<'info, Item>,
     pub item_account: &'b Account<'info, TokenAccount>,
     pub player_item_account: &'b Account<'info, TokenAccount>,
-    pub player: &'b Account<'info, Player>,
+    pub player: &'b mut Account<'info, Player>,
     pub item_mint: &'b Account<'info, Mint>,
     pub validation_program: &'c UncheckedAccount<'info>,
     pub player_mint: &'a Pubkey,

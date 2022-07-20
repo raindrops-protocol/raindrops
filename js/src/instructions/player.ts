@@ -1,5 +1,10 @@
 import { web3, AnchorProvider, BN } from "@project-serum/anchor";
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  SYSVAR_CLOCK_PUBKEY,
+} from "@solana/web3.js";
 import {
   Program,
   Instruction as SolKitInstruction,
@@ -9,16 +14,49 @@ import { AnchorPermissivenessType } from "../state/common";
 import {
   getAtaForMint,
   getEdition,
+  getItemActivationMarker,
   getItemPDA,
   getMetadata,
   getPlayerItemAccount,
+  getPlayerItemActivationMarker,
 } from "../utils/pda";
 import {
   generateRemainingAccountsForCreateClass,
   generateRemainingAccountsGivenPermissivenessToUse,
 } from "../contract/common";
 import { getPlayerPDA } from "../utils/pda";
-import { TOKEN_PROGRAM_ID } from "../constants/programIds";
+import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
+
+export interface ToggleEquipItemArgs {
+  itemIndex: BN;
+  itemMint: PublicKey;
+  itemClassMint: PublicKey;
+  index: BN;
+  playerMint: PublicKey;
+  amount: BN;
+  equipping: boolean;
+  bodyPartIndex: number;
+  equipItemPermissivenessToUse: null | AnchorPermissivenessType;
+  itemUsageIndex: number;
+  // not implemented yet sdk-side
+  itemUsageProof: null;
+  itemUsage: null;
+}
+
+export interface AddItemEffectArgs {
+  itemIndex: BN;
+  itemClassIndex: BN;
+  index: BN;
+  playerMint: PublicKey;
+  itemMint: PublicKey;
+  itemClassMint: PublicKey;
+  itemUsageIndex: number;
+  useItemPermissivenessToUse: null | AnchorPermissivenessType;
+  space: BN;
+  // TODO not implemented yet in this sdk
+  itemUsageProof: null;
+  itemUsage: null;
+}
 
 export interface AddItemArgs {
   itemIndex: BN;
@@ -99,6 +137,40 @@ export interface CreatePlayerClassAccounts {
   parentUpdateAuthority: web3.PublicKey | null;
 }
 
+export interface AddItemEffectAccounts {
+  callbackProgram: web3.PublicKey | null;
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
+export interface SubtractItemEffectAccounts {
+  player: PublicKey;
+  playerClass: PublicKey;
+  item: PublicKey;
+  receiver: PublicKey | null;
+}
+
+export interface SubtractItemEffectAdditionalArgs {
+  amount: BN;
+  itemUsageIndex: number;
+}
+
+export interface AddItemEffectAdditionalArgs {
+  amount: BN;
+  playerClassMint: PublicKey;
+  classIndex: BN;
+}
+
+export interface ToggleEquipItemAccounts {
+  metadataUpdateAuthority: web3.PublicKey | null;
+  validationProgram: web3.PublicKey | null;
+}
+
+export interface ToggleEquipItemAdditionalArgs {
+  playerClassMint: PublicKey;
+  classIndex: BN;
+  itemClassIndex: BN;
+}
+
 export interface UpdatePlayerClassAccounts {
   playerMint: web3.PublicKey;
   parent: web3.PublicKey | null;
@@ -155,14 +227,14 @@ export interface RemoveItemAccounts {
 
 export interface AddItemAdditionalArgs {
   playerClassMint: PublicKey;
-  playerClassIndex: BN;
+  classIndex: BN;
   itemClassMint: PublicKey;
   itemClassIndex: BN;
 }
 
 export interface RemoveItemAdditionalArgs {
   playerClassMint: PublicKey;
-  playerClassIndex: BN;
+  classIndex: BN;
   itemClassMint: PublicKey;
   itemClassIndex: BN;
 }
@@ -458,6 +530,174 @@ export class Instruction extends SolKitInstruction {
     };
   }
 
+  async toggleEquipItem(
+    args: ToggleEquipItemArgs,
+    accounts: ToggleEquipItemAccounts,
+    additionalArgs: ToggleEquipItemAdditionalArgs
+  ) {
+    const parent = (
+      await getPlayerPDA(
+        additionalArgs.playerClassMint,
+        additionalArgs.classIndex
+      )
+    )[0];
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.equipItemPermissivenessToUse,
+        tokenMint: args.playerMint,
+        parentMint: additionalArgs.playerClassMint,
+        parentIndex: additionalArgs.classIndex,
+        parent,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program.client,
+      });
+
+    InstructionUtils.convertNumbersToBNs(args, [
+      "itemIndex",
+      "index",
+      "amount",
+      "bodyPartIndex",
+      "itemUsageIndex",
+    ]);
+
+    const player = (await getPlayerPDA(args.playerMint, args.index))[0];
+
+    const item = (await getItemPDA(args.itemMint, args.itemIndex))[0];
+    return {
+      instructions: [
+        await this.program.client.methods
+          .toggleEquipItem(args)
+          .accounts({
+            playerClass: parent,
+            player,
+            item,
+            itemClass: (
+              await getItemPDA(
+                args.itemClassMint,
+                additionalArgs.itemClassIndex
+              )
+            )[0],
+            playerItemAccount: (
+              await getPlayerItemAccount({ item, player })
+            )[0],
+            validationProgram:
+              accounts.validationProgram || SystemProgram.programId,
+          })
+          .remainingAccounts(remainingAccounts)
+          .instruction(),
+      ],
+      signers: [],
+    };
+  }
+
+  async addItemEffect(
+    args: AddItemEffectArgs,
+    accounts: AddItemEffectAccounts,
+    additionalArgs: AddItemEffectAdditionalArgs
+  ) {
+    const parent = (
+      await getPlayerPDA(
+        additionalArgs.playerClassMint,
+        additionalArgs.classIndex
+      )
+    )[0];
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.useItemPermissivenessToUse,
+        tokenMint: args.playerMint,
+        parentMint: additionalArgs.playerClassMint,
+        parentIndex: additionalArgs.classIndex,
+        parent,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program.client,
+      });
+
+    InstructionUtils.convertNumbersToBNs(args, [
+      "itemIndex",
+      "itemClassIndex",
+      "index",
+      "itemUsageIndex",
+      "space",
+    ]);
+
+    const playerKey = (await getPlayerPDA(args.playerMint, args.index))[0];
+
+    const item = (await getItemPDA(args.itemMint, args.itemIndex))[0];
+
+    return {
+      instructions: [
+        await this.program.client.methods
+          .addItemEffect(args)
+          .accounts({
+            player: playerKey,
+            playerClass: parent,
+            playerItemActivationMarker: (
+              await getPlayerItemActivationMarker({
+                item,
+                player: playerKey,
+                amount: additionalArgs.amount,
+                itemUsageIndex: new BN(args.itemUsageIndex),
+              })
+            )[0],
+            itemActivationMarker: (
+              await getItemActivationMarker({
+                itemMint: args.itemMint,
+                index: args.itemIndex,
+                usageIndex: new BN(args.itemUsageIndex),
+                amount: additionalArgs.amount,
+              })
+            )[0],
+            item,
+            itemClass: (
+              await getItemPDA(args.itemClassMint, args.itemClassIndex)
+            )[0],
+            payer: (this.program.client.provider as AnchorProvider).wallet
+              .publicKey,
+            systemProgram: SystemProgram.programId,
+            itemProgram: ITEM_ID,
+            callbackProgram:
+              accounts.callbackProgram || SystemProgram.programId,
+          })
+          .remainingAccounts(remainingAccounts)
+          .instruction(),
+      ],
+      signers: [],
+    };
+  }
+
+  async subtractItemEffect(
+    _args = {},
+    accounts: SubtractItemEffectAccounts,
+    additionalArgs: SubtractItemEffectAdditionalArgs
+  ) {
+    return {
+      instructions: [
+        await this.program.client.methods
+          .subtractItemEffect()
+          .accounts({
+            player: accounts.player,
+            playerClass: accounts.playerClass,
+            playerItemActivationMarker: (
+              await getPlayerItemActivationMarker({
+                item: accounts.item,
+                player: accounts.player,
+                amount: additionalArgs.amount,
+                itemUsageIndex: new BN(additionalArgs.itemUsageIndex),
+              })
+            )[0],
+            item: accounts.item,
+            receiver:
+              accounts.receiver ||
+              (this.program.client.provider as AnchorProvider).wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+            clock: SYSVAR_CLOCK_PUBKEY,
+          })
+          .instruction(),
+      ],
+      signers: [],
+    };
+  }
+
   async addItem(
     args: AddItemArgs,
     accounts: AddItemAccounts,
@@ -466,7 +706,7 @@ export class Instruction extends SolKitInstruction {
     const parent = (
       await getPlayerPDA(
         additionalArgs.playerClassMint,
-        additionalArgs.playerClassIndex
+        additionalArgs.classIndex
       )
     )[0];
     const remainingAccounts =
@@ -474,7 +714,7 @@ export class Instruction extends SolKitInstruction {
         permissivenessToUse: args.addItemPermissivenessToUse,
         tokenMint: args.playerMint,
         parentMint: additionalArgs.playerClassMint,
-        parentIndex: additionalArgs.playerClassIndex,
+        parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
         program: this.program.client,
@@ -520,7 +760,8 @@ export class Instruction extends SolKitInstruction {
             systemProgram: SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
-            validationProgram: accounts.validationProgram,
+            validationProgram:
+              accounts.validationProgram || SystemProgram.programId,
           })
           .remainingAccounts(remainingAccounts)
           .instruction(),
@@ -537,7 +778,7 @@ export class Instruction extends SolKitInstruction {
     const parent = (
       await getPlayerPDA(
         additionalArgs.playerClassMint,
-        additionalArgs.playerClassIndex
+        additionalArgs.classIndex
       )
     )[0];
     const remainingAccounts =
@@ -545,7 +786,7 @@ export class Instruction extends SolKitInstruction {
         permissivenessToUse: args.removeItemPermissivenessToUse,
         tokenMint: args.playerMint,
         parentMint: additionalArgs.playerClassMint,
-        parentIndex: additionalArgs.playerClassIndex,
+        parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
         program: this.program.client,
@@ -585,7 +826,8 @@ export class Instruction extends SolKitInstruction {
             systemProgram: SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
-            validationProgram: accounts.validationProgram,
+            validationProgram:
+              accounts.validationProgram || SystemProgram.programId,
           })
           .remainingAccounts(remainingAccounts)
           .instruction(),
