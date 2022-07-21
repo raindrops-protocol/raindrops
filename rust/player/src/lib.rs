@@ -233,8 +233,8 @@ pub struct UpdateValidForUseIfWarmupPassedOnItemArgs {
     pub index: u64,
     pub player_mint: Pubkey,
     // Required if using roots
-    pub usage_proof: Option<Vec<[u8; 32]>>,
-    pub usage: Option<ItemUsage>,
+    pub item_usage_proof: Option<Vec<[u8; 32]>>,
+    pub item_usage: Option<ItemUsage>,
 }
 
 #[program]

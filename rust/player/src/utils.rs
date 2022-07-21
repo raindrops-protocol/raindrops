@@ -1564,8 +1564,8 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
         item_class_mint,
         index,
         player_mint,
-        usage_proof,
-        usage,
+        item_usage_proof,
+        item_usage,
         ..
     } = update_args;
 
@@ -1595,8 +1595,8 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
                     class_index: item_class_index,
                     amount,
                     item_mint,
-                    usage_proof,
-                    usage,
+                    usage_proof: item_usage_proof,
+                    usage: item_usage,
                 },
             )?,
         },

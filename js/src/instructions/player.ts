@@ -44,6 +44,30 @@ export interface ToggleEquipItemArgs {
   itemUsage: null;
 }
 
+export interface UpdateValidForUseIfWarmupPassedOnItemArgs {
+  itemIndex: BN;
+  itemMint: PublicKey;
+  itemUsageIndex: number;
+  itemClassIndex: BN;
+  amount: BN;
+  itemClassMint: PublicKey;
+  useItemPermissivenessToUse: null | AnchorPermissivenessType;
+  index: BN;
+  playerMint: PublicKey;
+  // not implemented yet sdk-side
+  itemUsageProof: null;
+  itemUsage: null;
+}
+
+export interface UpdateValidForUseIfWarmupPassedOnItemAccounts {
+  metadataUpdateAuthority: web3.PublicKey | null;
+}
+
+export interface UpdateValidForUseIfWarmupPassedOnItemAdditionalArgs {
+  playerClassMint: PublicKey;
+  classIndex: BN;
+}
+
 export interface UseItemArgs {
   itemIndex: BN;
   itemClassIndex: BN;
@@ -684,6 +708,70 @@ export class Instruction extends SolKitInstruction {
             rent: SYSVAR_RENT_PUBKEY,
             validationProgram:
               accounts.validationProgram || SystemProgram.programId,
+          })
+          .remainingAccounts(remainingAccounts)
+          .instruction(),
+      ],
+      signers: [],
+    };
+  }
+
+  async updateValidForUseIfWarmupPassedOnItem(
+    args: UpdateValidForUseIfWarmupPassedOnItemArgs,
+    accounts: UpdateValidForUseIfWarmupPassedOnItemAccounts,
+    additionalArgs: UpdateValidForUseIfWarmupPassedOnItemAdditionalArgs
+  ) {
+    const parent = (
+      await getPlayerPDA(
+        additionalArgs.playerClassMint,
+        additionalArgs.classIndex
+      )
+    )[0];
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.useItemPermissivenessToUse,
+        tokenMint: args.playerMint,
+        parentMint: additionalArgs.playerClassMint,
+        parentIndex: additionalArgs.classIndex,
+        parent,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program.client,
+      });
+
+    InstructionUtils.convertNumbersToBNs(args, [
+      "itemIndex",
+      "itemClassIndex",
+      "amount",
+      "itemUsageIndex",
+      "index",
+    ]);
+
+    const playerKey = (await getPlayerPDA(args.playerMint, args.index))[0];
+
+    const item = (await getItemPDA(args.itemMint, args.itemIndex))[0];
+
+    return {
+      instructions: [
+        await this.program.client.methods
+          .updateValidForUseIfWarmupPassedOnItem(args)
+          .accounts({
+            player: playerKey,
+            playerClass: parent,
+            item,
+            itemClass: (
+              await getItemPDA(args.itemClassMint, args.itemClassIndex)
+            )[0],
+            itemMint: args.itemMint,
+            itemActivationMarker: (
+              await getItemActivationMarker({
+                itemMint: args.itemMint,
+                index: args.itemIndex,
+                usageIndex: new BN(args.itemUsageIndex),
+                amount: args.amount,
+              })
+            )[0],
+            itemProgram: ITEM_ID,
+            clock: SYSVAR_CLOCK_PUBKEY,
           })
           .remainingAccounts(remainingAccounts)
           .instruction(),
