@@ -204,7 +204,6 @@ export class ItemUsage {
 }
 
 export class ItemClass {
-  program: Program | null;
   key: BN;
   namespaces: NamespaceAndIndex[] | null;
   parent: web3.PublicKey | null;
