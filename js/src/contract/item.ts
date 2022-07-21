@@ -1,4 +1,4 @@
-import { ObjectWrapper, Program } from "@raindrop-studios/sol-kit";
+import { ObjectWrapper, Program, Transaction, SendOptions } from "@raindrop-studios/sol-kit";
 import { web3, BN, AnchorProvider, Wallet } from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
@@ -47,10 +47,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.CreateItemClassAccounts,
     additionalArgs: ItemInstruction.CreateItemClassAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.createItemClass(
       args,
       accounts,
@@ -64,10 +61,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.UpdateItemClassAccounts,
     additionalArgs: ItemInstruction.UpdateItemClassAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.updateItemClass(
       args,
       accounts,
@@ -81,10 +75,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.CreateItemEscrowAccounts,
     additionalArgs: ItemInstruction.CreateItemEscrowAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.createItemEscrow(
       args,
       accounts,
@@ -98,10 +89,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.CompleteItemEscrowBuildPhaseAccounts,
     additionalArgs: ItemInstruction.CompleteItemEscrowBuildPhaseAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.completeItemEscrowBuildPhase(
       args,
       accounts,
@@ -115,10 +103,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.DeactivateItemEscrowAccounts,
     additionalArgs: ItemInstruction.DeactivateItemEscrowAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.deactivateItemEscrow(
       args,
       accounts,
@@ -132,10 +117,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.UpdateValidForUseIfWarmupPassedAccounts = {},
     additionalArgs: ItemInstruction.UpdateValidForUseIfWarmupPassedAdditionalArgs = {},
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.updateValidForUseIfWarmupPassed(
       args,
       accounts,
@@ -149,10 +131,7 @@ export class ItemProgram extends Program.Program {
     accounts: Omit<ItemInstruction.AddCraftItemToEscrowAccounts,'craftItemTransferAuthority'>,
     additionalArgs: ItemInstruction.AddCraftItemToEscrowAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const signers = [];
     const craftItemTransferAuthority = web3.Keypair.generate();
     signers.push(craftItemTransferAuthority);
@@ -174,10 +153,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.RemoveCraftItemFromEscrowAccounts,
     additionalArgs: ItemInstruction.RemoveCraftItemFromEscrowAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.removeCraftItemFromEscrow(
       args,
       accounts,
@@ -191,10 +167,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.BeginItemActivationAccounts,
     additionalArgs: ItemInstruction.BeginItemActivationAdditionalArgs = {},
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const signers = [];
     const itemTransferAuthority =
       accounts.itemTransferAuthority || web3.Keypair.generate();
@@ -234,10 +207,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.EndItemActivationAccounts,
     additionalArgs: ItemInstruction.EndItemActivationAdditionalArgs = {},
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.endItemActivation(
       args,
       accounts,
@@ -251,10 +221,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.DrainItemEscrowAccounts,
     additionalArgs: ItemInstruction.DrainItemEscrowAdditionalArgs = {},
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.drainItemEscrow(
       args,
       accounts,
@@ -268,10 +235,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.StartItemEscrowBuildPhaseAccounts,
     additionalArgs: ItemInstruction.StartItemEscrowBuildPhaseAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.startItemEscrowBuildPhase(
       args,
       accounts,
@@ -285,10 +249,7 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.UpdateItemAccounts,
     additionalArgs: ItemInstruction.UpdateItemAdditionalArgs,
     options?: SendOptions
-  ): Promise<{
-    txid: string;
-    slot: number;
-  }> {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.updateItem(
       args,
       accounts,
@@ -297,12 +258,6 @@ export class ItemProgram extends Program.Program {
     return this.sendWithRetry(instruction, [], options);
   }
 }
-
-interface SendOptions {
-  commitment: web3.Commitment;
-  timeout?: number;
-}
-
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
   program: ItemProgram;
   key: web3.PublicKey;
