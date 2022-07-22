@@ -24,7 +24,6 @@ js/.eslintcache
 !js/packages/metaplex/src/utils/globals.css
 js/packages/web/.env
 js/test-configs
-lib/
 node_modules
 npm-debug.log*
 rust/test/nft-candy-machine.js

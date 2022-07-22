@@ -3,29 +3,25 @@ import * as fs from "fs";
 import log from "loglevel";
 import { program } from "commander";
 import { programCommand } from "./utils";
-import { loadWalletKey } from "../utils/file";
 import { SystemProgram } from "@solana/web3.js";
-
-import { getItemProgram } from "../contract/item";
-import {
-  BasicItemEffectType,
-  ChildUpdatePropagationPermissivenessType,
-  ComponentCondition,
-  Consumable,
-  ItemClassData,
-  ItemUsageType,
-  Wearable,
-} from "../state/item";
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
+
 import {
-  getAtaForMint,
-  getEdition,
-  getItemEscrow,
-  getItemPDA,
-  getMetadata,
-} from "../utils/pda";
-import { InheritanceState, PermissivenessType } from "../state/common";
+  Wallet
+} from "@raindrop-studios/sol-command";
+import {
+  getItemProgram,
+  State,
+  Utils
+} from "@raindrops-protocol/raindrops";
+
+const { PDA } = Utils;
+const { loadWalletKey } = Wallet;
+
+import ItemState = State.Item;
+import InheritanceState = State;
+import PermissivenessType = State;
 
 programCommand("create_item_class")
   .requiredOption(
@@ -65,7 +61,7 @@ programCommand("create_item_class")
         updatePermissivenessToUse: config.updatePermissivenessToUse,
         storeMint: config.storeMint,
         storeMetadataFields: config.storeMetadataFields,
-        itemClassData: config.data as ItemClassData,
+        itemClassData: config.data as ItemState.ItemClassData,
         parentOfParentClassIndex: config.parent?.parent
           ? config.parent.parent.index
           : null,
@@ -74,7 +70,7 @@ programCommand("create_item_class")
         itemMint: new web3.PublicKey(config.mint),
         parent: config.parent
           ? (
-              await getItemPDA(
+              await PDA.getItemPDA(
                 new web3.PublicKey(config.parent.mint),
                 new BN(config.parent.index)
               )
@@ -93,7 +89,7 @@ programCommand("create_item_class")
           ? config.parent.metadataUpdateAuthority
           : null,
       },
-      {}
+      {},
     );
   });
 
@@ -546,7 +542,7 @@ programCommand("begin_item_activation")
         itemAccount: config.itemAccount
           ? new web3.PublicKey(config.itemAccount)
           : (
-              await getAtaForMint(
+              await PDA.getAtaForMint(
                 new web3.PublicKey(config.itemMint),
                 walletKeyPair.publicKey
               )
@@ -650,7 +646,7 @@ programCommand("show_item_build")
     const craftEscrowIndex = new BN(config.craftEscrowIndex);
 
     const itemEscrowKey = (
-      await getItemEscrow({
+      await PDA.getItemEscrow({
         itemClassMint,
         classIndex,
         craftEscrowIndex,
@@ -658,7 +654,7 @@ programCommand("show_item_build")
         newItemToken: config.newItemToken
           ? new web3.PublicKey(config.newItemToken)
           : (
-              await getAtaForMint(
+              await PDA.getAtaForMint(
                 newItemMint,
                 config.originator
                   ? new web3.PublicKey(config.originator)
@@ -707,7 +703,7 @@ programCommand("show_item")
     actualMint = new web3.PublicKey(mint);
     actualIndex = new BN(index);
 
-    const itemKey = (await getItemPDA(actualMint, actualIndex))[0];
+    const itemKey = (await PDA.getItemPDA(actualMint, actualIndex))[0];
 
     const item = (await anchorProgram.client.account.item.fetch(
       itemKey
@@ -808,6 +804,11 @@ programCommand("show_item_class")
 
     log.setLevel("info");
 
+    if (!itemClass) {
+      log.info("Item Class not found with mint:", actualMint.toString());
+      return;
+    }
+
     log.info("Item Class", itemClass.key.toBase58());
     log.info(
       "Namespaces:",
@@ -829,11 +830,11 @@ programCommand("show_item_class")
     log.info("Mint:", (itemClass.object.mint || actualMint).toBase58());
     log.info(
       "Metadata:",
-      (itemClass.object.metadata || (await getMetadata(actualMint))).toBase58()
+      (itemClass.object.metadata || (await PDA.getMetadata(actualMint))).toBase58()
     );
     log.info(
       "Edition:",
-      (itemClass.object.edition || (await getEdition(actualMint))).toBase58()
+      (itemClass.object.edition || (await PDA.getEdition(actualMint))).toBase58()
     );
     log.info(
       "Existing Children:",
@@ -925,7 +926,7 @@ programCommand("show_item_class")
       ? settings.childUpdatePropagationPermissiveness.map((u) => {
           log.info(
             `------> ${InheritanceState[u.inherited]} ${
-              ChildUpdatePropagationPermissivenessType[
+              ItemState.ChildUpdatePropagationPermissivenessType[
                 u.childUpdatePropagationPermissivenessType
               ]
             } - is overridable? ${u.overridable}`
@@ -976,7 +977,7 @@ programCommand("show_item_class")
           "------> Use Usage Index (to check cooldown status for crafting):",
           c.useUsageIndex
         );
-        log.info("------> Condition:", ComponentCondition[c.condition]);
+        log.info("------> Condition:", ItemState.ComponentCondition[c.condition]);
         log.info("------> Inherited:", InheritanceState[c.inherited]);
       });
 
@@ -1029,12 +1030,12 @@ programCommand("show_item_class")
             log.info("--------> Stat:", b.stat);
             log.info(
               "--------> Item Effect Type:",
-              BasicItemEffectType[b.itemEffectType]
+              ItemState.BasicItemEffectType[b.itemEffectType]
             );
 
             log.info(
               "--------> Active Duration:",
-              BasicItemEffectType[b.itemEffectType]
+              ItemState.BasicItemEffectType[b.itemEffectType]
             );
 
             log.info(
@@ -1072,7 +1073,7 @@ programCommand("show_item_class")
         }
 
         if ((u.itemClassType as any).bodyPart) {
-          const itemClassType = u.itemClassType.wearable as Wearable;
+          const itemClassType = u.itemClassType.wearable as ItemState.Wearable;
           log.info("------> Wearable:");
           log.info(
             "--------> Limit Per Part:",
@@ -1087,7 +1088,7 @@ programCommand("show_item_class")
             })
           );
         } else {
-          const itemClassType = u.itemClassType.consumable as Consumable;
+          const itemClassType = u.itemClassType.consumable as ItemState.Consumable;
 
           log.info("------> Consumable:");
           log.info(
@@ -1104,7 +1105,7 @@ programCommand("show_item_class")
 
           log.info(
             "--------> Item Usage Type:",
-            ItemUsageType[itemClassType.itemUsageType.toString()]
+            ItemState.ItemUsageType[itemClassType.itemUsageType.toString()]
           );
 
           log.info(
@@ -1159,14 +1160,14 @@ programCommand("update_item_class")
       {
         classIndex: new BN(config.index || 0),
         updatePermissivenessToUse: config.updatePermissivenessToUse,
-        itemClassData: config.data as ItemClassData,
+        itemClassData: config.data as ItemState.ItemClassData,
         parentClassIndex: config.parent ? new BN(config.parent.index) : null,
       },
       {
         itemMint: new web3.PublicKey(config.mint),
         parent: config.parent
           ? (
-              await getItemPDA(
+              await PDA.getItemPDA(
                 new web3.PublicKey(config.parent.mint),
                 new BN(config.parent.index)
               )
@@ -1197,7 +1198,7 @@ programCommand("update_item")
     const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
 
     const item = (
-      await getItemPDA(new web3.PublicKey(itemMint), new BN(itemIndex || 0))
+      await PDA.getItemPDA(new web3.PublicKey(itemMint), new BN(itemIndex || 0))
     )[0];
 
     const itemObj = await anchorProgram.client.account.item.fetch(item);

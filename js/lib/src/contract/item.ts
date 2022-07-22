@@ -282,6 +282,15 @@ export async function getItemProgram(
   env: string,
   customRpcUrl: string
 ): Promise<ItemProgram> {
+  if ((anchorWallet as web3.Keypair).secretKey) {
+    return ItemProgram.getProgramWithWalletKeyPair(
+      ItemProgram,
+      anchorWallet as web3.Keypair,
+      env,
+      customRpcUrl
+    );
+  }
+
   return ItemProgram.getProgramWithWallet(
     ItemProgram,
     anchorWallet as Wallet,

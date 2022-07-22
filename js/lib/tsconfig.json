@@ -2,8 +2,9 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "outDir": "./../build",
+    "outDir": "./build",
     "declaration": true,
+    "declarationMap": true,
     "esModuleInterop": true,
     "noImplicitAny": false,
     "removeComments": false,
@@ -19,6 +20,9 @@
     "lib": ["dom", "es2019"],
     "types": ["jest", "node"]
   },
+  "include": [
+    "./src/**/*"
+  ],
   "exclude": ["node_modules", "typings/browser", "typings/browser.d.ts", "src/**/*.test.ts"],
   "atom": {
     "rewriteTsconfig": false
