@@ -21,7 +21,9 @@ import {
   DeactivateItemEscrowArgs,
 } from "../../instructions/item";
 import { getItemProgram, ItemClassWrapper, ItemProgram } from "../item";
-import { generateRemainingAccountsGivenPermissivenessToUse } from "../common";
+import { ContractCommon } from "../common";
+
+const { generateRemainingAccountsGivenPermissivenessToUse } = ContractCommon;
 
 jest.mock("../../utils/pda");
 jest.mock("../../state/item");

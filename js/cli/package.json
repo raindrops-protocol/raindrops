@@ -1,22 +1,20 @@
 {
-  "name": "raindrops-cli",
-  "version": "0.0.14",
-  "main": "./build/main",
-  "typings": "./build/main",
-  "license": "MIT",
+  "name": "@raindrops-protocol/raindrops-cli",
+  "version": "0.0.7",
+  "license": "Apache-2.0",
   "bin": {
-    "items-cli": "./src/cli/item.ts",
-    "matches-cli": "./src/cli/matches.ts",
-    "namespace-cli": "./src/cli/namespace.ts"
+    "items-cli": "./src/item.ts",
+    "matches-cli": "./src/matches.ts",
+    "namespace-cli": "./src/namespace.ts"
   },
   "scripts": {
-    "build": "tsc -p ./src",
-    "watch": "tsc -w -p ./src",
+    "build": "tsc -p .",
+    "watch": "tsc -w -p .",
     "format": "prettier --loglevel warn --write \"**/*.{ts,js,json,yaml}\"",
     "format:check": "prettier --loglevel warn --check \"**/*.{ts,js,json,yaml}\"",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "lint:check": "eslint \"src/**/*.ts\"",
-    "test": "jest"
+    "prepublishOnly": "yarn build"
   },
   "pkg": {
     "scripts": "./build/**/*.{js|json}"
@@ -35,11 +33,11 @@
     ]
   },
   "dependencies": {
-    "@metaplex/js": "^4.11.5",
     "@project-serum/anchor": "^0.24.2",
-    "@solana/spl-token": "^0.1.8",
     "@raindrop-studios/sol-command": "^0.4.0",
-    "@raindrop-studios/sol-kit": "^0.1.74",
+    "@raindrop-studios/sol-kit": "^0.1.78",
+    "@raindrops-protocol/raindrops": "^0.0.6",
+    "@solana/spl-token": "^0.1.8",
     "borsh": "^0.4.0",
     "commander": "^8.1.0",
     "form-data": "^4.0.0",
@@ -50,11 +48,8 @@
   "devDependencies": {
     "@babel/preset-env": "^7.15.6",
     "@babel/preset-typescript": "^7.15.0",
-    "@types/jest": "^28.1.5",
     "@types/node": "^18.0.3",
-    "jest": "^28.1.2",
     "pkg": "^5.3.1",
-    "ts-jest": "^28.0.5",
     "typescript": "^4.3.5"
   }
 }

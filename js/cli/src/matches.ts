@@ -2,15 +2,21 @@
 import * as fs from "fs";
 import { program } from "commander";
 import log from "loglevel";
-import { loadWalletKey } from "../utils/file";
-
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
-import { getMatchesProgram } from "../contract/matches";
-import { getAtaForMint, getMatch, getOracle } from "../utils/pda";
-import { MatchState, TokenTransferType, TokenType } from "../state/matches";
-import { InheritanceState } from "../state/common";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+
+import {
+ Wallet
+} from "@raindrop-studios/sol-command";
+import {
+  getMatchesProgram,
+  Utils,
+  State
+} from "@raindrops-protocol/raindrops";
+
+const { loadWalletKey } = Wallet;
+const { PDA } = Utils
+import MatchesState = State.Matches;
 
 programCommand("create_match")
   .requiredOption(
@@ -36,7 +42,7 @@ programCommand("create_match")
         winOracle: config.winOracle
           ? new web3.PublicKey(config.winOracle)
           : (
-              await getOracle(
+              await PDA.getOracle(
                 new web3.PublicKey(config.oracleState.seed),
 
                 config.oracleState.authority
@@ -105,7 +111,7 @@ programCommand("update_match")
         winOracle: config.winOracle
           ? new web3.PublicKey(config.winOracle)
           : (
-              await getOracle(
+              await PDA.getOracle(
                 new web3.PublicKey(config.oracleState.seed),
 
                 config.oracleState.authority
@@ -166,7 +172,7 @@ programCommand("join_match")
           winOracle: config.winOracle
             ? new web3.PublicKey(config.winOracle)
             : (
-                await getOracle(
+                await PDA.getOracle(
                   new web3.PublicKey(config.oracleState.seed),
 
                   config.oracleState.authority
@@ -174,7 +180,7 @@ programCommand("join_match")
                     : walletKeyPair.publicKey
                 )
               )[0],
-          sourceType: setup.sourceType as TokenType,
+          sourceType: setup.sourceType as MatchesState.TokenType,
           index:
             setup.index != null && setup.index != undefined
               ? new BN(setup.index)
@@ -226,7 +232,7 @@ programCommand("leave_match")
           winOracle: config.winOracle
             ? new web3.PublicKey(config.winOracle)
             : (
-                await getOracle(
+                await PDA.getOracle(
                   new web3.PublicKey(config.oracleState.seed),
 
                   config.oracleState.authority
@@ -264,7 +270,7 @@ programCommand("update_match_from_oracle")
         winOracle: config.winOracle
           ? new web3.PublicKey(config.winOracle)
           : (
-              await getOracle(
+              await PDA.getOracle(
                 new web3.PublicKey(config.oracleState.seed),
 
                 config.oracleState.authority
@@ -299,7 +305,7 @@ programCommand("disburse_tokens_by_oracle")
     const winOracle = config.winOracle
       ? new web3.PublicKey(config.winOracle)
       : (
-          await getOracle(
+          await PDA.getOracle(
             new web3.PublicKey(config.oracleState.seed),
 
             config.oracleState.authority
@@ -353,7 +359,7 @@ programCommand("drain_match")
         winOracle: config.winOracle
           ? new web3.PublicKey(config.winOracle)
           : (
-              await getOracle(
+              await PDA.getOracle(
                 new web3.PublicKey(config.oracleState.seed),
 
                 config.oracleState.authority
@@ -446,7 +452,7 @@ programCommand("show_match")
       actualOracle = config.winOracle
         ? new web3.PublicKey(config.winOracle)
         : (
-            await getOracle(
+            await PDA.getOracle(
               new web3.PublicKey(config.oracleState.seed),
               config.oracleState.authority
                 ? new web3.PublicKey(config.oracleState.authority)
@@ -470,7 +476,7 @@ programCommand("show_match")
             if (!u.namespace.equals(web3.SystemProgram.programId))
               log.info(
                 `--> ${
-                  InheritanceState[u.inherited]
+                  State.InheritanceState[u.inherited]
                 } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
               );
           })
@@ -495,7 +501,7 @@ programCommand("show_match")
       o.tokenTransfers.map((k) => {
         log.info("--> From:", k.from.toBase58());
         log.info("--> To:", k.to ? k.to.toBase58() : "Burn");
-        log.info("--> Transfer Type:", TokenTransferType[k.tokenTransferType]);
+        log.info("--> Transfer Type:", MatchesState.TokenTransferType[k.tokenTransferType]);
         log.info("--> Mint:", k.mint.toBase58());
         log.info("--> Amount:", k.amount.toNumber());
       });

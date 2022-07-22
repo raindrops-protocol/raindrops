@@ -22,13 +22,34 @@ import {
   getMetadata,
 } from "../utils/pda";
 import { PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { AnchorPermissivenessType } from "../state/common";
+import { AnchorPermissivenessType } from "../../src/state/common";
 import {
-  generateRemainingAccountsForCreateClass,
-  generateRemainingAccountsGivenPermissivenessToUse,
-  ObjectWrapper,
+  ContractCommon,
 } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
+
+const {
+  generateRemainingAccountsForCreateClass,
+  generateRemainingAccountsGivenPermissivenessToUse,
+} = ContractCommon;
+
+const ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS = [
+  "itemClassData.settings.stakingWarmUpDuration",
+  "itemClassData.settings.stakingCooldownDuration",
+  "itemClassData.config.components.[].timeToBuild",
+  "itemClassData.config.usages.[].validation.code",
+  "itemClassData.config.usages.[].callback.code",
+  "itemClassData.config.usages.[].itemClassType.consumable.maxUses",
+  "itemClassData.config.usages.[].itemClassType.consumable.maxPlayersPerUse",
+  "itemClassData.config.usages.[].itemClassType.consumable.warmupDuration",
+  "itemClassData.config.usages.[].itemClassType.consumable.cooldownDuration",
+  "itemClassData.config.usages.[].itemClassType.wearable.limitPerPart",
+];
+
+const ITEM_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS = [
+  "itemClassData.config.usages.[].validation.key",
+  "itemClassData.config.usages.[].callback.key",
+];
 
 export class Instruction extends SolKitInstruction {
   constructor(args: { program: Program.Program }) {
@@ -46,23 +67,10 @@ export class Instruction extends SolKitInstruction {
     );
 
     InstructionUtils.convertNumbersToBNs(args, [
-      "data.itemClassData.settings.stakingWarmUpDuration",
-      "data.itemClassData.settings.stakingCooldownDuration",
-      "data.itemClassData.config.components.[].timeToBuild",
-      "data.itemClassData.config.usages.[].validation.key",
-      "data.itemClassData.config.usages.[].validation.code",
-      "data.itemClassData.config.usages.[].callback.key",
-      "data.itemClassData.config.usages.[].callback.code",
-      "data.itemClassData.config.usages.[].itemClassType.consumable.maxUses",
-      "data.itemClassData.config.usages.[].itemClassType.consumable.maxPlayersPerUse",
-      "data.itemClassData.config.usages.[].itemClassType.consumable.warmupDuration",
-      "data.itemClassData.config.usages.[].itemClassType.consumable.cooldownDuration",
-      "data.itemClassData.config.usages.[].itemClassType.wearable.limitPerPart",
+      "desiredNamespaceArraySize",
+      ...ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS,
     ]);
-    InstructionUtils.convertStringsToPublicKeys(args, [
-      "data.itemClassData.config.usages.[].validation.key",
-      "data.itemClassData.config.usages.[].callback.key",
-    ]);
+    InstructionUtils.convertStringsToPublicKeys(args, ITEM_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS);
 
     const remainingAccounts = await generateRemainingAccountsForCreateClass({
       permissivenessToUse: args.updatePermissivenessToUse,
@@ -122,7 +130,8 @@ export class Instruction extends SolKitInstruction {
             program: this.program.client,
           });
 
-    InstructionUtils.convertNumbersToBNs(args);
+    InstructionUtils.convertNumbersToBNs(args, ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS);
+    InstructionUtils.convertStringsToPublicKeys(args, ITEM_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS);
 
     const [itemClassKey, itemClassBump] = await getItemPDA(
       accounts.itemMint,
