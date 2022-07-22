@@ -40,6 +40,7 @@
     ]
   },
   "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^2.1.0",
     "@metaplex/js": "^4.11.5",
     "@project-serum/anchor": "^0.24.2",
     "@solana/spl-token": "^0.1.8",
