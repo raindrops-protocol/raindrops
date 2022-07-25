@@ -6,13 +6,15 @@ import {
 import { Token } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { generateRemainingAccountsForGivenPermissivenessToUse } from "../main";
+import { ContractCommon } from "../contract/common";
 import { AnchorPermissivenessType } from "../state/common";
 import {
   getArtifactIntermediaryStakingAccount,
   getArtifactIntermediaryStakingCounter,
   getArtifactMintStakingAccount,
 } from "../utils/pda";
+
+const { generateRemainingAccountsForGivenPermissivenessToUse } = ContractCommon;
 
 export interface BeginArtifactStakeWarmupArgs {
   classIndex: BN;

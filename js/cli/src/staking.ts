@@ -1,7 +1,7 @@
 import { BN, web3 } from "@project-serum/anchor";
 import { CLI, Wallet } from "@raindrop-studios/sol-command";
 import log from "loglevel";
-import { StakingProgram } from "../contract/staking";
+import { StakingProgram } from "@raindrops-protocol/raindrops";
 
 CLI.programCommandWithConfig(
   "begin_artifact_stake_warmup",
