@@ -33,7 +33,6 @@ export interface BeginArtifactStakeWarmupAccounts {
   stakingAccount: web3.PublicKey;
   stakingMint: web3.PublicKey;
   stakingTransferAuthority: web3.Keypair;
-  parentClassAccount: web3.PublicKey | null;
   parentClassMint: web3.PublicKey | null;
   parentClass: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
@@ -124,14 +123,13 @@ export class Instruction extends SolKitInstruction {
     const remainingAccounts =
       await generateRemainingAccountsForGivenPermissivenessToUse({
         permissivenessToUse: args.stakingPermissivenessToUse,
-        tokenAccount: accounts.stakingAccount,
-        tokenMint: accounts.stakingMint,
-        parentClassAccount: accounts.parentClassAccount,
+        tokenMint: args.artifactClassMint,
         parentClassMint: accounts.parentClassMint,
         parentClass: accounts.parentClass,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
         owner: (this.program.client.provider as AnchorProvider).wallet
           .publicKey,
+        program: this.program.client,
       });
 
     return [
@@ -258,14 +256,13 @@ export class Instruction extends SolKitInstruction {
     const remainingAccounts =
       await generateRemainingAccountsForGivenPermissivenessToUse({
         permissivenessToUse: args.stakingPermissivenessToUse,
-        tokenAccount: accounts.stakingAccount,
         tokenMint: accounts.stakingMint,
-        parentClassAccount: accounts.parentClassAccount,
         parentClassMint: accounts.parentClassMint,
         parentClass: accounts.parentClass,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
         owner: (this.program.client.provider as AnchorProvider).wallet
           .publicKey,
+        program: this.program.client,
       });
 
     return [

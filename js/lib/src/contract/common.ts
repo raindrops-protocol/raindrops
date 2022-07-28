@@ -111,25 +111,23 @@ export namespace ContractCommon {
 
   export async function generateRemainingAccountsForGivenPermissivenessToUse(args: {
     permissivenessToUse: AnchorPermissivenessType | null;
-    tokenAccount: web3.PublicKey;
     tokenMint: web3.PublicKey;
-    parentClassAccount: web3.PublicKey | null;
     parentClassMint: web3.PublicKey | null;
     parentClass: web3.PublicKey | null;
     metadataUpdateAuthority: web3.PublicKey | null;
     owner: web3.PublicKey;
+    program: Program;
   }): Promise<
     { pubkey: web3.PublicKey; isWritable: boolean; isSigner: boolean }[]
   > {
     const {
       permissivenessToUse,
-      tokenAccount,
       tokenMint,
-      parentClassAccount,
       parentClassMint,
       parentClass,
       metadataUpdateAuthority,
       owner,
+      program,
     } = args;
 
     const remainingAccounts: {
@@ -137,9 +135,25 @@ export namespace ContractCommon {
       isWritable: boolean;
       isSigner: boolean;
     }[] = [];
+
+    if (!permissivenessToUse) {
+      remainingAccounts.push({
+        pubkey: metadataUpdateAuthority || owner,
+        isWritable: false,
+        isSigner: true,
+      });
+      remainingAccounts.push({
+        pubkey: await getMetadata(tokenMint),
+        isWritable: false,
+        isSigner: false,
+      });
+
+      return remainingAccounts;
+    }
+
     if (permissivenessToUse.tokenHolder) {
       remainingAccounts.push({
-        pubkey: tokenAccount,
+        pubkey: await getTokenAccountForMint(tokenMint, owner, program),
         isWritable: false,
         isSigner: false,
       });
@@ -150,7 +164,7 @@ export namespace ContractCommon {
       });
     } else if (permissivenessToUse.parentTokenHolder) {
       remainingAccounts.push({
-        pubkey: parentClassAccount,
+        pubkey: await getTokenAccountForMint(parentClassMint, owner, program),
         isWritable: false,
         isSigner: false,
       });
@@ -319,4 +333,31 @@ export namespace ContractCommon {
     }
     return remainingAccounts;
   }
+
+  // Token can be minted to both ATA or non-ATA
+  export const getTokenAccountForMint = async (
+    mint: web3.PublicKey,
+    owner: web3.PublicKey,
+    program: Program
+  ): Promise<web3.PublicKey> => {
+    const tokenAccounts = (
+      await program.provider.connection.getParsedTokenAccountsByOwner(
+        owner,
+        {
+          mint,
+        },
+        "confirmed"
+      )
+    ).value.filter(
+      (account) =>
+        account.account.data.parsed.info.tokenAmount.amount === "1" &&
+        account.account.data.parsed.info.tokenAmount.decimals === 0
+    );
+
+    if (tokenAccounts.length < 1) {
+      throw Error("Cannot find token account");
+    }
+
+    return tokenAccounts[0].pubkey;
+  };
 }

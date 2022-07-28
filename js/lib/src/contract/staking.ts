@@ -1,5 +1,5 @@
 import { web3 } from "@project-serum/anchor";
-import { Program } from "@raindrop-studios/sol-kit";
+import { Program, Transaction } from "@raindrop-studios/sol-kit";
 import { STAKING_ID } from "../constants/programIds";
 import { PREFIX } from "../constants/staking";
 import * as StakingInstruction from "../instructions/staking";
@@ -19,7 +19,7 @@ export class StakingProgram extends Program.Program {
     args: StakingInstruction.BeginArtifactStakeWarmupArgs,
     accounts: StakingInstruction.BeginArtifactStakeWarmupAccounts,
     options?: { commitment: web3.Commitment; timeout?: number }
-  ) {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.beginArtifactStakeWarmup(
       args,
       accounts
@@ -36,7 +36,7 @@ export class StakingProgram extends Program.Program {
     args: StakingInstruction.EndArtifactStakeWarmupArgs,
     accounts: StakingInstruction.EndArtifactStakeWarmupAccounts,
     options?: { commitment: web3.Commitment; timeout?: number }
-  ) {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.endArtifactStakeWarmup(
       args,
       accounts
@@ -49,7 +49,7 @@ export class StakingProgram extends Program.Program {
     args: StakingInstruction.BeginArtifactStakeCooldownArgs,
     accounts: StakingInstruction.BeginArtifactStakeCooldownAccounts,
     options?: { commitment: web3.Commitment; timeout?: number }
-  ) {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.beginArtifactStakeCooldown(
       args,
       accounts
@@ -58,11 +58,11 @@ export class StakingProgram extends Program.Program {
     return await this.sendWithRetry(instruction, [], options);
   }
 
-  async endARtifactStakeCooldown(
+  async endArtifactStakeCooldown(
     args: StakingInstruction.EndArtifactStakeCooldownArgs,
     accounts: StakingInstruction.EndArtifactStakeCooldownAccounts,
     options?: { commitment: web3.Commitment; timeout?: number }
-  ) {
+  ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.endArtifactStakeCooldown(
       args,
       accounts
