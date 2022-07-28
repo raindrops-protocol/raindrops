@@ -1,12 +1,12 @@
 use {
-    crate::{borsh::BorshDeserialize, Artifact, ArtifactClass},
+    crate::{Artifact, ArtifactClass, ArtifactClassData},
     anchor_lang::{
-        prelude::{Pubkey, Result, UncheckedAccount},
+        prelude::{Account, Pubkey, Result, UncheckedAccount},
         require,
         solana_program::hash,
     },
     arrayref::array_ref,
-    raindrops_item::utils::assert_derivation_with_bump,
+    raindrops_item::{utils::assert_derivation_with_bump, Item, ItemClass},
 };
 
 pub fn assert_is_proper_class<'info>(
@@ -34,7 +34,7 @@ pub fn assert_is_proper_class<'info>(
 
     require!(!artifact_class.data_is_empty(), NotInitialized);
 
-    let mut arr = vec![];
+    // let mut arr = vec![];
     let data = artifact_class.data.borrow();
 
     let discriminator = u64::from_le_bytes(*array_ref![data, 0, 8]);
@@ -48,10 +48,36 @@ pub fn assert_is_proper_class<'info>(
         DiscriminatorMismatch
     );
 
-    for entry in 8..data.len() {
-        arr.push(data[entry]);
-    }
-    let class_deserialized: ArtifactClass = ArtifactClass::try_from_slice(&arr)?;
+    let class_deserialized: ArtifactClass;
+
+    // FIXME: Remove it after the player contract is done.
+    require!(class_name != "PlayerClass", StakingForPlayerComingSoon);
+
+    let item_class_deserialized: Account<ItemClass> = Account::try_from(&artifact_class)?;
+    let item_class_data = item_class_deserialized.item_class_data(&artifact_class.data)?;
+
+    class_deserialized = ArtifactClass {
+        namespaces: item_class_deserialized.namespaces.clone(),
+        parent: item_class_deserialized.parent,
+        mint: item_class_deserialized.mint,
+        metadata: item_class_deserialized.metadata,
+        edition: item_class_deserialized.edition,
+        bump: item_class_deserialized.bump,
+        existing_children: item_class_deserialized.existing_children,
+        data: ArtifactClassData {
+            children_must_be_editions: item_class_data.settings.children_must_be_editions,
+            builder_must_be_holder: item_class_data.settings.builder_must_be_holder,
+            update_permissiveness: item_class_data.settings.update_permissiveness,
+            build_permissiveness: item_class_data.settings.build_permissiveness,
+            staking_warm_up_duration: item_class_data.settings.staking_warm_up_duration,
+            staking_cooldown_duration: item_class_data.settings.staking_cooldown_duration,
+            staking_permissiveness: item_class_data.settings.staking_permissiveness,
+            unstaking_permissiveness: item_class_data.settings.unstaking_permissiveness,
+            child_update_propagation_permissiveness: item_class_data
+                .settings
+                .child_update_propagation_permissiveness,
+        },
+    };
 
     assert_derivation_with_bump(
         artifact_class.owner,
@@ -84,7 +110,7 @@ pub fn assert_is_proper_instance<'info>(
         raindrops_item::PREFIX
     };
 
-    let class_name = if artifact.owner == &raindrops_player::id() {
+    let instance_name = if artifact.owner == &raindrops_player::id() {
         "Player"
     } else {
         "Item"
@@ -92,13 +118,14 @@ pub fn assert_is_proper_instance<'info>(
 
     require!(!artifact.data_is_empty(), NotInitialized);
 
-    let mut arr = vec![];
+    // let mut arr = vec![];
     let data = artifact.data.borrow();
 
     let discriminator = u64::from_le_bytes(*array_ref![data, 0, 8]);
     let mut expected_discriminator = [0; 8];
-    expected_discriminator
-        .copy_from_slice(&hash::hash(format!("account:{}", class_name).as_bytes()).to_bytes()[..8]);
+    expected_discriminator.copy_from_slice(
+        &hash::hash(format!("account:{}", instance_name).as_bytes()).to_bytes()[..8],
+    );
     let expected_discriminator_as_u64 = u64::from_le_bytes(expected_discriminator);
 
     require!(
@@ -106,10 +133,22 @@ pub fn assert_is_proper_instance<'info>(
         DiscriminatorMismatch
     );
 
-    for entry in 8..data.len() {
-        arr.push(data[entry]);
-    }
-    let instance_deserialized: Artifact = Artifact::try_from_slice(&arr)?;
+    let instance_deserialized: Artifact;
+
+    // FIXME: Remove it after the player contract is done.
+    require!(instance_name != "Player", StakingForPlayerComingSoon);
+
+    let item_deserialized: Account<Item> = Account::try_from(&artifact)?;
+
+    instance_deserialized = Artifact {
+        namespaces: item_deserialized.namespaces.clone(),
+        parent: item_deserialized.parent,
+        mint: item_deserialized.mint,
+        metadata: item_deserialized.metadata,
+        edition: item_deserialized.edition,
+        bump: item_deserialized.bump,
+        tokens_staked: item_deserialized.tokens_staked,
+    };
 
     assert_derivation_with_bump(
         artifact.owner,

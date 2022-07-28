@@ -124,7 +124,10 @@ pub mod staking {
                     token_program: token_program.to_account_info(),
                 })?;
 
-                staking_counter.bump = *ctx.bumps.get("staking_counter").unwrap();
+                staking_counter.bump = *ctx
+                    .bumps
+                    .get("artifact_intermediary_staking_counter")
+                    .unwrap();
                 staking_counter.event_start = clock.unix_timestamp;
                 staking_counter.event_type = 0;
                 return Ok(());
@@ -302,7 +305,10 @@ pub mod staking {
         let mut data = artifact_unchecked.data.borrow_mut();
         data.copy_from_slice(&artifact.try_to_vec()?);
 
-        staking_counter.bump = *ctx.bumps.get("staking_counter").unwrap();
+        staking_counter.bump = *ctx
+            .bumps
+            .get("artifact_intermediary_staking_counter")
+            .unwrap();
         staking_counter.event_start = clock.unix_timestamp;
         staking_counter.event_type = 1;
 
@@ -613,4 +619,6 @@ pub enum ErrorCode {
     StakingMintNotWhitelisted,
     #[msg("Discriminator mismatch")]
     DiscriminatorMismatch,
+    #[msg("Staking for player coming soon")]
+    StakingForPlayerComingSoon,
 }
