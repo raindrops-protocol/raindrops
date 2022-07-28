@@ -1,7 +1,7 @@
 import { BN, web3 } from "@project-serum/anchor";
 import { CLI, Wallet } from "@raindrop-studios/sol-command";
 import log from "loglevel";
-import { StakingProgram } from "@raindrops-protocol/raindrops";
+import { StakingProgram } from "../../lib/src/contract";
 
 CLI.programCommandWithConfig(
   "begin_artifact_stake_warmup",
@@ -34,9 +34,6 @@ CLI.programCommandWithConfig(
         stakingAccount: new web3.PublicKey(config.stakingAccount),
         stakingMint: new web3.PublicKey(config.stakingMint),
         stakingTransferAuthority: web3.Keypair.generate(),
-        parentClassAccount: config.parentClassAccount
-          ? new web3.PublicKey(config.parentClassAccount)
-          : null,
         parentClassMint: config.parentClassMint
           ? new web3.PublicKey(config.parentClassMint)
           : null,
@@ -148,7 +145,7 @@ CLI.programCommandWithConfig(
       rpcUrl
     );
 
-    const { txid } = await stakingProgram.endARtifactStakeCooldown(
+    const { txid } = await stakingProgram.endArtifactStakeCooldown(
       {
         classIndex: new BN(config.classIndex),
         index: new BN(config.index),
@@ -168,3 +165,5 @@ CLI.programCommandWithConfig(
     log.info(`Transaction signature: ${txid}`);
   }
 );
+
+CLI.Program.parseAsync(process.argv);
