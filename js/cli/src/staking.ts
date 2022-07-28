@@ -106,7 +106,7 @@ CLI.programCommandWithConfig(
         stakingIndex: new BN(config.stakingIndex),
         artifactClassMint: new web3.PublicKey(config.artifactClassMint),
         artifactMint: new web3.PublicKey(config.artifactMint),
-        stakingPermissivenessToUse: config.Permissiveness || null,
+        stakingPermissivenessToUse: config.stakingPermissivenessToUse || null,
       },
       {
         artifactClass: new web3.PublicKey(config.artifactClass),
@@ -150,7 +150,6 @@ CLI.programCommandWithConfig(
         classIndex: new BN(config.classIndex),
         index: new BN(config.index),
         stakingIndex: new BN(config.stakingIndex),
-        stakingMint: new web3.PublicKey(config.stakingMint),
         artifactClassMint: new web3.PublicKey(config.artifactClassMint),
         artifactMint: new web3.PublicKey(config.artifactMint),
       },
@@ -158,6 +157,7 @@ CLI.programCommandWithConfig(
         artifactClass: new web3.PublicKey(config.artifactClass),
         artifact: new web3.PublicKey(config.artifact),
         stakingAccount: new web3.PublicKey(config.stakingAccount),
+        stakingMint: new web3.PublicKey(config.stakingMint),
       }
     );
 

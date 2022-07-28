@@ -221,7 +221,7 @@ export const getArtifactIntermediaryStakingAccount = async (args: {
   );
 };
 
-export const getArtifactIntermediaryStakingCounter = async (args: {
+export const getArtifactIntermediaryStakingCounterForWarmup = async (args: {
   artifactClassMint: web3.PublicKey;
   artifactMint: web3.PublicKey;
   index: BN;
@@ -237,6 +237,29 @@ export const getArtifactIntermediaryStakingCounter = async (args: {
       args.stakingMint.toBuffer(),
       args.stakingIndex.toArrayLike(Buffer, "le", 8),
       Buffer.from(STAKING_COUNTER),
+    ],
+    STAKING_ID
+  );
+};
+
+export const getArtifactIntermediaryStakingCounterForCooldown = async (args: {
+  artifactClassMint: web3.PublicKey;
+  artifactMint: web3.PublicKey;
+  index: BN;
+  stakingAccount: web3.PublicKey;
+  stakingMint: web3.PublicKey;
+  stakingIndex: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(STAKING_PREFIX),
+      args.artifactClassMint.toBuffer(),
+      args.artifactMint.toBuffer(),
+      args.index.toArrayLike(Buffer, "le", 8),
+      args.stakingMint.toBuffer(),
+      args.stakingIndex.toArrayLike(Buffer, "le", 8),
+      Buffer.from(STAKING_COUNTER),
+      args.stakingAccount.toBuffer(),
     ],
     STAKING_ID
   );

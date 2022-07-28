@@ -10,7 +10,8 @@ import { ContractCommon } from "../contract/common";
 import { AnchorPermissivenessType } from "../state/common";
 import {
   getArtifactIntermediaryStakingAccount,
-  getArtifactIntermediaryStakingCounter,
+  getArtifactIntermediaryStakingCounterForWarmup,
+  getArtifactIntermediaryStakingCounterForCooldown,
   getArtifactMintStakingAccount,
 } from "../utils/pda";
 
@@ -78,7 +79,6 @@ export interface EndArtifactStakeCooldownArgs {
   classIndex: BN;
   index: BN;
   stakingIndex: BN;
-  stakingMint: web3.PublicKey;
   artifactClassMint: web3.PublicKey;
   artifactMint: web3.PublicKey;
 }
@@ -87,6 +87,7 @@ export interface EndArtifactStakeCooldownAccounts {
   artifactClass: web3.PublicKey;
   artifact: web3.PublicKey;
   stakingAccount: web3.PublicKey;
+  stakingMint: web3.PublicKey;
 }
 
 export class Instruction extends SolKitInstruction {
@@ -112,7 +113,7 @@ export class Instruction extends SolKitInstruction {
     const [
       artifactIntermediaryStakingCounter,
       _artifactIntermediaryStakingCounterBump,
-    ] = await getArtifactIntermediaryStakingCounter({
+    ] = await getArtifactIntermediaryStakingCounterForWarmup({
       artifactClassMint: args.artifactClassMint,
       artifactMint: args.artifactMint,
       index: args.index,
@@ -182,7 +183,7 @@ export class Instruction extends SolKitInstruction {
     const [
       artifactIntermediaryStakingCounter,
       _artifactIntermediaryStakingCounterBump,
-    ] = await getArtifactIntermediaryStakingCounter({
+    ] = await getArtifactIntermediaryStakingCounterForWarmup({
       artifactClassMint: args.artifactClassMint,
       artifactMint: args.artifactMint,
       index: args.index,
@@ -237,10 +238,11 @@ export class Instruction extends SolKitInstruction {
     const [
       artifactIntermediaryStakingCounter,
       _artifactIntermediaryStakingCounterBump,
-    ] = await getArtifactIntermediaryStakingCounter({
+    ] = await getArtifactIntermediaryStakingCounterForCooldown({
       artifactClassMint: args.artifactClassMint,
       artifactMint: args.artifactMint,
       index: args.index,
+      stakingAccount: accounts.stakingAccount,
       stakingMint: accounts.stakingMint,
       stakingIndex: args.stakingIndex,
     });
@@ -256,7 +258,7 @@ export class Instruction extends SolKitInstruction {
     const remainingAccounts =
       await generateRemainingAccountsForGivenPermissivenessToUse({
         permissivenessToUse: args.stakingPermissivenessToUse,
-        tokenMint: accounts.stakingMint,
+        tokenMint: args.artifactClassMint,
         parentClassMint: accounts.parentClassMint,
         parentClass: accounts.parentClass,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
@@ -299,18 +301,19 @@ export class Instruction extends SolKitInstruction {
       artifactClassMint: args.artifactClassMint,
       artifactMint: args.artifactMint,
       index: args.index,
-      stakingMint: args.stakingMint,
+      stakingMint: accounts.stakingMint,
       stakingIndex: args.stakingIndex,
     });
 
     const [
       artifactIntermediaryStakingCounter,
       _artifactIntermediaryStakingCounterBump,
-    ] = await getArtifactIntermediaryStakingCounter({
+    ] = await getArtifactIntermediaryStakingCounterForCooldown({
       artifactClassMint: args.artifactClassMint,
       artifactMint: args.artifactMint,
+      stakingAccount: accounts.stakingAccount,
       index: args.index,
-      stakingMint: args.stakingMint,
+      stakingMint: accounts.stakingMint,
       stakingIndex: args.stakingIndex,
     });
 
@@ -323,6 +326,7 @@ export class Instruction extends SolKitInstruction {
           artifactIntermediaryStakingAccount,
           artifactIntermediaryStakingCounter,
           stakingAccount: accounts.stakingAccount,
+          stakingMint: accounts.stakingMint,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,

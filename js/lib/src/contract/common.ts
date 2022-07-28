@@ -153,7 +153,11 @@ export namespace ContractCommon {
 
     if (permissivenessToUse.tokenHolder) {
       remainingAccounts.push({
-        pubkey: await getTokenAccountForMint(tokenMint, owner, program),
+        pubkey: await getTokenAccountForMint({
+          mint: tokenMint,
+          owner,
+          program,
+        }),
         isWritable: false,
         isSigner: false,
       });
@@ -164,7 +168,11 @@ export namespace ContractCommon {
       });
     } else if (permissivenessToUse.parentTokenHolder) {
       remainingAccounts.push({
-        pubkey: await getTokenAccountForMint(parentClassMint, owner, program),
+        pubkey: await getTokenAccountForMint({
+          mint: parentClassMint,
+          owner,
+          program,
+        }),
         isWritable: false,
         isSigner: false,
       });
@@ -335,11 +343,13 @@ export namespace ContractCommon {
   }
 
   // Token can be minted to both ATA or non-ATA
-  export const getTokenAccountForMint = async (
-    mint: web3.PublicKey,
-    owner: web3.PublicKey,
-    program: Program
-  ): Promise<web3.PublicKey> => {
+  export async function getTokenAccountForMint(args: {
+    mint: web3.PublicKey;
+    owner: web3.PublicKey;
+    program: Program;
+  }): Promise<web3.PublicKey> {
+    const { mint, owner, program } = args;
+
     const tokenAccounts = (
       await program.provider.connection.getParsedTokenAccountsByOwner(
         owner,
@@ -359,5 +369,5 @@ export namespace ContractCommon {
     }
 
     return tokenAccounts[0].pubkey;
-  };
+  }
 }

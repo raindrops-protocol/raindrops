@@ -54,7 +54,6 @@ pub struct EndArtifactStakeCooldownArgs {
     pub class_index: u64,
     pub index: u64,
     pub staking_index: u64,
-    pub staking_mint: Pubkey,
     pub artifact_class_mint: Pubkey,
     pub artifact_mint: Pubkey,
 }
@@ -73,8 +72,8 @@ pub mod staking {
         let artifact_class_unchecked = &ctx.accounts.artifact_class;
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
-        let staking_mint = &ctx.accounts.staking_mint;
         let staking_account = &ctx.accounts.staking_account;
+        let staking_mint = &ctx.accounts.staking_mint;
         let staking_transfer_authority = &ctx.accounts.staking_transfer_authority;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
@@ -83,9 +82,9 @@ pub mod staking {
             class_index,
             parent_class_index,
             artifact_class_mint,
+            artifact_mint,
             staking_amount,
             staking_permissiveness_to_use,
-            artifact_mint,
             index,
             ..
         } = args;
@@ -146,6 +145,7 @@ pub mod staking {
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
         let artifact_mint_staking_account = &ctx.accounts.artifact_mint_staking_account;
+        let staking_mint = &ctx.accounts.staking_mint;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
         let payer = &ctx.accounts.payer;
@@ -161,7 +161,7 @@ pub mod staking {
         let artifact_class =
             assert_is_proper_class(artifact_class_unchecked, &artifact_class_mint, class_index)?;
 
-        let mut artifact = assert_is_proper_instance(
+        assert_is_proper_instance(
             artifact_unchecked,
             &artifact_class_unchecked.key(),
             &artifact_mint,
@@ -182,21 +182,25 @@ pub mod staking {
             )
         }
 
+        let staking_mint_key = staking_mint.key();
         let signer_seeds = [
             PREFIX.as_bytes(),
-            artifact_mint.as_ref(),
+            args.artifact_class_mint.as_ref(),
+            args.artifact_mint.as_ref(),
             &index.to_le_bytes(),
-            &[artifact.bump],
+            &staking_mint_key.as_ref(),
+            &args.staking_index.to_le_bytes(),
+            STAKING_COUNTER.as_bytes(),
+            &[staking_counter.bump],
         ];
 
-        let artifact_info = artifact_unchecked.to_account_info();
         let staking_amount = staking_escrow.amount;
 
         spl_token_transfer(TokenTransferParams {
             source: staking_escrow.to_account_info(),
             destination: artifact_mint_staking_account.to_account_info(),
             amount: staking_amount,
-            authority: artifact_info,
+            authority: staking_counter.to_account_info(),
             authority_signer_seeds: &signer_seeds,
             token_program: token_program.to_account_info(),
         })?;
@@ -215,18 +219,20 @@ pub mod staking {
             &staking_escrow.to_account_info(),
             payer,
             token_program,
-            &artifact_unchecked.to_account_info(),
+            &staking_counter.to_account_info(),
             &signer_seeds,
         )?;
 
-        artifact.tokens_staked = artifact
-            .tokens_staked
-            .checked_add(staking_amount)
-            .ok_or(ErrorCode::NumericalOverflowError)?;
+        // FIXME: Call cpi to update tokens_staked
 
-        // Because artifact is using a copy of this data
-        let mut data = artifact_unchecked.data.borrow_mut();
-        data.copy_from_slice(&artifact.try_to_vec()?);
+        // artifact.tokens_staked = artifact
+        //     .tokens_staked
+        //     .checked_add(staking_amount)
+        //     .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        // // Because artifact is using a copy of this data
+        // let mut data = artifact_unchecked.data.borrow_mut();
+        // data.copy_from_slice(&artifact.try_to_vec()?);
 
         return Ok(());
     }
@@ -239,24 +245,25 @@ pub mod staking {
         let artifact_class_unchecked = &ctx.accounts.artifact_class;
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
+        let artifact_mint_staking_account = &ctx.accounts.artifact_mint_staking_account;
+        let staking_mint = &ctx.accounts.staking_mint;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
-        let artifact_mint_staking_account = &ctx.accounts.artifact_mint_staking_account;
 
         let BeginArtifactStakeCooldownArgs {
             class_index,
             parent_class_index,
             index,
             artifact_class_mint,
-            staking_permissiveness_to_use,
             artifact_mint,
+            staking_permissiveness_to_use,
             ..
         } = args;
 
         let artifact_class =
             assert_is_proper_class(artifact_class_unchecked, &artifact_class_mint, class_index)?;
 
-        let mut artifact = assert_is_proper_instance(
+        assert_is_proper_instance(
             artifact_unchecked,
             &artifact_class_unchecked.key(),
             &artifact_mint,
@@ -278,11 +285,19 @@ pub mod staking {
             account_mint: Some(&artifact_class_mint),
         })?;
 
+        let staking_mint_key = staking_mint.key();
+        let staking_escrow_bump = *ctx
+            .bumps
+            .get("artifact_intermediary_staking_account")
+            .unwrap();
         let signer_seeds = [
             PREFIX.as_bytes(),
-            artifact_mint.as_ref(),
+            args.artifact_class_mint.as_ref(),
+            args.artifact_mint.as_ref(),
             &index.to_le_bytes(),
-            &[artifact.bump],
+            &staking_mint_key.as_ref(),
+            &args.staking_index.to_le_bytes(),
+            &[staking_escrow_bump],
         ];
 
         let amount_to_unstake = artifact_mint_staking_account.amount;
@@ -291,19 +306,21 @@ pub mod staking {
             source: artifact_mint_staking_account.to_account_info(),
             destination: staking_escrow.to_account_info(),
             amount: amount_to_unstake,
-            authority: artifact_unchecked.to_account_info(),
+            authority: staking_escrow.to_account_info(),
             authority_signer_seeds: &signer_seeds,
             token_program: token_program.to_account_info(),
         })?;
 
-        artifact.tokens_staked = artifact
-            .tokens_staked
-            .checked_sub(amount_to_unstake)
-            .ok_or(ErrorCode::NumericalOverflowError)?;
+        // FIXME: Call cpi to update tokens_staked
 
-        // Because artifact is using a copy of this data
-        let mut data = artifact_unchecked.data.borrow_mut();
-        data.copy_from_slice(&artifact.try_to_vec()?);
+        // artifact.tokens_staked = artifact
+        //     .tokens_staked
+        //     .checked_sub(amount_to_unstake)
+        //     .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        // // Because artifact is using a copy of this data
+        // let mut data = artifact_unchecked.data.borrow_mut();
+        // data.copy_from_slice(&artifact.try_to_vec()?);
 
         staking_counter.bump = *ctx
             .bumps
@@ -324,6 +341,7 @@ pub mod staking {
         let staking_escrow = &mut ctx.accounts.artifact_intermediary_staking_account;
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
         let staking_account = &ctx.accounts.staking_account;
+        let staking_mint = &ctx.accounts.staking_mint;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
         let payer = &ctx.accounts.payer;
@@ -339,7 +357,7 @@ pub mod staking {
         let artifact_class =
             assert_is_proper_class(artifact_class_unchecked, &artifact_class_mint, class_index)?;
 
-        let artifact = assert_is_proper_instance(
+        assert_is_proper_instance(
             artifact_unchecked,
             &artifact_class_unchecked.key(),
             &artifact_mint,
@@ -360,20 +378,25 @@ pub mod staking {
             )
         }
 
+        let staking_mint_key = staking_mint.key();
+        let staking_account_key = staking_account.key();
         let signer_seeds = [
             PREFIX.as_bytes(),
-            artifact_mint.as_ref(),
+            args.artifact_class_mint.as_ref(),
+            args.artifact_mint.as_ref(),
             &index.to_le_bytes(),
-            &[artifact.bump],
+            &staking_mint_key.as_ref(),
+            &args.staking_index.to_le_bytes(),
+            STAKING_COUNTER.as_bytes(),
+            staking_account_key.as_ref(),
+            &[staking_counter.bump],
         ];
-
-        let artifact_info = artifact_unchecked.to_account_info();
 
         spl_token_transfer(TokenTransferParams {
             source: staking_escrow.to_account_info(),
             destination: staking_account.to_account_info(),
             amount: staking_escrow.amount,
-            authority: artifact_info,
+            authority: staking_counter.to_account_info(),
             authority_signer_seeds: &signer_seeds,
             token_program: token_program.to_account_info(),
         })?;
@@ -392,7 +415,7 @@ pub mod staking {
             &staking_escrow.to_account_info(),
             payer,
             token_program,
-            &artifact_unchecked.to_account_info(),
+            &staking_counter.to_account_info(),
             &signer_seeds,
         )?;
 
@@ -419,16 +442,19 @@ pub mod staking {
 #[derive(Accounts)]
 #[instruction(args: BeginArtifactStakeWarmupArgs)]
 pub struct BeginArtifactStakeWarmup<'info> {
+    /// CHECK: TODO
     artifact_class: UncheckedAccount<'info>,
+    /// CHECK: TODO
     artifact: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump, token::mint = staking_mint, token::authority = artifact, payer=payer)]
-    artifact_intermediary_staking_account: Account<'info, TokenAccount>,
-    #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(),args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump, space=8+1+8+1, payer=payer)]
-    artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
+    #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump, token::mint=staking_mint, token::authority=artifact_intermediary_staking_counter, payer=payer)]
+    artifact_intermediary_staking_account: Box<Account<'info, TokenAccount>>,
+    #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump, space=8+1+8+1, payer=payer)]
+    artifact_intermediary_staking_counter: Box<Account<'info, StakingCounter>>,
     #[account(constraint=staking_account.mint == staking_mint.key())]
-    staking_account: Account<'info, TokenAccount>,
-    staking_mint: Account<'info, Mint>,
+    staking_account: Box<Account<'info, TokenAccount>>,
+    staking_mint: Box<Account<'info, Mint>>,
     staking_transfer_authority: Signer<'info>,
+    /// CHECK: TODO
     namespace: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -442,16 +468,18 @@ pub struct BeginArtifactStakeWarmup<'info> {
 #[derive(Accounts)]
 #[instruction(args: EndArtifactStakeWarmupArgs)]
 pub struct EndArtifactStakeWarmup<'info> {
+    /// CHECK: TODO
     artifact_class: UncheckedAccount<'info>,
+    /// CHECK: TODO
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(),args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump)]
-    artifact_intermediary_staking_account: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(),args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=artifact_intermediary_staking_counter.bump)]
-    artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump, token::mint = staking_mint, token::authority = artifact, payer=payer)]
-    artifact_mint_staking_account: Account<'info, TokenAccount>,
-    staking_mint: Account<'info, Mint>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump)]
+    artifact_intermediary_staking_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes()], bump=artifact_intermediary_staking_counter.bump)]
+    artifact_intermediary_staking_counter: Box<Account<'info, StakingCounter>>,
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump, token::mint=staking_mint, token::authority=artifact_intermediary_staking_account, payer=payer)]
+    artifact_mint_staking_account: Box<Account<'info, TokenAccount>>,
+    staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -463,11 +491,13 @@ pub struct EndArtifactStakeWarmup<'info> {
 #[derive(Accounts)]
 #[instruction(args: BeginArtifactStakeCooldownArgs)]
 pub struct BeginArtifactStakeCooldown<'info> {
+    /// CHECK: TODO
     artifact_class: UncheckedAccount<'info>,
+    /// CHECK: TODO
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(),args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump, token::mint = staking_mint, token::authority = artifact, payer=payer)]
-    artifact_intermediary_staking_account: Account<'info, TokenAccount>,
+    #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump, token::mint=staking_mint, token::authority=artifact_intermediary_staking_counter, payer=payer)]
+    artifact_intermediary_staking_account: Box<Account<'info, TokenAccount>>,
     // Note that staking counters going IN do not have intended staking account destination in the seeds
     // This is so they are easily derivable and findable by any user interface without an accounts query, so people can see inbound statuses
     // It's also okay to make ingoing end action permissionless because you are just moving tokens from controlled escrow to controlled internal bank of item
@@ -475,12 +505,12 @@ pub struct BeginArtifactStakeCooldown<'info> {
     // the staking counter is TIED in some way to the intended destination account. In order to make this permissionless without spending 32 bytes, we make the
     // seed have an additional key in the staking counter.
     #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes(), staking_account.key().as_ref()], bump, space=8+1+8+1, payer=payer)]
-    artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
+    artifact_intermediary_staking_counter: Box<Account<'info, StakingCounter>>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref()], bump)]
-    artifact_mint_staking_account: Account<'info, TokenAccount>,
+    artifact_mint_staking_account: Box<Account<'info, TokenAccount>>,
     #[account(mut, constraint=staking_account.mint == staking_mint.key())]
-    staking_account: Account<'info, TokenAccount>,
-    staking_mint: Account<'info, Mint>,
+    staking_account: Box<Account<'info, TokenAccount>>,
+    staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -493,15 +523,18 @@ pub struct BeginArtifactStakeCooldown<'info> {
 #[derive(Accounts)]
 #[instruction(args: EndArtifactStakeCooldownArgs)]
 pub struct EndArtifactStakeCooldown<'info> {
+    /// CHECK: TODO
     artifact_class: UncheckedAccount<'info>,
+    /// CHECK: TODO
     artifact: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(),args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &args.staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump)]
-    artifact_intermediary_staking_account: Account<'info, TokenAccount>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump)]
+    artifact_intermediary_staking_account: Box<Account<'info, TokenAccount>>,
     // Wondering why this counter has an additional key of staking_account where inbound staking counters do not? See cooldown begin action.
-    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(),args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &args.staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes(), staking_account.key().as_ref()], bump=artifact_intermediary_staking_counter.bump)]
-    artifact_intermediary_staking_counter: Account<'info, StakingCounter>,
-    #[account(mut, constraint=staking_account.mint == args.staking_mint)]
-    staking_account: Account<'info, TokenAccount>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes(), STAKING_COUNTER.as_bytes(), staking_account.key().as_ref()], bump=artifact_intermediary_staking_counter.bump)]
+    artifact_intermediary_staking_counter: Box<Account<'info, StakingCounter>>,
+    #[account(mut, constraint=staking_account.mint == staking_mint.key())]
+    staking_account: Box<Account<'info, TokenAccount>>,
+    staking_mint: Box<Account<'info, Mint>>,
     payer: Signer<'info>,
     token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
