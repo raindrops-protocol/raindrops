@@ -442,9 +442,9 @@ pub mod staking {
 #[derive(Accounts)]
 #[instruction(args: BeginArtifactStakeWarmupArgs)]
 pub struct BeginArtifactStakeWarmup<'info> {
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_class
     artifact_class: UncheckedAccount<'info>,
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_instance
     artifact: UncheckedAccount<'info>,
     #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump, token::mint=staking_mint, token::authority=artifact_intermediary_staking_counter, payer=payer)]
     artifact_intermediary_staking_account: Box<Account<'info, TokenAccount>>,
@@ -454,7 +454,7 @@ pub struct BeginArtifactStakeWarmup<'info> {
     staking_account: Box<Account<'info, TokenAccount>>,
     staking_mint: Box<Account<'info, Mint>>,
     staking_transfer_authority: Signer<'info>,
-    /// CHECK: TODO
+    /// CHECK: assert_part_of_namespace
     namespace: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -468,9 +468,9 @@ pub struct BeginArtifactStakeWarmup<'info> {
 #[derive(Accounts)]
 #[instruction(args: EndArtifactStakeWarmupArgs)]
 pub struct EndArtifactStakeWarmup<'info> {
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_class
     artifact_class: UncheckedAccount<'info>,
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_instance
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump)]
@@ -491,9 +491,9 @@ pub struct EndArtifactStakeWarmup<'info> {
 #[derive(Accounts)]
 #[instruction(args: BeginArtifactStakeCooldownArgs)]
 pub struct BeginArtifactStakeCooldown<'info> {
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_class
     artifact_class: UncheckedAccount<'info>,
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_instance
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     #[account(init, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump, token::mint=staking_mint, token::authority=artifact_intermediary_staking_counter, payer=payer)]
@@ -523,9 +523,9 @@ pub struct BeginArtifactStakeCooldown<'info> {
 #[derive(Accounts)]
 #[instruction(args: EndArtifactStakeCooldownArgs)]
 pub struct EndArtifactStakeCooldown<'info> {
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_class
     artifact_class: UncheckedAccount<'info>,
-    /// CHECK: TODO
+    /// CHECK: assert_is_proper_instance
     artifact: UncheckedAccount<'info>,
     #[account(mut, seeds=[PREFIX.as_bytes(), args.artifact_class_mint.as_ref(), args.artifact_mint.as_ref(), &args.index.to_le_bytes(), &staking_mint.key().as_ref(), &args.staking_index.to_le_bytes()], bump)]
     artifact_intermediary_staking_account: Box<Account<'info, TokenAccount>>,
