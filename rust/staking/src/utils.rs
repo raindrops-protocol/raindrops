@@ -1,13 +1,11 @@
-use {
-    crate::{Artifact, ArtifactClass, ArtifactClassData},
-    anchor_lang::{
-        prelude::{Account, Pubkey, Result, UncheckedAccount},
-        require,
-        solana_program::hash,
-    },
-    arrayref::array_ref,
-    raindrops_item::{utils::assert_derivation_with_bump, Item, ItemClass},
+use crate::{Artifact, ArtifactClass, ArtifactClassData};
+use anchor_lang::{
+    prelude::{Account, Pubkey, Result, UncheckedAccount},
+    require,
+    solana_program::hash,
 };
+use arrayref::array_ref;
+use raindrops_item::{utils::assert_derivation_with_bump, Item, ItemClass};
 
 pub fn assert_is_proper_class<'info>(
     artifact_class: &UncheckedAccount<'info>,
