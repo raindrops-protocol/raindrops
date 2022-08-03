@@ -35,7 +35,7 @@ export class StakingProgram extends Program.Program {
   async endArtifactStakeWarmup(
     args: StakingInstruction.EndArtifactStakeWarmupArgs,
     accounts: StakingInstruction.EndArtifactStakeWarmupAccounts,
-    options?: { commitment: web3.Commitment; timeout?: number }
+    options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
     const instruction = await this.instruction.endArtifactStakeWarmup(
       args,
