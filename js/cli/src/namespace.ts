@@ -3,7 +3,7 @@ import { Wallet, CLI } from "@raindrop-studios/sol-command";
 import { AnchorProvider, web3 } from "@project-serum/anchor";
 import log from "loglevel";
 
-import { NamespaceProgram } from "../contract/namespace";
+import { NamespaceProgram } from "@raindrops-protocol/raindrops";
 
 CLI.programCommandWithConfig("initialize_namespace", async (config, options, _files) => {
   const { keypair, env, rpcUrl } = options;

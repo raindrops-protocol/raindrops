@@ -21,3 +21,10 @@ Contributors welcome!
 If you want to contribute a bug fix, please open a pull request with your changes
 
 If you're making changes other than fixing a bug, please open an issue and label it appropiately. We will respond as soon as we can.
+
+## License
+
+This project contains two licenses.
+
+- The first is the [AGPL 3.0 license](rust/LICENSE). This license applies specifically to the contracts deployed to the blockchain. Located in the directory `rust`.
+- The second is the [Apache License 2.0](js/LICENSE). This license applies to the library code for interacting with the raindrops-protocol contracts. Located in the directory `js`.

@@ -21,12 +21,13 @@ import {
   getPlayerItemAccount,
   getPlayerItemActivationMarker,
 } from "../utils/pda";
-import {
-  generateRemainingAccountsForCreateClass,
-  generateRemainingAccountsGivenPermissivenessToUse,
-} from "../contract/common";
+import { ContractCommon } from "../contract/common";
 import { getPlayerPDA } from "../utils/pda";
 import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
+const {
+  generateRemainingAccountsForCreateClass,
+  generateRemainingAccountsGivenPermissivenessToUse,
+} = ContractCommon;
 
 export interface ToggleEquipItemArgs {
   itemIndex: BN;
@@ -318,7 +319,7 @@ export class Instruction extends SolKitInstruction {
           : null,
       metadataUpdateAuthority: accounts.metadataUpdateAuthority,
       parentUpdateAuthority: accounts.parentUpdateAuthority,
-      program: this.program.client,
+      program: this.program,
     });
 
     InstructionUtils.convertNumbersToBNs(args, [
