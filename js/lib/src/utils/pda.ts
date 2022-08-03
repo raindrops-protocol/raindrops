@@ -7,11 +7,16 @@ import {
   TOKEN_METADATA_PROGRAM_ID,
   MATCHES_ID,
   PLAYER_ID,
+  STAKING_ID,
 } from "../constants/programIds";
 import { PREFIX as ITEM_PREFIX, MARKER } from "../constants/item";
 import { PREFIX as MATCHES_PREFIX } from "../constants/matches";
 import { PREFIX as NAMESPACE_PREFIX } from "../constants/namespace";
 import { PREFIX as PLAYER_PREFIX } from "../constants/player";
+import {
+  PREFIX as STAKING_PREFIX,
+  STAKING_COUNTER,
+} from "../constants/staking";
 
 export const getAtaForMint = async (
   mint: web3.PublicKey,
@@ -72,7 +77,11 @@ export const getItemPDA = async (
   index: BN
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
-    [Buffer.from(ITEM_PREFIX), mint.toBuffer(), index.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from(ITEM_PREFIX),
+      mint.toBuffer(),
+      index.toArrayLike(Buffer, "le", 8),
+    ],
     ITEM_ID
   );
 };
@@ -82,7 +91,11 @@ export const getPlayerPDA = async (
   index: BN
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
-    [Buffer.from(PLAYER_PREFIX), mint.toBuffer(), index.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from(PLAYER_PREFIX),
+      mint.toBuffer(),
+      index.toArrayLike(Buffer, "le", 8),
+    ],
     PLAYER_ID
   );
 };
@@ -185,6 +198,88 @@ export const getItemEscrow = async (args: {
       Buffer.from(args.componentScope),
     ],
     ITEM_ID
+  );
+};
+
+export const getArtifactIntermediaryStakingAccount = async (args: {
+  artifactClassMint: web3.PublicKey;
+  artifactMint: web3.PublicKey;
+  index: BN;
+  stakingMint: web3.PublicKey;
+  stakingIndex: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(STAKING_PREFIX),
+      args.artifactClassMint.toBuffer(),
+      args.artifactMint.toBuffer(),
+      args.index.toArrayLike(Buffer, "le", 8),
+      args.stakingMint.toBuffer(),
+      args.stakingIndex.toArrayLike(Buffer, "le", 8),
+    ],
+    STAKING_ID
+  );
+};
+
+export const getArtifactIntermediaryStakingCounterForWarmup = async (args: {
+  artifactClassMint: web3.PublicKey;
+  artifactMint: web3.PublicKey;
+  index: BN;
+  stakingMint: web3.PublicKey;
+  stakingIndex: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(STAKING_PREFIX),
+      args.artifactClassMint.toBuffer(),
+      args.artifactMint.toBuffer(),
+      args.index.toArrayLike(Buffer, "le", 8),
+      args.stakingMint.toBuffer(),
+      args.stakingIndex.toArrayLike(Buffer, "le", 8),
+      Buffer.from(STAKING_COUNTER),
+    ],
+    STAKING_ID
+  );
+};
+
+export const getArtifactIntermediaryStakingCounterForCooldown = async (args: {
+  artifactClassMint: web3.PublicKey;
+  artifactMint: web3.PublicKey;
+  index: BN;
+  stakingAccount: web3.PublicKey;
+  stakingMint: web3.PublicKey;
+  stakingIndex: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(STAKING_PREFIX),
+      args.artifactClassMint.toBuffer(),
+      args.artifactMint.toBuffer(),
+      args.index.toArrayLike(Buffer, "le", 8),
+      args.stakingMint.toBuffer(),
+      args.stakingIndex.toArrayLike(Buffer, "le", 8),
+      Buffer.from(STAKING_COUNTER),
+      args.stakingAccount.toBuffer(),
+    ],
+    STAKING_ID
+  );
+};
+
+export const getArtifactMintStakingAccount = async (args: {
+  artifactClassMint: web3.PublicKey;
+  artifactMint: web3.PublicKey;
+  index: BN;
+  stakingMint: web3.PublicKey;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(STAKING_PREFIX),
+      args.artifactClassMint.toBuffer(),
+      args.artifactMint.toBuffer(),
+      args.index.toArrayLike(Buffer, "le", 8),
+      args.stakingMint.toBuffer(),
+    ],
+    STAKING_ID
   );
 };
 

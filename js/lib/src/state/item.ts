@@ -3,6 +3,7 @@ import { deserializeUnchecked } from "borsh";
 import { extendBorsh } from "../utils/borsh";
 import {
   Callback,
+  ChildUpdatePropagationPermissiveness,
   InheritanceState,
   InheritedBoolean,
   NamespaceAndIndex,
@@ -140,23 +141,6 @@ export interface AnchorComponentCondition {
   absence?: boolean;
   cooldown?: boolean;
   cooldownAndConsume?: boolean;
-}
-
-export class ChildUpdatePropagationPermissiveness {
-  overridable: boolean;
-  inherited: InheritanceState;
-  childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType;
-
-  constructor(args: {
-    overridable: boolean;
-    inherited: InheritanceState;
-    childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType;
-  }) {
-    this.overridable = args.overridable;
-    this.inherited = args.inherited;
-    this.childUpdatePropagationPermissivenessType =
-      args.childUpdatePropagationPermissivenessType;
-  }
 }
 
 export class DNPItem {
@@ -328,19 +312,6 @@ export enum BasicItemEffectType {
   DecrementPercent,
   IncrementPercentFromBase,
   DecrementPercentFromBase,
-}
-
-export enum ChildUpdatePropagationPermissivenessType {
-  Usages,
-  Components,
-  UpdatePermissiveness,
-  BuildPermissiveness,
-  ChildUpdatePropagationPermissiveness,
-  ChildrenMustBeEditionsPermissiveness,
-  BuilderMustBeHolderPermissiveness,
-  StakingPermissiveness,
-  Namespaces,
-  FreeBuildPermissiveness,
 }
 
 export const ITEM_SCHEMA = new Map<any, any>([

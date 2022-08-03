@@ -7,14 +7,8 @@ import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
 
-import {
-  Wallet
-} from "@raindrop-studios/sol-command";
-import {
-  getItemProgram,
-  State,
-  Utils
-} from "@raindrops-protocol/raindrops";
+import { Wallet } from "@raindrop-studios/sol-command";
+import { getItemProgram, State, Utils } from "@raindrops-protocol/raindrops";
 
 const { PDA } = Utils;
 const { loadWalletKey } = Wallet;
@@ -89,7 +83,7 @@ programCommand("create_item_class")
           ? config.parent.metadataUpdateAuthority
           : null,
       },
-      {},
+      {}
     );
   });
 
@@ -830,11 +824,15 @@ programCommand("show_item_class")
     log.info("Mint:", (itemClass.object.mint || actualMint).toBase58());
     log.info(
       "Metadata:",
-      (itemClass.object.metadata || (await PDA.getMetadata(actualMint))).toBase58()
+      (
+        itemClass.object.metadata || (await PDA.getMetadata(actualMint))
+      ).toBase58()
     );
     log.info(
       "Edition:",
-      (itemClass.object.edition || (await PDA.getEdition(actualMint))).toBase58()
+      (
+        itemClass.object.edition || (await PDA.getEdition(actualMint))
+      ).toBase58()
     );
     log.info(
       "Existing Children:",
@@ -977,7 +975,10 @@ programCommand("show_item_class")
           "------> Use Usage Index (to check cooldown status for crafting):",
           c.useUsageIndex
         );
-        log.info("------> Condition:", ItemState.ComponentCondition[c.condition]);
+        log.info(
+          "------> Condition:",
+          ItemState.ComponentCondition[c.condition]
+        );
         log.info("------> Inherited:", InheritanceState[c.inherited]);
       });
 
@@ -1088,7 +1089,8 @@ programCommand("show_item_class")
             })
           );
         } else {
-          const itemClassType = u.itemClassType.consumable as ItemState.Consumable;
+          const itemClassType = u.itemClassType
+            .consumable as ItemState.Consumable;
 
           log.info("------> Consumable:");
           log.info(

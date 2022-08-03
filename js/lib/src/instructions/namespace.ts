@@ -3,7 +3,7 @@ import { SystemProgram } from "@solana/web3.js";
 import {
   Program,
   Instruction as SolKitInstruction,
-  InstructionUtils
+  InstructionUtils,
 } from "@raindrop-studios/sol-kit";
 
 import { getNamespacePDA } from "../utils/pda";
@@ -44,14 +44,14 @@ export class Instruction extends SolKitInstruction {
 
   async initializeNamespace(
     args: InitializeNamespaceArgs,
-    accounts: InitializeNamespaceAccounts,
+    accounts: InitializeNamespaceAccounts
   ) {
     const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
 
     InstructionUtils.convertNumbersToBNs(args, [
       "desiredNamespaceArraySize",
       "bump",
-    ])
+    ]);
 
     const remainingAccounts = args.whitelistedStakingMints.map((mint) => {
       return { pubkey: mint, isWritable: false, isSigner: false };
@@ -65,7 +65,8 @@ export class Instruction extends SolKitInstruction {
           mint: accounts.mint,
           metadata: accounts.metadata,
           masterEdition: accounts.masterEdition,
-          payer: (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          payer: (this.program.client.provider as AnchorProvider).wallet
+            .publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
@@ -77,15 +78,15 @@ export class Instruction extends SolKitInstruction {
 
   async updateNamespace(
     args: UpdateNamespaceArgs,
-    accounts: UpdateNamespaceAccounts,
+    accounts: UpdateNamespaceAccounts
   ) {
     const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
 
-    const remainingAccounts = args.whitelistedStakingMints.map(
-      (mint) => {
-        return { pubkey: mint, isWritable: false, isSigner: false };
-      }
-    );
+    const remainingAccounts = args.whitelistedStakingMints.map((mint) => ({
+      pubkey: mint,
+      isWritable: false,
+      isSigner: false,
+    }));
 
     return [
       await this.program.client.methods
