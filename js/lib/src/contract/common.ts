@@ -345,6 +345,7 @@ export namespace ContractCommon {
   // Token can be minted to both ATA or non-ATA.
   // If token is an NFT, there's only one token account that holds this nft.
   // If it's not an NFT, this function returns the first token account.
+  // In most cases, this util function is used for NFT token account.
   export async function getTokenAccountForMint(args: {
     mint: web3.PublicKey;
     owner: web3.PublicKey;
