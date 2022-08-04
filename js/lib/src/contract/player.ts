@@ -13,22 +13,25 @@ import {
 } from "@metaplex-foundation/mpl-token-metadata";
 
 import * as PlayerInstruction from "../instructions/player";
-import {
-  getAtaForMint,
-  getItemActivationMarker,
-  getItemPDA,
-  getMetadata,
-  getPlayerPDA,
-} from "../utils/pda";
+import * as Utils from "../utils";
 import { getItemProgram, ItemProgram } from "./item";
-export class Player extends Program.Program {
+import { PLAYER_ID } from "../constants/programIds";
+const {
+  PDA: {
+    getAtaForMint,
+    getItemActivationMarker,
+    getItemPDA,
+    getMetadata,
+    getPlayerPDA,
+  },
+} = Utils;
+export class PlayerProgram extends Program.Program {
   declare instruction: PlayerInstruction.Instruction;
-  declare item: ItemProgram;
+  PROGRAM_ID = PLAYER_ID;
 
-  constructor(item: ItemProgram) {
+  constructor() {
     super();
     this.instruction = new PlayerInstruction.Instruction({ program: this });
-    this.item = item;
   }
 
   async getMetadataUpdateAuthority(mint: PublicKey) {
@@ -202,7 +205,7 @@ export class Player extends Program.Program {
     );
 
     if (!additionalArgs.itemClassIndex) {
-      const item = await this.item.program.account.item.fetch(
+      const item = await additionalArgs.itemProgram.client.account.item.fetch(
         (
           await getItemPDA(args.itemMint, args.itemIndex)
         )[0]
@@ -212,7 +215,7 @@ export class Player extends Program.Program {
     }
 
     if (!accounts?.validationProgram) {
-      const itemClass = await this.item.fetchItemClass(
+      const itemClass = await additionalArgs.itemProgram.fetchItemClass(
         args.itemClassMint,
         additionalArgs.itemClassIndex
       );
@@ -266,7 +269,7 @@ export class Player extends Program.Program {
     );
 
     if (!accounts?.validationProgram) {
-      const itemClass = await this.item.fetchItemClass(
+      const itemClass = await additionalArgs.itemProgram.fetchItemClass(
         args.itemClassMint,
         args.itemClassIndex
       );
@@ -365,7 +368,7 @@ export class Player extends Program.Program {
     );
 
     if (!additionalArgs.itemClassIndex) {
-      const item = await this.item.program.account.item.fetch(
+      const item = await additionalArgs.itemProgram.client.account.item.fetch(
         (
           await getItemPDA(accounts.itemMint, args.itemIndex)
         )[0]
@@ -439,7 +442,7 @@ export class Player extends Program.Program {
     );
 
     if (!additionalArgs.itemClassIndex) {
-      const item = await this.item.program.account.item.fetch(
+      const item = await additionalArgs.itemProgram.client.account.item.fetch(
         (
           await getItemPDA(accounts.itemMint, args.itemIndex)
         )[0]
@@ -529,7 +532,7 @@ export class Player extends Program.Program {
         })
       )[0];
       const itemMarker =
-        await this.item.program.account.itemActivationMarker.fetch(
+        await additionalArgs.itemProgram.client.account.itemActivationMarker.fetch(
           itemActivationMarkerPDA
         );
 
@@ -537,7 +540,7 @@ export class Player extends Program.Program {
     }
 
     if (!accounts?.callbackProgram) {
-      const itemClass = await this.item.fetchItemClass(
+      const itemClass = await additionalArgs.itemProgram.fetchItemClass(
         args.itemClassMint,
         args.itemClassIndex
       );

@@ -24,6 +24,7 @@ import {
 import { ContractCommon } from "../contract/common";
 import { getPlayerPDA } from "../utils/pda";
 import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
+import { ItemProgram } from "../contract";
 const {
   generateRemainingAccountsForCreateClass,
   generateRemainingAccountsGivenPermissivenessToUse,
@@ -93,6 +94,7 @@ export interface UseItemAccounts {
 export interface UseItemAdditionalArgs {
   playerClassMint: PublicKey;
   classIndex: BN;
+  itemProgram: ItemProgram;
 }
 
 export interface AddItemEffectArgs {
@@ -210,6 +212,7 @@ export interface AddItemEffectAdditionalArgs {
   amount: BN;
   playerClassMint: PublicKey;
   classIndex: BN;
+  itemProgram: ItemProgram;
 }
 
 export interface ToggleEquipItemAccounts {
@@ -221,6 +224,7 @@ export interface ToggleEquipItemAdditionalArgs {
   playerClassMint: PublicKey;
   classIndex: BN;
   itemClassIndex: BN;
+  itemProgram: ItemProgram;
 }
 
 export interface UpdatePlayerClassAccounts {
@@ -282,6 +286,7 @@ export interface AddItemAdditionalArgs {
   classIndex: BN;
   itemClassMint: PublicKey;
   itemClassIndex: BN;
+  itemProgram: ItemProgram;
 }
 
 export interface RemoveItemAdditionalArgs {
@@ -289,6 +294,7 @@ export interface RemoveItemAdditionalArgs {
   classIndex: BN;
   itemClassMint: PublicKey;
   itemClassIndex: BN;
+  itemProgram: ItemProgram;
 }
 
 export class Instruction extends SolKitInstruction {

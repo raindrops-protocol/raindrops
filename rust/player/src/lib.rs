@@ -4,14 +4,9 @@ use {
     crate::utils::*,
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{close_account, CloseAccount, Mint, Token, TokenAccount},
-    raindrops_item::{
-        utils::{
-            assert_keys_equal, assert_metadata_valid, assert_permissiveness_access, get_item_usage,
-            spl_token_transfer, AssertPermissivenessAccessArgs, GetItemUsageArgs,
-            TokenTransferParams,
-        },
-        BasicItemEffect, Boolean, Callback, InheritanceState, Inherited, ItemUsage,
-        NamespaceAndIndex, Permissiveness, PermissivenessType,
+    raindrops_item::utils::{
+        assert_keys_equal, assert_metadata_valid, get_item_usage, spl_token_transfer,
+        GetItemUsageArgs, TokenTransferParams,
     },
 };
 
@@ -31,7 +26,7 @@ pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     pub amount: u64,
     // Required if using roots
     pub usage_proof: Option<Vec<[u8; 32]>>,
-    pub usage: Option<ItemUsage>,
+    pub usage: Option<raindrops_item::ItemUsage>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -61,7 +56,7 @@ pub struct CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs {
     pub item_class_mint: Pubkey,
     // Required if using roots
     pub usage_proof: Option<Vec<[u8; 32]>>,
-    pub usage: Option<ItemUsage>,
+    pub usage: Option<raindrops_item::ItemUsage>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -80,7 +75,7 @@ pub struct UseItemCallbackArgs {
     pub instruction: [u8; 8],
     pub extra_identifier: u64,
     pub amount: u64,
-    pub item_usage: ItemUsage,
+    pub item_usage: raindrops_item::ItemUsage,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -93,10 +88,10 @@ pub struct AddItemEffectArgs {
     pub item_class_mint: Pubkey,
     pub item_usage_index: u16,
     pub use_item_permissiveness_to_use: Option<PermissivenessType>,
-    pub space: usize,
+    pub space: u64,
     // Use this if using roots
     pub item_usage_proof: Option<Vec<[u8; 32]>>,
-    pub item_usage: Option<ItemUsage>,
+    pub item_usage: Option<Vec<u8>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -131,7 +126,7 @@ pub struct ToggleEquipItemArgs {
     pub item_usage_index: u16,
     // Use this if using roots
     pub item_usage_proof: Option<Vec<[u8; 32]>>,
-    pub item_usage: Option<ItemUsage>,
+    pub item_usage: Option<Vec<u8>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -149,16 +144,6 @@ pub struct UpdatePlayerClassArgs {
     pub parent_class_index: Option<u64>,
     pub update_permissiveness_to_use: Option<PermissivenessType>,
     pub player_class_data: Option<PlayerClassData>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct UsageInfo {
-    // These required if using roots instead
-    pub usage_proof: Vec<[u8; 32]>,
-    pub usage: raindrops_item::ItemUsage,
-    // These required if using roots instead
-    pub usage_state_proof: Vec<[u8; 32]>,
-    pub usage_state: raindrops_item::ItemUsageState,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -218,7 +203,7 @@ pub struct UseItemArgs {
     pub index: u64,
     pub player_mint: Pubkey,
     // Use this if using roots
-    pub item_usage_info: Option<raindrops_item::UsageInfo>,
+    pub item_usage_info: Option<Vec<u8>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -234,7 +219,7 @@ pub struct UpdateValidForUseIfWarmupPassedOnItemArgs {
     pub player_mint: Pubkey,
     // Required if using roots
     pub item_usage_proof: Option<Vec<[u8; 32]>>,
-    pub item_usage: Option<ItemUsage>,
+    pub item_usage: Option<Vec<u8>>,
 }
 
 #[program]
@@ -992,12 +977,28 @@ pub mod player {
             item_class,
             usage_index: item_usage_index,
             usage_proof: item_usage_proof.clone(),
-            usage: item_usage.clone(),
+            usage: if let Some(v) = &item_usage {
+                Some(raindrops_item::ItemUsage::try_from_slice(&v)?)
+            } else {
+                None
+            },
         })?;
 
         player_item_activation_marker.usage_index = item_usage_index;
         player_item_activation_marker.basic_item_effects =
-            item_usage_to_use.basic_item_effects.clone();
+            if let Some(v) = &item_usage_to_use.basic_item_effects {
+                let mut new_vec = vec![];
+                for b in v {
+                    // convert from item's version to player's version
+                    // which should be identical but anchor sucks
+                    // and wont let us import item's into IDL.
+                    let as_bytes = b.try_to_vec()?;
+                    new_vec.push(BasicItemEffect::try_from_slice(&as_bytes)?)
+                }
+                Some(new_vec)
+            } else {
+                None
+            };
         if let Some(bie) = &item_usage_to_use.basic_item_effects {
             let bie_size = bie
                 .len()
@@ -1020,7 +1021,7 @@ pub mod player {
             player,
             player_class,
             item,
-            basic_item_effects: &item_usage_to_use.basic_item_effects,
+            basic_item_effects: &player_item_activation_marker.basic_item_effects.clone(),
             amount_change: player_item_activation_marker.amount,
             adding: true,
             stat_diff_type: StatDiffType::Consumable,
@@ -1114,7 +1115,11 @@ pub mod player {
             VerifyItemUsageAppropriateForBodyPartArgs {
                 used_body_part: &used_body_part,
                 item_usage_index,
-                item_usage,
+                item_usage: if let Some(v) = item_usage {
+                    Some(raindrops_item::ItemUsage::try_from_slice(&v)?)
+                } else {
+                    None
+                },
                 item_usage_proof,
                 item_class,
                 equipping,
@@ -1145,7 +1150,16 @@ pub mod player {
             player,
             player_class,
             item,
-            basic_item_effects: &item_usage.basic_item_effects,
+            basic_item_effects: &(if let Some(v) = &item_usage.basic_item_effects {
+                let mut new_vec = vec![];
+                for val in v {
+                    let as_bytes = val.try_to_vec()?;
+                    new_vec.push(BasicItemEffect::try_from_slice(&as_bytes)?);
+                }
+                Some(new_vec)
+            } else {
+                None
+            }),
             amount_change: amount,
             adding: equipping,
             stat_diff_type: StatDiffType::Wearable,
@@ -1259,8 +1273,8 @@ pub struct AddItemEffect<'info> {
         ],
         bump,
         payer=payer,
-        constraint=args.space >= PLAYER_ITEM_ACTIVATION_MARKER_MIN_SPACE,
-        space=args.space
+        constraint=(args.space as usize) >= PLAYER_ITEM_ACTIVATION_MARKER_MIN_SPACE,
+        space=args.space as usize
     )]
     player_item_activation_marker: Box<Account<'info, PlayerItemActivationMarker>>,
     #[account(
@@ -1654,12 +1668,6 @@ pub struct UpdatePlayer<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Root {
-    inherited: InheritanceState,
-    root: [u8; 32],
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EquippedItem {
     item: Pubkey,
     amount: u64,
@@ -1668,11 +1676,38 @@ pub struct EquippedItem {
 
 pub const MAX_NAMESPACES: usize = 10;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+pub enum PermissivenessType {
+    TokenHolder,
+    ParentTokenHolder,
+    UpdateAuthority,
+    Anybody,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug, Copy)]
+pub enum InheritanceState {
+    NotInherited,
+    Inherited,
+    Overridden,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct NamespaceAndIndex {
+    pub namespace: Pubkey,
+    pub indexed: bool,
+    pub inherited: InheritanceState,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ChildUpdatePropagationPermissiveness {
     pub overridable: bool,
     pub inherited: InheritanceState,
     pub child_update_propagation_permissiveness_type: ChildUpdatePropagationPermissivenessType,
+}
+
+pub trait Inherited: Clone {
+    fn set_inherited(&mut self, i: InheritanceState);
+    fn get_inherited(&self) -> &InheritanceState;
 }
 
 impl Inherited for ChildUpdatePropagationPermissiveness {
@@ -1720,6 +1755,33 @@ impl Inherited for StatsUri {
     }
 }
 
+impl Inherited for Permissiveness {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
+impl Inherited for Boolean {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
+impl Inherited for NamespaceAndIndex {
+    fn set_inherited(&mut self, i: InheritanceState) {
+        self.inherited = i;
+    }
+    fn get_inherited(&self) -> &InheritanceState {
+        &self.inherited
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum ChildUpdatePropagationPermissivenessType {
     UpdatePermissiveness,
@@ -1730,8 +1792,8 @@ pub enum ChildUpdatePropagationPermissivenessType {
     BuilderMustBeHolderPermissiveness,
     StakingPermissiveness,
     Namespaces,
-    EquippingItemsPermissiveness,
-    AddingItemsPermissiveness,
+    EquipItemsPermissiveness,
+    AddItemsPermissiveness,
     BasicStatTemplates,
     DefaultCategory,
     BodyParts,
@@ -1762,6 +1824,18 @@ pub struct BodyPart {
 pub struct PlayerClassData {
     pub settings: PlayerClassSettings,
     pub config: PlayerClassConfig,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct Boolean {
+    pub inherited: InheritanceState,
+    pub boolean: bool,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+pub struct Permissiveness {
+    pub inherited: InheritanceState,
+    pub permissiveness_type: PermissivenessType,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1838,6 +1912,12 @@ pub struct PlayerClass {
     pub bump: u8,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Callback {
+    pub key: Pubkey,
+    pub code: u64,
+}
+
 pub const MIN_PLAYER_SIZE: usize = 8 + // key
 1 + // namespaces
 1 + // padding(?)
@@ -1896,7 +1976,10 @@ pub struct BasicStat {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Threshold(pub String, pub u8);
+pub struct Threshold {
+    name: String,
+    value: u8,
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum BasicStatType {
@@ -1967,6 +2050,32 @@ pub struct PlayerItemActivationMarker {
     pub amount: u64,
     pub activated_at: u64,
     pub active_item_counter: u64,
+}
+
+// Copied from Item class because Anchor sucks and can't do imports
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+pub enum BasicItemEffectType {
+    Increment,
+    Decrement,
+    IncrementPercent,
+    DecrementPercent,
+    IncrementPercentFromBase,
+    DecrementPercentFromBase,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BasicItemEffect {
+    pub amount: u64,
+    pub stat: String,
+    pub item_effect_type: BasicItemEffectType,
+    pub active_duration: Option<u64>,
+    pub staking_amount_numerator: Option<u64>,
+    pub staking_amount_divisor: Option<u64>,
+    pub staking_duration_numerator: Option<u64>,
+    pub staking_duration_divisor: Option<u64>,
+    // point where this effect no longer applies
+    pub max_uses: Option<u64>,
 }
 
 #[error_code]
@@ -2041,4 +2150,10 @@ pub enum ErrorCode {
     DeactivateAllItemsFirst,
     #[msg("Remove all items from backpack first")]
     RemoveAllItemsFromBackpackFirst,
+    #[msg("Insufficient Balance")]
+    InsufficientBalance,
+    #[msg("Permissiveness Not Found")]
+    PermissivenessNotFound,
+    #[msg("Must specify permissiveness type")]
+    MustSpecifyPermissivenessType,
 }

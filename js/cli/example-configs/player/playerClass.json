@@ -1,0 +1,153 @@
+{
+  "data": {
+    "settings": {
+      "defaultCategory": null,
+      "childrenMustBeEditions": null,
+      "builderMustBeHolder": null,
+      "updatePermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "instanceUpdatePermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "buildPermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "equipItemPermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "addItemPermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "useItemPermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "unequipItemPermissiveness": null,
+      "removeItemPermissiveness": null,
+      "stakingWarmUpDuration": null,
+      "stakingCooldownDuration": null,
+      "stakingPermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "unstakingPermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "childUpdatePropagationPermissiveness": [
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "instanceUpdatePermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "updatePermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "buildPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "equipItemPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "useItemPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "addItemPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "removeItemPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "stakingPermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "basicStatTemplates": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "defaultCategory": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "statsUri": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "basicStatTemplates": true
+          },
+          "inherited": { "notInherited": true }
+        }
+      ]
+    },
+    "config": {
+      "starting_stats_uri": null,
+      "basic_stats": null,
+      "body_parts": null,
+      "equip_validation": null,
+      "add_to_pack_validation": null
+    }
+  },
+  "metadataUpdateAuthority": null,
+  "storeMint": false,
+  "storeMetadataFields": false,
+  "mint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
+  "index": 0,
+  "updatePermissivenessToUse": { "tokenHolder": true },
+  "namespaceRequirement": 1,
+  "totalSpaceBytes": 300
+}

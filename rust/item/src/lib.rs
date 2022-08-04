@@ -20,7 +20,7 @@ use {
     anchor_spl::token::{Mint, Token, TokenAccount},
     arrayref::array_ref,
 };
-anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
+anchor_lang::declare_id!("56M2fQE8cy9v4q3LYxyDHSPz6BDHnWQJAucZZ49ybq9y");
 pub const PREFIX: &str = "item";
 pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";

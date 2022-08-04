@@ -1,14 +1,17 @@
 use {
     crate::{
-        AddOrRemoveItemValidationArgs, BasicStat, BasicStatState, BasicStatTemplate, BasicStatType,
-        BodyPart, ChildUpdatePropagationPermissivenessType,
+        AddOrRemoveItemValidationArgs, BasicItemEffect, BasicItemEffectType, BasicStat,
+        BasicStatState, BasicStatTemplate, BasicStatType, BodyPart,
+        ChildUpdatePropagationPermissivenessType,
         CopyBeginItemActivationBecauseAnchorSucksSometimesArgs,
         CopyEndItemActivationBecauseAnchorSucksSometimesArgs,
         CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs, EquippedItem,
-        ErrorCode, Player, PlayerClass, PlayerClassData, StatDiffType,
-        UpdateValidForUseIfWarmupPassedOnItemArgs, UseItemArgs, UseItemCallbackArgs, PREFIX,
+        ErrorCode, InheritanceState, Inherited, Permissiveness, PermissivenessType, Player,
+        PlayerClass, PlayerClassData, StatDiffType, UpdateValidForUseIfWarmupPassedOnItemArgs,
+        UseItemArgs, UseItemCallbackArgs, PREFIX,
     },
     anchor_lang::{
+        error,
         prelude::{
             Account, AccountInfo, AccountMeta, Clock, Program, Pubkey, Rent, Result, Signer,
             System, Sysvar, UncheckedAccount,
@@ -18,16 +21,16 @@ use {
             instruction::Instruction,
             program::{invoke, invoke_signed},
         },
-        AnchorSerialize, Key, ToAccountInfo,
+        AnchorDeserialize, AnchorSerialize, Key, ToAccountInfo,
     },
     anchor_spl::token::{Mint, TokenAccount},
     raindrops_item::{
         utils::{
-            assert_keys_equal, get_item_usage, propagate_parent, propagate_parent_array, sighash,
-            GetItemUsageArgs, PropagateParentArgs, PropagateParentArrayArgs,
+            assert_derivation, assert_is_ata, assert_keys_equal, assert_metadata_valid,
+            assert_signer, get_item_usage, grab_parent, grab_update_authority, sighash,
+            GetItemUsageArgs,
         },
-        BasicItemEffect, BasicItemEffectType, Item, ItemActivationMarker, ItemClass, ItemUsage,
-        PermissivenessType,
+        Item, ItemActivationMarker, ItemClass, ItemUsage,
     },
 };
 
@@ -110,7 +113,7 @@ pub fn update_player_class_with_inherited_information(
                                 overridable: update_perm.overridable,
                             });
                     },
-                    ChildUpdatePropagationPermissivenessType::EquippingItemsPermissiveness => {
+                    ChildUpdatePropagationPermissivenessType::EquipItemsPermissiveness => {
                         player_class_data.settings.equip_item_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
                                 parent_items: &parent_item_data.settings.equip_item_permissiveness,
@@ -124,7 +127,7 @@ pub fn update_player_class_with_inherited_information(
                             overridable: update_perm.overridable,
                         });
                     },
-                    ChildUpdatePropagationPermissivenessType::AddingItemsPermissiveness =>  {
+                    ChildUpdatePropagationPermissivenessType::AddItemsPermissiveness =>  {
                         player_class_data.settings.add_item_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
                                 parent_items: &parent_item_data.settings.add_item_permissiveness,
@@ -194,7 +197,7 @@ pub struct RunItemCallbackArgs<'b, 'c, 'info> {
     pub item: &'b Account<'info, Item>,
     pub player: &'b Account<'info, Player>,
     pub callback_program: &'c UncheckedAccount<'info>,
-    pub item_usage: &'b ItemUsage,
+    pub item_usage: &'b raindrops_item::ItemUsage,
     pub amount: u64,
 }
 
@@ -387,7 +390,7 @@ pub fn propagate_player_class_data_fields_to_player_data(
                         BasicStatState::Enum { current } => {
                             let mut found = false;
                             for val in values {
-                                if val.1 == current {
+                                if val.value == current {
                                     found = true;
                                 }
                             }
@@ -607,7 +610,23 @@ pub fn run_toggle_equip_item_validation<'a, 'b, 'c, 'info>(
                 data: AnchorSerialize::try_to_vec(&raindrops_item::ValidationArgs {
                     instruction: raindrops_item::utils::sighash("global", "item_validation"),
                     extra_identifier: validation.code,
-                    usage_permissiveness_to_use: permissiveness_to_use.clone(),
+                    usage_permissiveness_to_use: match permissiveness_to_use {
+                        Some(v) => match v {
+                            PermissivenessType::TokenHolder => {
+                                Some(raindrops_item::PermissivenessType::TokenHolder)
+                            }
+                            PermissivenessType::ParentTokenHolder => {
+                                Some(raindrops_item::PermissivenessType::ParentTokenHolder)
+                            }
+                            PermissivenessType::UpdateAuthority => {
+                                Some(raindrops_item::PermissivenessType::UpdateAuthority)
+                            }
+                            PermissivenessType::Anybody => {
+                                Some(raindrops_item::PermissivenessType::Anybody)
+                            }
+                        },
+                        None => None,
+                    },
                     index: item_index,
                     amount,
                     usage_info: None,
@@ -1334,7 +1353,7 @@ pub struct EndItemActivationArgs<'b, 'c, 'info> {
     pub amount: u64,
     // Required if using roots
     pub item_usage_proof: Option<Vec<[u8; 32]>>,
-    pub item_usage: Option<ItemUsage>,
+    pub item_usage: Option<Vec<u8>>,
     pub item_program: &'c UncheckedAccount<'info>,
     pub player: &'b Account<'info, Player>,
     pub player_mint: &'c Pubkey,
@@ -1402,7 +1421,11 @@ pub fn end_item_activation<'b, 'c, 'info>(
                     class_index: item_class_index,
                     amount,
                     usage_proof: item_usage_proof,
-                    usage: item_usage,
+                    usage: if let Some(v) = item_usage {
+                        Some(raindrops_item::ItemUsage::try_from_slice(&v)?)
+                    } else {
+                        None
+                    },
                 },
             )?,
         },
@@ -1518,7 +1541,11 @@ pub fn begin_item_activation<'b, 'c, 'info>(
                     amount,
                     item_marker_space,
                     target,
-                    usage_info: item_usage_info,
+                    usage_info: if let Some(v) = item_usage_info {
+                        Some(raindrops_item::UsageInfo::try_from_slice(&v)?)
+                    } else {
+                        None
+                    },
                 },
             )?,
         },
@@ -1596,7 +1623,11 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
                     amount,
                     item_mint,
                     usage_proof: item_usage_proof,
-                    usage: item_usage,
+                    usage: if let Some(v) = item_usage {
+                        Some(raindrops_item::ItemUsage::try_from_slice(&v)?)
+                    } else {
+                        None
+                    },
                 },
             )?,
         },
@@ -1608,4 +1639,257 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
             &[player.bump],
         ]],
     )?)
+}
+
+pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
+    pub program_id: &'a Pubkey,
+    pub given_account: &'b AccountInfo<'info>,
+    pub remaining_accounts: &'c [AccountInfo<'info>],
+    pub permissiveness_to_use: &'a Option<PermissivenessType>,
+    pub permissiveness_array: &'a Option<Vec<Permissiveness>>,
+    pub class_index: Option<u64>,
+    pub index: u64,
+    pub account_mint: Option<&'b Pubkey>,
+}
+
+pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Result<()> {
+    let AssertPermissivenessAccessArgs {
+        program_id,
+        given_account,
+        remaining_accounts,
+        permissiveness_to_use,
+        permissiveness_array,
+        index,
+        class_index,
+        account_mint,
+    } = args;
+
+    match permissiveness_to_use {
+        Some(perm_to_use) => {
+            if let Some(permissiveness_arr) = permissiveness_array {
+                let mut found = false;
+                for entry in permissiveness_arr {
+                    if entry.permissiveness_type == *perm_to_use {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if !found {
+                    return Err(error!(ErrorCode::PermissivenessNotFound));
+                }
+
+                match perm_to_use {
+                    PermissivenessType::TokenHolder => {
+                        //  token_account [readable]
+                        //  token_holder [signer]
+                        //  mint [readable] OR none if already present in the main array
+                        let token_account = &remaining_accounts[0];
+                        let token_holder = &remaining_accounts[1];
+                        let mint = if let Some(m) = account_mint {
+                            *m
+                        } else {
+                            remaining_accounts[2].key()
+                        };
+
+                        assert_signer(token_holder)?;
+
+                        let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+
+                        if acct.amount == 0 {
+                            return Err(error!(ErrorCode::InsufficientBalance));
+                        }
+
+                        assert_derivation(
+                            program_id,
+                            given_account,
+                            &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
+                        )?;
+                    }
+                    PermissivenessType::ParentTokenHolder => {
+                        // parent class token_account [readable]
+                        // parent class token_holder [signer]
+                        // parent class [readable]
+                        // parent class mint [readable] OR none if already present in the main array
+
+                        let class_token_account = &remaining_accounts[0];
+                        let class_token_holder = &remaining_accounts[1];
+                        let class = &remaining_accounts[2];
+                        let class_mint = remaining_accounts[3].key();
+
+                        assert_signer(class_token_holder)?;
+
+                        let acct = assert_is_ata(
+                            class_token_account,
+                            class_token_holder.key,
+                            &class_mint,
+                        )?;
+
+                        if acct.amount == 0 {
+                            return Err(error!(ErrorCode::InsufficientBalance));
+                        }
+
+                        assert_derivation(
+                            program_id,
+                            class,
+                            &[
+                                PREFIX.as_bytes(),
+                                class_mint.as_ref(),
+                                &class_index.unwrap().to_le_bytes(),
+                            ],
+                        )?;
+
+                        assert_keys_equal(grab_parent(given_account)?, *class.key)?;
+                    }
+                    PermissivenessType::UpdateAuthority => {
+                        // metadata_update_authority [signer]
+                        // metadata [readable]
+                        // mint [readable] OR none if already present in the main array
+
+                        let metadata_update_authority = &remaining_accounts[0];
+                        let metadata = &remaining_accounts[1];
+                        let mint = if let Some(m) = account_mint {
+                            *m
+                        } else {
+                            remaining_accounts[2].key()
+                        };
+
+                        assert_signer(metadata_update_authority)?;
+
+                        assert_metadata_valid(metadata, None, &mint)?;
+
+                        let update_authority = grab_update_authority(metadata)?;
+
+                        assert_keys_equal(update_authority, *metadata_update_authority.key)?;
+                    }
+                    PermissivenessType::Anybody => {
+                        // nothing
+                    }
+                }
+            } else {
+                //  default is token holder. most common usecase.
+                //  token_account [readable]
+                //  token_holder [signer]
+                //  mint [readable] OR none if already present in the main array
+                let token_account = &remaining_accounts[0];
+                let token_holder = &remaining_accounts[1];
+                let mint = if let Some(m) = account_mint {
+                    *m
+                } else {
+                    remaining_accounts[2].key()
+                };
+
+                assert_signer(token_holder)?;
+
+                let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+
+                if acct.amount == 0 {
+                    return Err(error!(ErrorCode::InsufficientBalance));
+                }
+
+                assert_derivation(
+                    program_id,
+                    given_account,
+                    &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
+                )?;
+            }
+        }
+        None => return Err(error!(ErrorCode::MustSpecifyPermissivenessType)),
+    }
+
+    Ok(())
+}
+
+pub struct PropagateParentArrayArgs<'a, T: Inherited> {
+    pub parent_items: &'a Option<Vec<T>>,
+    pub child_items: &'a Option<Vec<T>>,
+    pub overridable: bool,
+}
+
+pub fn propagate_parent_array<T: Inherited>(args: PropagateParentArrayArgs<T>) -> Option<Vec<T>> {
+    let PropagateParentArrayArgs {
+        parent_items,
+        child_items,
+        overridable,
+    } = args;
+
+    if let Some(p_items) = &parent_items {
+        if overridable {
+            let mut new_items: Vec<T> = vec![];
+            add_to_new_array_from_parent(InheritanceState::Overridden, p_items, &mut new_items);
+            return Some(new_items);
+        } else {
+            match &child_items {
+                Some(c_items) => {
+                    let mut new_items: Vec<T> = vec![];
+                    for item in c_items {
+                        if item.get_inherited() == &InheritanceState::NotInherited {
+                            new_items.push(item.clone())
+                        }
+                    }
+
+                    add_to_new_array_from_parent(
+                        InheritanceState::Inherited,
+                        p_items,
+                        &mut new_items,
+                    );
+                    return Some(new_items);
+                }
+                None => {
+                    let mut new_items: Vec<T> = vec![];
+                    add_to_new_array_from_parent(
+                        InheritanceState::Inherited,
+                        p_items,
+                        &mut new_items,
+                    );
+                    return Some(new_items);
+                }
+            }
+        }
+    } else if overridable {
+        return None;
+    }
+
+    child_items.as_ref().map(|v| v.to_vec())
+}
+
+pub fn add_to_new_array_from_parent<T: Inherited>(
+    inheritance: InheritanceState,
+    parent_items: &[T],
+    new_items: &mut Vec<T>,
+) {
+    for item in parent_items {
+        let mut new_copy = item.clone();
+        new_copy.set_inherited(inheritance.clone());
+        new_items.push(new_copy);
+    }
+}
+
+pub struct PropagateParentArgs<'a, T: Inherited> {
+    pub parent: &'a Option<T>,
+    pub child: &'a Option<T>,
+    pub overridable: bool,
+}
+
+pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T> {
+    let PropagateParentArgs {
+        parent,
+        child,
+        overridable,
+    } = args;
+    if let Some(parent_val) = &parent {
+        if overridable {
+            let mut new_vers = parent_val.clone();
+            new_vers.set_inherited(InheritanceState::Overridden);
+            return Some(new_vers);
+        } else if child.is_none() {
+            let mut new_vers = parent_val.clone();
+            new_vers.set_inherited(InheritanceState::Inherited);
+            return Some(new_vers);
+        }
+    } else if overridable {
+        return None;
+    }
+
+    child.as_ref().cloned()
 }
