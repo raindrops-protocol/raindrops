@@ -21,7 +21,7 @@ use {
     arrayref::array_ref,
     std::str::FromStr,
 };
-anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
+anchor_lang::declare_id!("CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4");
 pub const PREFIX: &str = "item";
 pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";

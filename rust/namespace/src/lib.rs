@@ -10,10 +10,10 @@ use {
     anchor_spl::token::{Mint, Token, TokenAccount},
     std::str::FromStr,
 };
-anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
+anchor_lang::declare_id!("AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X");
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const MATCH_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const ITEM_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
+pub const ITEM_ID: &str = "CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4";
 
 pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
@@ -275,7 +275,6 @@ pub mod namespace {
 
     pub fn create_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, CreateNamespaceGatekeeper<'info>>,
-        _bump: u8,
     ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
         namespace_gatekeeper.bump = *ctx.bumps.get("namespace_gatekeeper").unwrap();
@@ -359,7 +358,6 @@ pub mod namespace {
 
     pub fn join_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
-        _namespace_gatekeeper_bump: u8,
     ) -> Result<()> {
         let namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
         let artifact = &mut ctx.accounts.artifact;
@@ -378,25 +376,28 @@ pub mod namespace {
             }
             if !found {
                 let mut most_recent_zero = false;
-                let mut start: usize = 0;
+                //let mut start: usize = 0;
 
                 for mut n in art_names {
                     if n.namespace == anchor_lang::solana_program::system_program::id() {
                         most_recent_zero = true;
                         n.namespace = namespace.key();
                         n.indexed = false;
-                        let mut data = artifact.data.borrow_mut();
-                        data[8] = 1; // option yes
-                        let as_vec = n.try_to_vec()?;
-                        for byte in as_vec {
-                            data[13 + start] = byte;
-                            start += 1;
-                        }
+
+                        // TODO: you cant do this because the artifact is an Item which is owned by the item program not namespace program
+                        //let mut data = artifact.data.borrow_mut();
+                        //data[8] = 1; // option yes
+                        //let as_vec = n.try_to_vec()?;
+                        //for byte in as_vec {
+                        //    data[13 + start] = byte;
+                        //    start += 1;
+                        //}
 
                         namespace.artifacts_added = namespace
                             .artifacts_added
                             .checked_add(1)
                             .ok_or(ErrorCode::NumericalOverflowError)?;
+                        
                         break;
                     }
                     start += NAMESPACE_AND_INDEX_SIZE;
@@ -477,6 +478,12 @@ pub struct ArtifactFilter {
 pub struct NamespaceGatekeeper {
     bump: u8,
     artifact_filters: Vec<ArtifactFilter>,
+}
+
+impl NamespaceGatekeeper {
+    pub fn space() -> usize {
+        8 + 1 + 100
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -609,13 +616,12 @@ pub struct UpdateNamespace<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(space: usize)]
 pub struct CreateNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(init, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, payer=payer, space=space)]
+    #[account(init, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, payer=payer, space=NamespaceGatekeeper::space())]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: Signer<'info>,
     #[account(mut)]
@@ -703,15 +709,14 @@ pub struct MatchValidation<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(namespace_gatekeeper_bump: u8)]
 pub struct JoinNamespace<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump)]
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), PREFIX.as_bytes()], bump=namespace_gatekeeper_bump)]
+    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump)]
     namespace_gatekeeper: UncheckedAccount<'info>,
     token_holder: UncheckedAccount<'info>,
 }
