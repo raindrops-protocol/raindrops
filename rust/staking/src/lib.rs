@@ -1,12 +1,12 @@
 pub mod utils;
 
-use crate::utils::{assert_is_proper_class, assert_is_proper_instance};
+use crate::utils::{assert_is_proper_class, assert_is_proper_instance, assert_part_of_namespace};
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::{
     utils::{
-        assert_part_of_namespace, assert_permissiveness_access, close_token_account,
-        spl_token_transfer, AssertPermissivenessAccessArgs, TokenTransferParams,
+        assert_permissiveness_access, close_token_account, spl_token_transfer,
+        AssertPermissivenessAccessArgs, TokenTransferParams,
     },
     Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
     PermissivenessType,

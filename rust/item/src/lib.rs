@@ -655,10 +655,7 @@ pub mod item {
             let mint_authority_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 2];
             let token_program_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 1];
             assert_keys_equal(*token_program_info.key, spl_token::id())?;
-            assert_mint_authority_matches_mint(
-                &new_item_mint.mint_authority,
-                mint_authority_info,
-            )?;
+            assert_mint_authority_matches_mint(&new_item_mint.mint_authority, mint_authority_info)?;
             // give minting for the item to the item's class since we will need it
             // to produce the fungible tokens when completed. Can also then be reused.
             if mint_authority_info.key != &item_class.key() {
@@ -912,7 +909,11 @@ pub mod item {
             component_scope,
             count_check: false,
         })?;
-        msg!("component_mint craft_class_mint {} {}", chosen_component.mint, craft_item_class_mint);
+        msg!(
+            "component_mint craft_class_mint {} {}",
+            chosen_component.mint,
+            craft_item_class_mint
+        );
         assert_keys_equal(chosen_component.mint, craft_item_class_mint)?;
         msg!("mint keys are equal");
 
@@ -1388,12 +1389,12 @@ pub mod item {
             account_mint: Some(&item_mint.key()),
         })?;
 
-
         if let ItemClassType::Consumable {
             max_uses,
             item_usage_type,
             ..
-        } = &usage.item_class_type {
+        } = &usage.item_class_type
+        {
             if let Some(max) = max_uses {
                 if max <= &usage_state.uses && item_usage_type == &ItemUsageType::Destruction {
                     spl_token_burn(TokenBurnParams {
@@ -1668,6 +1669,68 @@ pub mod item {
 
         Ok(())
     }
+
+    pub fn item_class_join_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassJoinNamespace<'info>>,
+    ) -> Result<()> {
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToJoinNamespace)),
+        };
+
+        let mut joined = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+                ns.namespace = ctx.accounts.namespace.key();
+                ns.indexed = false;
+                ns.inherited = InheritanceState::NotInherited;
+                joined = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !joined {
+            return Err(error!(ErrorCode::FailedToJoinNamespace));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn item_class_leave_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassLeaveNamespace<'info>>,
+    ) -> Result<()> {
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToLeaveNamespace)),
+        };
+
+        let mut left = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !left {
+                ns.namespace = anchor_lang::solana_program::system_program::id();
+                ns.indexed = false;
+                ns.inherited = InheritanceState::NotInherited;
+                left = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !left {
+            return Err(error!(ErrorCode::FailedToLeaveNamespace));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
@@ -1767,7 +1830,7 @@ pub struct CreateItemEscrow<'info> {
             args.component_scope.as_bytes()
         ],
         bump,
-        space=if args.namespace_index.is_none() { 37 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 36},
+        space=if args.namespace_index.is_none() { 37 } else { 4 + 1 + 34 + 36},
         payer=payer
     )]
     item_escrow: Box<Account<'info, ItemEscrow>>,
@@ -2451,6 +2514,22 @@ pub struct EndItemActivation<'info> {
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
+#[derive(Accounts)]
+pub struct ItemClassJoinNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ItemClassLeaveNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Callback {
     pub key: Pubkey,
@@ -2596,7 +2675,6 @@ pub enum ChildUpdatePropagationPermissivenessType {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
 pub enum InheritanceState {
-
     NotInherited,
     Inherited,
     Overridden,
@@ -2990,4 +3068,8 @@ pub enum ErrorCode {
     AtaShouldNotHaveDelegate,
     #[msg("Reinitialization hack detected")]
     ReinitializationDetected,
+    #[msg("Failed to join namespace")]
+    FailedToJoinNamespace,
+    #[msg("Failed to leave namespace")]
+    FailedToLeaveNamespace,
 }

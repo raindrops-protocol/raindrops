@@ -13,7 +13,11 @@ describe("namespace", () => {
 
   it("namespace", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
-    const provider = new anchor.AnchorProvider(anchor.getProvider().connection, new anchor.Wallet(payer), {commitment: "confirmed"});
+    const provider = new anchor.AnchorProvider(
+      anchor.getProvider().connection,
+      new anchor.Wallet(payer),
+      { commitment: "confirmed" }
+    );
     console.log("provider initialized");
 
     // load programs
@@ -38,11 +42,11 @@ describe("namespace", () => {
       );
 
     const initNamespaceArgs = {
-      desiredNamespaceArraySize: new anchor.BN(3),
+      desiredNamespaceArraySize: new anchor.BN(2),
       uuid: "ndjsld", // max 6 characters
       prettyName: "my-namespace",
       permissivenessSettings: {
-        namespacePermissiveness: Permissiveness.Namespace,
+        namespacePermissiveness: Permissiveness.All,
         itemPermissiveness: Permissiveness.All,
         playerPermissiveness: Permissiveness.All,
         matchPermissiveness: Permissiveness.All,
@@ -85,7 +89,7 @@ describe("namespace", () => {
 
     const namespaceToken = await splToken.getAssociatedTokenAddress(
       nsMint,
-      provider.wallet.publicKey,
+      provider.wallet.publicKey
     );
 
     // create namespace gatekeeper
@@ -104,12 +108,19 @@ describe("namespace", () => {
     console.log("createNsGatekeeperTxSig: %s", createNsGatekeeperTxSig);
 
     // add item filter to gatekeeper
-    const addToNsGatekeeperTxSig = await namespaceProgram.methods.addToNamespaceGatekeeper().accounts({
+    const itemArtifactFilter = {
+      filter: { namespace: { namespaces: [namespace] } },
+      tokenType: ArtifactType.Item,
+    };
+    const addToNsGatekeeperTxSig = await namespaceProgram.methods
+      .addToNamespaceGatekeeper(itemArtifactFilter)
+      .accounts({
         namespace: namespace,
         namespaceGatekeeper: namespaceGatekeeper,
         namespaceToken: namespaceToken,
         tokenHolder: provider.wallet.publicKey,
-    }).rpc();
+      })
+      .rpc();
     console.log("addToNsGatekeeperTxSig: %s", addToNsGatekeeperTxSig);
 
     // create item mints and metaplex accounts
@@ -185,52 +196,57 @@ describe("namespace", () => {
     console.log("createItemClassTxSig: %s", createItemClassTxSig);
 
     // join item to namespace
-    const joinNamespaceTxSig = await namespaceProgram.methods.joinNamespace().accounts({
+    const joinNamespaceTxSig = await namespaceProgram.methods
+      .joinNamespace()
+      .accounts({
         namespace: namespace,
         namespaceToken: namespaceToken,
         artifact: itemClass,
         namespaceGatekeeper: namespaceGatekeeper,
         tokenHolder: provider.wallet.publicKey,
-    }).rpc({skipPreflight: true});
+        itemProgram: itemProgram.programId,
+      })
+      .rpc({ skipPreflight: false });
     console.log("joinNamespaceTxSig: %s", joinNamespaceTxSig);
 
-    const namespaceData = await namespaceProgram.account.namespace.fetch(namespace);
-    console.log(namespaceData);
+    const itemClassData = await itemProgram.account.itemClass.fetch(itemClass);
+    for (let ns of itemClassData.namespaces) {
+      console.log("itemClass ns: %s", ns.namespace.toString());
+    }
 
-    //// create namespace indexes
-    //const nsIndexPage = new anchor.BN(0);
-    //const [nsIndex, _nsIndexBump] =
-    //  anchor.web3.PublicKey.findProgramAddressSync(
-    //    [
-    //      Buffer.from("namespace"),
-    //      nsMint.toBuffer(),
-    //      nsIndexPage.toArrayLike(Buffer, "le", 8),
-    //    ],
-    //    namespaceProgram.programId
-    //  );
-
-    //// cache item in the namespace we made
     //const cacheArtifactArgs = {
-    //  page: nsIndexPage,
+    //  page: 0,
     //};
+
     //const cacheArtifactTxSig = await namespaceProgram.methods
     //  .cacheArtifact(cacheArtifactArgs)
     //  .accounts({
     //    namespace: namespace,
-    //    namespaceToken: await splToken.getAssociatedTokenAddress(
-    //      nsMint,
-    //      payer.publicKey
-    //    ),
-    //    index: nsIndex,
-    //    priorIndex: nsIndex,
+    //    namespaceToken: namespaceToken,
+    //    index: "",
+    //    priorIndex: "",
     //    artifact: itemClass,
-    //    tokenHolder: payer.publicKey,
+    //    tokenHolder: provider.wallet.publicKey,
     //    payer: provider.wallet.publicKey,
     //    systemProgram: anchor.web3.SystemProgram.programId,
     //    rent: anchor.web3.SYSVAR_RENT_PUBKEY,
     //  })
     //  .rpc();
     //console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
+
+    // leave namespace
+    const leaveNamespaceTxSig = await namespaceProgram.methods
+      .leaveNamespace()
+      .accounts({
+        namespace: namespace,
+        namespaceToken: namespaceToken,
+        artifact: itemClass,
+        namespaceGatekeeper: namespaceGatekeeper,
+        tokenHolder: provider.wallet.publicKey,
+        itemProgram: itemProgram.programId,
+      })
+      .rpc({ skipPreflight: true });
+    console.log("leaveNamespaceTxSig: %s", leaveNamespaceTxSig);
   });
 });
 
@@ -238,6 +254,13 @@ const Permissiveness = {
   All: { all: {} },
   Whitelist: { whitelist: {} },
   Blacklist: { blacklist: {} },
+  Namespace: { namespace: {} },
+};
+
+const ArtifactType = {
+  Player: { player: {} },
+  Item: { item: {} },
+  Mission: { mission: {} },
   Namespace: { namespace: {} },
 };
 
@@ -361,4 +384,8 @@ async function newPayer(
   await connection.confirmTransaction(txSig);
 
   return payer;
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

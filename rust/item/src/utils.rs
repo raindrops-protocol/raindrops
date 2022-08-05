@@ -1019,7 +1019,8 @@ pub fn assert_valid_item_settings_for_edition_type(
                     item_usage_type,
                     cooldown_duration,
                     ..
-                } = &usage.item_class_type {
+                } = &usage.item_class_type
+                {
                     if let Some(max) = max_uses {
                         if max > &1 {
                             // cant have a fungible mint with more than one use. Impossible to track state per token.
@@ -1158,28 +1159,6 @@ pub fn assert_mint_authority_matches_mint(
     Ok(())
 }
 
-pub fn assert_part_of_namespace<'a, 'b>(
-    artifact: &'b AccountInfo<'a>,
-    namespace: &'b AccountInfo<'a>,
-) -> Result<Account<'a, raindrops_namespace::Namespace>> {
-    assert_owned_by(namespace, &raindrops_namespace::id())?;
-
-    let deserialized: Account<raindrops_namespace::Namespace> = Account::try_from(namespace)?;
-
-    assert_derivation(
-        &raindrops_namespace::id(),
-        namespace,
-        &[
-            raindrops_namespace::PREFIX.as_bytes(),
-            deserialized.mint.key().as_ref(),
-        ],
-    )?;
-
-    raindrops_namespace::utils::assert_part_of_namespace(artifact, &deserialized)?;
-
-    Ok(deserialized)
-}
-
 pub struct TransferMintAuthorityArgs<'b, 'info> {
     pub item_class_key: &'b Pubkey,
     pub item_class_info: &'b AccountInfo<'info>,
@@ -1188,9 +1167,7 @@ pub struct TransferMintAuthorityArgs<'b, 'info> {
     pub mint: &'b Account<'info, Mint>,
 }
 
-pub fn transfer_mint_authority(
-    args: TransferMintAuthorityArgs,
-) -> Result<()> {
+pub fn transfer_mint_authority(args: TransferMintAuthorityArgs) -> Result<()> {
     let TransferMintAuthorityArgs {
         item_class_key,
         item_class_info,
@@ -1610,7 +1587,8 @@ pub fn enact_valid_state_change(
         max_uses,
         cooldown_duration,
         ..
-    } = item_usage.item_class_type {
+    } = item_usage.item_class_type
+    {
         if let Some(max) = max_uses {
             require!(item_usage_state.uses <= max, MaxUsesReached)
         }
