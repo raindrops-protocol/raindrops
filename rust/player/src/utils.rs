@@ -113,7 +113,7 @@ pub fn update_player_class_with_inherited_information(
                                 overridable: update_perm.overridable,
                             });
                     },
-                    ChildUpdatePropagationPermissivenessType::EquipItemsPermissiveness => {
+                    ChildUpdatePropagationPermissivenessType::EquipItemPermissiveness => {
                         player_class_data.settings.equip_item_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
                                 parent_items: &parent_item_data.settings.equip_item_permissiveness,
@@ -127,7 +127,15 @@ pub fn update_player_class_with_inherited_information(
                             overridable: update_perm.overridable,
                         });
                     },
-                    ChildUpdatePropagationPermissivenessType::AddItemsPermissiveness =>  {
+                    ChildUpdatePropagationPermissivenessType::UseItemPermissiveness => {
+                        player_class_data.settings.use_item_permissiveness =
+                            propagate_parent_array(PropagateParentArrayArgs {
+                                parent_items: &parent_item_data.settings.use_item_permissiveness,
+                                child_items: &player_class_data.settings.use_item_permissiveness,
+                                overridable: update_perm.overridable,
+                            });
+                    },
+                    ChildUpdatePropagationPermissivenessType::AddItemPermissiveness =>  {
                         player_class_data.settings.add_item_permissiveness =
                             propagate_parent_array(PropagateParentArrayArgs {
                                 parent_items: &parent_item_data.settings.add_item_permissiveness,

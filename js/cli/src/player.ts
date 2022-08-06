@@ -19,45 +19,47 @@ CLI.programCommandWithConfig(
       rpcUrl
     );
 
-    await playerProgram.createPlayerClass(
-      {
-        classIndex: new BN(config.index || 0),
-        parentClassIndex: config.parent ? new BN(config.parent.index) : null,
-        space: new BN(config.totalSpaceBytes),
-        desiredNamespaceArraySize: config.namespaceRequirement,
-        updatePermissivenessToUse: config.updatePermissivenessToUse,
-        storeMint: config.storeMint,
-        storeMetadataFields: config.storeMetadataFields,
-        playerClassData: config.data,
-        parentOfParentClassIndex: config.parent?.parent
-          ? config.parent.parent.index
-          : null,
-      },
-      {
-        playerMint: new web3.PublicKey(config.mint),
-        parent: config.parent
-          ? (
-              await PDA.getItemPDA(
-                new web3.PublicKey(config.parent.mint),
-                new BN(config.parent.index)
-              )
-            )[0]
-          : null,
-        parentMint: config.parent
-          ? new web3.PublicKey(config.parent.mint)
-          : null,
-        parentOfParentClassMint: config.parent?.parent
-          ? new web3.PublicKey(config.parent.parent.mint)
-          : null,
-        metadataUpdateAuthority: config.metadataUpdateAuthority
-          ? new web3.PublicKey(config.metadataUpdateAuthority)
-          : keypair.publicKey,
-        parentUpdateAuthority: config.parent
-          ? config.parent.metadataUpdateAuthority
-          : null,
-      },
-      {}
-    );
+    await (
+      await playerProgram.createPlayerClass(
+        {
+          classIndex: new BN(config.index || 0),
+          parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+          space: new BN(config.totalSpaceBytes),
+          desiredNamespaceArraySize: config.namespaceRequirement,
+          updatePermissivenessToUse: config.updatePermissivenessToUse,
+          storeMint: config.storeMint,
+          storeMetadataFields: config.storeMetadataFields,
+          playerClassData: config.data,
+          parentOfParentClassIndex: config.parent?.parent
+            ? config.parent.parent.index
+            : null,
+        },
+        {
+          playerMint: new web3.PublicKey(config.mint),
+          parent: config.parent
+            ? (
+                await PDA.getItemPDA(
+                  new web3.PublicKey(config.parent.mint),
+                  new BN(config.parent.index)
+                )
+              )[0]
+            : null,
+          parentMint: config.parent
+            ? new web3.PublicKey(config.parent.mint)
+            : null,
+          parentOfParentClassMint: config.parent?.parent
+            ? new web3.PublicKey(config.parent.parent.mint)
+            : null,
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new web3.PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+          parentUpdateAuthority: config.parent
+            ? config.parent.metadataUpdateAuthority
+            : null,
+        },
+        {}
+      )
+    ).rpc();
   }
 );
 

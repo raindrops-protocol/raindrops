@@ -98,12 +98,6 @@
 
         {
           "childUpdatePropagationPermissivenessType": {
-            "removeItemPermissiveness": true
-          },
-          "inherited": { "notInherited": true }
-        },
-        {
-          "childUpdatePropagationPermissivenessType": {
             "stakingPermissiveness": true
           },
           "inherited": { "notInherited": true }
@@ -135,11 +129,11 @@
       ]
     },
     "config": {
-      "starting_stats_uri": null,
-      "basic_stats": null,
-      "body_parts": null,
-      "equip_validation": null,
-      "add_to_pack_validation": null
+      "startingStatsUri": null,
+      "basicStats": null,
+      "bodyParts": null,
+      "equipValidation": null,
+      "addToPackValidation": null
     }
   },
   "metadataUpdateAuthority": null,
