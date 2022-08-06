@@ -404,7 +404,7 @@ pub mod item {
             for _n in 0..desired_namespace_array_size {
                 namespace_arr.push(NamespaceAndIndex {
                     namespace: anchor_lang::solana_program::system_program::id(),
-                    indexed: false,
+                    index: None,
                     inherited: InheritanceState::NotInherited,
                 });
             }
@@ -678,7 +678,7 @@ pub mod item {
             if let Some(ns_index) = namespace_index {
                 item_escrow.namespaces = Some(vec![NamespaceAndIndex {
                     namespace: namespaces[ns_index as usize].namespace,
-                    indexed: false,
+                    index: None,
                     inherited: InheritanceState::Inherited,
                 }]);
             }
@@ -1685,7 +1685,7 @@ pub mod item {
         for mut ns in namespaces {
             if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
                 ns.namespace = ctx.accounts.namespace.key();
-                ns.indexed = false;
+                ns.index = None;
                 ns.inherited = InheritanceState::NotInherited;
                 joined = true;
                 new_namespaces.push(ns);
@@ -1715,8 +1715,11 @@ pub mod item {
         let mut new_namespaces = vec![];
         for mut ns in namespaces {
             if ns.namespace == ctx.accounts.namespace.key() && !left {
+                // if the artifact is still cached, error
+                if ns.index != None {
+                    return Err(error!(ErrorCode::FailedToLeaveNamespace));
+                };
                 ns.namespace = anchor_lang::solana_program::system_program::id();
-                ns.indexed = false;
                 ns.inherited = InheritanceState::NotInherited;
                 left = true;
                 new_namespaces.push(ns);
@@ -1726,6 +1729,65 @@ pub mod item {
         }
         if !left {
             return Err(error!(ErrorCode::FailedToLeaveNamespace));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn item_class_cache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassCacheNamespace<'info>>,
+        page: u64,
+    ) -> Result<()> {
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToCache)),
+        };
+
+        let mut cached = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !cached {
+                ns.index = Some(page);
+                cached = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !cached {
+            return Err(error!(ErrorCode::FailedToCache));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn item_class_uncache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassUnCacheNamespace<'info>>,
+    ) -> Result<()> {
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToUncache)),
+        };
+
+        let mut uncached = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !uncached {
+                ns.index = None;
+                uncached = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !uncached {
+            return Err(error!(ErrorCode::FailedToUncache));
         }
         item_class.namespaces = Some(new_namespaces);
 
@@ -2530,6 +2592,23 @@ pub struct ItemClassLeaveNamespace<'info> {
     namespace: UncheckedAccount<'info>,
 }
 
+#[derive(Accounts)]
+#[instruction(page: u64)]
+pub struct ItemClassCacheNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ItemClassUnCacheNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Callback {
     pub key: Pubkey,
@@ -2683,7 +2762,7 @@ pub enum InheritanceState {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
     pub namespace: Pubkey,
-    pub indexed: bool,
+    pub index: Option<u64>,
     pub inherited: InheritanceState,
 }
 
@@ -3072,4 +3151,12 @@ pub enum ErrorCode {
     FailedToJoinNamespace,
     #[msg("Failed to leave namespace")]
     FailedToLeaveNamespace,
+    #[msg("Failed to cache")]
+    FailedToCache,
+    #[msg("Failed to uncache")]
+    FailedToUncache,
+    #[msg("Already cached")]
+    AlreadyCached,
+    #[msg("Not cached")]
+    NotCached,
 }

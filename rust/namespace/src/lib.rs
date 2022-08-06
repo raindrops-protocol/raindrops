@@ -3,13 +3,18 @@ pub mod utils;
 use {
     crate::utils::{
         assert_can_add_to_namespace, assert_initialized, assert_metadata_valid,
-        assert_part_of_namespace, create_or_allocate_account_raw,
-        inverse_indexed_bool_for_namespace, pull_namespaces,
+        lowest_available_page, pull_namespaces, pull_namespaces2,
     },
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{Mint, Token, TokenAccount},
-    raindrops_item::cpi::accounts::{ItemClassJoinNamespace, ItemClassLeaveNamespace},
-    raindrops_item::cpi::{item_class_join_namespace, item_class_leave_namespace},
+    raindrops_item::cpi::accounts::{
+        ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
+        ItemClassUnCacheNamespace,
+    },
+    raindrops_item::cpi::{
+        item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
+        item_class_uncache_namespace,
+    },
     std::str::FromStr,
 };
 anchor_lang::declare_id!("AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X");
@@ -96,7 +101,7 @@ pub mod namespace {
             for _n in 0..desired_namespace_array_size {
                 namespace_arr.push(NamespaceAndIndex {
                     namespace: anchor_lang::solana_program::system_program::id(),
-                    indexed: false,
+                    index: None,
                     inherited: InheritanceState::NotInherited,
                 });
             }
@@ -114,7 +119,8 @@ pub mod namespace {
         namespace.mint = mint.key();
         namespace.metadata = metadata.key();
         namespace.master_edition = master_edition.key();
-        namespace.highest_page = 0;
+        namespace.max_pages = 10;
+        namespace.full_pages = Vec::with_capacity(namespace.max_pages as usize); // max 10 pages can be used for the cache
         namespace.artifacts_cached = 0;
         namespace.artifacts_added = 0;
 
@@ -163,16 +169,21 @@ pub mod namespace {
         ctx: Context<'_, '_, '_, 'info, CacheArtifact<'info>>,
         args: CacheArtifactArgs,
     ) -> Result<()> {
-        let CacheArtifactArgs { page } = args;
-
         let namespace = &mut ctx.accounts.namespace;
         let index = &mut ctx.accounts.index;
-        let prior_index = &ctx.accounts.prior_index;
         let artifact = &mut ctx.accounts.artifact;
-        let index_info = index.to_account_info();
-        let prior_index_info = prior_index.to_account_info();
 
-        assert_part_of_namespace(artifact, namespace)?;
+        // check artifact is part of this namespace
+        let mut in_namespace = false;
+        let art_namespaces = pull_namespaces(&artifact).unwrap().unwrap();
+        for art_ns in art_namespaces {
+            if art_ns.namespace == namespace.key() {
+                in_namespace = true;
+            };
+        }
+        if !in_namespace {
+            return Err(error!(ErrorCode::ArtifactLacksNamespace));
+        }
 
         if artifact.owner != &Pubkey::from_str(PLAYER_ID).unwrap()
             && artifact.owner != &Pubkey::from_str(MATCH_ID).unwrap()
@@ -182,51 +193,41 @@ pub mod namespace {
             return Err(error!(ErrorCode::CanOnlyCacheValidRaindropsObjects));
         }
 
-        if index_info.data_is_empty() {
-            if prior_index_info.data_is_empty() {
-                return Err(error!(
-                    ErrorCode::PreviousIndexNeedsToExistBeforeCreatingThisOne
-                ));
-            } else if prior_index.caches.len() < MAX_CACHED_ITEMS {
-                return Err(error!(ErrorCode::PreviousIndexNotFull));
-            }
-            let namespace_key = namespace.key();
-            let page_str = page.to_string();
-            let signer_seeds = [
-                PREFIX.as_bytes(),
-                namespace_key.as_ref(),
-                page_str.as_bytes(),
-                &[*ctx.bumps.get("index").unwrap()],
-            ];
-            create_or_allocate_account_raw(
-                *ctx.program_id,
-                &index_info,
-                &ctx.accounts.rent.to_account_info(),
-                &ctx.accounts.system_program,
-                &ctx.accounts.payer,
-                INDEX_SIZE,
-                &signer_seeds,
-            )?;
-        } else if index.caches.len() >= MAX_CACHED_ITEMS {
+        // if caches len is 0, it was just initialized
+        if index.caches.len() == 0 {
+            index.namespace = namespace.key();
+            index.bump = *ctx.bumps.get("index").unwrap();
+            index.page = args.page;
+            index.caches = Vec::with_capacity(MAX_CACHED_ITEMS);
+        };
+
+        // if the current page is not the lowest available page error
+        let lowest_available_page = lowest_available_page(&mut namespace.full_pages.clone());
+        if index.page != lowest_available_page {
+            return Err(error!(ErrorCode::PreviousIndexNotFull));
+        };
+
+        // if we hit max items in the cache return an error
+        if index.caches.len() >= MAX_CACHED_ITEMS {
             return Err(error!(ErrorCode::IndexFull));
         }
 
-        namespace.artifacts_cached = namespace
-            .artifacts_cached
-            .checked_add(1)
-            .ok_or(ErrorCode::NumericalOverflowError)?;
-        if page > namespace.highest_page {
-            namespace.highest_page = page
-        }
-        index.page = page;
-        index.namespace = namespace.key();
+        // add item to cache
         index.caches.push(artifact.key());
 
-        let old_val = inverse_indexed_bool_for_namespace(artifact, namespace.key())?;
-        if old_val == 1 {
-            return Err(error!(ErrorCode::AlreadyCached));
+        // increment highest page if this is the last item that can be added to the cache
+        if index.caches.len() == MAX_CACHED_ITEMS {
+            namespace.full_pages.push(index.page);
         }
-        Ok(())
+
+        let accounts = ItemClassCacheNamespace {
+            item_class: ctx.accounts.artifact.to_account_info(),
+            namespace: ctx.accounts.namespace.to_account_info(),
+        };
+
+        let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
+
+        item_class_cache_namespace(cpi_ctx, index.page)
     }
 
     pub fn uncache_artifact<'info>(
@@ -237,42 +238,34 @@ pub mod namespace {
         let namespace = &mut ctx.accounts.namespace;
         let index = &mut ctx.accounts.index;
         let artifact = &mut ctx.accounts.artifact;
-        let receiver = &mut ctx.accounts.receiver;
 
-        assert_part_of_namespace(artifact, namespace)?;
-
-        let mut found = false;
-        let mut new_arr = vec![];
-        for obj in &index.caches {
-            if obj != &artifact.key() {
-                new_arr.push(obj);
-            } else {
-                found = true;
-            }
+        // check artifact is part of this namespace
+        let mut in_namespace = false;
+        let art_namespaces = pull_namespaces2(&artifact).unwrap();
+        for art_ns in art_namespaces {
+            if art_ns == namespace.key() {
+                in_namespace = true;
+            };
+        }
+        if !in_namespace {
+            return Err(error!(ErrorCode::ArtifactLacksNamespace));
         }
 
-        if found {
-            inverse_indexed_bool_for_namespace(artifact, namespace.key())?;
-            namespace.artifacts_cached = namespace
-                .artifacts_cached
-                .checked_sub(1)
-                .ok_or(ErrorCode::NumericalOverflowError)?;
-        }
+        // remove item from index
+        index.caches.retain(|&item| item != artifact.key());
 
-        if page == namespace.highest_page && index.caches.len() == 0 {
-            namespace.highest_page = page
-                .checked_sub(1)
-                .ok_or(ErrorCode::NumericalOverflowError)?;
-            let curr_lamp = index.to_account_info().lamports();
-            **index.to_account_info().lamports.borrow_mut() = 0;
+        // remove page from full pages list
+        namespace.full_pages.retain(|&i| i != page);
 
-            **receiver.lamports.borrow_mut() = receiver
-                .lamports()
-                .checked_add(curr_lamp)
-                .ok_or(ErrorCode::NumericalOverflowError)?;
-        }
+        // remove cache information from item
+        let accounts = ItemClassUnCacheNamespace {
+            item_class: ctx.accounts.artifact.to_account_info(),
+            namespace: ctx.accounts.namespace.to_account_info(),
+        };
 
-        Ok(())
+        let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
+
+        item_class_uncache_namespace(cpi_ctx)
     }
 
     pub fn create_namespace_gatekeeper<'info>(
@@ -314,34 +307,27 @@ pub mod namespace {
         let artifact = &mut ctx.accounts.artifact.clone();
         let namespace = &mut ctx.accounts.namespace.clone();
 
-        let art_namespaces = pull_namespaces(artifact)?;
+        let art_namespaces = pull_namespaces2(artifact)?;
 
-        if let Some(art_names) = art_namespaces {
-            msg!("art_namespaces found");
-            for n in &art_names {
-                msg!("art_ns: {}", n.namespace.key().to_string());
-                if n.namespace == namespace.key() {
-                    msg!("ns match");
-                    if n.indexed {
-                        return Err(error!(ErrorCode::ArtifactStillCached));
-                    } else {
-                        msg!("modifying artifact");
-                        let accounts = ItemClassLeaveNamespace {
-                            item_class: ctx.accounts.artifact.to_account_info(),
-                            namespace: ctx.accounts.namespace.to_account_info(),
-                        };
-                        let cpi_ctx =
-                            CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
+        msg!("art_namespaces found");
+        for n in &art_namespaces {
+            msg!("art_ns: {}", n.key().to_string());
+            if n == &namespace.key() {
+                msg!("modifying artifact");
+                let accounts = ItemClassLeaveNamespace {
+                    item_class: ctx.accounts.artifact.to_account_info(),
+                    namespace: ctx.accounts.namespace.to_account_info(),
+                };
+                let cpi_ctx =
+                    CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
 
-                        item_class_leave_namespace(cpi_ctx)?;
+                item_class_leave_namespace(cpi_ctx)?;
 
-                        namespace.artifacts_added = namespace
-                            .artifacts_added
-                            .checked_sub(1)
-                            .ok_or(ErrorCode::NumericalOverflowError)?;
-                        return Ok(());
-                    }
-                }
+                namespace.artifacts_added = namespace
+                    .artifacts_added
+                    .checked_sub(1)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+                return Ok(());
             }
         }
 
@@ -373,54 +359,6 @@ pub mod namespace {
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
-        //if let Some(art_names) = &mut art_namespaces {
-        //    let mut found = false;
-        //    for n in 0..art_names.len() {
-        //        if art_names[n].namespace == namespace.key() {
-        //            found = true;
-        //        }
-        //    }
-        //    if !found {
-        //        let mut most_recent_zero = false;
-        //        let mut start: usize = 0;
-
-        //        for mut n in art_names {
-        //            if n.namespace == anchor_lang::solana_program::system_program::id() {
-        //                most_recent_zero = true;
-        //                n.namespace = namespace.key();
-        //                n.indexed = false;
-        //                msg!("updating namespace {}", n.namespace.key().to_string());
-
-        //                // TODO: you cant do this because the artifact is an Item which is owned by the item program not namespace program
-        //                let mut data = artifact.data.borrow_mut();
-        //                data[8] = 1; // option yes
-        //                let as_vec = n.try_to_vec()?;
-        //                // overwrite artifact NamespaceAndIndex with namespaces' NamespaceAndIndex
-        //                for byte in as_vec { // add namespace pubkey
-        //                    msg!("start: {}", start);
-        //                    data[13 + start] = byte;
-        //                    start += 1;
-        //                }
-
-        //                break;
-        //            }
-        //            start += NAMESPACE_AND_INDEX_SIZE;
-        //        }
-        //        if !most_recent_zero {
-        //            msg!("Out of space!");
-        //            return Err(error!(ErrorCode::CannotJoinNamespace));
-        //        }
-        //    }
-        //} else {
-        //    msg!("Out of space! You did not allocate any space for namespaces.");
-        //    return Err(error!(ErrorCode::CannotJoinNamespace));
-        //}
-        //namespace.namespaces = art_namespaces;
-        //for ns in namespace.namespaces.as_ref() {
-        //    for n in ns {
-        //        msg!("{}", n.namespace.to_string());
-        //    }
-        //}
         Ok(())
     }
 
@@ -516,7 +454,8 @@ pub struct Namespace {
     pub uuid: String,
     pub pretty_name: String,
     pub artifacts_added: u64,
-    pub highest_page: u64,
+    pub max_pages: u64,
+    pub full_pages: Vec<u64>,
     pub artifacts_cached: u64,
     pub permissiveness_settings: PermissivenessSettings,
     pub bump: u8,
@@ -532,10 +471,16 @@ pub struct NamespaceIndex {
     pub caches: Vec<Pubkey>,
 }
 
+impl NamespaceIndex {
+    pub fn space() -> usize {
+        8 + 32 + 1 + 8 + (4 + (32 * 100))
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
     namespace: Pubkey,
-    indexed: bool,
+    index: Option<u64>,
     inherited: InheritanceState,
 }
 
@@ -558,6 +503,7 @@ pub const MIN_NAMESPACE_SIZE: usize = 8 + // key
 32 + // pretty name
 8 + // artifacts_added
 8 + // highest page
+(4 + (8 * 10)) + // full pages, max 10 pages
 8 + // artifacts cached
 6 + // permissivenesses
 1 + // bump
@@ -755,17 +701,19 @@ pub struct CacheArtifact<'info> {
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.to_string().as_bytes()], bump=index.bump)]
+    #[account(init_if_needed, payer = payer, space = NamespaceIndex::space(), seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
     index: Account<'info, NamespaceIndex>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.checked_sub(1).ok_or(0).unwrap().to_string().as_bytes()], bump=prior_index.bump)]
-    prior_index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+    #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
+    item_program: UncheckedAccount<'info>,
 }
+
 #[derive(Accounts)]
 #[instruction(args: UncacheArtifactArgs)]
 pub struct UncacheArtifact<'info> {
@@ -773,15 +721,15 @@ pub struct UncacheArtifact<'info> {
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), args.page.to_string().as_bytes()], bump=index.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump=index.bump)]
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     token_holder: UncheckedAccount<'info>,
-    // Received of funds
-    receiver: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+    #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
+    item_program: UncheckedAccount<'info>,
 }
 
 #[error_code]

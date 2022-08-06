@@ -209,30 +209,55 @@ describe("namespace", () => {
       .rpc({ skipPreflight: false });
     console.log("joinNamespaceTxSig: %s", joinNamespaceTxSig);
 
-    const itemClassData = await itemProgram.account.itemClass.fetch(itemClass);
-    for (let ns of itemClassData.namespaces) {
-      console.log("itemClass ns: %s", ns.namespace.toString());
-    }
+    const indexPage = new anchor.BN(0);
+    const cacheArtifactArgs = {
+      page: indexPage,
+    };
 
-    //const cacheArtifactArgs = {
-    //  page: 0,
-    //};
+    const [index, _indexBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("namespace"),
+        namespace.toBuffer(),
+        indexPage.toArrayLike(Buffer, "le", 8),
+      ],
+      namespaceProgram.programId
+    );
 
-    //const cacheArtifactTxSig = await namespaceProgram.methods
-    //  .cacheArtifact(cacheArtifactArgs)
-    //  .accounts({
-    //    namespace: namespace,
-    //    namespaceToken: namespaceToken,
-    //    index: "",
-    //    priorIndex: "",
-    //    artifact: itemClass,
-    //    tokenHolder: provider.wallet.publicKey,
-    //    payer: provider.wallet.publicKey,
-    //    systemProgram: anchor.web3.SystemProgram.programId,
-    //    rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    //  })
-    //  .rpc();
-    //console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
+    const cacheArtifactTxSig = await namespaceProgram.methods
+      .cacheArtifact(cacheArtifactArgs)
+      .accounts({
+        namespace: namespace,
+        namespaceToken: namespaceToken,
+        index: index,
+        artifact: itemClass,
+        tokenHolder: provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        itemProgram: itemProgram.programId,
+      })
+      .rpc({ skipPreflight: true });
+    console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
+
+    const uncacheArtifactArgs = {
+      page: indexPage,
+    };
+
+    const uncacheArtifactTxSig = await namespaceProgram.methods
+      .uncacheArtifact(uncacheArtifactArgs)
+      .accounts({
+        namespace: namespace,
+        namespaceToken: namespaceToken,
+        index: index,
+        artifact: itemClass,
+        tokenHolder: provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        itemProgram: itemProgram.programId,
+      })
+      .rpc({ skipPreflight: true });
+    console.log("uncacheArtifactTxSig: %s", uncacheArtifactTxSig);
 
     // leave namespace
     const leaveNamespaceTxSig = await namespaceProgram.methods

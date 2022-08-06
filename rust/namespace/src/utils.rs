@@ -18,6 +18,7 @@ use {
         Key, ToAccountInfo,
     },
     arrayref::array_ref,
+    raindrops_item::ItemClass,
     std::{convert::TryInto, str::FromStr},
 };
 
@@ -238,6 +239,7 @@ pub fn assert_part_of_namespace<'a>(
     let data = artifact.data.borrow_mut();
     let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
     let offset = 12 as usize;
+    msg!("number: {}, offset: {}", number, offset);
     for i in 0..number {
         let key_bytes = array_ref![data, offset + i * 33, 32];
         let key = Pubkey::new_from_array(*key_bytes);
@@ -288,6 +290,19 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Option<Vec<NamespaceAnd
     }
 
     return Ok(Some(arr));
+}
+
+pub fn pull_namespaces2(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
+    let data = artifact.data.borrow_mut();
+    let item_class: ItemClass = try_from_slice_unchecked(&data[8..])?;
+
+    let mut namespaces: Vec<Pubkey> = vec![];
+
+    for ns in item_class.namespaces.unwrap() {
+        namespaces.push(ns.namespace);
+    }
+
+    Ok(namespaces)
 }
 
 pub fn check_permissiveness_against_holder<'a>(
@@ -509,4 +524,13 @@ pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
     }
     // Check if the computed hash (root) is equal to the provided root
     computed_hash == root
+}
+
+// returns the lowest page that has space for new artifacts
+pub fn lowest_available_page(full_pages: &mut Vec<u64>) -> u64 {
+    full_pages.sort();
+    match full_pages.first() {
+        Some(page) => *page,
+        None => 0,
+    }
 }
