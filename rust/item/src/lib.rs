@@ -26,6 +26,7 @@ pub const PREFIX: &str = "item";
 pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
+pub const NAMESPACE_ID: &str = "AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X";
 pub const RENT_ID: &str = "SysvarRent111111111111111111111111111111111";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -274,6 +275,8 @@ pub struct EndItemActivationArgs {
 pub mod item {
 
     use std::borrow::Borrow;
+
+    use crate::utils::is_namespace_program_caller;
 
     use super::*;
 
@@ -1673,6 +1676,10 @@ pub mod item {
     pub fn item_class_join_namespace<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, ItemClassJoinNamespace<'info>>,
     ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller))
+        }
+
         let item_class = &mut ctx.accounts.item_class;
 
         let namespaces = match item_class.namespaces.clone() {
@@ -1704,6 +1711,10 @@ pub mod item {
     pub fn item_class_leave_namespace<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, ItemClassLeaveNamespace<'info>>,
     ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller))
+        }
+
         let item_class = &mut ctx.accounts.item_class;
 
         let namespaces = match item_class.namespaces.clone() {
@@ -1739,6 +1750,10 @@ pub mod item {
         ctx: Context<'a, 'b, 'c, 'info, ItemClassCacheNamespace<'info>>,
         page: u64,
     ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller))
+        }
+
         let item_class = &mut ctx.accounts.item_class;
 
         let namespaces = match item_class.namespaces.clone() {
@@ -1768,6 +1783,10 @@ pub mod item {
     pub fn item_class_uncache_namespace<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, ItemClassUnCacheNamespace<'info>>,
     ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller))
+        }
+
         let item_class = &mut ctx.accounts.item_class;
 
         let namespaces = match item_class.namespaces.clone() {
@@ -2582,6 +2601,8 @@ pub struct ItemClassJoinNamespace<'info> {
     item_class: Account<'info, ItemClass>,
     #[account()]
     namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2590,6 +2611,8 @@ pub struct ItemClassLeaveNamespace<'info> {
     item_class: Account<'info, ItemClass>,
     #[account()]
     namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2599,6 +2622,8 @@ pub struct ItemClassCacheNamespace<'info> {
     item_class: Account<'info, ItemClass>,
     #[account()]
     namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2607,6 +2632,8 @@ pub struct ItemClassUnCacheNamespace<'info> {
     item_class: Account<'info, ItemClass>,
     #[account()]
     namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -3159,4 +3186,6 @@ pub enum ErrorCode {
     AlreadyCached,
     #[msg("Not cached")]
     NotCached,
+    #[msg("Unauthorized Caller")]
+    UnauthorizedCaller
 }

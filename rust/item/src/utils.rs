@@ -1,9 +1,11 @@
+use std::str::FromStr;
+
 use {
     crate::{
         ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
         InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
         ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState,
-        ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, PREFIX,
+        ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, PREFIX, NAMESPACE_ID,
     },
     anchor_lang::{
         error,
@@ -1803,4 +1805,16 @@ pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
     };
 
     Ok(item_usage)
+}
+
+// returns true if the namespace program called the item program
+pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
+    let current_index = anchor_lang::solana_program::sysvar::instructions::load_current_index_checked(&ixns).unwrap() as usize;
+    let current_ixn = anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked(current_index, &ixns).unwrap();
+
+    if current_ixn.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
+        return false
+    };
+
+    return true
 }

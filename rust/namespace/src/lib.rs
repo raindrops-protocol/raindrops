@@ -223,6 +223,7 @@ pub mod namespace {
         let accounts = ItemClassCacheNamespace {
             item_class: ctx.accounts.artifact.to_account_info(),
             namespace: ctx.accounts.namespace.to_account_info(),
+            instructions: ctx.accounts.instructions.to_account_info(),
         };
 
         let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
@@ -261,6 +262,7 @@ pub mod namespace {
         let accounts = ItemClassUnCacheNamespace {
             item_class: ctx.accounts.artifact.to_account_info(),
             namespace: ctx.accounts.namespace.to_account_info(),
+            instructions: ctx.accounts.instructions.to_account_info(),
         };
 
         let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
@@ -317,6 +319,7 @@ pub mod namespace {
                 let accounts = ItemClassLeaveNamespace {
                     item_class: ctx.accounts.artifact.to_account_info(),
                     namespace: ctx.accounts.namespace.to_account_info(),
+                    instructions: ctx.accounts.instructions.to_account_info(),
                 };
                 let cpi_ctx =
                     CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
@@ -340,6 +343,7 @@ pub mod namespace {
         let accounts = ItemClassJoinNamespace {
             item_class: ctx.accounts.artifact.to_account_info(),
             namespace: ctx.accounts.namespace.to_account_info(),
+            instructions: ctx.accounts.instructions.to_account_info(),
         };
 
         let namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
@@ -675,6 +679,8 @@ pub struct JoinNamespace<'info> {
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
     #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
     item_program: UncheckedAccount<'info>,
 }
@@ -690,6 +696,8 @@ pub struct LeaveNamespace<'info> {
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
     #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
     item_program: UncheckedAccount<'info>,
 }
@@ -706,6 +714,8 @@ pub struct CacheArtifact<'info> {
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     token_holder: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -728,6 +738,8 @@ pub struct UncacheArtifact<'info> {
     token_holder: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
     #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
     item_program: UncheckedAccount<'info>,
 }

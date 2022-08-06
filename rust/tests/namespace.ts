@@ -205,6 +205,7 @@ describe("namespace", () => {
         namespaceGatekeeper: namespaceGatekeeper,
         tokenHolder: provider.wallet.publicKey,
         itemProgram: itemProgram.programId,
+        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
       })
       .rpc({ skipPreflight: false });
     console.log("joinNamespaceTxSig: %s", joinNamespaceTxSig);
@@ -235,6 +236,7 @@ describe("namespace", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         itemProgram: itemProgram.programId,
+        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
       })
       .rpc({ skipPreflight: true });
     console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
@@ -255,6 +257,7 @@ describe("namespace", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         itemProgram: itemProgram.programId,
+        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
       })
       .rpc({ skipPreflight: true });
     console.log("uncacheArtifactTxSig: %s", uncacheArtifactTxSig);
@@ -269,6 +272,7 @@ describe("namespace", () => {
         namespaceGatekeeper: namespaceGatekeeper,
         tokenHolder: provider.wallet.publicKey,
         itemProgram: itemProgram.programId,
+        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
       })
       .rpc({ skipPreflight: true });
     console.log("leaveNamespaceTxSig: %s", leaveNamespaceTxSig);
@@ -409,8 +413,4 @@ async function newPayer(
   await connection.confirmTransaction(txSig);
 
   return payer;
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
