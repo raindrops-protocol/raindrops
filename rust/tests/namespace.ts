@@ -237,9 +237,13 @@ describe("namespace", () => {
       .rpc({ skipPreflight: true });
     console.log("joinNamespaceTxSig: %s", joinNamespaceTxSig);
 
+    // get lowest available page
+    const nsData = await namespaceProgram.account.namespace.fetch(namespace);
+    const lowestAvailablePage = nsData.fullPages.sort()[0]
+
     const indexPage = new anchor.BN(0);
     const cacheArtifactArgs = {
-      page: indexPage,
+      page: lowestAvailablePage,
     };
 
     const [index, _indexBump] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -269,7 +273,7 @@ describe("namespace", () => {
     console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
 
     const uncacheArtifactArgs = {
-      page: indexPage,
+      page: lowestAvailablePage,
     };
 
     const uncacheArtifactTxSig = await namespaceProgram.methods

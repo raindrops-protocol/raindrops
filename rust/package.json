@@ -22,7 +22,6 @@
   "dependencies": {
     "@metaplex-foundation/mpl-token-metadata": "^2.2.2",
     "@project-serum/common": "^0.0.1-beta.3",
-    "@raindrops-protocol/raindrops": "^0.0.6",
     "quicktype-core": "^6.0.70"
   }
 }

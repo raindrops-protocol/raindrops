@@ -3,13 +3,13 @@ import { web3 } from "@project-serum/anchor";
 
 import * as NamespaceInstruction from "../instructions/namespace";
 import { NAMESPACE_ID } from "../constants/programIds";
-import { PREFIX } from "../constants/namespace";
+import { NAMESPACE_PREFIX } from "../constants/namespace";
 import { Namespace } from "../state/namespace";
 import { getNamespacePDA } from "../utils/pda";
 
 export class NamespaceProgram extends Program.Program {
   declare instruction: NamespaceInstruction.Instruction;
-  static PREFIX = PREFIX;
+  static NAMESPACE_PREFIX = NAMESPACE_PREFIX;
   PROGRAM_ID = NAMESPACE_ID;
 
   constructor() {
@@ -48,6 +48,68 @@ export class NamespaceProgram extends Program.Program {
       args,
       accounts
     );
+
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
+
+  async createNamespaceGatekeeper(accounts: NamespaceInstruction.CreateNamespaceGatekeeperAccounts): Promise<void> {
+    const instruction = await this.instruction.createNamespaceGatekeeper(accounts);
+
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
+
+  async addToNamespaceGatekeeper(args: NamespaceInstruction.AddToNamespaceGatekeeperArgs, accounts: NamespaceInstruction.AddToNamespaceGatekeeperAccounts): Promise<void> {
+    const instruction = await this.instruction.addToNamespaceGatekeeper(args, accounts);
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
+
+  async removeFromNamespaceGatekeeper(args: NamespaceInstruction.RemoveFromNamespaceGatekeeperArgs, accounts: NamespaceInstruction.RemoveFromNamespaceGatekeeperAccounts): Promise<void> {
+    const instruction = await this.instruction.removeFromNamespaceGatekeeper(args, accounts);
+
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
+
+  async joinNamespace(accounts: NamespaceInstruction.JoinNamespaceAccounts): Promise<void> {
+    const instruction = await this.instruction.joinNamespace(accounts);
+
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
+
+  async leaveNamespace(accounts: NamespaceInstruction.LeaveNamespaceAccounts): Promise<void> {
+    const instruction = await this.instruction.leaveNamespace(accounts);
+
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
+
+  async cacheArtifact(accounts: NamespaceInstruction.CacheArtifactAccounts): Promise<void> {
+    const instruction = await this.instruction.cacheArtifact(accounts);
+
+    await this.sendWithRetry(
+      instruction,
+      []
+    );
+  }
+
+  async uncacheArtifact(accounts: NamespaceInstruction.UncacheArtifactAccounts): Promise<void> {
+    const instruction = await this.instruction.uncacheArtifact(accounts);
 
     await this.sendWithRetry(
       instruction,

@@ -90,4 +90,104 @@ CLI.programCommandWithConfig("update_namespace", async (config, options, _files)
   );
 });
 
+CLI.programCommandWithConfig("create_namespace_gatekeeper", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl,
+  );
+
+  log.info(
+    "Namespace Gatekeeper created"
+  );
+});
+
+CLI.programCommandWithConfig("add_to_namespace_gatekeeper", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl,
+  );
+
+  log.info(
+    "Filter added to Namespace Gatekeeper"
+  );
+});
+
+
+CLI.programCommandWithConfig("remove_from_namespace_gatekeeper", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl,
+  );
+
+  log.info(
+    "Filter removed from Namespace Gatekeeper"
+  );
+});
+
+CLI.programCommandWithConfig("join_namespace", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl,
+  );
+
+  log.info(
+    "Artifact joined to Namespace"
+  );
+});
+
+CLI.programCommandWithConfig("leave_namespace", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl,
+  );
+
+  log.info(
+    "Artifact removed from Namespace"
+  );
+});
+
+CLI.programCommandWithConfig("cache_artifact", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl,
+  );
+
+  log.info(
+    "Artifact cached to Namespace"
+  );
+});
+
+CLI.programCommandWithConfig("uncache_artifact", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl,
+  );
+
+  log.info(
+    "Artifact removed from Namespace cache"
+  );
+});
+
 CLI.Program.parseAsync(process.argv);

@@ -255,8 +255,14 @@ export class Instruction extends SolKitInstruction {
   }
 
   async cacheArtifact(accounts: CacheArtifactAccounts) {
-    // TODO: need to fetch namespace data to get correct page number
-    const page = new BN(0);
+
+    // get lowest available page
+    var page = new BN(0);
+    const nsData = await this.program.client.account.namespace.fetch(accounts.namespace);
+    if (nsData.fullPages.length !== 0) {
+      page = nsData.fullPages.sort()[0]
+    }
+    
     const [index, _indexBump] = await getIndexPDA(accounts.namespace, page);
 
     const args = {
