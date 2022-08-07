@@ -326,8 +326,10 @@ pub fn check_permissiveness_against_holder<'a>(
             let deserialized: Account<'_, NamespaceGatekeeper> =
                 Account::try_from(&namespace_gatekeeper.to_account_info())?;
             for filter in &deserialized.artifact_filters {
+                msg!("filter found");
                 match &filter.filter {
                     Filter::Namespace { namespaces } => {
+                        msg!("ns filter");
                         if let Some(ns) = &art_namespaces {
                             for n in namespaces {
                                 for other_n in ns {
@@ -341,6 +343,7 @@ pub fn check_permissiveness_against_holder<'a>(
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
                     Filter::Category { namespace, .. } => {
+                        msg!("category filter");
                         if let Some(ns) = &art_namespaces {
                             for n in ns {
                                 if n.namespace == *namespace {
@@ -352,6 +355,7 @@ pub fn check_permissiveness_against_holder<'a>(
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
                     Filter::Key { mint, .. } => {
+                        msg!("key filter");
                         let as_token: spl_token::state::Account =
                             assert_initialized(&artifact.to_account_info())?;
 

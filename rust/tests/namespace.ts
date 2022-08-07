@@ -77,6 +77,26 @@ describe("namespace", () => {
       .rpc();
     console.log("initNsTxSig: %s", initNsTxSig);
 
+    const namespaceToken = await splToken.getAssociatedTokenAddress(
+      nsMint,
+      provider.wallet.publicKey
+    );
+
+    const updateNsArgs = {
+      prettyName: "new-name",
+      permissivenessSettings: null,
+      whitelistedStakingMints: [],
+    };
+    const updateNsTxSig = await namespaceProgram.methods
+      .updateNamespace(updateNsArgs)
+      .accounts({
+        namespace: namespace,
+        namespaceToken: namespaceToken,
+        tokenHolder: provider.wallet.publicKey,
+      })
+      .rpc();
+    console.log("updateNsTxSig: %s", updateNsTxSig);
+
     const [namespaceGatekeeper, _namespaceGatekeeperBump] =
       anchor.web3.PublicKey.findProgramAddressSync(
         [
@@ -86,12 +106,7 @@ describe("namespace", () => {
         ],
         namespaceProgram.programId
       );
-
-    const namespaceToken = await splToken.getAssociatedTokenAddress(
-      nsMint,
-      provider.wallet.publicKey
-    );
-
+    
     // create namespace gatekeeper
     const createNsGatekeeperTxSig = await namespaceProgram.methods
       .createNamespaceGatekeeper()
@@ -122,6 +137,18 @@ describe("namespace", () => {
       })
       .rpc();
     console.log("addToNsGatekeeperTxSig: %s", addToNsGatekeeperTxSig);
+
+    // remove item filter from gatekeeper
+    const rmFromNsGatekeeperTxSig = await namespaceProgram.methods
+      .removeFromNamespaceGatekeeper(itemArtifactFilter)
+      .accounts({
+        namespace: namespace,
+        namespaceGatekeeper: namespaceGatekeeper,
+        namespaceToken: namespaceToken,
+        tokenHolder: provider.wallet.publicKey,
+      })
+      .rpc();
+    console.log("rmFromNsGatekeeperTxSig: %s", rmFromNsGatekeeperTxSig);
 
     // create item mints and metaplex accounts
     const [itemMint, itemMetadata, itemMasterEdition] =
@@ -207,7 +234,7 @@ describe("namespace", () => {
         itemProgram: itemProgram.programId,
         instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
       })
-      .rpc({ skipPreflight: false });
+      .rpc({ skipPreflight: true });
     console.log("joinNamespaceTxSig: %s", joinNamespaceTxSig);
 
     const indexPage = new anchor.BN(0);

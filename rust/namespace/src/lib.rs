@@ -289,17 +289,10 @@ pub mod namespace {
 
     pub fn remove_from_namespace_gatekeeper<'info>(
         ctx: Context<'_, '_, '_, 'info, RemoveFromNamespaceGatekeeper<'info>>,
-        idx: u64,
+        artifact_filter: ArtifactFilter,
     ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
-
-        let mut new_arr = vec![];
-        for i in 0..namespace_gatekeeper.artifact_filters.len() {
-            if i != idx as usize {
-                new_arr.push(namespace_gatekeeper.artifact_filters[i].clone())
-            }
-        }
-        namespace_gatekeeper.artifact_filters = new_arr;
+        namespace_gatekeeper.artifact_filters.retain(|item| item != &artifact_filter);
         Ok(())
     }
 
@@ -391,7 +384,7 @@ pub enum Permissiveness {
     Namespace,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum ArtifactType {
     Player,
     Item,
@@ -401,7 +394,7 @@ pub enum ArtifactType {
 
 pub const MAX_FILTER_SLOTS: usize = 5;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum Filter {
     Namespace {
         namespaces: Vec<Pubkey>,
@@ -420,7 +413,7 @@ pub enum Filter {
 
 pub const FILTER_SIZE: usize = (MAX_FILTER_SLOTS + 1) * 32;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub struct ArtifactFilter {
     filter: Filter,
     token_type: ArtifactType,
