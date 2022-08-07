@@ -258,11 +258,15 @@ export class Instruction extends SolKitInstruction {
 
     // get lowest available page
     var page = new BN(0);
-    const nsData = await this.program.client.account.namespace.fetch(accounts.namespace);
-    if (nsData.fullPages.length !== 0) {
-      page = nsData.fullPages.sort()[0]
-    }
-    
+    const nsData = await namespaceProgram.account.namespace.fetch(accounts.namespace);
+    if (nsData.fullPages.length > 0) {
+      const lowestAvailablePage = nsData.fullPages.sort()[0];
+      if ( lowestAvailablePage > 0) {
+      } else {
+        page = lowestAvailablePage
+      }
+    };
+
     const [index, _indexBump] = await getIndexPDA(accounts.namespace, page);
 
     const args = {

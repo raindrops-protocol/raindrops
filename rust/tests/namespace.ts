@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import * as splToken from "../node_modules/@solana/spl-token";
+import * as splToken from "@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import {
   Namespace,
@@ -238,19 +238,28 @@ describe("namespace", () => {
     console.log("joinNamespaceTxSig: %s", joinNamespaceTxSig);
 
     // get lowest available page
+    var page = new anchor.BN(0);
     const nsData = await namespaceProgram.account.namespace.fetch(namespace);
-    const lowestAvailablePage = nsData.fullPages.sort()[0]
 
-    const indexPage = new anchor.BN(0);
+    // sort ascending
+    const sortedFullPages = nsData.fullPages.sort();
+
+    for (let i = 0; i < sortedFullPages.length; i++) {
+      if (i !== sortedFullPages[i].toNumber()) {
+        page = new anchor.BN(i);
+        break
+      }
+    }
+
     const cacheArtifactArgs = {
-      page: lowestAvailablePage,
+      page: page,
     };
 
     const [index, _indexBump] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("namespace"),
         namespace.toBuffer(),
-        indexPage.toArrayLike(Buffer, "le", 8),
+        page.toArrayLike(Buffer, "le", 8),
       ],
       namespaceProgram.programId
     );
@@ -273,7 +282,7 @@ describe("namespace", () => {
     console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
 
     const uncacheArtifactArgs = {
-      page: lowestAvailablePage,
+      page: page,
     };
 
     const uncacheArtifactTxSig = await namespaceProgram.methods
