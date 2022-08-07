@@ -3,15 +3,18 @@ import { SystemProgram } from "@solana/web3.js";
 import {
   Program,
   Instruction as SolKitInstruction,
-  InstructionUtils,
 } from "@raindrop-studios/sol-kit";
 
-import { getNamespacePDA } from "../utils/pda";
-import { TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { PermissivenessSettings } from "../state/namespace";
+import {
+  getIndexPDA,
+  getNamespaceGatekeeperPDA,
+  getNamespacePDA,
+} from "../utils/pda";
+import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
+import { ArtifactFilter, PermissivenessSettings } from "../state/namespace";
 
 export interface InitializeNamespaceAccounts {
-  namespace?: web3.PublicKey;
+  namespace: web3.PublicKey;
   mint: web3.PublicKey;
   metadata: web3.PublicKey;
   masterEdition: web3.PublicKey;
@@ -37,6 +40,60 @@ export interface UpdateNamespaceAccounts {
   tokenHolder: web3.PublicKey;
 }
 
+export interface CreateNamespaceGatekeeperAccounts {
+  namespace: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+}
+
+export interface AddToNamespaceGatekeeperArgs {
+  artifactFilter: ArtifactFilter;
+}
+
+export interface AddToNamespaceGatekeeperAccounts {
+  namespace: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+}
+
+export interface RemoveFromNamespaceGatekeeperArgs {
+  artifactFilter: ArtifactFilter;
+}
+
+export interface RemoveFromNamespaceGatekeeperAccounts {
+  namespace: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+}
+
+export interface JoinNamespaceAccounts {
+  namespace: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+  artifact: web3.PublicKey;
+}
+
+export interface LeaveNamespaceAccounts {
+  namespace: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+  artifact: web3.PublicKey;
+}
+
+export interface CacheArtifactAccounts {
+  namespace: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+  artifact: web3.PublicKey;
+}
+
+export interface UncacheArtifactAccounts {
+  namespace: web3.PublicKey;
+  namespaceToken: web3.PublicKey;
+  tokenHolder: web3.PublicKey;
+  artifact: web3.PublicKey;
+}
+
 export class Instruction extends SolKitInstruction {
   constructor(args: { program: Program.Program }) {
     super(args);
@@ -47,11 +104,6 @@ export class Instruction extends SolKitInstruction {
     accounts: InitializeNamespaceAccounts
   ) {
     const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
-
-    InstructionUtils.convertNumbersToBNs(args, [
-      "desiredNamespaceArraySize",
-      "bump",
-    ]);
 
     const remainingAccounts = args.whitelistedStakingMints.map((mint) => {
       return { pubkey: mint, isWritable: false, isSigner: false };
@@ -97,6 +149,161 @@ export class Instruction extends SolKitInstruction {
           tokenHolder: accounts.tokenHolder,
         })
         .remainingAccounts(remainingAccounts)
+        .instruction(),
+    ];
+  }
+
+  async createNamespaceGatekeeper(accounts: CreateNamespaceGatekeeperAccounts) {
+    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
+      await getNamespaceGatekeeperPDA(accounts.namespace);
+
+    return [
+      await this.program.client.methods
+        .createNamespaceGatekeeper()
+        .accounts({
+          namespace: accounts.namespace,
+          namespaceToken: accounts.namespaceToken,
+          namespaceGatekeeper: namespaceGatekeeperPDA,
+          tokenHolder: accounts.tokenHolder,
+          payer: (this.program.client.provider as AnchorProvider).wallet
+            .publicKey,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        })
+        .instruction(),
+    ];
+  }
+
+  async addToNamespaceGatekeeper(
+    args: AddToNamespaceGatekeeperArgs,
+    accounts: AddToNamespaceGatekeeperAccounts
+  ) {
+    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
+      await getNamespaceGatekeeperPDA(accounts.namespace);
+
+    return [
+      await this.program.client.methods
+        .addToNamespaceGatekeeper(args)
+        .accounts({
+          namespace: accounts.namespace,
+          namespaceToken: accounts.namespaceToken,
+          namespaceGatekeeper: namespaceGatekeeperPDA,
+          tokenHolder: accounts.tokenHolder,
+        })
+        .instruction(),
+    ];
+  }
+
+  async removeFromNamespaceGatekeeper(
+    args: RemoveFromNamespaceGatekeeperArgs,
+    accounts: RemoveFromNamespaceGatekeeperAccounts
+  ) {
+    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
+      await getNamespaceGatekeeperPDA(accounts.namespace);
+
+    return [
+      await this.program.client.methods
+        .removeFromNamespaceGatekeeper(args)
+        .accounts({
+          namespace: accounts.namespace,
+          namespaceToken: accounts.namespaceToken,
+          namespaceGatekeeper: namespaceGatekeeperPDA,
+          tokenHolder: accounts.tokenHolder,
+        })
+        .instruction(),
+    ];
+  }
+
+  async joinNamespace(accounts: JoinNamespaceAccounts) {
+    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
+      await getNamespaceGatekeeperPDA(accounts.namespace);
+
+    return [
+      await this.program.client.methods
+        .joinNamespace()
+        .accounts({
+          namespace: accounts.namespace,
+          namespaceToken: accounts.namespaceToken,
+          artifact: accounts.artifact,
+          namespaceGatekeeper: namespaceGatekeeperPDA,
+          tokenHolder: accounts.tokenHolder,
+          itemProgram: ITEM_ID,
+          instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        })
+        .instruction(),
+    ];
+  }
+
+  async leaveNamespace(accounts: LeaveNamespaceAccounts) {
+    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
+      await getNamespaceGatekeeperPDA(accounts.namespace);
+
+    return [
+      await this.program.client.methods
+        .leaveNamespace()
+        .accounts({
+          namespace: accounts.namespace,
+          namespaceToken: accounts.namespaceToken,
+          artifact: accounts.artifact,
+          namespaceGatekeeper: namespaceGatekeeperPDA,
+          tokenHolder: accounts.tokenHolder,
+          itemProgram: ITEM_ID,
+          instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        })
+        .instruction(),
+    ];
+  }
+
+  async cacheArtifact(accounts: CacheArtifactAccounts) {
+    // TODO: need to fetch namespace data to get correct page number
+    const page = new BN(0);
+    const [index, _indexBump] = await getIndexPDA(accounts.namespace, page);
+
+    const args = {
+      page: page,
+    };
+
+    return [
+      await this.program.client.methods
+        .cacheArtifact(args)
+        .accounts({
+          namespace: accounts.namespace,
+          namespaceToken: accounts.namespaceToken,
+          index: index,
+          artifact: accounts.artifact,
+          tokenHolder: accounts.tokenHolder,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          itemProgram: ITEM_ID,
+          instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        })
+        .instruction(),
+    ];
+  }
+
+  async uncacheArtifact(accounts: UncacheArtifactAccounts) {
+    // TODO: need to fetch artifact data to find correct page to uncache
+    const page = new BN(0);
+    const [index, _indexBump] = await getIndexPDA(accounts.namespace, page);
+
+    const args = {
+      page: page,
+    };
+
+    return [
+      await this.program.client.methods
+        .uncacheArtifact(args)
+        .accounts({
+          namespace: accounts.namespace,
+          namespaceToken: accounts.namespaceToken,
+          index: index,
+          artifact: accounts.artifact,
+          tokenHolder: accounts.tokenHolder,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          itemProgram: ITEM_ID,
+          instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        })
         .instruction(),
     ];
   }

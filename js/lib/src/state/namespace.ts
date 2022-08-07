@@ -10,11 +10,81 @@ export class PermissivenessSettings {
   cachePermissiveness: Permissiveness;
 }
 
-export enum Permissiveness {
-  All,
-  Whitelist,
-  Blacklist,
-  Namespace,
+export interface Permissiveness {
+  All: { all: {} };
+  Whitelist: { whitelist: {} };
+  Blacklist: { blacklist: {} };
+  Namespace: { namespace: {} };
+}
+
+export class ArtifactFilter {
+  filter: Filter;
+  tokenType: ArtifactType;
+}
+
+export class Filter {
+  readonly filter: {} | null;
+
+  constructor(
+    filterType: FilterType,
+    filterData: FilterNamespaces | FilterCategories | FilterKey
+  ) {
+    switch (filterType) {
+      case FilterType.FilterNamespaces:
+        var filterNs = filterData as FilterNamespaces;
+        this.filter = { namespace: { namespaces: filterNs.namespaces } };
+        break;
+      case FilterType.FilterCategories:
+        var filterCategories = filterData as FilterCategories;
+        this.filter = {
+          category: {
+            namespace: filterCategories.namespace,
+            category: filterCategories.category,
+          },
+        };
+        break;
+      case FilterType.FilterKey:
+        var filterKeys = filterData as FilterKey;
+        this.filter = {
+          key: {
+            key: filterKeys.key,
+            mint: filterKeys.mint,
+            metadata: filterKeys.metadata,
+            edition: filterKeys.edition,
+          },
+        };
+        break;
+    }
+  }
+}
+
+export enum FilterType {
+  FilterNamespaces,
+  FilterCategories,
+  FilterKey,
+}
+
+export interface FilterNamespaces {
+  namespaces: Array<web3.PublicKey>;
+}
+
+export interface FilterCategories {
+  namespace: web3.PublicKey;
+  category: Array<string> | null;
+}
+
+export interface FilterKey {
+  key: web3.PublicKey;
+  mint: web3.PublicKey;
+  metadata: web3.PublicKey;
+  edition: web3.PublicKey | null;
+}
+
+export interface ArtifactType {
+  Player: { player: {} };
+  Item: { item: {} };
+  Mission: { mission: {} };
+  Namespace: { namespace: {} };
 }
 
 export class Namespace {
@@ -69,9 +139,7 @@ export class Namespace {
     );
     log.info(
       "Metadata:",
-      this.metadata
-        ? this.metadata.toBase58()
-        : "Not cached on object"
+      this.metadata ? this.metadata.toBase58() : "Not cached on object"
     );
     log.info(
       "Master Edition:",
@@ -79,33 +147,22 @@ export class Namespace {
         ? this.masterEdition.toBase58()
         : "Not cached on object"
     );
-    log.info(
-      "UUID:",
-      this.uuid ? this.uuid : "Not cached on object"
-    );
+    log.info("UUID:", this.uuid ? this.uuid : "Not cached on object");
     log.info(
       "Pretty Name:",
-      this.prettyName
-        ? this.prettyName
-        : "Not cached on object"
+      this.prettyName ? this.prettyName : "Not cached on object"
     );
     log.info(
       "Artifacts Added:",
-      this.artifactsAdded
-        ? this.artifactsAdded
-        : "Not cached on object"
+      this.artifactsAdded ? this.artifactsAdded : "Not cached on object"
     );
     log.info(
       "Highest Page:",
-      this.highestPage
-        ? this.highestPage
-        : "Not cached on object"
+      this.highestPage ? this.highestPage : "Not cached on object"
     );
     log.info(
       "Aritfacts Cached:",
-      this.artifactsCached
-        ? this.artifactsCached
-        : "Not cached on object"
+      this.artifactsCached ? this.artifactsCached : "Not cached on object"
     );
 
     log.info("Permissiveness Settings: {");
