@@ -1,17 +1,22 @@
 import * as anchor from "@project-serum/anchor";
-import * as splToken from "@solana/spl-token";
+import * as splToken from "../node_modules/@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import {
   Namespace,
   IDL as NamespaceProgramIDL,
 } from "../target/types/namespace";
 import { Item, IDL as ItemProgramIDL } from "../target/types/item";
+import { NamespaceProgram } from "../../js/lib/src/contract/namespace";
+import * as nsIx from "../../js/lib/src/instructions/namespace";
+import * as nsState from "../../js/lib/src/state/namespace";
+import * as pids from "../../js/lib/src/constants/programIds";
+import { assert } from "quicktype-core";
 
 describe("namespace", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  it("namespace", async () => {
+  it.skip("namespace", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const provider = new anchor.AnchorProvider(
       anchor.getProvider().connection,
@@ -24,12 +29,12 @@ describe("namespace", () => {
     const namespaceProgram: anchor.Program<Namespace> =
       await new anchor.Program(
         NamespaceProgramIDL,
-        "AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X",
+        pids.NAMESPACE_ID,
         provider
       );
     const itemProgram: anchor.Program<Item> = await new anchor.Program(
       ItemProgramIDL,
-      "CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4",
+      pids.ITEM_ID,
       provider
     );
     console.log("programs loaded");
@@ -106,7 +111,7 @@ describe("namespace", () => {
         ],
         namespaceProgram.programId
       );
-    
+
     // create namespace gatekeeper
     const createNsGatekeeperTxSig = await namespaceProgram.methods
       .createNamespaceGatekeeper()
@@ -150,78 +155,6 @@ describe("namespace", () => {
       .rpc();
     console.log("rmFromNsGatekeeperTxSig: %s", rmFromNsGatekeeperTxSig);
 
-    // create item mints and metaplex accounts
-    const [itemMint, itemMetadata, itemMasterEdition] =
-      await createMintMetadataAndMasterEditionAccounts(
-        "item",
-        provider.connection,
-        payer
-      );
-
-    // item class PDA
-    const itemClassIndex = new anchor.BN(0);
-    const [itemClass, _itemClassBump] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("item"),
-          itemMint.toBuffer(),
-          itemClassIndex.toArrayLike(Buffer, "le", 8),
-        ],
-        itemProgram.programId
-      );
-
-    const createItemClassArgs = {
-      classIndex: itemClassIndex,
-      parentClassIndex: null,
-      parentOfParentClassIndex: null,
-      space: new anchor.BN(300),
-      desiredNamespaceArraySize: new anchor.BN(2),
-      updatePermissivenessToUse: null,
-      storeMint: true,
-      storeMetadataFields: true,
-      itemClassData: {
-        settings: {
-          freeBuild: null,
-          childrenMustBeEditions: null,
-          builderMustBeHolder: null,
-          updatePermissiveness: null,
-          buildPermissiveness: null,
-          stakingWarmUpDuration: null,
-          stakingCooldownDuration: null,
-          stakingPermissiveness: null,
-          unstakingPermissiveness: null,
-          childUpdatePropagationPermissiveness: null,
-        },
-        config: {
-          usageRoot: null,
-          usageStateRoot: null,
-          componentRoot: null,
-          usages: null,
-          components: null,
-        },
-      },
-    };
-
-    // create item class
-    const createItemClassTxSig = await itemProgram.methods
-      .createItemClass(createItemClassArgs)
-      .accounts({
-        itemClass: itemClass,
-        itemMint: itemMint,
-        metadata: itemMetadata,
-        edition: itemMasterEdition,
-        parent: itemClass,
-        payer: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      })
-      .remainingAccounts([
-        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
-        { pubkey: itemMetadata, isSigner: false, isWritable: false },
-      ])
-      .rpc({ skipPreflight: false });
-    console.log("createItemClassTxSig: %s", createItemClassTxSig);
-
     // join item to namespace
     const joinNamespaceTxSig = await namespaceProgram.methods
       .joinNamespace()
@@ -247,7 +180,7 @@ describe("namespace", () => {
     for (let i = 0; i < sortedFullPages.length; i++) {
       if (i !== sortedFullPages[i].toNumber()) {
         page = new anchor.BN(i);
-        break
+        break;
       }
     }
 
@@ -316,6 +249,458 @@ describe("namespace", () => {
       })
       .rpc({ skipPreflight: true });
     console.log("leaveNamespaceTxSig: %s", leaveNamespaceTxSig);
+  });
+
+  it("init namespace", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const [initNsTxSig, _namespace] =
+      await namespaceProgram.initializeNamespace(
+        initializeNamespaceArgs,
+        initializeNamespaceAccounts
+      );
+
+    console.log("initNsTxSig: %s", initNsTxSig);
+  });
+
+  it("init namespace with wl staking mint", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const wlStakingMint = await splToken.createMint(
+      anchor.getProvider().connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      9
+    );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [wlStakingMint],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsTxSig);
+
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.whitelistedStakingMints.length === 1);
+  });
+
+  it("update namespace with new name and wl mint", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const wlStakingMint1 = await splToken.createMint(
+      anchor.getProvider().connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      9
+    );
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [wlStakingMint1],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsTxSig);
+
+    const wlStakingMint2 = await splToken.createMint(
+      anchor.getProvider().connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      9
+    );
+
+    const updateNsArgs: nsIx.UpdateNamespaceArgs = {
+      prettyName: "new-name",
+      permissivenessSettings: null,
+      whitelistedStakingMints: [wlStakingMint2],
+    };
+
+    const updateNsAccounts: nsIx.UpdateNamespaceAccounts = {
+      namespaceMint: nsMint,
+    };
+
+    const updateNsTxSig = await namespaceProgram.updateNamespace(
+      updateNsArgs,
+      updateNsAccounts
+    );
+    console.log("updateNsTxSig: %s", updateNsTxSig);
+
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.prettyName === "new-name");
+    assert(nsData.whitelistedStakingMints.length === 2);
+  });
+
+  it("create ns gatekeeper", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsTxSig);
+
+    const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: nsMint,
+    };
+
+    const [createNsGKTxSig, nsGatekeeper] =
+      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
+    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    console.log("%s %s", nsData.gatekeeper.toString(), nsGatekeeper.toString());
+    assert(nsData.gatekeeper.equals(nsGatekeeper));
+  });
+
+  it("Add filter to ns gatekeeper, then remove it", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsTxSig);
+
+    const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: nsMint,
+    };
+
+    const [createNsGKTxSig, nsGatekeeper] =
+      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
+    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.gatekeeper.equals(nsGatekeeper));
+
+    const addToNsGatekeeperArgs: nsIx.AddToNamespaceGatekeeperArgs = {
+      artifactFilter: {
+        tokenType: nsState.TokenType.Item,
+        filter: new nsState.Filter(
+          nsState.FilterType.FilterNamespaces,
+          new nsState.FilterNamespaces([namespace])
+        ),
+      },
+    };
+
+    const addToNsGatekeeperAccounts: nsIx.AddToNamespaceGatekeeperAccounts = {
+      namespaceMint: nsMint,
+    };
+
+    const addToNsGkTxSig = await namespaceProgram.addToNamespaceGatekeeper(
+      addToNsGatekeeperArgs,
+      addToNsGatekeeperAccounts
+    );
+    console.log("addToNsGkTxSig: %s", addToNsGkTxSig);
+
+    const rmFromNsGatekeeperArgs: nsIx.RemoveFromNamespaceGatekeeperArgs = {
+      artifactFilter: {
+        tokenType: nsState.TokenType.Item,
+        filter: new nsState.Filter(
+          nsState.FilterType.FilterNamespaces,
+          new nsState.FilterNamespaces([namespace])
+        ),
+      },
+    };
+
+    const rmFromNsGatekeeperAccounts: nsIx.RemoveFromNamespaceGatekeeperAccounts =
+      {
+        namespaceMint: nsMint,
+      };
+
+    const rmFromNsGkTxSig =
+      await namespaceProgram.removeFromNamespaceGatekeeper(
+        rmFromNsGatekeeperArgs,
+        rmFromNsGatekeeperAccounts
+      );
+    console.log("rmFromNsGkTxSig: %s", rmFromNsGkTxSig);
+  });
+
+  it("join item class to namespace", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsTxSig);
+
+    const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: nsMint,
+    };
+
+    const [createNsGKTxSig, _nsGatekeeper] =
+      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
+    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+
+    const itemClass = await createItemClass(
+      payer,
+      anchor.getProvider().connection
+    );
+
+    const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemClass,
+    };
+
+    const joinNsTxSig = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsTxSig);
   });
 });
 
@@ -439,6 +824,94 @@ async function createMintMetadataAndMasterEditionAccounts(
   );
 
   return [mint, metadata, masterEdition];
+}
+
+async function createItemClass(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection
+): Promise<anchor.web3.PublicKey> {
+  const provider = new anchor.AnchorProvider(
+    anchor.getProvider().connection,
+    new anchor.Wallet(payer),
+    { commitment: "confirmed" }
+  );
+  console.log("provider initialized");
+
+  const itemProgram: anchor.Program<Item> = await new anchor.Program(
+    ItemProgramIDL,
+    pids.ITEM_ID,
+    provider
+  );
+  console.log("programs loaded");
+  // create item mints and metaplex accounts
+  const [itemMint, itemMetadata, itemMasterEdition] =
+    await createMintMetadataAndMasterEditionAccounts("item", connection, payer);
+
+  // item class PDA
+  const itemClassIndex = new anchor.BN(0);
+  const [itemClass, _itemClassBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("item"),
+        itemMint.toBuffer(),
+        itemClassIndex.toArrayLike(Buffer, "le", 8),
+      ],
+      itemProgram.programId
+    );
+
+  const createItemClassArgs = {
+    classIndex: itemClassIndex,
+    parentClassIndex: null,
+    parentOfParentClassIndex: null,
+    space: new anchor.BN(300),
+    desiredNamespaceArraySize: new anchor.BN(2),
+    updatePermissivenessToUse: null,
+    storeMint: true,
+    storeMetadataFields: true,
+    itemClassData: {
+      settings: {
+        freeBuild: null,
+        childrenMustBeEditions: null,
+        builderMustBeHolder: null,
+        updatePermissiveness: null,
+        buildPermissiveness: null,
+        stakingWarmUpDuration: null,
+        stakingCooldownDuration: null,
+        stakingPermissiveness: null,
+        unstakingPermissiveness: null,
+        childUpdatePropagationPermissiveness: null,
+      },
+      config: {
+        usageRoot: null,
+        usageStateRoot: null,
+        componentRoot: null,
+        usages: null,
+        components: null,
+      },
+    },
+  };
+
+  // create item class
+  const createItemClassTxSig = await itemProgram.methods
+    .createItemClass(createItemClassArgs)
+    .accounts({
+      itemClass: itemClass,
+      itemMint: itemMint,
+      metadata: itemMetadata,
+      edition: itemMasterEdition,
+      parent: itemClass,
+      payer: provider.wallet.publicKey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+    .remainingAccounts([
+      { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+      { pubkey: itemMetadata, isSigner: false, isWritable: false },
+    ])
+    .rpc({ skipPreflight: false });
+  console.log("createItemClassTxSig: %s", createItemClassTxSig);
+
+  return itemClass;
 }
 
 async function newPayer(

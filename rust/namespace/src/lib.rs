@@ -123,6 +123,7 @@ pub mod namespace {
         namespace.full_pages = Vec::with_capacity(namespace.max_pages as usize); // max 10 pages can be used for the cache
         namespace.artifacts_cached = 0;
         namespace.artifacts_added = 0;
+        namespace.gatekeeper = None;
 
         msg!("ok");
         Ok(())
@@ -140,8 +141,8 @@ pub mod namespace {
 
         let namespace = &mut ctx.accounts.namespace;
 
-        if let Some(ws_mints) = whitelisted_staking_mints {
-            if ws_mints.len() > MAX_WHITELIST {
+        if let Some(mut ws_mints) = whitelisted_staking_mints {
+            if ws_mints.len() + namespace.whitelisted_staking_mints.len() > MAX_WHITELIST {
                 return Err(error!(ErrorCode::WhitelistStakeListTooLong));
             }
             for n in 0..ws_mints.len() {
@@ -149,7 +150,7 @@ pub mod namespace {
                 // Assert they are all real mints.
                 let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
             }
-            namespace.whitelisted_staking_mints = ws_mints;
+            namespace.whitelisted_staking_mints.append(&mut ws_mints);
         }
         if let Some(pn) = pretty_name {
             if pn.len() > 32 {
@@ -275,6 +276,10 @@ pub mod namespace {
     ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
         namespace_gatekeeper.bump = *ctx.bumps.get("namespace_gatekeeper").unwrap();
+        namespace_gatekeeper.namespace = ctx.accounts.namespace.key();
+
+        let namespace = &mut ctx.accounts.namespace;
+        namespace.gatekeeper = Some(namespace_gatekeeper.key());
         Ok(())
     }
 
@@ -423,11 +428,13 @@ pub struct ArtifactFilter {
 pub struct NamespaceGatekeeper {
     bump: u8,
     artifact_filters: Vec<ArtifactFilter>,
+    namespace: Pubkey,
 }
 
+// TODO get this right
 impl NamespaceGatekeeper {
     pub fn space() -> usize {
-        8 + 1 + 100
+        8 + 1 + 132
     }
 }
 
@@ -457,6 +464,7 @@ pub struct Namespace {
     pub permissiveness_settings: PermissivenessSettings,
     pub bump: u8,
     pub whitelisted_staking_mints: Vec<Pubkey>,
+    pub gatekeeper: Option<Pubkey>,
 }
 
 /// seed ['namespace', namespace program, mint, page number]
@@ -505,6 +513,7 @@ pub const MIN_NAMESPACE_SIZE: usize = 8 + // key
 6 + // permissivenesses
 1 + // bump
 5 + // whitelist staking mints
+1 + 32 + // Namespace gatekeeper optional pubkey
 200; // padding
 
 pub const INDEX_SIZE: usize = 8 + // key
@@ -589,7 +598,7 @@ pub struct AddToNamespaceGatekeeper<'info> {
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: Signer<'info>,
 }
@@ -600,7 +609,7 @@ pub struct RemoveFromNamespaceGatekeeper<'info> {
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: Signer<'info>,
 }

@@ -10,7 +10,7 @@ export class PermissivenessSettings {
   cachePermissiveness: Permissiveness;
 }
 
-export interface Permissiveness {
+export class Permissiveness {
   All: { all: {} };
   Whitelist: { whitelist: {} };
   Blacklist: { blacklist: {} };
@@ -19,7 +19,7 @@ export interface Permissiveness {
 
 export class ArtifactFilter {
   filter: Filter;
-  tokenType: ArtifactType;
+  tokenType: TokenType;
 }
 
 export class Filter {
@@ -64,8 +64,12 @@ export enum FilterType {
   FilterKey,
 }
 
-export interface FilterNamespaces {
-  namespaces: Array<web3.PublicKey>;
+export class FilterNamespaces {
+  readonly namespaces: Array<web3.PublicKey>;
+
+  constructor(namespaces: Array<web3.PublicKey>) {
+    this.namespaces = namespaces;
+  }
 }
 
 export interface FilterCategories {
@@ -80,12 +84,33 @@ export interface FilterKey {
   edition: web3.PublicKey | null;
 }
 
-export interface ArtifactType {
-  Player: { player: {} };
-  Item: { item: {} };
-  Mission: { mission: {} };
-  Namespace: { namespace: {} };
+export enum TokenType {
+  Player,
+  Item,
+  Mission,
+  Namespace,
 }
+
+// conver enum to an anchor compatible type
+export function convertTokenType(tokenType: TokenType): {} {
+  switch(tokenType) {
+    case TokenType.Item:
+      return { item: {} };
+    case TokenType.Mission:
+      return { mission: {} };
+    case TokenType.Namespace:
+      return { namespace: {} };
+    case TokenType.Player:
+      return { player: {} };
+  }
+}
+
+//export const TokenType = {
+//  Player: { player: {} },
+//  Item: { item: {} },
+//  Mission: { mission: {} },
+//  Namespace: { namespace: {} },
+//}
 
 export class Namespace {
   key: web3.PublicKey;
@@ -101,6 +126,7 @@ export class Namespace {
   permissivenessSettings: PermissivenessSettings | null;
   bump: number;
   whitelistedStakingMints: web3.PublicKey[] | null;
+  gatekeeper: web3.PublicKey | null;
 
   constructor(key, data) {
     this.key = key;
@@ -116,6 +142,7 @@ export class Namespace {
     this.permissivenessSettings = data.permissivenessSettings;
     this.bump = data.bump;
     this.whitelistedStakingMints = data.whitelistedStakingMints;
+    this.gatekeeper = data.gatekeeper;
   }
 
   print(log) {
