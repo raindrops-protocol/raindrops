@@ -121,7 +121,8 @@ export class Namespace {
   uuid: string | null;
   prettyName: string | null;
   artifactsAdded: number;
-  highestPage: number;
+  maxPages: number;
+  fullPages: number[];
   artifactsCached: number;
   permissivenessSettings: PermissivenessSettings | null;
   bump: number;
@@ -136,9 +137,10 @@ export class Namespace {
     this.masterEdition = data.masterEdition;
     this.uuid = data.uuid;
     this.prettyName = data.prettyName;
-    this.artifactsAdded = data.artifactsAdded;
-    this.highestPage = data.highestPage;
-    this.artifactsCached = data.artifactsCached;
+    this.artifactsAdded = data.artifactsAdded.toNumber();
+    this.maxPages = data.maxPages.toNumber();
+    this.fullPages = data.fullPages;
+    this.artifactsCached = data.artifactsCached.toNumber();
     this.permissivenessSettings = data.permissivenessSettings;
     this.bump = data.bump;
     this.whitelistedStakingMints = data.whitelistedStakingMints;

@@ -141,7 +141,7 @@ pub mod namespace {
 
         let namespace = &mut ctx.accounts.namespace;
 
-        if let Some(mut ws_mints) = whitelisted_staking_mints {
+        if let Some(ws_mints) = whitelisted_staking_mints {
             if ws_mints.len() + namespace.whitelisted_staking_mints.len() > MAX_WHITELIST {
                 return Err(error!(ErrorCode::WhitelistStakeListTooLong));
             }
@@ -150,7 +150,7 @@ pub mod namespace {
                 // Assert they are all real mints.
                 let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
             }
-            namespace.whitelisted_staking_mints.append(&mut ws_mints);
+            namespace.whitelisted_staking_mints = ws_mints;
         }
         if let Some(pn) = pretty_name {
             if pn.len() > 32 {
@@ -221,6 +221,11 @@ pub mod namespace {
             namespace.full_pages.push(index.page);
         }
 
+        namespace.artifacts_cached = namespace
+            .artifacts_cached
+            .checked_add(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
         let accounts = ItemClassCacheNamespace {
             item_class: ctx.accounts.artifact.to_account_info(),
             namespace: ctx.accounts.namespace.to_account_info(),
@@ -258,6 +263,11 @@ pub mod namespace {
 
         // remove page from full pages list
         namespace.full_pages.retain(|&i| i != page);
+
+        namespace.artifacts_cached = namespace
+            .artifacts_cached
+            .checked_sub(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
 
         // remove cache information from item
         let accounts = ItemClassUnCacheNamespace {
@@ -307,6 +317,11 @@ pub mod namespace {
         let artifact = &mut ctx.accounts.artifact.clone();
         let namespace = &mut ctx.accounts.namespace.clone();
 
+        namespace.artifacts_added = namespace
+            .artifacts_added
+            .checked_sub(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
         let art_namespaces = pull_namespaces2(artifact)?;
 
         msg!("art_namespaces found");
@@ -324,10 +339,6 @@ pub mod namespace {
 
                 item_class_leave_namespace(cpi_ctx)?;
 
-                namespace.artifacts_added = namespace
-                    .artifacts_added
-                    .checked_sub(1)
-                    .ok_or(ErrorCode::NumericalOverflowError)?;
                 return Ok(());
             }
         }
@@ -364,6 +375,7 @@ pub mod namespace {
         Ok(())
     }
 
+    // FOR TESTING ONLY
     pub fn item_validation<'info>(
         _ctx: Context<'_, '_, '_, 'info, ItemValidation<'info>>,
         _args: ValidationArgs,
@@ -372,6 +384,7 @@ pub mod namespace {
         Ok(())
     }
 
+    // FOR TESTING ONLY
     pub fn match_validation<'info>(
         _ctx: Context<'_, '_, '_, 'info, MatchValidation<'info>>,
         _args: MatchValidationArgs,

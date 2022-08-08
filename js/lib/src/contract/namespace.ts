@@ -106,17 +106,21 @@ export class NamespaceProgram extends Program.Program {
 
   async cacheArtifact(
     accounts: NamespaceInstruction.CacheArtifactAccounts
-  ): Promise<void> {
+  ): Promise<string> {
     const instruction = await this.instruction.cacheArtifact(accounts);
 
-    await this.sendWithRetry(instruction, []);
+    const result = await this.sendWithRetry(instruction, []);
+
+    return result.txid;
   }
 
   async uncacheArtifact(
     accounts: NamespaceInstruction.UncacheArtifactAccounts
-  ): Promise<void> {
+  ): Promise<string> {
     const instruction = await this.instruction.uncacheArtifact(accounts);
 
-    await this.sendWithRetry(instruction, []);
+    const result = await this.sendWithRetry(instruction, []);
+
+    return result.txid;
   }
 }

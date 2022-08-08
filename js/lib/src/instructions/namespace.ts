@@ -69,16 +69,12 @@ export interface LeaveNamespaceAccounts {
 }
 
 export interface CacheArtifactAccounts {
-  namespace: web3.PublicKey;
-  namespaceToken: web3.PublicKey;
-  tokenHolder: web3.PublicKey;
+  namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
 }
 
 export interface UncacheArtifactAccounts {
-  namespace: web3.PublicKey;
-  namespaceToken: web3.PublicKey;
-  tokenHolder: web3.PublicKey;
+  namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
 }
 
@@ -355,10 +351,27 @@ export class Instruction extends SolKitInstruction {
   }
 
   async cacheArtifact(accounts: CacheArtifactAccounts) {
+    const [namespacePDA, _namespacePDABump] = await getNamespacePDA(
+      accounts.namespaceMint
+    );
+
+    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
+      await getNamespaceGatekeeperPDA(namespacePDA);
+
+    const payer = (this.program.client.provider as AnchorProvider).wallet
+      .publicKey;
+
+    const nsTA = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      accounts.namespaceMint,
+      payer
+    );
+
     // get lowest available page
     var page = new BN(0);
     const nsData = await this.program.client.account.namespace.fetch(
-      accounts.namespace
+      namespacePDA
     );
 
     // sort ascending
@@ -371,7 +384,7 @@ export class Instruction extends SolKitInstruction {
       }
     }
 
-    const [index, _indexBump] = await getIndexPDA(accounts.namespace, page);
+    const [index, _indexBump] = await getIndexPDA(namespacePDA, page);
 
     const args = {
       page: page,
@@ -381,11 +394,11 @@ export class Instruction extends SolKitInstruction {
       await this.program.client.methods
         .cacheArtifact(args)
         .accounts({
-          namespace: accounts.namespace,
-          namespaceToken: accounts.namespaceToken,
+          namespace: namespacePDA,
+          namespaceToken: nsTA,
           index: index,
           artifact: accounts.artifact,
-          tokenHolder: accounts.tokenHolder,
+          tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
           itemProgram: ITEM_ID,
@@ -396,9 +409,26 @@ export class Instruction extends SolKitInstruction {
   }
 
   async uncacheArtifact(accounts: UncacheArtifactAccounts) {
+    const [namespacePDA, _namespacePDABump] = await getNamespacePDA(
+      accounts.namespaceMint
+    );
+
+    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
+      await getNamespaceGatekeeperPDA(namespacePDA);
+
+    const payer = (this.program.client.provider as AnchorProvider).wallet
+      .publicKey;
+
+    const nsTA = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      accounts.namespaceMint,
+      payer
+    );
+
     // TODO: need to fetch artifact data to find correct page to uncache
     const page = new BN(0);
-    const [index, _indexBump] = await getIndexPDA(accounts.namespace, page);
+    const [index, _indexBump] = await getIndexPDA(namespacePDA, page);
 
     const args = {
       page: page,
@@ -408,11 +438,11 @@ export class Instruction extends SolKitInstruction {
       await this.program.client.methods
         .uncacheArtifact(args)
         .accounts({
-          namespace: accounts.namespace,
-          namespaceToken: accounts.namespaceToken,
+          namespace: namespacePDA,
+          namespaceToken: nsTA,
           index: index,
           artifact: accounts.artifact,
-          tokenHolder: accounts.tokenHolder,
+          tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
           itemProgram: ITEM_ID,
