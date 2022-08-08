@@ -1,8 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2019",
-    "module": "es2022",
-    "moduleResolution": "node",
+    "module": "commonjs",
     "outDir": "./build",
     "declaration": true,
     "declarationMap": true,
