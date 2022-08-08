@@ -1,12 +1,20 @@
 #!/usr/bin/env ts-node
 import log from "loglevel";
+import * as fs from "fs";
+
 import { BN, web3 } from "@project-serum/anchor";
 
 import { Wallet, CLI } from "@raindrop-studios/sol-command";
 import { PlayerProgram } from "@raindrops-protocol/raindrops";
-import { Utils } from "@raindrops-protocol/raindrops";
+import { Utils, State } from "@raindrops-protocol/raindrops";
+import { SystemProgram } from "@solana/web3.js";
+
+import InheritanceState = State;
+import PermissivenessType = State;
+import PlayerState = State.Player;
 
 const { PDA } = Utils;
+const { getPlayerPDA } = PDA;
 
 CLI.programCommandWithConfig(
   "create_player_class",
@@ -62,5 +70,224 @@ CLI.programCommandWithConfig(
     ).rpc();
   }
 );
+
+CLI.programCommand("show_player_class")
+  .option("-cp, --config-path <string>", "JSON file with player class settings")
+  .option("-m, --mint <string>", "If no json file, provide mint directly")
+  .option(
+    "-i, --index <string>",
+    "Class index. Normally is 0, defaults to 0. Allows for more than one player class def per nft."
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, mint, index } = cmd.opts();
+
+    const anchorProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    let actualMint: web3.PublicKey, actualIndex: BN;
+
+    const printPermissiveness = function (p: any) {
+      if (p)
+        for (let i = 0; i < p.length; i++) {
+          const u = p[i];
+          log.info(
+            `------> (${Object.keys(u.inherited)[0]}) ${
+              Object.keys(u.permissivenessType)[0]
+            }`
+          );
+        }
+      else "Default to Token Holder";
+    };
+
+    if (configPath === undefined) {
+      actualMint = new web3.PublicKey(mint);
+      actualIndex = new BN(index);
+    } else {
+      const configString = fs.readFileSync(configPath);
+      //@ts-ignore
+      const config = JSON.parse(configString);
+      actualMint = new web3.PublicKey(config.mint);
+      actualIndex = new BN(config.index);
+    }
+
+    const playerClass = await anchorProgram.fetchPlayerClass(
+      actualMint,
+      actualIndex
+    );
+
+    log.setLevel("info");
+
+    if (!playerClass) {
+      log.info("Player Class not found with mint:", actualMint.toString());
+      return;
+    }
+
+    log.info(
+      "Player Class",
+      (await getPlayerPDA(actualMint, actualIndex))[0].toBase58()
+    );
+    log.info(
+      "Namespaces:",
+      playerClass.namespaces
+        ? playerClass.namespaces.map((u) => {
+            if (!u.namespace.equals(SystemProgram.programId))
+              log.info(
+                `--> ${
+                  InheritanceState[u.inherited]
+                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+              );
+          })
+        : "Not Set"
+    );
+    log.info(
+      "Parent:",
+      playerClass.parent ? playerClass.parent.toBase58() : "None"
+    );
+    log.info("Mint:", (playerClass.mint || actualMint).toBase58());
+    log.info(
+      "Metadata:",
+      (playerClass.metadata || (await PDA.getMetadata(actualMint))).toBase58()
+    );
+    log.info(
+      "Edition:",
+      (playerClass.edition || (await PDA.getEdition(actualMint))).toBase58()
+    );
+    log.info("Existing Children:", playerClass.existingChildren.toNumber());
+    const icd = playerClass.data;
+    const settings = icd.settings;
+    const config = icd.config;
+    log.info("Player Class Data:");
+
+    log.info("--> Player Class Settings:");
+
+    log.info(
+      "----> Default Category:",
+      settings.defaultCategory ? settings.defaultCategory.category : "Not Set"
+    );
+    log.info(
+      "----> Children must be editions:",
+      settings.childrenMustBeEditions
+        ? settings.childrenMustBeEditions.boolean
+        : "Not Set"
+    );
+    log.info(
+      "----> Builder must be holder:",
+      settings.builderMustBeHolder
+        ? settings.builderMustBeHolder.boolean
+        : "Not Set"
+    );
+
+    log.info("----> Update Permissiveness:");
+    printPermissiveness(settings.updatePermissiveness);
+
+    log.info("----> Instance Update Permissiveness:");
+    printPermissiveness(settings.instanceUpdatePermissiveness);
+
+    log.info("----> Build Permissiveness:");
+    printPermissiveness(settings.buildPermissiveness);
+
+    log.info("----> Equip Item Permissiveness:");
+    printPermissiveness(settings.equipItemPermissiveness);
+
+    log.info("----> Add Item Permissiveness:");
+    printPermissiveness(settings.addItemPermissiveness);
+    log.info("----> Use Item Permissiveness:");
+    printPermissiveness(settings.useItemPermissiveness);
+
+    log.info("----> Unequip Item Permissiveness:");
+    printPermissiveness(settings.unEquipItemPermissiveness);
+    log.info("----> Remove Item Permissiveness:");
+
+    printPermissiveness(settings.removeItemPermissiveness);
+
+    log.info(
+      "----> Staking warm up duration:",
+      settings.stakingWarmUpDuration
+        ? settings.stakingWarmUpDuration.toNumber()
+        : "Not Set"
+    );
+
+    log.info(
+      "----> Staking cooldown duration:",
+      settings.stakingCooldownDuration
+        ? settings.stakingCooldownDuration.toNumber()
+        : "Not Set"
+    );
+
+    log.info("----> Staking Permissiveness:");
+
+    printPermissiveness(settings.stakingPermissiveness);
+
+    log.info("----> Unstaking Permissiveness:");
+    printPermissiveness(settings.unstakingPermissiveness);
+    log.info("----> Child Update Propagation Permissiveness:");
+
+    settings.childUpdatePropagationPermissiveness
+      ? settings.childUpdatePropagationPermissiveness.map((u) => {
+          log.info(
+            `------> (${Object.keys(u.inherited)[0]}) ${
+              Object.keys(u.childUpdatePropagationPermissivenessType)[0]
+            } - is overridable? ${u.overridable}`
+          );
+        })
+      : "Not Set";
+
+    log.info("--> Player Class Config:");
+
+    log.info(
+      "----> Starting Stats Uri:",
+      config.startingStatsUri
+        ? `(${InheritanceState[config.startingStatsUri.inherited]}) ${
+            config.startingStatsUri.statsUri
+          }`
+        : "Not Set"
+    );
+
+    log.info("----> Basic Stat Templates:");
+
+    if (config.basicStats)
+      config.basicStats.forEach((c) => {
+        log.info("------> Index:", c.index);
+        log.info("------> Name:", c.name);
+        log.info("------> Stat Type:", c.basicStatType);
+        log.info("------> Component Scope:", c.componentScope);
+        log.info("------> Inherited:", InheritanceState[c.inherited]);
+      });
+
+    log.info("----> Body Parts:");
+
+    if (config.bodyParts)
+      config.bodyParts.forEach((u) => {
+        log.info("------> Index:", u.index);
+        log.info("------> Inherited:", InheritanceState[u.inherited]);
+        log.info("------> Body Part:", u.bodyPart);
+        log.info(
+          "------> Total item spots:",
+          u.totalItemSpots ? u.totalItemSpots.toNumber() : "Not Set"
+        );
+      });
+
+    log.info(
+      "------> Equipment Validation Callback:",
+      config.equipValidation
+        ? `Call ${config.equipValidation.key.toBase58()} with ${
+            config.equipValidation.callback.code
+          }`
+        : "Not Set"
+    );
+
+    log.info(
+      "------> Add to Pack Callback:",
+      config.addToPackValidation
+        ? `Call ${config.addToPackValidation.key.toBase58()} with ${
+            config.addToPackValidation.callback.code
+          }`
+        : "Not Set"
+    );
+  });
 
 CLI.Program.parseAsync(process.argv);

@@ -5,7 +5,7 @@ import {
   Instruction,
   web3,
 } from "@project-serum/anchor";
-import { Program } from "@raindrop-studios/sol-kit";
+import { ObjectWrapper, Program } from "@raindrop-studios/sol-kit";
 import { PublicKey, Signer, TransactionInstruction } from "@solana/web3.js";
 import {
   MasterEditionV2,
@@ -14,7 +14,6 @@ import {
 
 import * as PlayerInstruction from "../instructions/player";
 import * as Utils from "../utils";
-import { getItemProgram, ItemProgram } from "./item";
 import { PLAYER_ID } from "../constants/programIds";
 const {
   PDA: {
@@ -25,6 +24,7 @@ const {
     getPlayerPDA,
   },
 } = Utils;
+
 export class PlayerProgram extends Program.Program {
   declare instruction: PlayerInstruction.Instruction;
   PROGRAM_ID = PLAYER_ID;
@@ -65,6 +65,16 @@ export class PlayerProgram extends Program.Program {
       signers,
       rpc: () => this.sendWithRetry(instructions, signers, options),
     };
+  }
+
+  async fetchPlayerClass(mint: web3.PublicKey, index: BN): Promise<any | null> {
+    const playerClass = (await getPlayerPDA(mint, index))[0];
+
+    const playerClassObj = await this.client.account.playerClass.fetch(
+      playerClass
+    );
+
+    return playerClassObj;
   }
 
   async buildPlayer(
