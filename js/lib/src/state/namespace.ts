@@ -93,7 +93,7 @@ export enum TokenType {
 
 // conver enum to an anchor compatible type
 export function convertTokenType(tokenType: TokenType): {} {
-  switch(tokenType) {
+  switch (tokenType) {
     case TokenType.Item:
       return { item: {} };
     case TokenType.Mission:
@@ -104,13 +104,6 @@ export function convertTokenType(tokenType: TokenType): {} {
       return { player: {} };
   }
 }
-
-//export const TokenType = {
-//  Player: { player: {} },
-//  Item: { item: {} },
-//  Mission: { mission: {} },
-//  Namespace: { namespace: {} },
-//}
 
 export class Namespace {
   key: web3.PublicKey;

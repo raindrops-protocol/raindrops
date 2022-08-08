@@ -307,7 +307,9 @@ pub mod namespace {
         artifact_filter: ArtifactFilter,
     ) -> Result<()> {
         let namespace_gatekeeper = &mut ctx.accounts.namespace_gatekeeper;
-        namespace_gatekeeper.artifact_filters.retain(|item| item != &artifact_filter);
+        namespace_gatekeeper
+            .artifact_filters
+            .retain(|item| item != &artifact_filter);
         Ok(())
     }
 

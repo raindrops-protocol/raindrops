@@ -11,7 +11,11 @@ import {
   getNamespacePDA,
 } from "../utils/pda";
 import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { ArtifactFilter, PermissivenessSettings, convertTokenType } from "../state/namespace";
+import {
+  ArtifactFilter,
+  PermissivenessSettings,
+  convertTokenType,
+} from "../state/namespace";
 import * as splToken from "@solana/spl-token";
 
 export interface InitializeNamespaceAccounts {
@@ -228,7 +232,7 @@ export class Instruction extends SolKitInstruction {
     const itemArtifactFilter = {
       filter: args.artifactFilter.filter.filter,
       tokenType: convertTokenType(args.artifactFilter.tokenType),
-    }
+    };
 
     return [
       await this.program.client.methods
@@ -267,7 +271,7 @@ export class Instruction extends SolKitInstruction {
     const itemArtifactFilter = {
       filter: args.artifactFilter.filter.filter,
       tokenType: convertTokenType(args.artifactFilter.tokenType),
-    }
+    };
 
     return [
       await this.program.client.methods

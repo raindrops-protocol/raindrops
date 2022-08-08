@@ -5,12 +5,12 @@ use {
         assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal,
         assert_metadata_valid, assert_mint_authority_matches_mint, assert_permissiveness_access,
         assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
-        propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
-        spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
-        verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
-        AssertPermissivenessAccessArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
-        TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
-        VerifyCooldownArgs,
+        is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
+        spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+        update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
+        verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
+        GetItemUsageArgs, TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
+        VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
     },
     anchor_lang::{
         prelude::*,
@@ -275,8 +275,6 @@ pub struct EndItemActivationArgs {
 pub mod item {
 
     use std::borrow::Borrow;
-
-    use crate::utils::is_namespace_program_caller;
 
     use super::*;
 
@@ -1677,7 +1675,7 @@ pub mod item {
         ctx: Context<'a, 'b, 'c, 'info, ItemClassJoinNamespace<'info>>,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
-            return Err(error!(ErrorCode::UnauthorizedCaller))
+            return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
         let item_class = &mut ctx.accounts.item_class;
@@ -1712,7 +1710,7 @@ pub mod item {
         ctx: Context<'a, 'b, 'c, 'info, ItemClassLeaveNamespace<'info>>,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
-            return Err(error!(ErrorCode::UnauthorizedCaller))
+            return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
         let item_class = &mut ctx.accounts.item_class;
@@ -1751,7 +1749,7 @@ pub mod item {
         page: u64,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
-            return Err(error!(ErrorCode::UnauthorizedCaller))
+            return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
         let item_class = &mut ctx.accounts.item_class;
@@ -1784,7 +1782,7 @@ pub mod item {
         ctx: Context<'a, 'b, 'c, 'info, ItemClassUnCacheNamespace<'info>>,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
-            return Err(error!(ErrorCode::UnauthorizedCaller))
+            return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
         let item_class = &mut ctx.accounts.item_class;
@@ -3187,5 +3185,5 @@ pub enum ErrorCode {
     #[msg("Not cached")]
     NotCached,
     #[msg("Unauthorized Caller")]
-    UnauthorizedCaller
+    UnauthorizedCaller,
 }
