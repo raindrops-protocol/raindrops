@@ -629,7 +629,7 @@ describe("namespace", () => {
     console.log("rmFromNsGkTxSig: %s", rmFromNsGkTxSig);
   });
 
-  it("join item class to namespace", async () => {
+  it("join item class to namespace then leave", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -701,6 +701,14 @@ describe("namespace", () => {
 
     const joinNsTxSig = await namespaceProgram.joinNamespace(joinNsAccounts);
     console.log("joinNsTxSig: %s", joinNsTxSig);
+
+    const leaveNsAccounts: nsIx.LeaveNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemClass,
+    }
+
+    const leaveNsTxSig = await namespaceProgram.leaveNamespace(leaveNsAccounts);
+    console.log("leaveNsTxSig: %s", leaveNsTxSig);
   });
 });
 

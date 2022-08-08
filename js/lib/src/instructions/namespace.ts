@@ -64,9 +64,7 @@ export interface JoinNamespaceAccounts {
 }
 
 export interface LeaveNamespaceAccounts {
-  namespace: web3.PublicKey;
-  namespaceToken: web3.PublicKey;
-  tokenHolder: web3.PublicKey;
+  namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
 }
 
@@ -323,18 +321,32 @@ export class Instruction extends SolKitInstruction {
   }
 
   async leaveNamespace(accounts: LeaveNamespaceAccounts) {
+    const [namespacePDA, _namespacePDABump] = await getNamespacePDA(
+      accounts.namespaceMint
+    );
+
     const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
-      await getNamespaceGatekeeperPDA(accounts.namespace);
+      await getNamespaceGatekeeperPDA(namespacePDA);
+
+    const payer = (this.program.client.provider as AnchorProvider).wallet
+      .publicKey;
+
+    const nsTA = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      accounts.namespaceMint,
+      payer
+    );
 
     return [
       await this.program.client.methods
         .leaveNamespace()
         .accounts({
-          namespace: accounts.namespace,
-          namespaceToken: accounts.namespaceToken,
+          namespace: namespacePDA,
+          namespaceToken: nsTA,
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
-          tokenHolder: accounts.tokenHolder,
+          tokenHolder: payer,
           itemProgram: ITEM_ID,
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })

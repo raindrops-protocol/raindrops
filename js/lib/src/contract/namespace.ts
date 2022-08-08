@@ -96,10 +96,12 @@ export class NamespaceProgram extends Program.Program {
 
   async leaveNamespace(
     accounts: NamespaceInstruction.LeaveNamespaceAccounts
-  ): Promise<void> {
+  ): Promise<string> {
     const instruction = await this.instruction.leaveNamespace(accounts);
 
-    await this.sendWithRetry(instruction, []);
+    const result = await this.sendWithRetry(instruction, []);
+
+    return result.txid;
   }
 
   async cacheArtifact(
