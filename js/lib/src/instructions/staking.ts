@@ -5,7 +5,7 @@ import {
 } from "@raindrop-studios/sol-kit";
 import { Token } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "../constants/programIds";
+import { ITEM_ID, PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { ContractCommon } from "../contract/common";
 import { AnchorPermissivenessType } from "../state/common";
 import {
@@ -211,10 +211,13 @@ export class Instruction extends SolKitInstruction {
           stakingMint: accounts.stakingMint,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
+          itemProgram: ITEM_ID,
+          playerProgram: PLAYER_ID,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
+          instructionSysvarAccount: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
     ];
@@ -280,10 +283,13 @@ export class Instruction extends SolKitInstruction {
           stakingMint: accounts.stakingMint,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
+          itemProgram: ITEM_ID,
+          playerProgram: PLAYER_ID,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
+          instructionSysvarAccount: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .remainingAccounts(remainingAccounts)
         .instruction(),

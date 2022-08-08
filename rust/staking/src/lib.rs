@@ -1,9 +1,10 @@
 pub mod utils;
 
 use crate::utils::{assert_is_proper_class, assert_is_proper_instance};
-use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{prelude::*, solana_program::sysvar, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::{
+    program::Item,
     utils::{
         assert_part_of_namespace, assert_permissiveness_access, close_token_account,
         spl_token_transfer, AssertPermissivenessAccessArgs, TokenTransferParams,
@@ -11,6 +12,7 @@ use raindrops_item::{
     Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
     PermissivenessType,
 };
+use raindrops_player::program::Player;
 anchor_lang::declare_id!("stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4");
 pub const PREFIX: &str = "staking";
 pub const STAKING_COUNTER: &str = "counter";
@@ -144,6 +146,7 @@ pub mod staking {
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
         let artifact_mint_staking_account = &ctx.accounts.artifact_mint_staking_account;
         let staking_mint = &ctx.accounts.staking_mint;
+        let item_program = &ctx.accounts.item_program;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
         let payer = &ctx.accounts.payer;
@@ -221,16 +224,28 @@ pub mod staking {
             &signer_seeds,
         )?;
 
-        // FIXME: Call cpi to update tokens_staked
+        if *artifact_unchecked.owner == raindrops_item::program::Item::id() {
+            let cpi_accounts = raindrops_item::cpi::accounts::UpdateTokensStaked {
+                item: artifact_unchecked.to_account_info(),
+                instruction_sysvar_account: ctx
+                    .accounts
+                    .instruction_sysvar_account
+                    .to_account_info(),
+            };
 
-        // artifact.tokens_staked = artifact
-        //     .tokens_staked
-        //     .checked_add(staking_amount)
-        //     .ok_or(ErrorCode::NumericalOverflowError)?;
+            let cpi_args = raindrops_item::UpdateTokensStakedArgs {
+                item_mint: artifact_mint.key(),
+                index: index,
+                staked: true,
+                amount: staking_amount,
+            };
 
-        // // Because artifact is using a copy of this data
-        // let mut data = artifact_unchecked.data.borrow_mut();
-        // data.copy_from_slice(&artifact.try_to_vec()?);
+            let cpi_ctx = CpiContext::new(item_program.to_account_info(), cpi_accounts);
+
+            raindrops_item::cpi::update_tokens_staked(cpi_ctx, cpi_args)?;
+        } else {
+            // TODO: Add calling player::update_tokens_staked cpi
+        }
 
         return Ok(());
     }
@@ -245,6 +260,7 @@ pub mod staking {
         let staking_counter = &mut ctx.accounts.artifact_intermediary_staking_counter;
         let artifact_mint_staking_account = &ctx.accounts.artifact_mint_staking_account;
         let staking_mint = &ctx.accounts.staking_mint;
+        let item_program = &ctx.accounts.item_program;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
 
@@ -309,16 +325,28 @@ pub mod staking {
             token_program: token_program.to_account_info(),
         })?;
 
-        // FIXME: Call cpi to update tokens_staked
+        if *artifact_unchecked.owner == raindrops_item::program::Item::id() {
+            let cpi_accounts = raindrops_item::cpi::accounts::UpdateTokensStaked {
+                item: artifact_unchecked.to_account_info(),
+                instruction_sysvar_account: ctx
+                    .accounts
+                    .instruction_sysvar_account
+                    .to_account_info(),
+            };
 
-        // artifact.tokens_staked = artifact
-        //     .tokens_staked
-        //     .checked_sub(amount_to_unstake)
-        //     .ok_or(ErrorCode::NumericalOverflowError)?;
+            let cpi_args = raindrops_item::UpdateTokensStakedArgs {
+                item_mint: artifact_mint.key(),
+                index: index,
+                staked: false,
+                amount: amount_to_unstake,
+            };
 
-        // // Because artifact is using a copy of this data
-        // let mut data = artifact_unchecked.data.borrow_mut();
-        // data.copy_from_slice(&artifact.try_to_vec()?);
+            let cpi_ctx = CpiContext::new(item_program.to_account_info(), cpi_accounts);
+
+            raindrops_item::cpi::update_tokens_staked(cpi_ctx, cpi_args)?;
+        } else {
+            // TODO: Add calling player::update_tokens_staked cpi
+        }
 
         staking_counter.bump = *ctx
             .bumps
@@ -544,10 +572,15 @@ pub struct EndArtifactStakeWarmup<'info> {
     staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
+    item_program: Program<'info, Item>,
+    player_program: Program<'info, Player>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
     clock: Sysvar<'info, Clock>,
+    /// CHECK: account constraints checked in account trait
+    #[account(address = sysvar::instructions::id())]
+    instruction_sysvar_account: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -614,10 +647,15 @@ pub struct BeginArtifactStakeCooldown<'info> {
     staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
+    item_program: Program<'info, Item>,
+    player_program: Program<'info, Player>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
     clock: Sysvar<'info, Clock>,
+    /// CHECK: account constraints checked in account trait
+    #[account(address = sysvar::instructions::id())]
+    instruction_sysvar_account: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
