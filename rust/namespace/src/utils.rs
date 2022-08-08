@@ -1,7 +1,6 @@
 use {
     crate::{
-        ErrorCode, Filter, Namespace, NamespaceAndIndex, NamespaceGatekeeper, Permissiveness,
-        NAMESPACE_AND_INDEX_SIZE,
+        ErrorCode, Filter, Namespace, NamespaceGatekeeper, Permissiveness,
     },
     anchor_lang::{
         error,
@@ -271,28 +270,7 @@ pub fn inverse_indexed_bool_for_namespace(
     return Err(error!(ErrorCode::ArtifactNotPartOfNamespace));
 }
 
-pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Option<Vec<NamespaceAndIndex>>> {
-    let data = artifact.data.borrow_mut();
-
-    if data[8] == 0 {
-        return Ok(None);
-    }
-
-    let amount = u32::from_le_bytes(*array_ref![data, 9, 4]);
-
-    let cursor: usize = 13;
-
-    let mut arr: Vec<NamespaceAndIndex> = vec![];
-    for _n in 0..amount {
-        let bytes = array_ref![data, cursor, NAMESPACE_AND_INDEX_SIZE];
-        let serialized: NamespaceAndIndex = try_from_slice_unchecked(bytes)?;
-        arr.push(serialized)
-    }
-
-    return Ok(Some(arr));
-}
-
-pub fn pull_namespaces2(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
+pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
     let data = artifact.data.borrow_mut();
     let item_class: ItemClass = try_from_slice_unchecked(&data[8..])?;
 
@@ -310,16 +288,13 @@ pub fn check_permissiveness_against_holder<'a>(
     token_holder: &UncheckedAccount<'a>,
     namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
     permissiveness: &Permissiveness,
-) -> Result<Option<Vec<NamespaceAndIndex>>> {
+) -> Result<()> {
     let art_namespaces = pull_namespaces(artifact)?;
-    msg!(
-        "found {} art_namespaces",
-        art_namespaces.as_ref().unwrap().len()
-    );
+    msg!("found {} art_namespaces", art_namespaces.len());
     match permissiveness {
         Permissiveness::All => {
             msg!("All match");
-            Ok(art_namespaces)
+            Ok(())
         }
         Permissiveness::Whitelist => {
             msg!("Whitelist match");
@@ -330,13 +305,11 @@ pub fn check_permissiveness_against_holder<'a>(
                 match &filter.filter {
                     Filter::Namespace { namespaces } => {
                         msg!("ns filter");
-                        if let Some(ns) = &art_namespaces {
-                            for n in namespaces {
-                                for other_n in ns {
-                                    if other_n.namespace == *n {
-                                        msg!("Whitelisted!");
-                                        return Ok(art_namespaces);
-                                    }
+                        for n in &art_namespaces {
+                            for other_n in namespaces {
+                                if other_n == n {
+                                    msg!("Whitelisted!");
+                                    return Ok(());
                                 }
                             }
                         }
@@ -344,14 +317,12 @@ pub fn check_permissiveness_against_holder<'a>(
                     }
                     Filter::Category { namespace, .. } => {
                         msg!("category filter");
-                        if let Some(ns) = &art_namespaces {
-                            for n in ns {
-                                if n.namespace == *namespace {
+                            for n in &art_namespaces {
+                                if n == namespace {
                                     msg!("Whitelisted!");
-                                    return Ok(art_namespaces);
+                                    return Ok(());
                                 }
                             }
-                        }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
                     Filter::Key { mint, .. } => {
@@ -361,7 +332,7 @@ pub fn check_permissiveness_against_holder<'a>(
 
                         if as_token.mint == *mint {
                             msg!("Whitelisted!");
-                            return Ok(art_namespaces);
+                            return Ok(());
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
@@ -376,28 +347,24 @@ pub fn check_permissiveness_against_holder<'a>(
             for filter in &deserialized.artifact_filters {
                 match &filter.filter {
                     Filter::Namespace { namespaces } => {
-                        if let Some(ns) = &art_namespaces {
-                            for n in namespaces {
-                                for other_n in ns {
-                                    if other_n.namespace == *n {
-                                        msg!("Blacklisted!");
-                                        return Err(error!(ErrorCode::CannotJoinNamespace));
-                                    }
-                                }
-                            }
-                        }
-                        return Ok(art_namespaces);
-                    }
-                    Filter::Category { namespace, .. } => {
-                        if let Some(ns) = &art_namespaces {
-                            for n in ns {
-                                if n.namespace == *namespace {
+                        for n in &art_namespaces {
+                            for other_n in namespaces {
+                                if other_n == n {
                                     msg!("Blacklisted!");
                                     return Err(error!(ErrorCode::CannotJoinNamespace));
                                 }
                             }
                         }
-                        return Ok(art_namespaces);
+                        return Ok(());
+                    }
+                    Filter::Category { namespace, .. } => {
+                        for n in art_namespaces {
+                            if n == *namespace {
+                                msg!("Blacklisted!");
+                                return Err(error!(ErrorCode::CannotJoinNamespace));
+                            }
+                        }
+                        return Ok(());
                     }
                     Filter::Key { mint, .. } => {
                         let as_token: spl_token::state::Account =
@@ -407,7 +374,7 @@ pub fn check_permissiveness_against_holder<'a>(
                             msg!("Blacklisted!");
                             return Err(error!(ErrorCode::CannotJoinNamespace));
                         }
-                        return Ok(art_namespaces);
+                        return Ok(());
                     }
                 }
             }
@@ -416,7 +383,7 @@ pub fn check_permissiveness_against_holder<'a>(
         Permissiveness::Namespace => {
             msg!("Namespace match");
             assert_signer(token_holder)?;
-            return Ok(art_namespaces);
+            return Ok(());
         }
     }
 }
@@ -426,7 +393,7 @@ pub fn assert_can_add_to_namespace<'a>(
     token_holder: &UncheckedAccount<'a>,
     namespace: &Account<'a, Namespace>,
     namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
-) -> Result<Option<Vec<NamespaceAndIndex>>> {
+) -> Result<()> {
     let art_namespaces = if artifact.owner == &Pubkey::from_str(crate::PLAYER_ID).unwrap() {
         msg!("player_id match");
         check_permissiveness_against_holder(
@@ -531,10 +498,20 @@ pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
 }
 
 // returns the lowest page that has space for new artifacts
-pub fn lowest_available_page(full_pages: &mut Vec<u64>) -> u64 {
+pub fn lowest_available_page(full_pages: &mut Vec<u64>) -> Result<u64> {
     full_pages.sort();
-    match full_pages.first() {
-        Some(page) => *page,
-        None => 0,
+
+    if full_pages.len() == 0 {
+        return Ok(0)
     }
+
+    let mut i = 0;
+    for page in full_pages.iter() {
+        if i != *page {
+            return Ok(i)
+        };
+        i += 1;
+    }
+
+    return Err(error!(ErrorCode::CacheFull));
 }

@@ -115,9 +115,10 @@ export class NamespaceProgram extends Program.Program {
   }
 
   async uncacheArtifact(
+    args: NamespaceInstruction.UncacheArtifactArgs,
     accounts: NamespaceInstruction.UncacheArtifactAccounts
   ): Promise<string> {
-    const instruction = await this.instruction.uncacheArtifact(accounts);
+    const instruction = await this.instruction.uncacheArtifact(args, accounts);
 
     const result = await this.sendWithRetry(instruction, []);
 

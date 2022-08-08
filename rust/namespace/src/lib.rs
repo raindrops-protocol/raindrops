@@ -3,7 +3,7 @@ pub mod utils;
 use {
     crate::utils::{
         assert_can_add_to_namespace, assert_initialized, assert_metadata_valid,
-        lowest_available_page, pull_namespaces, pull_namespaces2,
+        lowest_available_page, pull_namespaces,
     },
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{Mint, Token, TokenAccount},
@@ -176,9 +176,9 @@ pub mod namespace {
 
         // check artifact is part of this namespace
         let mut in_namespace = false;
-        let art_namespaces = pull_namespaces(&artifact).unwrap().unwrap();
+        let art_namespaces = pull_namespaces(&artifact).unwrap();
         for art_ns in art_namespaces {
-            if art_ns.namespace == namespace.key() {
+            if art_ns == namespace.key() {
                 in_namespace = true;
             };
         }
@@ -203,7 +203,7 @@ pub mod namespace {
         };
 
         // if the current page is not the lowest available page error
-        let lowest_available_page = lowest_available_page(&mut namespace.full_pages.clone());
+        let lowest_available_page = lowest_available_page(&mut namespace.full_pages.clone())?;
         if index.page != lowest_available_page {
             return Err(error!(ErrorCode::PreviousIndexNotFull));
         };
@@ -248,7 +248,7 @@ pub mod namespace {
 
         // check artifact is part of this namespace
         let mut in_namespace = false;
-        let art_namespaces = pull_namespaces2(&artifact).unwrap();
+        let art_namespaces = pull_namespaces(&artifact).unwrap();
         for art_ns in art_namespaces {
             if art_ns == namespace.key() {
                 in_namespace = true;
@@ -324,7 +324,7 @@ pub mod namespace {
             .checked_sub(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
-        let art_namespaces = pull_namespaces2(artifact)?;
+        let art_namespaces = pull_namespaces(artifact)?;
 
         msg!("art_namespaces found");
         for n in &art_namespaces {
@@ -362,8 +362,7 @@ pub mod namespace {
         let token_holder = &ctx.accounts.token_holder;
         let namespace = &mut ctx.accounts.namespace;
 
-        let _art_namespaces =
-            assert_can_add_to_namespace(artifact, token_holder, namespace, namespace_gatekeeper)?;
+        assert_can_add_to_namespace(artifact, token_holder, namespace, namespace_gatekeeper)?;
 
         let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
 
@@ -693,7 +692,7 @@ pub struct JoinNamespace<'info> {
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump)]
+    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -710,7 +709,7 @@ pub struct LeaveNamespace<'info> {
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump)]
+    #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -811,4 +810,6 @@ pub enum ErrorCode {
     CannotJoinNamespace,
     #[msg("You cannot remove an artifact from a namespace while it is still cached there. Uncache it first.")]
     ArtifactStillCached,
+    #[msg("Artifact Cache full")]
+    CacheFull,
 }

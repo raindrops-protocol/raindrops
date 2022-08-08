@@ -576,13 +576,20 @@ describe("namespace", () => {
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 1);
 
+    const page = await getCachedItemClassPage(itemClass, namespace);
+    assert(page !== null);
+
     const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass,
     };
 
+    const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
+      page: new anchor.BN(page),
+    };
+
     const uncacheArtifactTxSig = await namespaceProgram.uncacheArtifact(
-      uncacheArtifactAccounts
+      uncacheArtifactArgs, uncacheArtifactAccounts
     );
     console.log("uncacheArtifactTxSig: %s", uncacheArtifactTxSig);
 
@@ -785,6 +792,30 @@ async function createItemClass(
   console.log("createItemClassTxSig: %s", createItemClassTxSig);
 
   return itemClass;
+}
+
+// for a given item class and namespace, find the index of the cached item, return null if not found (probably means not cached)
+async function getCachedItemClassPage(itemClass: anchor.web3.PublicKey, namespace: anchor.web3.PublicKey): Promise<number | null> {
+  const provider = new anchor.AnchorProvider(
+    anchor.getProvider().connection,
+    new anchor.Wallet(anchor.web3.Keypair.generate()),
+    { commitment: "confirmed" }
+  );
+
+  const itemProgram: anchor.Program<Item> = await new anchor.Program(
+    ItemProgramIDL,
+    pids.ITEM_ID,
+    provider
+  );
+
+  const itemClassData = await itemProgram.account.itemClass.fetch(itemClass)
+  for (let ns of itemClassData.namespaces) {
+    if (ns.namespace.equals(namespace)) {
+      return ns.index
+    }
+  }
+
+  return null
 }
 
 async function newPayer(

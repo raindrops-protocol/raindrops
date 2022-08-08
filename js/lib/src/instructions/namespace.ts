@@ -77,6 +77,10 @@ export interface CacheArtifactAccounts {
   artifact: web3.PublicKey;
 }
 
+export interface UncacheArtifactArgs {
+  page: BN;
+}
+
 export interface UncacheArtifactAccounts {
   namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
@@ -359,9 +363,6 @@ export class Instruction extends SolKitInstruction {
       accounts.namespaceMint
     );
 
-    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
-      await getNamespaceGatekeeperPDA(namespacePDA);
-
     const payer = (this.program.client.provider as AnchorProvider).wallet
       .publicKey;
 
@@ -412,13 +413,10 @@ export class Instruction extends SolKitInstruction {
     ];
   }
 
-  async uncacheArtifact(accounts: UncacheArtifactAccounts) {
+  async uncacheArtifact(args: UncacheArtifactArgs, accounts: UncacheArtifactAccounts) {
     const [namespacePDA, _namespacePDABump] = await getNamespacePDA(
       accounts.namespaceMint
     );
-
-    const [namespaceGatekeeperPDA, _namespaceGatekeeperBump] =
-      await getNamespaceGatekeeperPDA(namespacePDA);
 
     const payer = (this.program.client.provider as AnchorProvider).wallet
       .publicKey;
@@ -430,13 +428,7 @@ export class Instruction extends SolKitInstruction {
       payer
     );
 
-    // TODO: need to fetch artifact data to find correct page to uncache
-    const page = new BN(0);
-    const [index, _indexBump] = await getIndexPDA(namespacePDA, page);
-
-    const args = {
-      page: page,
-    };
+    const [index, _indexBump] = await getIndexPDA(namespacePDA, args.page)
 
     return [
       await this.program.client.methods
