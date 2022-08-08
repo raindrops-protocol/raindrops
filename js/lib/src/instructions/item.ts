@@ -1,10 +1,4 @@
 import { web3, AnchorProvider, BN, Address } from "@project-serum/anchor";
-import {
-  AccountMeta,
-  PublicKey,
-  SystemProgram,
-  TransactionInstruction,
-} from "@solana/web3.js";
 import { Token } from "@solana/spl-token";
 import {
   Program,
@@ -104,7 +98,7 @@ export class Instruction extends SolKitInstruction {
           parent: accounts.parent || itemClassKey,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
         .remainingAccounts(remainingAccounts)
@@ -117,7 +111,7 @@ export class Instruction extends SolKitInstruction {
     accounts: UpdateItemClassAccounts,
     additionalArgs: UpdateItemClassAdditionalArgs
   ) {
-    const remainingAccounts: AccountMeta[] =
+    const remainingAccounts: web3.AccountMeta[] =
       additionalArgs.permissionless && accounts.parent
         ? [{ pubkey: accounts.parent, isWritable: false, isSigner: false }]
         : await generateRemainingAccountsGivenPermissivenessToUse({
@@ -218,7 +212,7 @@ export class Instruction extends SolKitInstruction {
             (this.program.client.provider as AnchorProvider).wallet.publicKey,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
         .remainingAccounts(remainingAccounts)
@@ -306,7 +300,7 @@ export class Instruction extends SolKitInstruction {
             (this.program.client.provider as AnchorProvider).wallet.publicKey,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
@@ -509,7 +503,7 @@ export class Instruction extends SolKitInstruction {
           craftItemTransferAuthority: accounts.craftItemTransferAuthority,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
@@ -641,7 +635,7 @@ export class Instruction extends SolKitInstruction {
           )[0],
           receiver: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .remainingAccounts(remainingAccounts)
@@ -677,7 +671,7 @@ export class Instruction extends SolKitInstruction {
         amount: args.amount,
       });
 
-    const instructions: TransactionInstruction[] = [];
+    const instructions: web3.TransactionInstruction[] = [];
     const itemTransferAuthority = accounts.itemTransferAuthority;
 
     if (
@@ -711,9 +705,9 @@ export class Instruction extends SolKitInstruction {
     const validationKey =
       args.itemClass.object.itemClassData.config.usages?.[args.usageIndex]
         .validation?.key;
-    const validationProgram: PublicKey = !!validationKey
+    const validationProgram:web3.PublicKey = !!validationKey
       ? new web3.PublicKey(validationKey)
-      : SystemProgram.programId;
+      : web3.SystemProgram.programId;
 
     instructions.push(
       await this.program.client.methods
@@ -728,7 +722,7 @@ export class Instruction extends SolKitInstruction {
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
           playerProgram: PLAYER_ID,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,

@@ -1,4 +1,4 @@
-import { clusterApiUrl } from "@solana/web3.js";
+import { web3 } from "@project-serum/anchor";
 
 type Cluster = {
   name: string;
@@ -11,11 +11,11 @@ export const CLUSTERS: Cluster[] = [
   },
   {
     name: "testnet",
-    url: clusterApiUrl("testnet"),
+    url: web3.clusterApiUrl("testnet"),
   },
   {
     name: "devnet",
-    url: clusterApiUrl("devnet"),
+    url: web3.clusterApiUrl("devnet"),
   },
 ];
 export const DEFAULT_CLUSTER = CLUSTERS[2];

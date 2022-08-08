@@ -3,7 +3,6 @@ import * as fs from "fs";
 import log from "loglevel";
 import { program } from "commander";
 import { programCommand } from "./utils";
-import { SystemProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
 
@@ -712,7 +711,7 @@ programCommand("show_item")
       "Namespaces:",
       item.namespaces
         ? item.namespaces.map((u) => {
-            if (!u.namespace.equals(SystemProgram.programId))
+            if (!u.namespace.equals(web3.SystemProgram.programId))
               log.info(
                 `--> ${
                   InheritanceState[u.inherited]
@@ -808,7 +807,7 @@ programCommand("show_item_class")
       "Namespaces:",
       itemClass.object.namespaces
         ? itemClass.object.namespaces.map((u) => {
-            if (!u.namespace.equals(SystemProgram.programId))
+            if (!u.namespace.equals(web3.SystemProgram.programId))
               log.info(
                 `--> ${
                   InheritanceState[u.inherited]

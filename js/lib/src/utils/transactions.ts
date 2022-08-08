@@ -1,17 +1,5 @@
 import { Wallet } from "@project-serum/anchor/dist/cjs/provider";
-import {
-  Blockhash,
-  Commitment,
-  Connection,
-  FeeCalculator,
-  Keypair,
-  RpcResponseAndContext,
-  SignatureStatus,
-  SimulatedTransactionResponse,
-  Transaction,
-  TransactionInstruction,
-  TransactionSignature,
-} from "@solana/web3.js";
+import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
 
 export const DEFAULT_TIMEOUT = 15000;
@@ -25,21 +13,21 @@ export function sleep(ms: number): Promise<void> {
 }
 
 interface BlockhashAndFeeCalculator {
-  blockhash: Blockhash;
-  feeCalculator: FeeCalculator;
+  blockhash: web3.Blockhash;
+  feeCalculator: web3.FeeCalculator;
 }
 
 export const sendTransactionWithRetryWithKeypair = async (
-  connection: Connection,
-  wallet: Keypair,
-  instructions: TransactionInstruction[],
-  signers: Keypair[],
-  commitment: Commitment = "singleGossip",
+  connection: web3.Connection,
+  wallet: web3.Keypair,
+  instructions: web3.TransactionInstruction[],
+  signers: web3.Keypair[],
+  commitment: web3.Commitment = "singleGossip",
   includesFeePayer: boolean = false,
   block?: BlockhashAndFeeCalculator,
   beforeSend?: () => void
 ) => {
-  const transaction = new Transaction();
+  const transaction = new web3.Transaction();
   instructions.forEach((instruction) => transaction.add(instruction));
   transaction.recentBlockhash = (
     block || (await connection.getRecentBlockhash(commitment))
@@ -74,13 +62,13 @@ export const sendTransactionWithRetryWithKeypair = async (
 };
 
 export async function sendTransactionWithRetry(
-  connection: Connection,
+  connection: web3.Connection,
   wallet: Wallet,
-  instructions: Array<TransactionInstruction>,
-  signers: Array<Keypair>,
-  commitment: Commitment = "singleGossip"
+  instructions: Array<web3.TransactionInstruction>,
+  signers: Array<web3.Keypair>,
+  commitment: web3.Commitment = "singleGossip"
 ): Promise<string | { txid: string; slot: number }> {
-  const transaction = new Transaction();
+  const transaction = new web3.Transaction();
   instructions.forEach((instruction) => transaction.add(instruction));
   transaction.recentBlockhash = (
     await connection.getLatestBlockhash(commitment)
@@ -105,8 +93,8 @@ export async function sendSignedTransaction({
   connection,
   timeout = DEFAULT_TIMEOUT,
 }: {
-  signedTransaction: Transaction;
-  connection: Connection;
+  signedTransaction: web3.Transaction;
+  connection: web3.Connection;
   sendingMessage?: string;
   sentMessage?: string;
   successMessage?: string;
@@ -115,7 +103,7 @@ export async function sendSignedTransaction({
   const rawTransaction = signedTransaction.serialize();
   const startTime = getUnixTs();
   let slot = 0;
-  const txid: TransactionSignature = await connection.sendRawTransaction(
+  const txid: web3.TransactionSignature = await connection.sendRawTransaction(
     rawTransaction,
     {
       skipPreflight: true,
@@ -156,7 +144,7 @@ export async function sendSignedTransaction({
     if (err.timeout) {
       throw new Error("Timed out awaiting confirmation on transaction");
     }
-    let simulateResult: SimulatedTransactionResponse | null = null;
+    let simulateResult: web3.SimulatedTransactionResponse | null = null;
     try {
       simulateResult = (
         await simulateTransaction(connection, signedTransaction, "single")
@@ -188,10 +176,10 @@ export async function sendSignedTransaction({
 }
 
 async function simulateTransaction(
-  connection: Connection,
-  transaction: Transaction,
-  commitment: Commitment
-): Promise<RpcResponseAndContext<SimulatedTransactionResponse>> {
+  connection: web3.Connection,
+  transaction: web3.Transaction,
+  commitment: web3.Commitment
+): Promise<web3.RpcResponseAndContext<web3.SimulatedTransactionResponse>> {
   // @ts-ignore
   transaction.recentBlockhash = await connection._recentBlockhash(
     // @ts-ignore
@@ -214,14 +202,14 @@ async function simulateTransaction(
 }
 
 async function awaitTransactionSignatureConfirmation(
-  txid: TransactionSignature,
+  txid: web3.TransactionSignature,
   timeout: number,
-  connection: Connection,
-  commitment: Commitment = "recent",
+  connection: web3.Connection,
+  commitment: web3.Commitment = "recent",
   queryStatus = false
-): Promise<SignatureStatus | null | void> {
+): Promise<web3.SignatureStatus | null | void> {
   let done = false;
-  let status: SignatureStatus | null | void = {
+  let status: web3.SignatureStatus | null | void = {
     slot: 0,
     confirmations: 0,
     err: null,

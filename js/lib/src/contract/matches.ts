@@ -5,7 +5,6 @@ import {
   Provider,
   AnchorProvider,
 } from "@project-serum/anchor";
-import { SystemProgram } from "@solana/web3.js";
 
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import { MATCHES_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
@@ -210,7 +209,7 @@ export class MatchesInstruction {
           .accounts({
             matchInstance: match,
             payer: (this.program.provider as AnchorProvider).wallet.publicKey,
-            systemProgram: SystemProgram.programId,
+            systemProgram: web3.SystemProgram.programId,
             rent: web3.SYSVAR_RENT_PUBKEY,
           })
           .instruction(),
@@ -273,7 +272,7 @@ export class MatchesInstruction {
           destinationTokenAccount,
           winOracle: accounts.winOracle,
           tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
         .instruction()
@@ -447,7 +446,7 @@ export class MatchesInstruction {
             sourceTokenAccount,
             sourceItemOrPlayerPda:
               additionalArgs.sourceType == TokenType.Any
-                ? SystemProgram.programId
+                ? web3.SystemProgram.programId
                 : additionalArgs.sourceType == TokenType.Item
                 ? (
                     await getItemPDA(accounts.tokenMint, additionalArgs.index)
@@ -456,9 +455,9 @@ export class MatchesInstruction {
                     await getPlayerPDA(accounts.tokenMint, additionalArgs.index)
                   )[0],
             payer: (this.program.provider as AnchorProvider).wallet.publicKey,
-            systemProgram: SystemProgram.programId,
+            systemProgram: web3.SystemProgram.programId,
             validationProgram:
-              accounts.validationProgram || SystemProgram.programId,
+              accounts.validationProgram || web3.SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
           })
@@ -530,7 +529,7 @@ export class MatchesInstruction {
           .accounts({
             oracle,
             payer: (this.program.provider as AnchorProvider).wallet.publicKey,
-            systemProgram: SystemProgram.programId,
+            systemProgram: web3.SystemProgram.programId,
             rent: web3.SYSVAR_RENT_PUBKEY,
           })
           .instruction(),

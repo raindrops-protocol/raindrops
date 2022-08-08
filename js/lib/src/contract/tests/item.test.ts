@@ -1,7 +1,6 @@
 import { jest } from "@jest/globals";
 
 import { BN, web3, Program as AnchorProgram } from "@project-serum/anchor";
-import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { Token } from "@solana/spl-token";
 import { InstructionUtils, Program } from "@raindrop-studios/sol-kit";
 import { ITEM_ID } from "../../constants/programIds";
@@ -33,8 +32,8 @@ jest.mock("@raindrop-studios/sol-kit", () => {
   // @ts-ignore
   class NoSendProgram extends SolKitMock.Program.Program {
     sendWithRetry(
-      instructions: Array<TransactionInstruction>,
-      signers: Array<Keypair> = [],
+      instructions: Array<web3.TransactionInstruction>,
+      signers: Array<web3.Keypair> = [],
       options: { commitment: web3.Commitment; timeout?: number } = {
         commitment: "confirmed",
       }
@@ -512,7 +511,7 @@ describe("ItemProgram", () => {
     const index = new BN(4);
     const newItemIndex = new BN(92);
     const parentClassIndex = new BN(6524);
-    const originator = new PublicKey(
+    const originator = new web3.PublicKey(
       "CLisFRUq6N5Ndz1nTFE2cM5xF5XFpWvwPX8Mw9hiHtGx"
     );
     const args = {

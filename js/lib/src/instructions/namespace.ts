@@ -1,5 +1,4 @@
 import { web3, BN, AnchorProvider } from "@project-serum/anchor";
-import { SystemProgram } from "@solana/web3.js";
 import {
   Program,
   Instruction as SolKitInstruction,
@@ -144,7 +143,7 @@ export class Instruction extends SolKitInstruction {
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
+          systemProgram: web3.SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
         .remainingAccounts(remainingAccounts)

@@ -23,6 +23,58 @@ export const decodeItemClass = (buffer: Buffer): ItemClass => {
   return metadata;
 };
 
+export class Item {
+  namespaces: NamespaceAndIndex[] | null;
+  padding: number;
+  parent: web3.PublicKey;
+  classIndex: number;
+  mint: web3.PublicKey | null;
+  metadata: web3.PublicKey | null;
+  edition: web3.PublicKey | null;
+  bump: number;
+  tokensStaked: number | null
+  data: ItemData
+
+  constructor(data) {
+    this.namespaces = data.namespaces.map((n) => {
+      new NamespaceAndIndex(n);
+    });
+    this.padding = data.padding;
+    this.parent = data.parent;
+    this.classIndex = data.classIndex;
+    this.mint = data.mint;
+    this.metadata = data.metadata;
+    this.edition = data.edition;
+    this.bump = data.bump;
+    this.tokensStaked = data.tokensStaked;
+    this.data = new ItemData(data.data);
+  }
+}
+
+export class ItemData {
+  usageStateRoot: Root | null;
+  usageStates: ItemUsageState[] | null;
+
+  constructor(data) {
+    this.usageStateRoot = new Root(data.usageStateRoot);
+    this.usageStates = data.usageStates.map((s) => {
+      new ItemUsageState(s);
+    });
+  }
+}
+
+export class ItemUsageState {
+  index: number;
+  uses: number;
+  activatedAt: number | null;
+
+  constructor(data) {
+    this.index = data.index;
+    this.uses = data.uses;
+    this.activatedAt = data.activatedAt;
+  }
+}
+
 export class ItemClassSettings {
   freeBuild: null | InheritedBoolean;
   childrenMustBeEditions: null | InheritedBoolean;

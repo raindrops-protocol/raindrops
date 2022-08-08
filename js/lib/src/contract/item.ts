@@ -4,7 +4,7 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
-import { decodeItemClass, ItemClass } from "../state/item";
+import { decodeItemClass, ItemClass, Item } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 
@@ -40,6 +40,20 @@ export class ItemProgram extends Program.Program {
       data: itemClassObj.data,
       object: ic,
     });
+  }
+
+  async fetchItem(
+    mint: web3.PublicKey,
+    index: BN
+  ): Promise<Item | null> {
+    const [itemPDA, _bump] = await getItemPDA(mint, index);
+
+    try {
+      const itemData = await this.client.account.item.fetch(itemPDA);
+      return new Item(itemData);
+    } catch (error) {
+      return null;
+    }
   }
 
   async createItemClass(
