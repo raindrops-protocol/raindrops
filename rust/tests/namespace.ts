@@ -16,241 +16,6 @@ describe("namespace", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  it.skip("namespace", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
-    const provider = new anchor.AnchorProvider(
-      anchor.getProvider().connection,
-      new anchor.Wallet(payer),
-      { commitment: "confirmed" }
-    );
-    console.log("provider initialized");
-
-    // load programs
-    const namespaceProgram: anchor.Program<Namespace> =
-      await new anchor.Program(
-        NamespaceProgramIDL,
-        pids.NAMESPACE_ID,
-        provider
-      );
-    const itemProgram: anchor.Program<Item> = await new anchor.Program(
-      ItemProgramIDL,
-      pids.ITEM_ID,
-      provider
-    );
-    console.log("programs loaded");
-
-    const [nsMint, nsMetadata, nsMasterEdition] =
-      await createMintMetadataAndMasterEditionAccounts(
-        "namespace",
-        provider.connection,
-        payer
-      );
-
-    const initNamespaceArgs = {
-      desiredNamespaceArraySize: new anchor.BN(2),
-      uuid: "ndjsld", // max 6 characters
-      prettyName: "my-namespace",
-      permissivenessSettings: {
-        namespacePermissiveness: Permissiveness.All,
-        itemPermissiveness: Permissiveness.All,
-        playerPermissiveness: Permissiveness.All,
-        matchPermissiveness: Permissiveness.All,
-        missionPermissiveness: Permissiveness.All,
-        cachePermissiveness: Permissiveness.All,
-      },
-      whitelistedStakingMints: [],
-    };
-
-    const [namespace, _namespaceBump] =
-      await anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("namespace"), nsMint.toBuffer()],
-        namespaceProgram.programId
-      );
-
-    const initNsTxSig = await namespaceProgram.methods
-      .initializeNamespace(initNamespaceArgs)
-      .accounts({
-        namespace: namespace,
-        mint: nsMint,
-        metadata: nsMetadata,
-        masterEdition: nsMasterEdition,
-        payer: provider.wallet.publicKey,
-        tokenProgram: splToken.TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      })
-      .rpc();
-    console.log("initNsTxSig: %s", initNsTxSig);
-
-    const namespaceToken = await splToken.getAssociatedTokenAddress(
-      nsMint,
-      provider.wallet.publicKey
-    );
-
-    const updateNsArgs = {
-      prettyName: "new-name",
-      permissivenessSettings: null,
-      whitelistedStakingMints: [],
-    };
-    const updateNsTxSig = await namespaceProgram.methods
-      .updateNamespace(updateNsArgs)
-      .accounts({
-        namespace: namespace,
-        namespaceToken: namespaceToken,
-        tokenHolder: provider.wallet.publicKey,
-      })
-      .rpc();
-    console.log("updateNsTxSig: %s", updateNsTxSig);
-
-    const [namespaceGatekeeper, _namespaceGatekeeperBump] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("namespace"),
-          namespace.toBuffer(),
-          Buffer.from("gatekeeper"),
-        ],
-        namespaceProgram.programId
-      );
-
-    // create namespace gatekeeper
-    const createNsGatekeeperTxSig = await namespaceProgram.methods
-      .createNamespaceGatekeeper()
-      .accounts({
-        namespace: namespace,
-        namespaceToken: namespaceToken,
-        namespaceGatekeeper: namespaceGatekeeper,
-        tokenHolder: provider.wallet.publicKey,
-        payer: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      })
-      .rpc({ skipPreflight: false });
-    console.log("createNsGatekeeperTxSig: %s", createNsGatekeeperTxSig);
-
-    // add item filter to gatekeeper
-    const itemArtifactFilter = {
-      filter: { namespace: { namespaces: [namespace] } },
-      tokenType: ArtifactType.Item,
-    };
-    const addToNsGatekeeperTxSig = await namespaceProgram.methods
-      .addToNamespaceGatekeeper(itemArtifactFilter)
-      .accounts({
-        namespace: namespace,
-        namespaceGatekeeper: namespaceGatekeeper,
-        namespaceToken: namespaceToken,
-        tokenHolder: provider.wallet.publicKey,
-      })
-      .rpc();
-    console.log("addToNsGatekeeperTxSig: %s", addToNsGatekeeperTxSig);
-
-    // remove item filter from gatekeeper
-    const rmFromNsGatekeeperTxSig = await namespaceProgram.methods
-      .removeFromNamespaceGatekeeper(itemArtifactFilter)
-      .accounts({
-        namespace: namespace,
-        namespaceGatekeeper: namespaceGatekeeper,
-        namespaceToken: namespaceToken,
-        tokenHolder: provider.wallet.publicKey,
-      })
-      .rpc();
-    console.log("rmFromNsGatekeeperTxSig: %s", rmFromNsGatekeeperTxSig);
-
-    // join item to namespace
-    const joinNamespaceTxSig = await namespaceProgram.methods
-      .joinNamespace()
-      .accounts({
-        namespace: namespace,
-        namespaceToken: namespaceToken,
-        artifact: itemClass,
-        namespaceGatekeeper: namespaceGatekeeper,
-        tokenHolder: provider.wallet.publicKey,
-        itemProgram: itemProgram.programId,
-        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-      })
-      .rpc({ skipPreflight: true });
-    console.log("joinNamespaceTxSig: %s", joinNamespaceTxSig);
-
-    // get lowest available page
-    var page = new anchor.BN(0);
-    const nsData = await namespaceProgram.account.namespace.fetch(namespace);
-
-    // sort ascending
-    const sortedFullPages = nsData.fullPages.sort();
-
-    for (let i = 0; i < sortedFullPages.length; i++) {
-      if (i !== sortedFullPages[i].toNumber()) {
-        page = new anchor.BN(i);
-        break;
-      }
-    }
-
-    const cacheArtifactArgs = {
-      page: page,
-    };
-
-    const [index, _indexBump] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("namespace"),
-        namespace.toBuffer(),
-        page.toArrayLike(Buffer, "le", 8),
-      ],
-      namespaceProgram.programId
-    );
-
-    const cacheArtifactTxSig = await namespaceProgram.methods
-      .cacheArtifact(cacheArtifactArgs)
-      .accounts({
-        namespace: namespace,
-        namespaceToken: namespaceToken,
-        index: index,
-        artifact: itemClass,
-        tokenHolder: provider.wallet.publicKey,
-        payer: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        itemProgram: itemProgram.programId,
-        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-      })
-      .rpc({ skipPreflight: true });
-    console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
-
-    const uncacheArtifactArgs = {
-      page: page,
-    };
-
-    const uncacheArtifactTxSig = await namespaceProgram.methods
-      .uncacheArtifact(uncacheArtifactArgs)
-      .accounts({
-        namespace: namespace,
-        namespaceToken: namespaceToken,
-        index: index,
-        artifact: itemClass,
-        tokenHolder: provider.wallet.publicKey,
-        payer: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        itemProgram: itemProgram.programId,
-        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-      })
-      .rpc({ skipPreflight: true });
-    console.log("uncacheArtifactTxSig: %s", uncacheArtifactTxSig);
-
-    // leave namespace
-    const leaveNamespaceTxSig = await namespaceProgram.methods
-      .leaveNamespace()
-      .accounts({
-        namespace: namespace,
-        namespaceToken: namespaceToken,
-        artifact: itemClass,
-        namespaceGatekeeper: namespaceGatekeeper,
-        tokenHolder: provider.wallet.publicKey,
-        itemProgram: itemProgram.programId,
-        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-      })
-      .rpc({ skipPreflight: true });
-    console.log("leaveNamespaceTxSig: %s", leaveNamespaceTxSig);
-  });
-
   it("init namespace", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
@@ -524,7 +289,6 @@ describe("namespace", () => {
     console.log("createNsGKTxSig: %s", createNsGKTxSig);
 
     const nsData = await namespaceProgram.fetchNamespace(namespace);
-    console.log("%s %s", nsData.gatekeeper.toString(), nsGatekeeper.toString());
     assert(nsData.gatekeeper.equals(nsGatekeeper));
   });
 
@@ -634,7 +398,7 @@ describe("namespace", () => {
     console.log("rmFromNsGkTxSig: %s", rmFromNsGkTxSig);
   });
 
-  it.only("join item class to namespace then leave", async () => {
+  it("join item class to namespace then leave", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -720,7 +484,6 @@ describe("namespace", () => {
     console.log("leaveNsTxSig: %s", leaveNsTxSig);
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
-    console.log(nsData);
     // TODO: not sure why this doesnt work
     //assert(nsData.artifactsAdded === 0);
     assert(nsData.artifactsCached === 0);
@@ -828,20 +591,6 @@ describe("namespace", () => {
     assert(nsData.artifactsCached === 0);
   });
 });
-
-const Permissiveness = {
-  All: { all: {} },
-  Whitelist: { whitelist: {} },
-  Blacklist: { blacklist: {} },
-  Namespace: { namespace: {} },
-};
-
-const ArtifactType = {
-  Player: { player: {} },
-  Item: { item: {} },
-  Mission: { mission: {} },
-  Namespace: { namespace: {} },
-};
 
 async function createMintMetadataAndMasterEditionAccounts(
   name: string,

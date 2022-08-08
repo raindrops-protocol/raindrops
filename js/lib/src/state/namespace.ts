@@ -186,8 +186,8 @@ export class Namespace {
       this.artifactsAdded ? this.artifactsAdded : "Not cached on object"
     );
     log.info(
-      "Highest Page:",
-      this.highestPage ? this.highestPage : "Not cached on object"
+      "Max Pages:",
+      this.maxPages ? this.maxPages : "Not cached on object"
     );
     log.info(
       "Aritfacts Cached:",
