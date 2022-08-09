@@ -15,6 +15,7 @@ use {
         item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
         item_class_uncache_namespace,
     },
+    raindrops_item::program::Item,
     std::str::FromStr,
 };
 anchor_lang::declare_id!("AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X");
@@ -696,9 +697,8 @@ pub struct JoinNamespace<'info> {
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
-    #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
-    item_program: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
+    item_program: Program<'info, Item>,
 }
 
 #[derive(Accounts)]
@@ -713,9 +713,8 @@ pub struct LeaveNamespace<'info> {
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
-    #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
-    item_program: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
+    item_program: Program<'info, Item>,
 }
 
 #[derive(Accounts)]
@@ -731,13 +730,12 @@ pub struct CacheArtifact<'info> {
     artifact: UncheckedAccount<'info>,
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
-    #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
-    item_program: UncheckedAccount<'info>,
+    item_program: Program<'info, Item>,
 }
 
 #[derive(Accounts)]
@@ -755,9 +753,8 @@ pub struct UncacheArtifact<'info> {
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
-    #[account(address = Pubkey::from_str(crate::ITEM_ID).unwrap())]
-    item_program: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
+    item_program: Program<'info, Item>,
 }
 
 #[error_code]
