@@ -26,7 +26,7 @@ pub const ITEM_ID: &str = "CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4";
 pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
 const MAX_WHITELIST: usize = 5;
-const MAX_CACHED_ITEMS: usize = 100;
+const MAX_CACHED_ITEMS_PER_INDEX: usize = 100;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitializeNamespaceArgs {
@@ -200,7 +200,7 @@ pub mod namespace {
             index.namespace = namespace.key();
             index.bump = *ctx.bumps.get("index").unwrap();
             index.page = args.page;
-            index.caches = Vec::with_capacity(MAX_CACHED_ITEMS);
+            index.caches = Vec::with_capacity(MAX_CACHED_ITEMS_PER_INDEX);
         };
 
         // if the current page is not the lowest available page error
@@ -209,8 +209,12 @@ pub mod namespace {
             return Err(error!(ErrorCode::PreviousIndexNotFull));
         };
 
+        if lowest_available_page > namespace.max_pages {
+            return Err(error!(ErrorCode::CacheFull))
+        }
+
         // if we hit max items in the cache return an error
-        if index.caches.len() >= MAX_CACHED_ITEMS {
+        if index.caches.len() >= MAX_CACHED_ITEMS_PER_INDEX {
             return Err(error!(ErrorCode::IndexFull));
         }
 
@@ -218,7 +222,8 @@ pub mod namespace {
         index.caches.push(artifact.key());
 
         // increment highest page if this is the last item that can be added to the cache
-        if index.caches.len() == MAX_CACHED_ITEMS {
+        if index.caches.len() == MAX_CACHED_ITEMS_PER_INDEX {
+            msg!("{} page is full", index.page);
             namespace.full_pages.push(index.page);
         }
 
@@ -493,7 +498,7 @@ pub struct NamespaceIndex {
 
 impl NamespaceIndex {
     pub fn space() -> usize {
-        8 + 32 + 1 + 8 + (4 + (32 * 100))
+        8 + 32 + 1 + 8 + (4 + (32 * MAX_CACHED_ITEMS_PER_INDEX))
     }
 }
 
@@ -530,14 +535,6 @@ pub const MIN_NAMESPACE_SIZE: usize = 8 + // key
 5 + // whitelist staking mints
 1 + 32 + // Namespace gatekeeper optional pubkey
 200; // padding
-
-pub const INDEX_SIZE: usize = 8 + // key
-32 + // namespace
-1 + // bump
-8 + // page
-4 + // amount in vec
-32 * MAX_CACHED_ITEMS + // array space
-100; //padding
 
 pub const ARTIFACT_FILTER_SIZE: usize = 8 + // key
 1 + // indexed
@@ -785,16 +782,12 @@ pub enum ErrorCode {
     MetadataDoesntExist,
     #[msg("Edition doesnt exist")]
     EditionDoesntExist,
-    #[msg("Previous index needs to exist before creating this one")]
-    PreviousIndexNeedsToExistBeforeCreatingThisOne,
     #[msg("The previous index is not full yet, so you cannot make a new one")]
     PreviousIndexNotFull,
     #[msg("Index is full")]
     IndexFull,
     #[msg("Can only cache valid raindrops artifacts (players, items, matches)")]
     CanOnlyCacheValidRaindropsObjects,
-    #[msg("This artifact has already been cached")]
-    AlreadyCached,
     #[msg("This artifact is not cached!")]
     NotCached,
     #[msg("This artifact is cached but not on this page")]

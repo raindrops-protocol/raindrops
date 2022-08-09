@@ -505,13 +505,7 @@ pub fn lowest_available_page(full_pages: &mut Vec<u64>) -> Result<u64> {
         return Ok(0)
     }
 
-    let mut i = 0;
-    for page in full_pages.iter() {
-        if i != *page {
-            return Ok(i)
-        };
-        i += 1;
-    }
+    let page = full_pages[full_pages.len() - 1] + 1;
 
-    return Err(error!(ErrorCode::CacheFull));
+    Ok(page)
 }

@@ -374,19 +374,16 @@ export class Instruction extends SolKitInstruction {
     );
 
     // get lowest available page
-    var page = new BN(0);
+    let page = new BN(0);
     const nsData = await this.program.client.account.namespace.fetch(
       namespacePDA
     );
 
     // sort ascending
     const sortedFullPages = nsData.fullPages.sort();
-
-    for (let i = 0; i < sortedFullPages.length; i++) {
-      if (i !== sortedFullPages[i].toNumber()) {
-        page = new BN(i);
-        break;
-      }
+    // increment 1 higher than the last full page
+    if (sortedFullPages.length > 0) {
+      page = new BN(sortedFullPages[sortedFullPages.length - 1] + 1);
     }
 
     const [index, _indexBump] = await getIndexPDA(namespacePDA, page);
