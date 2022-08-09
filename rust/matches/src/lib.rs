@@ -1,30 +1,28 @@
 pub mod utils;
 
-use {
-    crate::utils::{
-        assert_derivation, assert_initialized, assert_is_ata, assert_owned_by, close_token_account,
-        create_or_allocate_account_raw, get_mask_and_index_for_seq, is_part_of_namespace,
-        is_valid_validation, spl_token_burn, spl_token_mint_to, spl_token_transfer, verify,
-        TokenBurnParams, TokenTransferParams,
-    },
-    anchor_lang::{
-        prelude::*,
-        solana_program::{
-            program::{invoke, invoke_signed},
-            program_option::COption,
-            program_pack::Pack,
-            system_instruction, system_program,
-        },
-        AnchorDeserialize, AnchorSerialize, Discriminator,
-    },
-    anchor_spl::token::{Mint, TokenAccount},
-    arrayref::array_ref,
-    metaplex_token_metadata::instruction::{
-        create_master_edition, create_metadata_accounts,
-        mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
-    },
-    spl_token::instruction::{initialize_account2, mint_to},
+use crate::utils::{
+    assert_derivation, assert_initialized, assert_is_ata, assert_owned_by, close_token_account,
+    create_or_allocate_account_raw, get_mask_and_index_for_seq, is_part_of_namespace,
+    is_valid_validation, spl_token_burn, spl_token_mint_to, spl_token_transfer, verify,
+    TokenBurnParams, TokenTransferParams,
 };
+use anchor_lang::{
+    prelude::*,
+    solana_program::{
+        program::{invoke, invoke_signed},
+        program_option::COption,
+        program_pack::Pack,
+        system_instruction, system_program,
+    },
+    AnchorDeserialize, AnchorSerialize, Discriminator,
+};
+use anchor_spl::token::{Mint, TokenAccount};
+use arrayref::array_ref;
+use metaplex_token_metadata::instruction::{
+    create_master_edition, create_metadata_accounts,
+    mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
+};
+use spl_token::instruction::{initialize_account2, mint_to};
 anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
 pub const PREFIX: &str = "matches";
 

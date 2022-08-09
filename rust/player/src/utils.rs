@@ -1,16 +1,14 @@
-use {
-    crate::ErrorCode,
-    anchor_lang::{
-        error,
-        prelude::{msg, AccountInfo, Pubkey, Rent, Result, SolanaSysvar},
-        solana_program::{
-            program::{invoke, invoke_signed},
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
-        },
+use crate::ErrorCode;
+use anchor_lang::{
+    error,
+    prelude::{msg, AccountInfo, Pubkey, Rent, Result, SolanaSysvar},
+    solana_program::{
+        program::{invoke, invoke_signed},
+        program_pack::{IsInitialized, Pack},
+        system_instruction,
     },
-    std::convert::TryInto,
 };
+use std::convert::TryInto;
 
 pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;

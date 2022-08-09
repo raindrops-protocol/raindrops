@@ -1,25 +1,21 @@
-use {
-    crate::{
-        ErrorCode, Filter, Namespace, NamespaceGatekeeper, Permissiveness,
+use crate::{ErrorCode, Filter, Namespace, NamespaceGatekeeper, Permissiveness};
+use anchor_lang::{
+    error,
+    prelude::{
+        msg, Account, AccountInfo, ProgramError, Pubkey, Rent, Result, SolanaSysvar,
+        UncheckedAccount,
     },
-    anchor_lang::{
-        error,
-        prelude::{
-            msg, Account, AccountInfo, ProgramError, Pubkey, Rent, Result, SolanaSysvar,
-            UncheckedAccount,
-        },
-        solana_program::{
-            borsh::try_from_slice_unchecked,
-            program::{invoke, invoke_signed},
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
-        },
-        Key, ToAccountInfo,
+    solana_program::{
+        borsh::try_from_slice_unchecked,
+        program::{invoke, invoke_signed},
+        program_pack::{IsInitialized, Pack},
+        system_instruction,
     },
-    arrayref::array_ref,
-    raindrops_item::ItemClass,
-    std::{convert::TryInto, str::FromStr},
+    Key, ToAccountInfo,
 };
+use arrayref::array_ref;
+use raindrops_item::ItemClass;
+use std::{convert::TryInto, str::FromStr};
 
 pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
@@ -317,12 +313,12 @@ pub fn check_permissiveness_against_holder<'a>(
                     }
                     Filter::Category { namespace, .. } => {
                         msg!("category filter");
-                            for n in &art_namespaces {
-                                if n == namespace {
-                                    msg!("Whitelisted!");
-                                    return Ok(());
-                                }
+                        for n in &art_namespaces {
+                            if n == namespace {
+                                msg!("Whitelisted!");
+                                return Ok(());
                             }
+                        }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
                     Filter::Key { mint, .. } => {
@@ -502,7 +498,7 @@ pub fn lowest_available_page(full_pages: &mut Vec<u64>) -> Result<u64> {
     full_pages.sort();
 
     if full_pages.len() == 0 {
-        return Ok(0)
+        return Ok(0);
     }
 
     let page = full_pages[full_pages.len() - 1] + 1;

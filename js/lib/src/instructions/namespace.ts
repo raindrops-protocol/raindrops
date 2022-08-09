@@ -105,12 +105,24 @@ export class Instruction extends SolKitInstruction {
     let ix: web3.TransactionInstruction;
 
     let permissivenessSettings = {
-      namespacePermissiveness: convertPermissiveness(args.permissivenessSettings.namespacePermissiveness),
-      itemPermissiveness: convertPermissiveness(args.permissivenessSettings.itemPermissiveness),
-      playerPermissiveness: convertPermissiveness(args.permissivenessSettings.playerPermissiveness),
-      matchPermissiveness: convertPermissiveness(args.permissivenessSettings.matchPermissiveness),
-      missionPermissiveness: convertPermissiveness(args.permissivenessSettings.missionPermissiveness),
-      cachePermissiveness: convertPermissiveness(args.permissivenessSettings.cachePermissiveness),
+      namespacePermissiveness: convertPermissiveness(
+        args.permissivenessSettings.namespacePermissiveness
+      ),
+      itemPermissiveness: convertPermissiveness(
+        args.permissivenessSettings.itemPermissiveness
+      ),
+      playerPermissiveness: convertPermissiveness(
+        args.permissivenessSettings.playerPermissiveness
+      ),
+      matchPermissiveness: convertPermissiveness(
+        args.permissivenessSettings.matchPermissiveness
+      ),
+      missionPermissiveness: convertPermissiveness(
+        args.permissivenessSettings.missionPermissiveness
+      ),
+      cachePermissiveness: convertPermissiveness(
+        args.permissivenessSettings.cachePermissiveness
+      ),
     };
 
     let formattedArgs = {
@@ -119,7 +131,7 @@ export class Instruction extends SolKitInstruction {
       prettyName: args.prettyName,
       permissivenessSettings: permissivenessSettings,
       whitelistedStakingMints: args.whitelistedStakingMints,
-    }
+    };
 
     if (remainingAccounts.length > 0) {
       ix = await this.program.client.methods
@@ -428,7 +440,10 @@ export class Instruction extends SolKitInstruction {
     ];
   }
 
-  async uncacheArtifact(args: UncacheArtifactArgs, accounts: UncacheArtifactAccounts) {
+  async uncacheArtifact(
+    args: UncacheArtifactArgs,
+    accounts: UncacheArtifactAccounts
+  ) {
     const [namespacePDA, _namespacePDABump] = await getNamespacePDA(
       accounts.namespaceMint
     );
@@ -443,7 +458,7 @@ export class Instruction extends SolKitInstruction {
       payer
     );
 
-    const [index, _indexBump] = await getIndexPDA(namespacePDA, args.page)
+    const [index, _indexBump] = await getIndexPDA(namespacePDA, args.page);
 
     return [
       await this.program.client.methods

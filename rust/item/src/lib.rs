@@ -4,12 +4,12 @@ use crate::utils::{
     assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
     assert_mint_authority_matches_mint, assert_permissiveness_access,
     assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
-    propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
-    spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
-    verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data, is_namespace_program_caller,
-    AssertPermissivenessAccessArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
-    TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
-    VerifyCooldownArgs,
+    is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
+    spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+    update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
+    verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
+    GetItemUsageArgs, TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
+    VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
 };
 use anchor_lang::{
     prelude::*,
@@ -3244,5 +3244,5 @@ pub enum ErrorCode {
     #[msg("Unauthorized Caller")]
     UnauthorizedCaller,
     #[msg("Must be called by staking program")]
-    MustBeCalledByStakingProgram
+    MustBeCalledByStakingProgram,
 }

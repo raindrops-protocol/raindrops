@@ -1,27 +1,25 @@
-use {
-    crate::{ErrorCode, Filter, TokenValidation, ValidationArgs},
-    anchor_lang::{
-        error,
-        prelude::{
-            msg, Account, AccountInfo, AccountMeta, Program, Pubkey, Rent, Result, SolanaSysvar,
-            UncheckedAccount,
-        },
-        require,
-        solana_program::{
-            hash,
-            instruction::Instruction,
-            program::{invoke, invoke_signed},
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
-        },
-        AnchorSerialize, Key, ToAccountInfo,
+use crate::{ErrorCode, Filter, TokenValidation, ValidationArgs};
+use anchor_lang::{
+    error,
+    prelude::{
+        msg, Account, AccountInfo, AccountMeta, Program, Pubkey, Rent, Result, SolanaSysvar,
+        UncheckedAccount,
     },
-    anchor_spl::token::{Mint, Token},
-    arrayref::array_ref,
-    spl_associated_token_account::get_associated_token_address,
-    spl_token::instruction::close_account,
-    std::convert::TryInto,
+    require,
+    solana_program::{
+        hash,
+        instruction::Instruction,
+        program::{invoke, invoke_signed},
+        program_pack::{IsInitialized, Pack},
+        system_instruction,
+    },
+    AnchorSerialize, Key, ToAccountInfo,
 };
+use anchor_spl::token::{Mint, Token};
+use arrayref::array_ref;
+use spl_associated_token_account::get_associated_token_address;
+use spl_token::instruction::close_account;
+use std::convert::TryInto;
 
 pub fn assert_is_ata(
     ata: &AccountInfo,

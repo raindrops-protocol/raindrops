@@ -249,3 +249,17 @@ export class Namespace {
     }
   }
 }
+
+export class NamespaceGatekeeper {
+  address: web3.PublicKey;
+  artifactFilters: [];
+  namespace: web3.PublicKey;
+  bump: number;
+
+  constructor(address, data) {
+    this.address = address;
+    this.artifactFilters = data.artifactFilters;
+    this.namespace = data.namespace;
+    this.bump = data.bump;
+  }
+}

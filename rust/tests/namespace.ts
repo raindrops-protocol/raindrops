@@ -39,10 +39,10 @@ describe("namespace", () => {
       );
 
     const permissivenessSettings: nsState.PermissivenessSettings = {
-      namespacePermissiveness: nsState.Permissiveness.All,
+      namespacePermissiveness: nsState.Permissiveness.Whitelist,
       itemPermissiveness: nsState.Permissiveness.All,
       playerPermissiveness: nsState.Permissiveness.All,
-      matchPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.Blacklist,
       missionPermissiveness: nsState.Permissiveness.All,
       cachePermissiveness: nsState.Permissiveness.All,
     };
@@ -61,13 +61,16 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, _namespace] =
-      await namespaceProgram.initializeNamespace(
-        initializeNamespaceArgs,
-        initializeNamespaceAccounts
-      );
+    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
 
     console.log("initNsTxSig: %s", initNsTxSig);
+
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.permissivenessSettings !== null);
+    assert(nsData.uuid === "123456");
   });
 
   it("init namespace with wl staking mint", async () => {
@@ -375,6 +378,11 @@ describe("namespace", () => {
     );
     console.log("addToNsGkTxSig: %s", addToNsGkTxSig);
 
+    let nsGkData = await namespaceProgram.fetchNamespaceGatekeeper(
+      nsGatekeeper
+    );
+    assert(nsGkData.artifactFilters.length === 1);
+
     const rmFromNsGatekeeperArgs: nsIx.RemoveFromNamespaceGatekeeperArgs = {
       artifactFilter: {
         tokenType: nsState.TokenType.Item,
@@ -396,6 +404,9 @@ describe("namespace", () => {
         rmFromNsGatekeeperAccounts
       );
     console.log("rmFromNsGkTxSig: %s", rmFromNsGkTxSig);
+
+    nsGkData = await namespaceProgram.fetchNamespaceGatekeeper(nsGatekeeper);
+    assert(nsGkData.artifactFilters.length === 0);
   });
 
   it("Only allow items that are part of the whitelisted namespace to join", async () => {
@@ -447,10 +458,11 @@ describe("namespace", () => {
       masterEdition: ns1MasterEdition,
     };
 
-    const [initNsTxSig1, _namespace1] = await namespaceProgram.initializeNamespace(
-      initializeNamespaceArgs1,
-      initializeNamespaceAccounts1
-    );
+    const [initNsTxSig1, _namespace1] =
+      await namespaceProgram.initializeNamespace(
+        initializeNamespaceArgs1,
+        initializeNamespaceAccounts1
+      );
 
     console.log("initNsTxSig1: %s", initNsTxSig1);
 
@@ -484,10 +496,11 @@ describe("namespace", () => {
       masterEdition: ns2MasterEdition,
     };
 
-    const [initNsTxSig2, namespace2] = await namespaceProgram.initializeNamespace(
-      initializeNamespaceArgs2,
-      initializeNamespaceAccounts2
-    );
+    const [initNsTxSig2, namespace2] =
+      await namespaceProgram.initializeNamespace(
+        initializeNamespaceArgs2,
+        initializeNamespaceAccounts2
+      );
 
     console.log("initNsTxSig2: %s", initNsTxSig2);
 
@@ -546,7 +559,6 @@ describe("namespace", () => {
       artifact: itemClass[0],
     });
     console.log("artifact joined to namespace1: %s", joinNsTxSig2);
-
   });
 
   it("join item class to namespace then leave", async () => {
@@ -815,43 +827,28 @@ describe("namespace", () => {
     const itemClasses = await createItemClasses(
       payer,
       anchor.getProvider().connection,
-      101,
+      101
     );
 
-    await new Promise(f => setTimeout(f, 5000));
-
-    let joinNsPromises = [];
-    let cacheArtifactPromises = [];
     for (let i = 0; i < itemClasses.length; i++) {
       const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
       };
 
-      const joinNsPromise = namespaceProgram.joinNamespace(joinNsAccounts);
-      joinNsPromises.push(joinNsPromise);
+      const joinNsTxSig = await namespaceProgram.joinNamespace(joinNsAccounts);
+      console.log("%d joinNsTxSig: %s", i, joinNsTxSig);
 
       const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
       };
 
-      const cacheArtifactPromise = namespaceProgram.cacheArtifact(
+      const cacheArtifactTxSig = await namespaceProgram.cacheArtifact(
         cacheArtifactAccounts
       );
-      cacheArtifactPromises.push(cacheArtifactPromise);
-
-      // chunk them to not blow up the local validator
-      if (cacheArtifactPromises.length === 25) {
-        await Promise.all(joinNsPromises);
-        await Promise.all(cacheArtifactPromises);
-        joinNsPromises = [];
-        cacheArtifactPromises = [];
-      }
+      console.log("%d cacheArtifactTxSig: %s", i, cacheArtifactTxSig);
     }
-    await Promise.all(joinNsPromises);
-    await Promise.all(cacheArtifactPromises);
-    console.log("%s items joined and cached to namespace", itemClasses.length);
 
     var nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 101);
@@ -878,13 +875,15 @@ describe("namespace", () => {
       uncacheArtifactPromises.push(uncacheArtifactPromise);
 
       // chunk
-      if (uncacheArtifactPromises.length === 25) {
-        await Promise.all(uncacheArtifactPromises)
+      if (uncacheArtifactPromises.length === 15) {
+        await Promise.all(uncacheArtifactPromises);
         uncacheArtifactPromises = [];
       }
-    } 
-    await Promise.all(uncacheArtifactPromises)
+    }
+    await Promise.all(uncacheArtifactPromises);
     console.log("%d items uncached", itemClasses.length);
+
+    await new Promise((f) => setTimeout(f, 5000));
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 101);
@@ -906,7 +905,9 @@ async function createMintMetadataAndMasterEditionAccounts(
     space: splToken.MintLayout.span,
     fromPubkey: payer.publicKey,
     newAccountPubkey: mint.publicKey,
-    lamports: await connection.getMinimumBalanceForRentExemption(splToken.MintLayout.span),
+    lamports: await connection.getMinimumBalanceForRentExemption(
+      splToken.MintLayout.span
+    ),
   });
 
   const mintIx = await splToken.createInitializeMintInstruction(
@@ -1115,10 +1116,11 @@ async function createItemClasses(
     promises.push(createItemClassPromise);
     items.push(itemClass);
   }
-  await Promise.all(promises);
+  const txSigs: string[] = await Promise.all(promises);
+  await confirmTransactions(txSigs, connection);
   console.log("%d item classes created", items.length);
 
-  return items
+  return items;
 }
 
 // for a given item class and namespace, find the index of the cached item, return null if not found (probably means not cached)
@@ -1160,4 +1162,13 @@ async function newPayer(
   await connection.confirmTransaction(txSig);
 
   return payer;
+}
+
+async function confirmTransactions(
+  txSigs: string[],
+  connection: anchor.web3.Connection
+) {
+  for (let txSig of txSigs) {
+    connection.confirmTransaction(txSig, "finalized");
+  }
 }

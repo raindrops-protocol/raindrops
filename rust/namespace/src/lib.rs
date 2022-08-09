@@ -1,23 +1,23 @@
 pub mod utils;
 
-use {
-    crate::utils::{
-        assert_can_add_to_namespace, assert_initialized, assert_metadata_valid,
-        lowest_available_page, pull_namespaces,
-    },
-    anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
-    anchor_spl::token::{Mint, Token, TokenAccount},
-    raindrops_item::cpi::accounts::{
-        ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-        ItemClassUnCacheNamespace,
-    },
-    raindrops_item::cpi::{
+use crate::utils::{
+    assert_can_add_to_namespace, assert_initialized, assert_metadata_valid, lowest_available_page,
+    pull_namespaces,
+};
+use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
+use anchor_spl::token::{Mint, Token, TokenAccount};
+use raindrops_item::{
+    cpi::{
+        accounts::{
+            ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
+            ItemClassUnCacheNamespace,
+        },
         item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
         item_class_uncache_namespace,
     },
-    raindrops_item::program::Item,
-    std::str::FromStr,
+    program::Item,
 };
+use std::str::FromStr;
 anchor_lang::declare_id!("AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X");
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const MATCH_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
@@ -211,7 +211,7 @@ pub mod namespace {
         };
 
         if lowest_available_page > namespace.max_pages {
-            return Err(error!(ErrorCode::CacheFull))
+            return Err(error!(ErrorCode::CacheFull));
         }
 
         // if we hit max items in the cache return an error
@@ -448,14 +448,14 @@ pub struct ArtifactFilter {
 #[account]
 pub struct NamespaceGatekeeper {
     bump: u8,
-    artifact_filters: Vec<ArtifactFilter>,
     namespace: Pubkey,
+    artifact_filters: Vec<ArtifactFilter>,
 }
 
 // TODO get this right
 impl NamespaceGatekeeper {
     pub fn space() -> usize {
-        8 + 1 + 132
+        8 + 1 + 32 + ARTIFACT_FILTER_SIZE
     }
 }
 
@@ -789,10 +789,6 @@ pub enum ErrorCode {
     IndexFull,
     #[msg("Can only cache valid raindrops artifacts (players, items, matches)")]
     CanOnlyCacheValidRaindropsObjects,
-    #[msg("This artifact is not cached!")]
-    NotCached,
-    #[msg("This artifact is cached but not on this page")]
-    NotCachedHere,
     #[msg("Artifact lacks namespace!")]
     ArtifactLacksNamespace,
     #[msg("Artifact not part of namespace!")]

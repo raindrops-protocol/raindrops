@@ -1,35 +1,32 @@
 use std::str::FromStr;
 
-use {
-    crate::{
-        ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
-        InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
-        ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState,
-        ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
-    },
-    anchor_lang::{
-        error,
-        prelude::{
-            msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
-            Pubkey, Rent, Result, SolanaSysvar, System, Sysvar, UncheckedAccount,
-        },
-        require,
-        solana_program::{
-            hash,
-            program::{invoke, invoke_signed},
-            program_option::COption,
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
-        },
-        Key, ToAccountInfo,
-    },
-    anchor_spl::token::{Mint, Token},
-    arrayref::array_ref,
-    spl_associated_token_account::get_associated_token_address,
-    spl_token::instruction::{close_account, initialize_account2, set_authority, AuthorityType},
-    std::cell::RefCell,
-    std::convert::TryInto,
+use crate::{
+    ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
+    InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
+    ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType,
+    Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
 };
+use anchor_lang::{
+    error,
+    prelude::{
+        msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
+        Pubkey, Rent, Result, SolanaSysvar, System, Sysvar, UncheckedAccount,
+    },
+    require,
+    solana_program::{
+        hash,
+        program::{invoke, invoke_signed},
+        program_option::COption,
+        program_pack::{IsInitialized, Pack},
+        system_instruction,
+    },
+    Key, ToAccountInfo,
+};
+use anchor_spl::token::{Mint, Token};
+use arrayref::array_ref;
+use spl_associated_token_account::get_associated_token_address;
+use spl_token::instruction::{close_account, initialize_account2, set_authority, AuthorityType};
+use std::{cell::RefCell, convert::TryInto};
 
 impl ItemClass {
     pub fn item_class_data(&self, data: &RefCell<&mut [u8]>) -> Result<ItemClassData> {

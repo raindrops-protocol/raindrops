@@ -4,7 +4,7 @@ import { web3 } from "@project-serum/anchor";
 import * as NamespaceInstruction from "../instructions/namespace";
 import { NAMESPACE_ID } from "../constants/programIds";
 import { NAMESPACE_PREFIX } from "../constants/namespace";
-import { Namespace } from "../state/namespace";
+import { Namespace, NamespaceGatekeeper } from "../state/namespace";
 import { getNamespacePDA } from "../utils/pda";
 
 export class NamespaceProgram extends Program.Program {
@@ -33,6 +33,14 @@ export class NamespaceProgram extends Program.Program {
   async fetchNamespace(namespace: web3.PublicKey): Promise<Namespace> {
     const namespaceObj = await this.client.account.namespace.fetch(namespace);
     return new Namespace(namespace, namespaceObj);
+  }
+
+  async fetchNamespaceGatekeeper(
+    namespaceGatekeeper: web3.PublicKey
+  ): Promise<NamespaceGatekeeper> {
+    const namespaceGatekeeperObj =
+      await this.client.account.namespaceGatekeeper.fetch(namespaceGatekeeper);
+    return new NamespaceGatekeeper(namespaceGatekeeper, namespaceGatekeeperObj);
   }
 
   async updateNamespace(
