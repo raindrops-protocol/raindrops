@@ -30,6 +30,14 @@ const {
   generateRemainingAccountsGivenPermissivenessToUse,
 } = ContractCommon;
 
+const PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS = [
+  "playerClassData.config.basicStats.[].statType.integer.min",
+  "playerClassData.config.basicStats.[].statType.integer.max",
+  "playerClassData.config.basicStats.[].statType.integer.starting",
+  "playerClassData.config.basicStats.[].statType.integer.stakingAmountScaler",
+  "playerClassData.config.basicStats.[].statType.integer.stakingDurationScaler",
+  "playerClassData.config.basicStats.[].statType.bool.stakingFlip",
+];
 export interface ToggleEquipItemArgs {
   itemIndex: BN;
   itemMint: PublicKey;
@@ -333,6 +341,7 @@ export class Instruction extends SolKitInstruction {
       "parentOfParentClassIndex",
       "parentClassIndex",
       "space",
+      ...PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS,
     ]);
 
     const [playerClassKey, _] = await getPlayerPDA(
@@ -382,6 +391,7 @@ export class Instruction extends SolKitInstruction {
     InstructionUtils.convertNumbersToBNs(args, [
       "classIndex",
       "parentClassIndex",
+      ...PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS,
     ]);
 
     const playerClassKey = (

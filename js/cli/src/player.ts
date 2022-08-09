@@ -71,6 +71,50 @@ CLI.programCommandWithConfig(
   }
 );
 
+CLI.programCommandWithConfig(
+  "update_player_class",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    await (
+      await playerProgram.updatePlayerClass(
+        {
+          classIndex: new BN(config.index || 0),
+          parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+          updatePermissivenessToUse: config.updatePermissivenessToUse,
+          playerClassData: config.data,
+        },
+        {
+          playerMint: new web3.PublicKey(config.mint),
+          parent: config.parent
+            ? (
+                await PDA.getItemPDA(
+                  new web3.PublicKey(config.parent.mint),
+                  new BN(config.parent.index)
+                )
+              )[0]
+            : null,
+          parentMint: config.parent
+            ? new web3.PublicKey(config.parent.mint)
+            : null,
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new web3.PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+        },
+        {
+          permissionless: config.updatePermissivenessToUse ? false : true,
+        }
+      )
+    ).rpc();
+  }
+);
+
 CLI.programCommand("show_player_class")
   .option("-cp, --config-path <string>", "JSON file with player class settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
@@ -253,9 +297,49 @@ CLI.programCommand("show_player_class")
       config.basicStats.forEach((c) => {
         log.info("------> Index:", c.index);
         log.info("------> Name:", c.name);
-        log.info("------> Stat Type:", c.basicStatType);
-        log.info("------> Component Scope:", c.componentScope);
-        log.info("------> Inherited:", InheritanceState[c.inherited]);
+        if (c.statType.integer) {
+          const v = c.statType.integer;
+          log.info(
+            `------> Stat Type: Integer (${
+              v.min ? v.min.toNumber().toString() + " min <=" : ""
+            } ${v.starting.toNumber()} start ${
+              v.max ? "<= " + v.max.toNumber().toString() + " max" : ""
+            })`
+          );
+          log.info(
+            "------> Staking Amount Scaler:",
+            v.stakingAmountScaler ? v.stakingAmountScaler.toNumber() : "None"
+          );
+          log.info(
+            "------> Staking Duration Scaler:",
+            v.stakingAmountScaler ? v.stakingAmountScaler.toNumber() : "None"
+          );
+        } else if (c.statType.enum) {
+          const v = c.statType.enum;
+          log.info(
+            `------> Stat Type: Enum (Start: ${
+              v.values.find((t) => t.value == v.starting).name
+            })`
+          );
+          log.info(
+            `------> Values: ${v.values.map((t) => `${t.name} => ${t.value}`)}`
+          );
+        } else if (c.statType.bool) {
+          const v = c.statType.bool;
+          log.info(
+            `------> Stat Type: Boolean (Start: ${
+              v.starting
+            }, Staking Flip At: ${
+              v.stakingFlip ? v.stakingFlip.toNumber() : "Not Set"
+            })`
+          );
+        } else if (c.statType.string) {
+          const v = c.statType.string;
+          log.info(`------> Stat Type: String (Start: ${v.starting})`);
+        }
+        log.info("------> Inherited:", Object.keys(c.inherited)[0]);
+
+        log.info("-------");
       });
 
     log.info("----> Body Parts:");
@@ -263,7 +347,7 @@ CLI.programCommand("show_player_class")
     if (config.bodyParts)
       config.bodyParts.forEach((u) => {
         log.info("------> Index:", u.index);
-        log.info("------> Inherited:", InheritanceState[u.inherited]);
+        log.info("------> Inherited:", Object.keys(u.inherited)[0]);
         log.info("------> Body Part:", u.bodyPart);
         log.info(
           "------> Total item spots:",

@@ -130,7 +130,57 @@
     },
     "config": {
       "startingStatsUri": null,
-      "basicStats": null,
+      "basicStats": [
+        {
+          "index": 1,
+          "name": "alive",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "bool": {
+              "starting": true,
+              "stakingFlip": 5
+            }
+          }
+        },
+        {
+          "index": 0,
+          "name": "str",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "integer": {
+              "min": 1,
+              "max": 10,
+              "starting": 3,
+              "startingAmountScaler": null,
+              "startingDurationScaler": null
+            }
+          }
+        },
+        {
+          "index": 2,
+          "name": "name",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "string": {
+              "starting": "billy"
+            }
+          }
+        },
+        {
+          "index": 3,
+          "name": "status",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "enum": {
+              "starting": 1,
+              "values": [
+                { "name": "hungry", "value": 1 },
+                { "name": "satiated", "value": 0 }
+              ]
+            }
+          }
+        }
+      ],
       "bodyParts": null,
       "equipValidation": null,
       "addToPackValidation": null

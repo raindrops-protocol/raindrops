@@ -21,7 +21,7 @@ import {
   getItemPDA,
   getMetadata,
 } from "../utils/pda";
-import { PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
+import {  TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
