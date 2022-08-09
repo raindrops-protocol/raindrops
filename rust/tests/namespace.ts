@@ -398,6 +398,157 @@ describe("namespace", () => {
     console.log("rmFromNsGkTxSig: %s", rmFromNsGkTxSig);
   });
 
+  it("Only allow items that are part of the whitelisted namespace to join", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    // initialize 2 namespaces
+    // namespace 1 will be the namespace the Item Class attempts to join that has a namespace filter on it
+    // this namespace filter will only allow Item Classes that are already joined to namespace2 to join it
+
+    const [ns1Mint, ns1Metadata, ns1MasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings1: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.Whitelist,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs1: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123457",
+      prettyName: "my-ns1",
+      permissivenessSettings: permissivenessSettings1,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts1: nsIx.InitializeNamespaceAccounts = {
+      mint: ns1Mint,
+      metadata: ns1Metadata,
+      masterEdition: ns1MasterEdition,
+    };
+
+    const [initNsTxSig1, _namespace1] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs1,
+      initializeNamespaceAccounts1
+    );
+
+    console.log("initNsTxSig1: %s", initNsTxSig1);
+
+    const [ns2Mint, ns2Metadata, ns2MasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings2: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs2: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns2",
+      permissivenessSettings: permissivenessSettings2,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts2: nsIx.InitializeNamespaceAccounts = {
+      mint: ns2Mint,
+      metadata: ns2Metadata,
+      masterEdition: ns2MasterEdition,
+    };
+
+    const [initNsTxSig2, namespace2] = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs2,
+      initializeNamespaceAccounts2
+    );
+
+    console.log("initNsTxSig2: %s", initNsTxSig2);
+
+    const createNsGKAccounts1: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: ns1Mint,
+    };
+
+    const [createNsGKTxSig1, _nsGatekeeper1] =
+      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts1);
+    console.log("createNsGKTxSig1: %s", createNsGKTxSig1);
+
+    const createNsGKAccounts2: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: ns2Mint,
+    };
+
+    const [createNsGKTxSig2, _nsGatekeeper2] =
+      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts2);
+    console.log("createNsGKTxSig2: %s", createNsGKTxSig2);
+
+    const addToNsGatekeeperArgs: nsIx.AddToNamespaceGatekeeperArgs = {
+      artifactFilter: {
+        tokenType: nsState.TokenType.Item,
+        filter: new nsState.Filter(
+          nsState.FilterType.FilterNamespaces,
+          new nsState.FilterNamespaces([namespace2])
+        ),
+      },
+    };
+
+    const addToNsGatekeeperAccounts: nsIx.AddToNamespaceGatekeeperAccounts = {
+      namespaceMint: ns1Mint,
+    };
+
+    const addToNsGkTxSig = await namespaceProgram.addToNamespaceGatekeeper(
+      addToNsGatekeeperArgs,
+      addToNsGatekeeperAccounts
+    );
+    console.log("addToNsGkTxSig: %s", addToNsGkTxSig);
+
+    const itemClass = await createItemClasses(
+      payer,
+      anchor.getProvider().connection,
+      1
+    );
+
+    // join to namespace which allows any artifact to join it
+    const joinNsTxSig1 = await namespaceProgram.joinNamespace({
+      namespaceMint: ns2Mint,
+      artifact: itemClass[0],
+    });
+    console.log("artifact joined to namespace2: %s", joinNsTxSig1);
+
+    // join to namespace with the namespace filter added to the gatekeeper
+    const joinNsTxSig2 = await namespaceProgram.joinNamespace({
+      namespaceMint: ns1Mint,
+      artifact: itemClass[0],
+    });
+    console.log("artifact joined to namespace1: %s", joinNsTxSig2);
+
+  });
+
   it("join item class to namespace then leave", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(

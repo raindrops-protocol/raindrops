@@ -15,6 +15,7 @@ import {
   ArtifactFilter,
   PermissivenessSettings,
   convertTokenType,
+  convertPermissiveness,
 } from "../state/namespace";
 import * as splToken from "@solana/spl-token";
 
@@ -103,9 +104,26 @@ export class Instruction extends SolKitInstruction {
 
     let ix: web3.TransactionInstruction;
 
+    let permissivenessSettings = {
+      namespacePermissiveness: convertPermissiveness(args.permissivenessSettings.namespacePermissiveness),
+      itemPermissiveness: convertPermissiveness(args.permissivenessSettings.itemPermissiveness),
+      playerPermissiveness: convertPermissiveness(args.permissivenessSettings.playerPermissiveness),
+      matchPermissiveness: convertPermissiveness(args.permissivenessSettings.matchPermissiveness),
+      missionPermissiveness: convertPermissiveness(args.permissivenessSettings.missionPermissiveness),
+      cachePermissiveness: convertPermissiveness(args.permissivenessSettings.cachePermissiveness),
+    };
+
+    let formattedArgs = {
+      desiredNamespaceArraySize: args.desiredNamespaceArraySize,
+      uuid: args.uuid,
+      prettyName: args.prettyName,
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: args.whitelistedStakingMints,
+    }
+
     if (remainingAccounts.length > 0) {
       ix = await this.program.client.methods
-        .initializeNamespace(args)
+        .initializeNamespace(formattedArgs)
         .accounts({
           namespace: namespacePDA,
           mint: accounts.mint,
@@ -121,7 +139,7 @@ export class Instruction extends SolKitInstruction {
         .instruction();
     } else {
       ix = await this.program.client.methods
-        .initializeNamespace(args)
+        .initializeNamespace(formattedArgs)
         .accounts({
           namespace: namespacePDA,
           mint: accounts.mint,

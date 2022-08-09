@@ -111,6 +111,7 @@ pub mod namespace {
         } else {
             namespace.namespaces = None
         }
+        msg!("{:?}", permissiveness_settings);
 
         namespace.bump = *ctx.bumps.get("namespace").unwrap();
         namespace.uuid = uuid;
@@ -401,7 +402,7 @@ pub mod namespace {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum Permissiveness {
     All,
     Whitelist,
@@ -458,7 +459,7 @@ impl NamespaceGatekeeper {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct PermissivenessSettings {
     namespace_permissiveness: Permissiveness,
     item_permissiveness: Permissiveness,

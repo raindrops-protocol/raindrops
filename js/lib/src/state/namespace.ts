@@ -10,11 +10,25 @@ export class PermissivenessSettings {
   cachePermissiveness: Permissiveness;
 }
 
-export class Permissiveness {
-  All: { all: {} };
-  Whitelist: { whitelist: {} };
-  Blacklist: { blacklist: {} };
-  Namespace: { namespace: {} };
+export enum Permissiveness {
+  All,
+  Whitelist,
+  Blacklist,
+  Namespace,
+}
+
+// conver enum to an anchor compatible type
+export function convertPermissiveness(p: Permissiveness): {} {
+  switch (p) {
+    case Permissiveness.All:
+      return { all: {} };
+    case Permissiveness.Whitelist:
+      return { whitelist: {} };
+    case Permissiveness.Blacklist:
+      return { blacklist: {} };
+    case Permissiveness.Namespace:
+      return { namespace: {} };
+  }
 }
 
 export class ArtifactFilter {
