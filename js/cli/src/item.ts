@@ -924,7 +924,7 @@ programCommand("show_item_class")
       ? settings.childUpdatePropagationPermissiveness.map((u) => {
           log.info(
             `------> ${InheritanceState[u.inherited]} ${
-              ItemState.ChildUpdatePropagationPermissivenessType[
+              State.ChildUpdatePropagationPermissivenessType[
                 u.childUpdatePropagationPermissivenessType
               ]
             } - is overridable? ${u.overridable}`

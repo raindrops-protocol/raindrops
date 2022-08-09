@@ -1,0 +1,8 @@
+edition = "2018"
+group_imports = "Preserve"
+imports_granularity = "Crate"
+imports_indent = "Block"
+max_width = 100
+reorder_impl_items = false
+reorder_imports = true
+reorder_modules = true

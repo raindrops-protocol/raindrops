@@ -1,32 +1,33 @@
 pub mod utils;
 
-use {
-    crate::utils::{
-        assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal,
-        assert_metadata_valid, assert_mint_authority_matches_mint, assert_permissiveness_access,
-        assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
-        is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
-        spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
-        update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
-        verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
-        GetItemUsageArgs, TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
-        VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
+use crate::utils::{
+    assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
+    assert_mint_authority_matches_mint, assert_permissiveness_access,
+    assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
+    propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
+    spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
+    verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
+    AssertPermissivenessAccessArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
+    TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
+    VerifyCooldownArgs,
+};
+use anchor_lang::{
+    prelude::*,
+    solana_program::{
+        instruction::Instruction, program::invoke, program_option::COption, sysvar,
+        sysvar::instructions::get_instruction_relative,
     },
-    anchor_lang::{
-        prelude::*,
-        solana_program::{instruction::Instruction, program::invoke, program_option::COption},
-        AnchorDeserialize, AnchorSerialize, Discriminator,
-    },
-    anchor_spl::token::{Mint, Token, TokenAccount},
-    arrayref::array_ref,
-    std::str::FromStr,
+    AnchorDeserialize, AnchorSerialize, Discriminator,
 };
 anchor_lang::declare_id!("CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4");
+use anchor_spl::token::{Mint, Token, TokenAccount};
+use arrayref::array_ref;
+use std::str::FromStr;
 pub const PREFIX: &str = "item";
-pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
 pub const NAMESPACE_ID: &str = "AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X";
+pub const STAKING_ID: &str = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4";
 pub const RENT_ID: &str = "SysvarRent111111111111111111111111111111111";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -269,6 +270,14 @@ pub struct EndItemActivationArgs {
     // Required if using roots
     pub usage_proof: Option<Vec<[u8; 32]>>,
     pub usage: Option<ItemUsage>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UpdateTokensStakedArgs {
+    pub item_mint: Pubkey,
+    pub index: u64,
+    pub staked: bool,
+    pub amount: u64,
 }
 
 #[program]
@@ -1807,6 +1816,34 @@ pub mod item {
             return Err(error!(ErrorCode::FailedToUncache));
         }
         item_class.namespaces = Some(new_namespaces);
+    }
+
+    pub fn update_tokens_staked<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdateTokensStaked<'info>>,
+        args: UpdateTokensStakedArgs,
+    ) -> Result<()> {
+        let item = &mut ctx.accounts.item;
+        let instruction_sysvar_account = &ctx.accounts.instruction_sysvar_account;
+
+        let instruction_sysvar_account_info = instruction_sysvar_account.to_account_info();
+        let current_ix = get_instruction_relative(0, &instruction_sysvar_account_info).unwrap();
+
+        require!(
+            current_ix.program_id == Pubkey::from_str(STAKING_ID).unwrap(),
+            ErrorCode::MustBeCalledByStakingProgram
+        );
+
+        if args.staked {
+            item.tokens_staked = item
+                .tokens_staked
+                .checked_add(args.amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        } else {
+            item.tokens_staked = item
+                .tokens_staked
+                .checked_sub(args.amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
 
         Ok(())
     }
@@ -2594,6 +2631,7 @@ pub struct EndItemActivation<'info> {
 }
 
 #[derive(Accounts)]
+<<<<<<< HEAD
 pub struct ItemClassJoinNamespace<'info> {
     #[account(mut)]
     item_class: Account<'info, ItemClass>,
@@ -2632,6 +2670,23 @@ pub struct ItemClassUnCacheNamespace<'info> {
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
+=======
+#[instruction(args: UpdateTokensStakedArgs)]
+pub struct UpdateTokensStaked<'info> {
+    #[account(
+        mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            args.item_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        bump=item.bump
+    )]
+    item: Account<'info, Item>,
+    /// CHECK: account constraints checked in account trait
+    #[account(address = sysvar::instructions::id())]
+    instruction_sysvar_account: UncheckedAccount<'info>,
+>>>>>>> 1acc0dcda7b1893135e3fcff8a8def7a7343528f
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -3172,6 +3227,7 @@ pub enum ErrorCode {
     AtaShouldNotHaveDelegate,
     #[msg("Reinitialization hack detected")]
     ReinitializationDetected,
+<<<<<<< HEAD
     #[msg("Failed to join namespace")]
     FailedToJoinNamespace,
     #[msg("Failed to leave namespace")]
@@ -3186,4 +3242,8 @@ pub enum ErrorCode {
     NotCached,
     #[msg("Unauthorized Caller")]
     UnauthorizedCaller,
+=======
+    #[msg("Must be called by staking program")]
+    MustBeCalledByStakingProgram,
+>>>>>>> 1acc0dcda7b1893135e3fcff8a8def7a7343528f
 }
