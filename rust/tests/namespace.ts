@@ -601,7 +601,7 @@ describe("namespace", () => {
     assert(nsData.artifactsCached === 0);
   });
 
-  it.only("cache 101 items to namespace, tests cache pagination, then uncache them all", async () => {
+  it("cache 101 items to namespace, tests cache pagination, then uncache them all", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
