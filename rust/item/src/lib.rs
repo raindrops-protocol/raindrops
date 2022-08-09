@@ -6,7 +6,7 @@ use crate::utils::{
     assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
     propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
     spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
-    verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
+    verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data, is_namespace_program_caller,
     AssertPermissivenessAccessArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
     TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
     VerifyCooldownArgs,
@@ -1816,6 +1816,8 @@ pub mod item {
             return Err(error!(ErrorCode::FailedToUncache));
         }
         item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
     }
 
     pub fn update_tokens_staked<'a, 'b, 'c, 'info>(
@@ -2631,7 +2633,6 @@ pub struct EndItemActivation<'info> {
 }
 
 #[derive(Accounts)]
-<<<<<<< HEAD
 pub struct ItemClassJoinNamespace<'info> {
     #[account(mut)]
     item_class: Account<'info, ItemClass>,
@@ -2670,7 +2671,9 @@ pub struct ItemClassUnCacheNamespace<'info> {
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
-=======
+}
+
+#[derive(Accounts)]
 #[instruction(args: UpdateTokensStakedArgs)]
 pub struct UpdateTokensStaked<'info> {
     #[account(
@@ -2686,7 +2689,6 @@ pub struct UpdateTokensStaked<'info> {
     /// CHECK: account constraints checked in account trait
     #[account(address = sysvar::instructions::id())]
     instruction_sysvar_account: UncheckedAccount<'info>,
->>>>>>> 1acc0dcda7b1893135e3fcff8a8def7a7343528f
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -3227,7 +3229,6 @@ pub enum ErrorCode {
     AtaShouldNotHaveDelegate,
     #[msg("Reinitialization hack detected")]
     ReinitializationDetected,
-<<<<<<< HEAD
     #[msg("Failed to join namespace")]
     FailedToJoinNamespace,
     #[msg("Failed to leave namespace")]
@@ -3242,8 +3243,6 @@ pub enum ErrorCode {
     NotCached,
     #[msg("Unauthorized Caller")]
     UnauthorizedCaller,
-=======
     #[msg("Must be called by staking program")]
-    MustBeCalledByStakingProgram,
->>>>>>> 1acc0dcda7b1893135e3fcff8a8def7a7343528f
+    MustBeCalledByStakingProgram
 }

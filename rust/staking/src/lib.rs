@@ -1,7 +1,7 @@
 pub mod utils;
 
 use crate::utils::{assert_is_proper_class, assert_is_proper_instance, assert_part_of_namespace};
-use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize, solana_program::sysvar};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::{
     program::Item,
