@@ -1649,6 +1649,81 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
     )?)
 }
 
+pub fn assert_index_and_name_uniqueness_in_player_class_data(data: &PlayerClassData) -> Result<()> {
+    assert_index_and_name_uniqueness_in_basic_stat_templates(&data.config.basic_stats)?;
+    assert_index_and_name_uniqueness_in_body_parts(&data.config.body_parts)?;
+    Ok(())
+}
+
+pub fn assert_index_and_name_uniqueness_in_basic_stat_templates(
+    basic_stats: &Option<Vec<BasicStatTemplate>>,
+) -> Result<()> {
+    if let Some(stats) = basic_stats {
+        let mut indices = vec![];
+        let mut names = vec![];
+        for stat in stats {
+            indices.push(stat.index);
+            names.push(&stat.name)
+        }
+
+        assert_index_uniqueness(indices)?;
+        assert_name_uniqueness(names)?;
+    }
+    Ok(())
+}
+
+pub fn assert_index_and_name_uniqueness_in_body_parts(
+    body_parts: &Option<Vec<BodyPart>>,
+) -> Result<()> {
+    if let Some(bp) = body_parts {
+        let mut indices = vec![];
+        let mut names = vec![];
+        for body_part in bp {
+            indices.push(body_part.index);
+            names.push(&body_part.body_part)
+        }
+
+        assert_index_uniqueness(indices)?;
+        assert_name_uniqueness(names)?;
+    }
+    Ok(())
+}
+
+pub fn assert_index_uniqueness(stats: Vec<u16>) -> Result<()> {
+    let mut indices_seen: Vec<u8> = vec![];
+    for stat in &stats {
+        let my_index = *stat as usize;
+        if indices_seen.len() > my_index {
+            if indices_seen[my_index] > 0 {
+                return Err(ErrorCode::IndexAlreadyUsed.into());
+            } else {
+                indices_seen[my_index] = 1
+            }
+        } else {
+            while indices_seen.len() < my_index {
+                indices_seen.push(0)
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn assert_name_uniqueness(stats: Vec<&String>) -> Result<()> {
+    let mut i = 0;
+    for stat in &stats {
+        let mut j = 0;
+        for other_stat in &stats {
+            if stat == other_stat && j != i {
+                return Err(ErrorCode::NameAlreadyUsed.into());
+            }
+            j += 1;
+        }
+        i += 1;
+    }
+    Ok(())
+}
+
 pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
     pub program_id: &'a Pubkey,
     pub given_account: &'b AccountInfo<'info>,

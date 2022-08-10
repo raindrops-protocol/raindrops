@@ -31,12 +31,22 @@ const {
 } = ContractCommon;
 
 const PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS = [
+  "playerClassData.settings.stakingWarmUpDuration",
+  "playerClassData.settings.stakingCooldownDuration",
   "playerClassData.config.basicStats.[].statType.integer.min",
   "playerClassData.config.basicStats.[].statType.integer.max",
   "playerClassData.config.basicStats.[].statType.integer.starting",
   "playerClassData.config.basicStats.[].statType.integer.stakingAmountScaler",
   "playerClassData.config.basicStats.[].statType.integer.stakingDurationScaler",
   "playerClassData.config.basicStats.[].statType.bool.stakingFlip",
+  "playerClassData.config.bodyParts.[].totalItemSpots",
+  "playerClassData.config.equipValidation.code",
+  "playerClassData.config.addToPackValidation.code",
+];
+
+const PLAYER_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS = [
+  "playerClassData.config.equipValidation.key",
+  "playerClassData.config.addToPackValidation.key",
 ];
 export interface ToggleEquipItemArgs {
   itemIndex: BN;
@@ -344,6 +354,11 @@ export class Instruction extends SolKitInstruction {
       ...PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS,
     ]);
 
+    InstructionUtils.convertStringsToPublicKeys(
+      args,
+      PLAYER_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS
+    );
+
     const [playerClassKey, _] = await getPlayerPDA(
       accounts.playerMint,
       args.classIndex
@@ -393,6 +408,11 @@ export class Instruction extends SolKitInstruction {
       "parentClassIndex",
       ...PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS,
     ]);
+
+    InstructionUtils.convertStringsToPublicKeys(
+      args,
+      PLAYER_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS
+    );
 
     const playerClassKey = (
       await getPlayerPDA(accounts.playerMint, args.classIndex)

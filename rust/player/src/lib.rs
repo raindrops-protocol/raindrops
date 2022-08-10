@@ -337,6 +337,7 @@ pub mod player {
             player_class.mint = Some(player_mint.key());
         }
 
+        assert_index_and_name_uniqueness_in_player_class_data(&player_class_data)?;
         player_class.data = player_class_data;
 
         Ok(())
@@ -397,6 +398,7 @@ pub mod player {
             return Err(error!(ErrorCode::ExpectedParent));
         }
 
+        assert_index_and_name_uniqueness_in_player_class_data(&new_player_class_data)?;
         player_class.data = new_player_class_data;
 
         Ok(())
@@ -2157,4 +2159,8 @@ pub enum ErrorCode {
     PermissivenessNotFound,
     #[msg("Must specify permissiveness type")]
     MustSpecifyPermissivenessType,
+    #[msg("Cannot use the same index in basic stats or body parts twice")]
+    IndexAlreadyUsed,
+    #[msg("Cannot use the same name in basic stats or body parts twice")]
+    NameAlreadyUsed,
 }

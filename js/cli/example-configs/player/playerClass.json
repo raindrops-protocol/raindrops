@@ -1,9 +1,18 @@
 {
   "data": {
     "settings": {
-      "defaultCategory": null,
-      "childrenMustBeEditions": null,
-      "builderMustBeHolder": null,
+      "defaultCategory": {
+        "category": "Warrior",
+        "inherited": { "notInherited": true }
+      },
+      "childrenMustBeEditions": {
+        "boolean": false,
+        "inherited": { "notInherited": true }
+      },
+      "builderMustBeHolder": {
+        "boolean": true,
+        "inherited": { "notInherited": true }
+      },
       "updatePermissiveness": [
         {
           "permissivenessType": { "tokenHolder": true },
@@ -42,8 +51,8 @@
       ],
       "unequipItemPermissiveness": null,
       "removeItemPermissiveness": null,
-      "stakingWarmUpDuration": null,
-      "stakingCooldownDuration": null,
+      "stakingWarmUpDuration": 10,
+      "stakingCooldownDuration": 10,
       "stakingPermissiveness": [
         {
           "permissivenessType": { "tokenHolder": true },
@@ -132,17 +141,6 @@
       "startingStatsUri": null,
       "basicStats": [
         {
-          "index": 1,
-          "name": "alive",
-          "inherited": { "notInherited": true },
-          "statType": {
-            "bool": {
-              "starting": true,
-              "stakingFlip": 5
-            }
-          }
-        },
-        {
           "index": 0,
           "name": "str",
           "inherited": { "notInherited": true },
@@ -151,8 +149,8 @@
               "min": 1,
               "max": 10,
               "starting": 3,
-              "startingAmountScaler": null,
-              "startingDurationScaler": null
+              "stakingAmountScaler": 1,
+              "stakingDurationScaler": 2
             }
           }
         },
@@ -165,23 +163,16 @@
               "starting": "billy"
             }
           }
-        },
-        {
-          "index": 3,
-          "name": "status",
-          "inherited": { "notInherited": true },
-          "statType": {
-            "enum": {
-              "starting": 1,
-              "values": [
-                { "name": "hungry", "value": 1 },
-                { "name": "satiated", "value": 0 }
-              ]
-            }
-          }
         }
       ],
-      "bodyParts": null,
+      "bodyParts": [
+        {
+          "index": 0,
+          "bodyPart": "Arm",
+          "totalItemSpots": 1,
+          "inherited": { "notInherited": true }
+        }
+      ],
       "equipValidation": null,
       "addToPackValidation": null
     }
@@ -190,8 +181,8 @@
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
-  "index": 0,
+  "index": 1,
   "updatePermissivenessToUse": { "tokenHolder": true },
   "namespaceRequirement": 1,
-  "totalSpaceBytes": 300
+  "totalSpaceBytes": 400
 }

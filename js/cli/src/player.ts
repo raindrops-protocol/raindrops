@@ -312,7 +312,9 @@ CLI.programCommand("show_player_class")
           );
           log.info(
             "------> Staking Duration Scaler:",
-            v.stakingAmountScaler ? v.stakingAmountScaler.toNumber() : "None"
+            v.stakingDurationScaler
+              ? v.stakingDurationScaler.toNumber()
+              : "None"
           );
         } else if (c.statType.enum) {
           const v = c.statType.enum;
@@ -355,11 +357,12 @@ CLI.programCommand("show_player_class")
         );
       });
 
+    log.info("-------");
     log.info(
       "------> Equipment Validation Callback:",
       config.equipValidation
         ? `Call ${config.equipValidation.key.toBase58()} with ${
-            config.equipValidation.callback.code
+            config.equipValidation.code
           }`
         : "Not Set"
     );
@@ -368,7 +371,7 @@ CLI.programCommand("show_player_class")
       "------> Add to Pack Callback:",
       config.addToPackValidation
         ? `Call ${config.addToPackValidation.key.toBase58()} with ${
-            config.addToPackValidation.callback.code
+            config.addToPackValidation.code
           }`
         : "Not Set"
     );
