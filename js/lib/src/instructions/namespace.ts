@@ -410,7 +410,8 @@ export class Instruction extends SolKitInstruction {
     );
 
     // sort ascending
-    const sortedFullPages = nsData.fullPages.sort();
+    const fullPages: BN[] = nsData.fullPages as BN[];
+    const sortedFullPages = fullPages.sort();
     // increment 1 higher than the last full page
     if (sortedFullPages.length > 0) {
       page = new BN(sortedFullPages[sortedFullPages.length - 1] + 1);
