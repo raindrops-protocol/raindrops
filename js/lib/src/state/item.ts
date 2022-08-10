@@ -4,6 +4,7 @@ import { extendBorsh } from "../utils/borsh";
 import {
   Callback,
   ChildUpdatePropagationPermissiveness,
+  AnchorInheritanceState,
   InheritanceState,
   InheritedBoolean,
   NamespaceAndIndex,
@@ -155,8 +156,8 @@ export class Component {
   timeToBuild: null | BN;
   componentScope: string;
   useUsageIndex: number;
-  condition: ComponentCondition;
-  inherited: InheritanceState;
+  condition: ComponentCondition | AnchorComponentCondition;
+  inherited: InheritanceState | AnchorInheritanceState;
 
   constructor(args: {
     mint: web3.PublicKey;
@@ -165,8 +166,8 @@ export class Component {
     timeToBuild: null | BN;
     componentScope: string;
     useUsageIndex: number;
-    condition: ComponentCondition;
-    inherited: InheritanceState;
+    condition: ComponentCondition | AnchorComponentCondition;
+    inherited: InheritanceState | AnchorInheritanceState;
   }) {
     this.classIndex = args.classIndex;
     this.mint = args.mint;
@@ -209,22 +210,22 @@ export class ItemUsage {
   index: number;
   basicItemEffects: null | BasicItemEffect[];
   usagePermissiveness: PermissivenessType[];
-  inherited: InheritanceState;
+  inherited: AnchorInheritanceState | InheritanceState;
   itemClassType: ItemClassType;
   callback: null | Callback;
   validation: null | Callback;
-  doNotPairWithSelf: InheritedBoolean;
+  doNotPairWithSelf: boolean | InheritedBoolean;
   dnp: null | DNPItem[];
 
   constructor(args: {
     index: number;
     basicItemEffects: null | BasicItemEffect[];
     usagePermissiveness: PermissivenessType[];
-    inherited: InheritanceState;
+    inherited: AnchorInheritanceState | InheritanceState;
     itemClassType: ItemClassType;
     callback: null | Callback;
     validation: null | Callback;
-    doNotPairWithSelf: InheritedBoolean;
+    doNotPairWithSelf: boolean | InheritedBoolean;
     dnp: null | DNPItem[];
   }) {
     this.index = args.index;
@@ -274,10 +275,10 @@ export class ItemClass {
 }
 
 export class ItemClassType {
-  wearable?: Wearable;
-  consumable?: Consumable;
+  wearable?: Wearable | null;
+  consumable?: Consumable | null;
 
-  constructor(args: { wearable?: Wearable; consumable?: Consumable }) {
+  constructor(args: { wearable?: Wearable | null; consumable?: Consumable | null }) {
     this.wearable = args.wearable;
     this.consumable = args.consumable;
   }
