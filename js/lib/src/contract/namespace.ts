@@ -5,7 +5,7 @@ import * as NamespaceInstruction from "../instructions/namespace";
 import { NAMESPACE_ID } from "../constants/programIds";
 import { PREFIX } from "../constants/namespace";
 import { Namespace, NamespaceGatekeeper } from "../state/namespace";
-import { getNamespacePDA } from "../utils/pda";
+import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
 export class NamespaceProgram extends Program.Program {
   declare instruction: NamespaceInstruction.Instruction;
@@ -22,13 +22,11 @@ export class NamespaceProgram extends Program.Program {
     args: NamespaceInstruction.InitializeNamespaceArgs,
     accounts: NamespaceInstruction.InitializeNamespaceAccounts,
     options?: SendOptions,
-  ): Promise<[string, web3.PublicKey]> {
+  ): Promise<SendTransactionResult> {
     const [instruction, namespacePDA] =
       await this.instruction.initializeNamespace(args, accounts);
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return [result.txid, namespacePDA];
+    return await this.sendWithRetry(instruction, [], options);
   }
 
   async fetchNamespace(namespace: web3.PublicKey): Promise<Namespace> {
@@ -48,97 +46,82 @@ export class NamespaceProgram extends Program.Program {
     args: NamespaceInstruction.UpdateNamespaceArgs,
     accounts: NamespaceInstruction.UpdateNamespaceAccounts,
     options?: SendOptions
-  ): Promise<string> {
+  ): Promise<SendTransactionResult> {
     const instruction = await this.instruction.updateNamespace(args, accounts);
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return result.txid;
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async createNamespaceGatekeeper(
     accounts: NamespaceInstruction.CreateNamespaceGatekeeperAccounts,
     options?: SendOptions
-  ): Promise<[string, web3.PublicKey]> {
+  ): Promise<SendTransactionResult> {
     const [instruction, gatekeeper] =
       await this.instruction.createNamespaceGatekeeper(accounts);
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return [result.txid, gatekeeper];
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async addToNamespaceGatekeeper(
     args: NamespaceInstruction.AddToNamespaceGatekeeperArgs,
     accounts: NamespaceInstruction.AddToNamespaceGatekeeperAccounts,
     options?: SendOptions
-  ): Promise<string> {
+  ): Promise<SendTransactionResult> {
     const instruction = await this.instruction.addToNamespaceGatekeeper(
       args,
       accounts
     );
-    const result = await this.sendWithRetry(instruction, [], options);
 
-    return result.txid;
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async removeFromNamespaceGatekeeper(
     args: NamespaceInstruction.RemoveFromNamespaceGatekeeperArgs,
     accounts: NamespaceInstruction.RemoveFromNamespaceGatekeeperAccounts,
     options?: SendOptions
-  ): Promise<string> {
+  ): Promise<SendTransactionResult> {
     const instruction = await this.instruction.removeFromNamespaceGatekeeper(
       args,
       accounts
     );
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return result.txid;
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async joinNamespace(
     accounts: NamespaceInstruction.JoinNamespaceAccounts,
     options?: SendOptions,
-  ): Promise<string> {
+  ): Promise<SendTransactionResult> {
     const instruction = await this.instruction.joinNamespace(accounts);
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return result.txid;
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async leaveNamespace(
     accounts: NamespaceInstruction.LeaveNamespaceAccounts,
     options?: SendOptions,
-  ): Promise<string> {
+  ): Promise<SendTransactionResult> {
     const instruction = await this.instruction.leaveNamespace(accounts);
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return result.txid;
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async cacheArtifact(
     accounts: NamespaceInstruction.CacheArtifactAccounts,
     options?: SendOptions,
-  ): Promise<string> {
+  ): Promise<SendTransactionResult> {
     const instruction = await this.instruction.cacheArtifact(accounts);
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return result.txid;
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async uncacheArtifact(
     args: NamespaceInstruction.UncacheArtifactArgs,
     accounts: NamespaceInstruction.UncacheArtifactAccounts,
     options?: SendOptions,
-  ): Promise<string> {
+  ): Promise<SendTransactionResult> {
     const instruction = await this.instruction.uncacheArtifact(args, accounts);
 
-    const result = await this.sendWithRetry(instruction, [], options);
-
-    return result.txid;
+    return this.sendWithRetry(instruction, [], options);
   }
 }

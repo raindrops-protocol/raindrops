@@ -10,6 +10,7 @@ import { NamespaceProgram } from "../../js/lib/src/contract/namespace";
 import * as nsIx from "../../js/lib/src/instructions/namespace";
 import * as nsState from "../../js/lib/src/state/namespace";
 import * as pids from "../../js/lib/src/constants/programIds";
+import * as pdas from "../../js/lib/src/utils/pda";
 import { assert } from "quicktype-core";
 
 describe("namespace", () => {
@@ -61,12 +62,13 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const result = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
+    console.log("initNsTxSig: %s", result.txid);
 
-    console.log("initNsTxSig: %s", initNsTxSig);
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
 
     const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.permissivenessSettings !== null);
@@ -126,12 +128,13 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const result = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
 
-    console.log("initNsTxSig: %s", initNsTxSig);
+    console.log("initNsTxSig: %s", result.txid);
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
 
     const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.whitelistedStakingMints.length === 1);
@@ -190,11 +193,13 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const result = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
-    console.log("initNsTxSig: %s", initNsTxSig);
+    console.log("initNsTxSig: %s", result.txid);
+
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
 
     var nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.prettyName === "my-ns");
@@ -219,11 +224,11 @@ describe("namespace", () => {
       namespaceMint: nsMint,
     };
 
-    const updateNsTxSig = await namespaceProgram.updateNamespace(
+    const updateResult = await namespaceProgram.updateNamespace(
       updateNsArgs,
       updateNsAccounts
     );
-    console.log("updateNsTxSig: %s", updateNsTxSig);
+    console.log("updateNsTxSig: %s", updateResult.txid);
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.prettyName === "new-name");
@@ -276,20 +281,25 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const initNsResult = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
 
-    console.log("initNsTxSig: %s", initNsTxSig);
+    console.log("initNsTxSig: %s", initNsResult.txid);
 
     const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: nsMint,
     };
 
-    const [createNsGKTxSig, nsGatekeeper] =
-      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
-    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+    const createGKResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGKResult.txid);
+
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
+    const [nsGatekeeper, _nsGatekeeperBump] =
+      await pdas.getNamespaceGatekeeperPDA(namespace);
 
     const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.gatekeeper.equals(nsGatekeeper));
@@ -340,20 +350,25 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const initNsResult = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
 
-    console.log("initNsTxSig: %s", initNsTxSig);
+    console.log("initNsTxSig: %s", initNsResult.txid);
 
     const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: nsMint,
     };
 
-    const [createNsGKTxSig, nsGatekeeper] =
-      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
-    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+    const createGKResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGKResult.txid);
+
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
+    const [nsGatekeeper, _nsGatekeeperBump] =
+      await pdas.getNamespaceGatekeeperPDA(namespace);
 
     const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.gatekeeper.equals(nsGatekeeper));
@@ -372,11 +387,11 @@ describe("namespace", () => {
       namespaceMint: nsMint,
     };
 
-    const addToNsGkTxSig = await namespaceProgram.addToNamespaceGatekeeper(
+    const addResult = await namespaceProgram.addToNamespaceGatekeeper(
       addToNsGatekeeperArgs,
       addToNsGatekeeperAccounts
     );
-    console.log("addToNsGkTxSig: %s", addToNsGkTxSig);
+    console.log("addToNsGkTxSig: %s", addResult.txid);
 
     let nsGkData = await namespaceProgram.fetchNamespaceGatekeeper(
       nsGatekeeper
@@ -398,12 +413,11 @@ describe("namespace", () => {
         namespaceMint: nsMint,
       };
 
-    const rmFromNsGkTxSig =
-      await namespaceProgram.removeFromNamespaceGatekeeper(
-        rmFromNsGatekeeperArgs,
-        rmFromNsGatekeeperAccounts
-      );
-    console.log("rmFromNsGkTxSig: %s", rmFromNsGkTxSig);
+    const rmResult = await namespaceProgram.removeFromNamespaceGatekeeper(
+      rmFromNsGatekeeperArgs,
+      rmFromNsGatekeeperAccounts
+    );
+    console.log("rmFromNsGkTxSig: %s", rmResult);
 
     nsGkData = await namespaceProgram.fetchNamespaceGatekeeper(nsGatekeeper);
     assert(nsGkData.artifactFilters.length === 0);
@@ -458,13 +472,12 @@ describe("namespace", () => {
       masterEdition: ns1MasterEdition,
     };
 
-    const [initNsTxSig1, _namespace1] =
-      await namespaceProgram.initializeNamespace(
-        initializeNamespaceArgs1,
-        initializeNamespaceAccounts1
-      );
+    const initNsResult = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs1,
+      initializeNamespaceAccounts1
+    );
 
-    console.log("initNsTxSig1: %s", initNsTxSig1);
+    console.log("initNsTxSig1: %s", initNsResult.txid);
 
     const [ns2Mint, ns2Metadata, ns2MasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
@@ -496,29 +509,32 @@ describe("namespace", () => {
       masterEdition: ns2MasterEdition,
     };
 
-    const [initNsTxSig2, namespace2] =
-      await namespaceProgram.initializeNamespace(
-        initializeNamespaceArgs2,
-        initializeNamespaceAccounts2
-      );
+    const initNsResult2 = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs2,
+      initializeNamespaceAccounts2
+    );
 
-    console.log("initNsTxSig2: %s", initNsTxSig2);
+    console.log("initNsTxSig2: %s", initNsResult2.txid);
 
     const createNsGKAccounts1: nsIx.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: ns1Mint,
     };
 
-    const [createNsGKTxSig1, _nsGatekeeper1] =
-      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts1);
-    console.log("createNsGKTxSig1: %s", createNsGKTxSig1);
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts1
+    );
+    console.log("createNsGKTxSig1: %s", createGkResult.txid);
 
     const createNsGKAccounts2: nsIx.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: ns2Mint,
     };
 
-    const [createNsGKTxSig2, _nsGatekeeper2] =
-      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts2);
-    console.log("createNsGKTxSig2: %s", createNsGKTxSig2);
+    const createGkResult2 = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts2
+    );
+    console.log("createNsGKTxSig2: %s", createGkResult2.txid);
+
+    const [namespace2, _namespaceBump] = await pdas.getNamespacePDA(ns2Mint);
 
     const addToNsGatekeeperArgs: nsIx.AddToNamespaceGatekeeperArgs = {
       artifactFilter: {
@@ -534,11 +550,11 @@ describe("namespace", () => {
       namespaceMint: ns1Mint,
     };
 
-    const addToNsGkTxSig = await namespaceProgram.addToNamespaceGatekeeper(
+    const addResult = await namespaceProgram.addToNamespaceGatekeeper(
       addToNsGatekeeperArgs,
       addToNsGatekeeperAccounts
     );
-    console.log("addToNsGkTxSig: %s", addToNsGkTxSig);
+    console.log("addToNsGkTxSig: %s", addResult.txid);
 
     const itemClass = await createItemClasses(
       payer,
@@ -547,18 +563,18 @@ describe("namespace", () => {
     );
 
     // join to namespace which allows any artifact to join it
-    const joinNsTxSig1 = await namespaceProgram.joinNamespace({
+    const joinNsResult = await namespaceProgram.joinNamespace({
       namespaceMint: ns2Mint,
       artifact: itemClass[0],
     });
-    console.log("artifact joined to namespace2: %s", joinNsTxSig1);
+    console.log("artifact joined to namespace2: %s", joinNsResult.txid);
 
     // join to namespace with the namespace filter added to the gatekeeper
-    const joinNsTxSig2 = await namespaceProgram.joinNamespace({
+    const joinNsResult2 = await namespaceProgram.joinNamespace({
       namespaceMint: ns1Mint,
       artifact: itemClass[0],
     });
-    console.log("artifact joined to namespace1: %s", joinNsTxSig2);
+    console.log("artifact joined to namespace1: %s", joinNsResult2.txid);
   });
 
   it("join item class to namespace then leave", async () => {
@@ -606,20 +622,21 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const initNsResult = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
 
-    console.log("initNsTxSig: %s", initNsTxSig);
+    console.log("initNsTxSig: %s", initNsResult.txid);
 
     const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: nsMint,
     };
 
-    const [createNsGKTxSig, _nsGatekeeper] =
-      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
-    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
 
     const itemClass = await createItemClasses(
       payer,
@@ -632,9 +649,10 @@ describe("namespace", () => {
       artifact: itemClass[0],
     };
 
-    const joinNsTxSig = await namespaceProgram.joinNamespace(joinNsAccounts);
-    console.log("joinNsTxSig: %s", joinNsTxSig);
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
 
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
     var nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 0);
@@ -644,8 +662,10 @@ describe("namespace", () => {
       artifact: itemClass[0],
     };
 
-    const leaveNsTxSig = await namespaceProgram.leaveNamespace(leaveNsAccounts);
-    console.log("leaveNsTxSig: %s", leaveNsTxSig);
+    const leaveNsResult = await namespaceProgram.leaveNamespace(
+      leaveNsAccounts
+    );
+    console.log("leaveNsTxSig: %s", leaveNsResult.txid);
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
     // TODO: not sure why this doesnt work
@@ -698,20 +718,21 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const initNsResult = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
 
-    console.log("initNsTxSig: %s", initNsTxSig);
+    console.log("initNsTxSig: %s", initNsResult.txid);
 
     const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: nsMint,
     };
 
-    const [createNsGKTxSig, _nsGatekeeper] =
-      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
-    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
 
     const itemClass = await createItemClasses(
       payer,
@@ -724,19 +745,20 @@ describe("namespace", () => {
       artifact: itemClass[0],
     };
 
-    const joinNsTxSig = await namespaceProgram.joinNamespace(joinNsAccounts);
-    console.log("joinNsTxSig: %s", joinNsTxSig);
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
 
     const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
     };
 
-    const cacheArtifactTxSig = await namespaceProgram.cacheArtifact(
+    const cacheArtifactResult = await namespaceProgram.cacheArtifact(
       cacheArtifactAccounts
     );
-    console.log("cacheArtifactTxSig: %s", cacheArtifactTxSig);
+    console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
 
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
     var nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 1);
@@ -753,11 +775,11 @@ describe("namespace", () => {
       page: new anchor.BN(page),
     };
 
-    const uncacheArtifactTxSig = await namespaceProgram.uncacheArtifact(
+    const uncacheArtifactResult = await namespaceProgram.uncacheArtifact(
       uncacheArtifactArgs,
       uncacheArtifactAccounts
     );
-    console.log("uncacheArtifactTxSig: %s", uncacheArtifactTxSig);
+    console.log("uncacheArtifactTxSig: %s", uncacheArtifactResult.txid);
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
@@ -809,20 +831,21 @@ describe("namespace", () => {
       masterEdition: nsMasterEdition,
     };
 
-    const [initNsTxSig, namespace] = await namespaceProgram.initializeNamespace(
+    const initNsResult = await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
       initializeNamespaceAccounts
     );
 
-    console.log("initNsTxSig: %s", initNsTxSig);
+    console.log("initNsTxSig: %s", initNsResult.txid);
 
     const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: nsMint,
     };
 
-    const [createNsGKTxSig, _nsGatekeeper] =
-      await namespaceProgram.createNamespaceGatekeeper(createNsGKAccounts);
-    console.log("createNsGKTxSig: %s", createNsGKTxSig);
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
 
     const itemClasses = await createItemClasses(
       payer,
@@ -836,20 +859,21 @@ describe("namespace", () => {
         artifact: itemClasses[i],
       };
 
-      const joinNsTxSig = await namespaceProgram.joinNamespace(joinNsAccounts);
-      console.log("%d joinNsTxSig: %s", i, joinNsTxSig);
+      const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+      console.log("%d joinNsTxSig: %s", i, joinNsResult.txid);
 
       const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
       };
 
-      const cacheArtifactTxSig = await namespaceProgram.cacheArtifact(
+      const cacheArtifactResult = await namespaceProgram.cacheArtifact(
         cacheArtifactAccounts
       );
-      console.log("%d cacheArtifactTxSig: %s", i, cacheArtifactTxSig);
+      console.log("%d cacheArtifactTxSig: %s", i, cacheArtifactResult.txid);
     }
 
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
     var nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 101);
     assert(nsData.artifactsCached === 101);
