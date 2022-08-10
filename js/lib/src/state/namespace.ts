@@ -28,6 +28,8 @@ export function convertPermissiveness(p: Permissiveness): {} {
       return { blacklist: {} };
     case Permissiveness.Namespace:
       return { namespace: {} };
+    default:
+      throw new Error("Invalid Permissiveness");
   }
 }
 
@@ -45,11 +47,11 @@ export class Filter {
   ) {
     switch (filterType) {
       case FilterType.FilterNamespaces:
-        var filterNs = filterData as FilterNamespaces;
+        const filterNs = filterData as FilterNamespaces;
         this.filter = { namespace: { namespaces: filterNs.namespaces } };
         break;
       case FilterType.FilterCategories:
-        var filterCategories = filterData as FilterCategories;
+        const filterCategories = filterData as FilterCategories;
         this.filter = {
           category: {
             namespace: filterCategories.namespace,
@@ -58,7 +60,7 @@ export class Filter {
         };
         break;
       case FilterType.FilterKey:
-        var filterKeys = filterData as FilterKey;
+        const filterKeys = filterData as FilterKey;
         this.filter = {
           key: {
             key: filterKeys.key,
@@ -116,6 +118,8 @@ export function convertTokenType(tokenType: TokenType): {} {
       return { namespace: {} };
     case TokenType.Player:
       return { player: {} };
+    default:
+      throw new Error("Invalid TokenType");
   }
 }
 
@@ -133,7 +137,7 @@ export class Namespace {
   artifactsCached: number;
   permissivenessSettings: PermissivenessSettings | null;
   bump: number;
-  whitelistedStakingMints: web3.PublicKey[] | null;
+  whitelistedStakingMints: web3.PublicKey[];
   gatekeeper: web3.PublicKey | null;
 
   constructor(key, data) {

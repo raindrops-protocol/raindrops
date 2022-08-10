@@ -1806,17 +1806,9 @@ pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
 
 // returns true if the namespace program called the item program
 pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
-    let current_index =
-        anchor_lang::solana_program::sysvar::instructions::load_current_index_checked(&ixns)
-            .unwrap() as usize;
-    let current_ixn =
-        anchor_lang::solana_program::sysvar::instructions::load_instruction_at_checked(
-            current_index,
-            &ixns,
-        )
-        .unwrap();
+    let current_ix = anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns).unwrap();
 
-    if current_ixn.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
+    if current_ix.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
         return false;
     };
 

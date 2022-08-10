@@ -414,7 +414,7 @@ export class Instruction extends SolKitInstruction {
     const sortedFullPages = fullPages.sort();
     // increment 1 higher than the last full page
     if (sortedFullPages.length > 0) {
-      page = new BN(sortedFullPages[sortedFullPages.length - 1] + 1);
+      page = sortedFullPages[sortedFullPages.length - 1].add(new BN(1));
     }
 
     const [index, _indexBump] = await getIndexPDA(namespacePDA, page);

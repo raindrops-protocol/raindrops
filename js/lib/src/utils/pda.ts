@@ -11,7 +11,7 @@ import {
 } from "../constants/programIds";
 import { PREFIX as ITEM_PREFIX, MARKER } from "../constants/item";
 import { PREFIX as MATCHES_PREFIX } from "../constants/matches";
-import { NAMESPACE_PREFIX, NAMESPACE_GATEKEEPER_PREFIX } from "../constants/namespace";
+import { PREFIX as NAMESPACE_PREFIX, GATEKEEPER_PREFIX } from "../constants/namespace";
 import { PREFIX as PLAYER_PREFIX } from "../constants/player";
 import {
   PREFIX as STAKING_PREFIX,
@@ -76,7 +76,7 @@ export const getNamespaceGatekeeperPDA = async (
   namespace: web3.PublicKey
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
-    [Buffer.from(NAMESPACE_PREFIX), namespace.toBuffer(), Buffer.from(NAMESPACE_GATEKEEPER_PREFIX)],
+    [Buffer.from(NAMESPACE_PREFIX), namespace.toBuffer(), Buffer.from(GATEKEEPER_PREFIX)],
     NAMESPACE_ID
   );
 };
