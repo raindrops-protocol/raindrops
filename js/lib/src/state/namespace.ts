@@ -17,6 +17,112 @@ export enum Permissiveness {
   Namespace,
 }
 
+// conver enum to an anchor compatible type
+export function convertPermissiveness(p: Permissiveness): {} {
+  switch (p) {
+    case Permissiveness.All:
+      return { all: {} };
+    case Permissiveness.Whitelist:
+      return { whitelist: {} };
+    case Permissiveness.Blacklist:
+      return { blacklist: {} };
+    case Permissiveness.Namespace:
+      return { namespace: {} };
+    default:
+      throw new Error("Invalid Permissiveness");
+  }
+}
+
+export class ArtifactFilter {
+  filter: Filter;
+  tokenType: TokenType;
+}
+
+export class Filter {
+  readonly filter: {} | null;
+
+  constructor(
+    filterType: FilterType,
+    filterData: FilterNamespaces | FilterCategories | FilterKey
+  ) {
+    switch (filterType) {
+      case FilterType.FilterNamespaces:
+        const filterNs = filterData as FilterNamespaces;
+        this.filter = { namespace: { namespaces: filterNs.namespaces } };
+        break;
+      case FilterType.FilterCategories:
+        const filterCategories = filterData as FilterCategories;
+        this.filter = {
+          category: {
+            namespace: filterCategories.namespace,
+            category: filterCategories.category,
+          },
+        };
+        break;
+      case FilterType.FilterKey:
+        const filterKeys = filterData as FilterKey;
+        this.filter = {
+          key: {
+            key: filterKeys.key,
+            mint: filterKeys.mint,
+            metadata: filterKeys.metadata,
+            edition: filterKeys.edition,
+          },
+        };
+        break;
+    }
+  }
+}
+
+export enum FilterType {
+  FilterNamespaces,
+  FilterCategories,
+  FilterKey,
+}
+
+export class FilterNamespaces {
+  readonly namespaces: Array<web3.PublicKey>;
+
+  constructor(namespaces: Array<web3.PublicKey>) {
+    this.namespaces = namespaces;
+  }
+}
+
+export interface FilterCategories {
+  namespace: web3.PublicKey;
+  category: Array<string> | null;
+}
+
+export interface FilterKey {
+  key: web3.PublicKey;
+  mint: web3.PublicKey;
+  metadata: web3.PublicKey;
+  edition: web3.PublicKey | null;
+}
+
+export enum TokenType {
+  Player,
+  Item,
+  Mission,
+  Namespace,
+}
+
+// conver enum to an anchor compatible type
+export function convertTokenType(tokenType: TokenType): {} {
+  switch (tokenType) {
+    case TokenType.Item:
+      return { item: {} };
+    case TokenType.Mission:
+      return { mission: {} };
+    case TokenType.Namespace:
+      return { namespace: {} };
+    case TokenType.Player:
+      return { player: {} };
+    default:
+      throw new Error("Invalid TokenType");
+  }
+}
+
 export class Namespace {
   key: web3.PublicKey;
   namespaces: NamespaceAndIndex[] | null;
@@ -26,11 +132,13 @@ export class Namespace {
   uuid: string | null;
   prettyName: string | null;
   artifactsAdded: number;
-  highestPage: number;
+  maxPages: number;
+  fullPages: number[];
   artifactsCached: number;
   permissivenessSettings: PermissivenessSettings | null;
   bump: number;
-  whitelistedStakingMints: web3.PublicKey[] | null;
+  whitelistedStakingMints: web3.PublicKey[];
+  gatekeeper: web3.PublicKey | null;
 
   constructor(key, data) {
     this.key = key;
@@ -40,12 +148,14 @@ export class Namespace {
     this.masterEdition = data.masterEdition;
     this.uuid = data.uuid;
     this.prettyName = data.prettyName;
-    this.artifactsAdded = data.artifactsAdded;
-    this.highestPage = data.highestPage;
-    this.artifactsCached = data.artifactsCached;
+    this.artifactsAdded = data.artifactsAdded.toNumber();
+    this.maxPages = data.maxPages.toNumber();
+    this.fullPages = data.fullPages;
+    this.artifactsCached = data.artifactsCached.toNumber();
     this.permissivenessSettings = data.permissivenessSettings;
     this.bump = data.bump;
     this.whitelistedStakingMints = data.whitelistedStakingMints;
+    this.gatekeeper = data.gatekeeper;
   }
 
   print(log) {
@@ -69,9 +179,7 @@ export class Namespace {
     );
     log.info(
       "Metadata:",
-      this.metadata
-        ? this.metadata.toBase58()
-        : "Not cached on object"
+      this.metadata ? this.metadata.toBase58() : "Not cached on object"
     );
     log.info(
       "Master Edition:",
@@ -79,33 +187,22 @@ export class Namespace {
         ? this.masterEdition.toBase58()
         : "Not cached on object"
     );
-    log.info(
-      "UUID:",
-      this.uuid ? this.uuid : "Not cached on object"
-    );
+    log.info("UUID:", this.uuid ? this.uuid : "Not cached on object");
     log.info(
       "Pretty Name:",
-      this.prettyName
-        ? this.prettyName
-        : "Not cached on object"
+      this.prettyName ? this.prettyName : "Not cached on object"
     );
     log.info(
       "Artifacts Added:",
-      this.artifactsAdded
-        ? this.artifactsAdded
-        : "Not cached on object"
+      this.artifactsAdded ? this.artifactsAdded : "Not cached on object"
     );
     log.info(
-      "Highest Page:",
-      this.highestPage
-        ? this.highestPage
-        : "Not cached on object"
+      "Max Pages:",
+      this.maxPages ? this.maxPages : "Not cached on object"
     );
     log.info(
       "Aritfacts Cached:",
-      this.artifactsCached
-        ? this.artifactsCached
-        : "Not cached on object"
+      this.artifactsCached ? this.artifactsCached : "Not cached on object"
     );
 
     log.info("Permissiveness Settings: {");
@@ -154,5 +251,19 @@ export class Namespace {
       });
       log.info("]");
     }
+  }
+}
+
+export class NamespaceGatekeeper {
+  address: web3.PublicKey;
+  artifactFilters: [];
+  namespace: web3.PublicKey;
+  bump: number;
+
+  constructor(address, data) {
+    this.address = address;
+    this.artifactFilters = data.artifactFilters;
+    this.namespace = data.namespace;
+    this.bump = data.bump;
   }
 }

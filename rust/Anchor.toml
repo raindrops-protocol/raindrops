@@ -2,8 +2,14 @@
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
+namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
+matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 
 [programs.mainnet]
 item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
@@ -12,7 +18,14 @@ matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
 staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 
 [scripts]
-test = "ts-mocha -p ./tsconfig.json -t 1000000 test/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [workspace]
 members = ["item", "namespace", "matches", "staking"]
+
+[test.validator]
+url = "https://devnet.genesysgo.net/"
+
+# metaplex
+[[test.validator.clone]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"

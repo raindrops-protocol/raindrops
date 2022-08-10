@@ -1,25 +1,21 @@
-use {
-    crate::{
-        ErrorCode, Filter, Namespace, NamespaceAndIndex, NamespaceGatekeeper, Permissiveness,
-        NAMESPACE_AND_INDEX_SIZE,
+use crate::{ErrorCode, Filter, Namespace, NamespaceGatekeeper, Permissiveness};
+use anchor_lang::{
+    error,
+    prelude::{
+        msg, Account, AccountInfo, ProgramError, Pubkey, Rent, Result, SolanaSysvar,
+        UncheckedAccount,
     },
-    anchor_lang::{
-        error,
-        prelude::{
-            msg, Account, AccountInfo, ProgramError, Pubkey, Rent, Result, SolanaSysvar,
-            UncheckedAccount,
-        },
-        solana_program::{
-            borsh::try_from_slice_unchecked,
-            program::{invoke, invoke_signed},
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
-        },
-        Key, ToAccountInfo,
+    solana_program::{
+        borsh::try_from_slice_unchecked,
+        program::{invoke, invoke_signed},
+        program_pack::{IsInitialized, Pack},
+        system_instruction,
     },
-    arrayref::array_ref,
-    std::{convert::TryInto, str::FromStr},
+    Key, ToAccountInfo,
 };
+use arrayref::array_ref;
+use raindrops_item::ItemClass;
+use std::{convert::TryInto, str::FromStr};
 
 pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
@@ -238,6 +234,7 @@ pub fn assert_part_of_namespace<'a>(
     let data = artifact.data.borrow_mut();
     let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
     let offset = 12 as usize;
+    msg!("number: {}, offset: {}", number, offset);
     for i in 0..number {
         let key_bytes = array_ref![data, offset + i * 33, 32];
         let key = Pubkey::new_from_array(*key_bytes);
@@ -269,144 +266,132 @@ pub fn inverse_indexed_bool_for_namespace(
     return Err(error!(ErrorCode::ArtifactNotPartOfNamespace));
 }
 
-pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Option<Vec<NamespaceAndIndex>>> {
+pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
     let data = artifact.data.borrow_mut();
+    let item_class: ItemClass = try_from_slice_unchecked(&data[8..])?;
 
-    if data[8] == 0 {
-        return Ok(None);
+    let mut namespaces: Vec<Pubkey> = vec![];
+
+    for ns in item_class.namespaces.unwrap() {
+        namespaces.push(ns.namespace);
     }
 
-    let amount = u32::from_le_bytes(*array_ref![data, 9, 4]);
-
-    let cursor: usize = 13;
-
-    let mut arr: Vec<NamespaceAndIndex> = vec![];
-    for _n in 0..amount {
-        let bytes = array_ref![data, cursor, NAMESPACE_AND_INDEX_SIZE];
-        let serialized: NamespaceAndIndex = try_from_slice_unchecked(bytes)?;
-        arr.push(serialized)
-    }
-
-    return Ok(Some(arr));
+    Ok(namespaces)
 }
 
 pub fn check_permissiveness_against_holder<'a>(
     artifact: &UncheckedAccount<'a>,
     token_holder: &UncheckedAccount<'a>,
-    namespace_gatekeeper: &UncheckedAccount<'a>,
+    namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
     permissiveness: &Permissiveness,
-) -> Result<Option<Vec<NamespaceAndIndex>>> {
+) -> Result<()> {
     let art_namespaces = pull_namespaces(artifact)?;
-    return match permissiveness {
-        Permissiveness::All => Ok(art_namespaces),
+    msg!("found {} art_namespaces", art_namespaces.len());
+    match permissiveness {
+        Permissiveness::All => {
+            msg!("All match");
+            Ok(())
+        }
         Permissiveness::Whitelist => {
-            if namespace_gatekeeper.data_is_empty() {
-                return Err(error!(ErrorCode::CannotJoinNamespace));
-            } else {
-                let deserialized: Account<'_, NamespaceGatekeeper> =
-                    Account::try_from(&namespace_gatekeeper.to_account_info())?;
-                for filter in &deserialized.artifact_filters {
-                    match &filter.filter {
-                        Filter::Namespace { namespaces } => {
-                            if let Some(ns) = &art_namespaces {
-                                for n in namespaces {
-                                    for other_n in ns {
-                                        if other_n.namespace == *n {
-                                            msg!("Whitelisted!");
-                                            return Ok(art_namespaces);
-                                        }
-                                    }
+            msg!("Whitelist match");
+            let deserialized: Account<'_, NamespaceGatekeeper> =
+                Account::try_from(&namespace_gatekeeper.to_account_info())?;
+            for filter in &deserialized.artifact_filters {
+                msg!("filter found");
+                match &filter.filter {
+                    Filter::Namespace { namespaces } => {
+                        msg!("ns filter");
+                        for n in &art_namespaces {
+                            for other_n in namespaces {
+                                if other_n == n {
+                                    msg!("Whitelisted!");
+                                    return Ok(());
                                 }
                             }
-                            return Err(error!(ErrorCode::CannotJoinNamespace));
                         }
-                        Filter::Category { namespace, .. } => {
-                            if let Some(ns) = &art_namespaces {
-                                for n in ns {
-                                    if n.namespace == *namespace {
-                                        msg!("Whitelisted!");
-                                        return Ok(art_namespaces);
-                                    }
-                                }
-                            }
-                            return Err(error!(ErrorCode::CannotJoinNamespace));
-                        }
-                        Filter::Key { mint, .. } => {
-                            let as_token: spl_token::state::Account =
-                                assert_initialized(&artifact.to_account_info())?;
-
-                            if as_token.mint == *mint {
+                        return Err(error!(ErrorCode::CannotJoinNamespace));
+                    }
+                    Filter::Category { namespace, .. } => {
+                        msg!("category filter");
+                        for n in &art_namespaces {
+                            if n == namespace {
                                 msg!("Whitelisted!");
-                                return Ok(art_namespaces);
+                                return Ok(());
                             }
-                            return Err(error!(ErrorCode::CannotJoinNamespace));
                         }
+                        return Err(error!(ErrorCode::CannotJoinNamespace));
+                    }
+                    Filter::Key { mint, .. } => {
+                        msg!("key filter");
+                        let as_token: spl_token::state::Account =
+                            assert_initialized(&artifact.to_account_info())?;
+
+                        if as_token.mint == *mint {
+                            msg!("Whitelisted!");
+                            return Ok(());
+                        }
+                        return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
                 }
-                return Err(error!(ErrorCode::CannotJoinNamespace));
             }
+            return Err(error!(ErrorCode::CannotJoinNamespace));
         }
         Permissiveness::Blacklist => {
-            if namespace_gatekeeper.data_is_empty() {
-                return Err(error!(ErrorCode::CannotJoinNamespace));
-            } else {
-                let deserialized: Account<'_, NamespaceGatekeeper> =
-                    Account::try_from(&namespace_gatekeeper.to_account_info())?;
-                for filter in &deserialized.artifact_filters {
-                    match &filter.filter {
-                        Filter::Namespace { namespaces } => {
-                            if let Some(ns) = &art_namespaces {
-                                for n in namespaces {
-                                    for other_n in ns {
-                                        if other_n.namespace == *n {
-                                            msg!("Blacklisted!");
-                                            return Err(error!(ErrorCode::CannotJoinNamespace));
-                                        }
-                                    }
+            msg!("Blacklist match");
+            let deserialized: Account<'_, NamespaceGatekeeper> =
+                Account::try_from(&namespace_gatekeeper.to_account_info())?;
+            for filter in &deserialized.artifact_filters {
+                match &filter.filter {
+                    Filter::Namespace { namespaces } => {
+                        for n in &art_namespaces {
+                            for other_n in namespaces {
+                                if other_n == n {
+                                    msg!("Blacklisted!");
+                                    return Err(error!(ErrorCode::CannotJoinNamespace));
                                 }
                             }
-                            return Ok(art_namespaces);
                         }
-                        Filter::Category { namespace, .. } => {
-                            if let Some(ns) = &art_namespaces {
-                                for n in ns {
-                                    if n.namespace == *namespace {
-                                        msg!("Blacklisted!");
-                                        return Err(error!(ErrorCode::CannotJoinNamespace));
-                                    }
-                                }
-                            }
-                            return Ok(art_namespaces);
-                        }
-                        Filter::Key { mint, .. } => {
-                            let as_token: spl_token::state::Account =
-                                assert_initialized(&artifact.to_account_info())?;
-
-                            if as_token.mint == *mint {
+                        return Ok(());
+                    }
+                    Filter::Category { namespace, .. } => {
+                        for n in art_namespaces {
+                            if n == *namespace {
                                 msg!("Blacklisted!");
                                 return Err(error!(ErrorCode::CannotJoinNamespace));
                             }
-                            return Ok(art_namespaces);
                         }
+                        return Ok(());
+                    }
+                    Filter::Key { mint, .. } => {
+                        let as_token: spl_token::state::Account =
+                            assert_initialized(&artifact.to_account_info())?;
+
+                        if as_token.mint == *mint {
+                            msg!("Blacklisted!");
+                            return Err(error!(ErrorCode::CannotJoinNamespace));
+                        }
+                        return Ok(());
                     }
                 }
-                return Err(error!(ErrorCode::CannotJoinNamespace));
             }
+            return Err(error!(ErrorCode::CannotJoinNamespace));
         }
         Permissiveness::Namespace => {
+            msg!("Namespace match");
             assert_signer(token_holder)?;
-            return Ok(art_namespaces);
+            return Ok(());
         }
-    };
+    }
 }
 
 pub fn assert_can_add_to_namespace<'a>(
     artifact: &UncheckedAccount<'a>,
     token_holder: &UncheckedAccount<'a>,
     namespace: &Account<'a, Namespace>,
-    namespace_gatekeeper: &UncheckedAccount<'a>,
-) -> Result<Option<Vec<NamespaceAndIndex>>> {
+    namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
+) -> Result<()> {
     let art_namespaces = if artifact.owner == &Pubkey::from_str(crate::PLAYER_ID).unwrap() {
+        msg!("player_id match");
         check_permissiveness_against_holder(
             artifact,
             token_holder,
@@ -414,6 +399,7 @@ pub fn assert_can_add_to_namespace<'a>(
             &namespace.permissiveness_settings.player_permissiveness,
         )?
     } else if artifact.owner == &Pubkey::from_str(crate::ITEM_ID).unwrap() {
+        msg!("item_id match");
         check_permissiveness_against_holder(
             artifact,
             token_holder,
@@ -421,6 +407,7 @@ pub fn assert_can_add_to_namespace<'a>(
             &namespace.permissiveness_settings.item_permissiveness,
         )?
     } else if artifact.owner == &Pubkey::from_str(crate::MATCH_ID).unwrap() {
+        msg!("match_id match");
         check_permissiveness_against_holder(
             artifact,
             token_holder,
@@ -428,6 +415,7 @@ pub fn assert_can_add_to_namespace<'a>(
             &namespace.permissiveness_settings.match_permissiveness,
         )?
     } else if artifact.owner == &crate::id() {
+        msg!("namespace_id match");
         check_permissiveness_against_holder(
             artifact,
             token_holder,
@@ -503,4 +491,17 @@ pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
     }
     // Check if the computed hash (root) is equal to the provided root
     computed_hash == root
+}
+
+// returns the lowest page that has space for new artifacts
+pub fn lowest_available_page(full_pages: &mut Vec<u64>) -> Result<u64> {
+    full_pages.sort();
+
+    if full_pages.len() == 0 {
+        return Ok(0);
+    }
+
+    let page = full_pages[full_pages.len() - 1] + 1;
+
+    Ok(page)
 }

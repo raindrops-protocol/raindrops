@@ -1,9 +1,5 @@
-use crate::{Artifact, ArtifactClass, ArtifactClassData};
-use anchor_lang::{
-    prelude::{Account, Pubkey, Result, UncheckedAccount},
-    require,
-    solana_program::hash,
-};
+use crate::{Artifact, ArtifactClass, ArtifactClassData, ErrorCode};
+use anchor_lang::{prelude::*, require, solana_program::hash};
 use arrayref::array_ref;
 use raindrops_item::{utils::assert_derivation_with_bump, Item, ItemClass};
 
@@ -165,4 +161,42 @@ pub fn assert_is_proper_instance<'info>(
     );
 
     Ok(instance_deserialized)
+}
+
+pub fn assert_part_of_namespace<'a, 'b>(
+    artifact: &'b AccountInfo<'a>,
+    namespace: &'b AccountInfo<'a>,
+) -> Result<Account<'a, raindrops_namespace::Namespace>> {
+    assert_owned_by(namespace, &raindrops_namespace::id())?;
+
+    let deserialized: Account<raindrops_namespace::Namespace> = Account::try_from(namespace)?;
+
+    assert_derivation(
+        &raindrops_namespace::id(),
+        namespace,
+        &[
+            raindrops_namespace::PREFIX.as_bytes(),
+            deserialized.mint.key().as_ref(),
+        ],
+    )?;
+
+    raindrops_namespace::utils::assert_part_of_namespace(artifact, &deserialized)?;
+
+    Ok(deserialized)
+}
+
+pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
+    let (key, bump) = Pubkey::find_program_address(path, program_id);
+    if key != *account.key {
+        return Err(error!(ErrorCode::DerivedKeyInvalid));
+    }
+    Ok(bump)
+}
+
+pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
+    if account.owner != owner {
+        Err(error!(ErrorCode::IncorrectOwner))
+    } else {
+        Ok(())
+    }
 }
