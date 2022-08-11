@@ -16,11 +16,11 @@ import {
   getMetadata,
 } from "../utils/pda";
 import { PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
-import { AnchorPermissivenessType } from "../../src/state/common";
+import { InstructablePermissivenessType } from "../state/common";
+import { InstructableItemClassData, InstructableItemClass } from "../state/item";
 import {
   ContractCommon,
 } from "../contract/common";
-import { ItemClassWrapper } from "../contract/item";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -703,7 +703,7 @@ export class Instruction extends SolKitInstruction {
     const itemKey = (await getItemPDA(accounts.itemMint, args.index))[0];
 
     const validationKey =
-      args.itemClass.object.itemClassData.config.usages?.[args.usageIndex]
+      args.itemClass.itemClassData.config.usages?.[args.usageIndex]
         .validation?.key;
     const validationProgram:web3.PublicKey = !!validationKey
       ? new web3.PublicKey(validationKey)
@@ -948,10 +948,10 @@ export interface CreateItemClassArgs {
   parentClassIndex: null | BN;
   space: BN;
   desiredNamespaceArraySize: number;
-  updatePermissivenessToUse: null | AnchorPermissivenessType;
+  updatePermissivenessToUse: null | InstructablePermissivenessType;
   storeMint: boolean;
   storeMetadataFields: boolean;
-  itemClassData: any;
+  itemClassData: InstructableItemClassData;
 }
 
 export interface CreateItemClassAccounts {
@@ -967,7 +967,7 @@ export interface CreateItemClassAdditionalArgs {}
 
 export interface UpdateItemClassArgs {
   classIndex: BN;
-  updatePermissivenessToUse: null | AnchorPermissivenessType;
+  updatePermissivenessToUse: null | InstructablePermissivenessType;
   parentClassIndex: null | BN;
   itemClassData: any | null;
 }
@@ -990,7 +990,7 @@ export interface CreateItemEscrowArgs {
   componentScope: String;
   amountToMake: BN;
   namespaceIndex: BN | null;
-  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  buildPermissivenessToUse: null | InstructablePermissivenessType;
   itemClassMint: web3.PublicKey;
 }
 
@@ -1015,7 +1015,7 @@ export interface CompleteItemEscrowBuildPhaseArgs {
   space: BN;
   itemClassMint: web3.PublicKey;
   originator: web3.PublicKey;
-  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  buildPermissivenessToUse: null | InstructablePermissivenessType;
   storeMint: boolean;
   storeMetadataFields: boolean;
 }
@@ -1074,7 +1074,7 @@ export interface AddCraftItemToEscrowArgs {
   newItemMint: web3.PublicKey;
   originator: web3.PublicKey;
   namespaceIndex: BN | null;
-  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  buildPermissivenessToUse: null | InstructablePermissivenessType;
   itemClassMint: web3.PublicKey;
   componentProof: web3.PublicKey | null;
   // we use any bcause of the enum changes required
@@ -1120,7 +1120,7 @@ export interface RemoveCraftItemFromEscrowArgs {
   newItemMint: web3.PublicKey;
   originator: web3.PublicKey;
   namespaceIndex: BN | null;
-  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  buildPermissivenessToUse: null | InstructablePermissivenessType;
   itemClassMint: web3.PublicKey;
   componentProof: web3.PublicKey | null;
   // we use any bcause of the enum changes required
@@ -1144,11 +1144,11 @@ export interface BeginItemActivationArgs {
   index: BN;
   itemClassMint: web3.PublicKey;
   itemMarkerSpace: number;
-  usagePermissivenessToUse: null | AnchorPermissivenessType;
+  usagePermissivenessToUse: null | InstructablePermissivenessType;
   amount: BN;
   usageIndex: number;
   usageInfo: null;
-  itemClass: ItemClassWrapper;
+  itemClass: InstructableItemClass;
 }
 
 export interface BeginItemActivationAccounts {
@@ -1165,7 +1165,7 @@ export interface EndItemActivationArgs {
   index: BN;
   itemMint: web3.PublicKey;
   itemClassMint: web3.PublicKey;
-  usagePermissivenessToUse: null | AnchorPermissivenessType;
+  usagePermissivenessToUse: null | InstructablePermissivenessType;
   amount: BN;
   usageIndex: number;
   usageProof: null | web3.PublicKey[];
@@ -1205,7 +1205,7 @@ export interface StartItemEscrowBuildPhaseArgs {
   itemClassMint: web3.PublicKey;
   originator: web3.PublicKey;
   newItemMint: web3.PublicKey;
-  buildPermissivenessToUse: null | AnchorPermissivenessType;
+  buildPermissivenessToUse: null | InstructablePermissivenessType;
   endNodeProof: web3.PublicKey | null;
   totalSteps: BN | null;
 }

@@ -19,7 +19,7 @@ import {
   AddCraftItemToEscrowArgs,
   DeactivateItemEscrowArgs,
 } from "../../instructions/item";
-import { getItemProgram, ItemClassWrapper, ItemProgram } from "../item";
+import { ItemProgram } from "../item";
 import { ContractCommon } from "../common";
 
 const { generateRemainingAccountsGivenPermissivenessToUse } = ContractCommon;
@@ -157,15 +157,12 @@ describe("ItemProgram", () => {
       const result = await itemProgram.fetchItemClass(publicKey2, index);
       expect(result).toBeNull();
     });
-    it("returns new ItemClassWrapper", async () => {
+    it("returns new ItemClass", async () => {
       data = "notfalsey";
       const result = await itemProgram.fetchItemClass(publicKey2, index);
       expect(result).not.toBeNull();
-      expect(result).toBeInstanceOf(ItemClassWrapper);
-      expect(result.data).toBe(data);
-      expect(result.key).toBe(itemClassData);
-      expect(result.program).toBe(itemProgram);
-      expect(result.object).toBe(itemClass);
+      expect(result).toBeInstanceOf(ItemClass);
+      expect(result).toBe(itemClass);
     });
   });
   describe("createItemEscrow", () => {

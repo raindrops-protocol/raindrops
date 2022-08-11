@@ -1,15 +1,23 @@
-import { BN, Program, web3 } from "@project-serum/anchor";
+import { BN, web3 } from "@project-serum/anchor";
 import { deserializeUnchecked } from "borsh";
 import { extendBorsh } from "../utils/borsh";
 import {
+  Instructable,
+  InstructableCallback,
   Callback,
+  InstructableChildUpdatePropagationPermissiveness,
   ChildUpdatePropagationPermissiveness,
-  AnchorInheritanceState,
+  InstructableInheritanceState,
   InheritanceState,
+  InstructableInheritedBoolean,
   InheritedBoolean,
+  InstructableNamespaceAndIndex,
   NamespaceAndIndex,
+  InstructablePermissiveness,
   Permissiveness,
+  InstructablePermissivenessType,
   PermissivenessType,
+  InstructableRoot,
   Root,
 } from "./common";
 
@@ -24,7 +32,7 @@ export const decodeItemClass = (buffer: Buffer): ItemClass => {
   return metadata;
 };
 
-export class Item {
+export class Item implements Instructable {
   namespaces: NamespaceAndIndex[] | null;
   padding: number;
   parent: web3.PublicKey;
@@ -50,9 +58,29 @@ export class Item {
     this.tokensStaked = data.tokensStaked;
     this.data = new ItemData(data.data);
   }
+
+  toInstruction(): InstructableItem {
+    return {
+      ...this,
+      namespaces: this.namespaces ? this.namespaces.map((n) => n.toInstruction()) : null,
+      data: this.data.toInstruction(),
+    }
+  }
+}
+export interface InstructableItem {
+  namespaces: InstructableNamespaceAndIndex[] | null;
+  padding: number;
+  parent: web3.PublicKey;
+  classIndex: number;
+  mint: web3.PublicKey | null;
+  metadata: web3.PublicKey | null;
+  edition: web3.PublicKey | null;
+  bump: number;
+  tokensStaked: number | null;
+  data: InstructableItemData;
 }
 
-export class ItemData {
+export class ItemData implements Instructable {
   usageStateRoot: Root | null;
   usageStates: ItemUsageState[] | null;
 
@@ -62,9 +90,20 @@ export class ItemData {
       new ItemUsageState(s);
     });
   }
+
+  toInstruction(): InstructableItemData {
+    return {
+      usageStateRoot: this.usageStateRoot ? this.usageStateRoot.toInstruction() : null,
+      usageStates: this.usageStates ? this.usageStates.map((s) => s.toInstruction()) : null,
+    }
+  }
+}
+export interface InstructableItemData {
+  usageStateRoot: InstructableRoot | null;
+  usageStates: InstructableItemUsageState[] | null;
 }
 
-export class ItemUsageState {
+export class ItemUsageState implements Instructable {
   index: number;
   uses: number;
   activatedAt: number | null;
@@ -74,9 +113,20 @@ export class ItemUsageState {
     this.uses = data.uses;
     this.activatedAt = data.activatedAt;
   }
+
+  toInstruction(): InstructableItemUsageState {
+    return {
+      ...this,
+    }
+  }
+}
+export interface InstructableItemUsageState {
+  index: number;
+  uses: number;
+  activatedAt: number | null;
 }
 
-export class ItemClassSettings {
+export class ItemClassSettings implements Instructable {
   freeBuild: null | InheritedBoolean;
   childrenMustBeEditions: null | InheritedBoolean;
   builderMustBeHolder: null | InheritedBoolean;
@@ -100,8 +150,7 @@ export class ItemClassSettings {
     stakingCooldownDuration: null | BN;
     stakingPermissiveness: null | Permissiveness[];
     unstakingPermissiveness: null | Permissiveness[];
-    childUpdatePropagationPermissiveness:
-      | null
+    childUpdatePropagationPermissiveness: null
       | ChildUpdatePropagationPermissiveness[];
   }) {
     this.freeBuild = args.freeBuild;
@@ -116,9 +165,35 @@ export class ItemClassSettings {
     this.childUpdatePropagationPermissiveness =
       args.childUpdatePropagationPermissiveness;
   }
+
+  toInstruction(): InstructableItemClassSettings {
+    return {
+      ...this,
+      freeBuild: this.freeBuild ? this.freeBuild.toInstruction() : null,
+      childrenMustBeEditions: this.childrenMustBeEditions ? this.childrenMustBeEditions.toInstruction() : null,
+      builderMustBeHolder: this.builderMustBeHolder ? this.builderMustBeHolder.toInstruction() : null,
+      updatePermissiveness: this.updatePermissiveness ? this.updatePermissiveness.map((p) => p.toInstruction()) : null,
+      buildPermissiveness: this.buildPermissiveness ? this.buildPermissiveness.map((p) => p.toInstruction()) : null,
+      stakingPermissiveness: this.stakingPermissiveness ? this.stakingPermissiveness.map((p) => p.toInstruction()) : null,
+      unstakingPermissiveness: this.unstakingPermissiveness ? this.unstakingPermissiveness.map((p) => p.toInstruction()) : null,
+      childUpdatePropagationPermissiveness: this.childUpdatePropagationPermissiveness ? this.childUpdatePropagationPermissiveness.map((p) => p.toInstruction()) : null,
+    }
+  }
+}
+export interface InstructableItemClassSettings {
+  freeBuild: InstructableInheritedBoolean | null;
+  childrenMustBeEditions: InstructableInheritedBoolean | null;
+  builderMustBeHolder: InstructableInheritedBoolean | null;
+  updatePermissiveness: InstructablePermissiveness[] | null;
+  buildPermissiveness: InstructablePermissiveness[] | null;
+  stakingWarmUpDuration: BN | null;
+  stakingCooldownDuration: BN | null;
+  stakingPermissiveness: InstructablePermissiveness[] | null;
+  unstakingPermissiveness: InstructablePermissiveness[] | null;
+  childUpdatePropagationPermissiveness: InstructableChildUpdatePropagationPermissiveness[] | null;
 }
 
-export class ItemClassData {
+export class ItemClassData implements Instructable {
   settings: ItemClassSettings;
   config: ItemClassConfig;
 
@@ -126,8 +201,20 @@ export class ItemClassData {
     this.settings = args.settings;
     this.config = args.config;
   }
+
+  toInstruction(): InstructableItemClassData {
+    return {
+      settings: this.settings.toInstruction(),
+      config: this.config.toInstruction(),
+    }
+  }
 }
-export class ItemClassConfig {
+export interface InstructableItemClassData {
+  settings: InstructableItemClassSettings;
+  config: InstructableItemClassConfig;
+}
+
+export class ItemClassConfig implements Instructable {
   usageRoot: null | Root;
   usageStateRoot: null | Root;
   componentRoot: null | Root;
@@ -147,17 +234,34 @@ export class ItemClassConfig {
     this.usages = args.usages;
     this.components = args.components;
   }
+
+  toInstruction(): InstructableItemClassConfig {
+    return {
+      usageRoot: this.usageRoot ? this.usageRoot.toInstruction() : null,
+      usageStateRoot: this.usageStateRoot ? this.usageStateRoot.toInstruction() : null,
+      componentRoot: this.componentRoot ? this.componentRoot.toInstruction() : null,
+      usages: this.usages ? this.usages.map((u) => u.toInstruction()) : null,
+      components: this.components ? this.components.map((c) => c.toInstruction()) : null,
+    }
+  }
+}
+export interface InstructableItemClassConfig {
+  usageRoot: InstructableRoot | null;
+  usageStateRoot: InstructableRoot | null;
+  componentRoot: InstructableRoot | null;
+  usages: InstructableItemUsage[] | null;
+  components: InstructableComponent[] | null;
 }
 
-export class Component {
+export class Component implements Instructable {
   mint: web3.PublicKey;
   classIndex: BN;
   amount: BN;
   timeToBuild: null | BN;
   componentScope: string;
   useUsageIndex: number;
-  condition: ComponentCondition | AnchorComponentCondition;
-  inherited: InheritanceState | AnchorInheritanceState;
+  condition: ComponentCondition;
+  inherited: InheritanceState;
 
   constructor(args: {
     mint: web3.PublicKey;
@@ -166,8 +270,8 @@ export class Component {
     timeToBuild: null | BN;
     componentScope: string;
     useUsageIndex: number;
-    condition: ComponentCondition | AnchorComponentCondition;
-    inherited: InheritanceState | AnchorInheritanceState;
+    condition: ComponentCondition;
+    inherited: InheritanceState;
   }) {
     this.classIndex = args.classIndex;
     this.mint = args.mint;
@@ -178,6 +282,24 @@ export class Component {
     this.condition = args.condition;
     this.inherited = args.inherited;
   }
+
+  toInstruction(): InstructableComponent {
+    return {
+      ...this,
+      condition: ComponentCondition.toInstruction(this.condition),
+      inherited: InheritanceState.toInstruction(this.inherited),
+    }
+  }
+}
+export interface InstructableComponent {
+  mint: web3.PublicKey;
+  classIndex: BN;
+  amount: BN;
+  timeToBuild: BN | null;
+  componentScope: string;
+  useUsageIndex: number;
+  condition: InstructableComponentCondition;
+  inherited: InstructableInheritanceState;
 }
 
 export enum ComponentCondition {
@@ -187,8 +309,25 @@ export enum ComponentCondition {
   Cooldown,
   CooldownAndConsume,
 }
-
-export interface AnchorComponentCondition {
+export namespace ComponentCondition {
+  export function toInstruction(state: ComponentCondition): InstructableComponentCondition {
+    switch(state) {
+      case ComponentCondition.Consumed:
+        return { consumed: true };
+      case ComponentCondition.Presence:
+        return { presence: true };
+      case ComponentCondition.Absence:
+        return { absence: true };
+      case ComponentCondition.Cooldown:
+        return { cooldown: true };
+      case ComponentCondition.CooldownAndConsume:
+        return { cooldownAndConsume: true };
+      default:
+        throw new Error(`Unknown ComponentCondition: ${state}`);
+    }
+  }
+}
+export interface InstructableComponentCondition {
   consumed?: boolean;
   presence?: boolean;
   absence?: boolean;
@@ -196,7 +335,7 @@ export interface AnchorComponentCondition {
   cooldownAndConsume?: boolean;
 }
 
-export class DNPItem {
+export class DNPItem implements Instructable {
   key: web3.PublicKey;
   inherited: InheritanceState;
 
@@ -204,29 +343,40 @@ export class DNPItem {
     this.key = args.key;
     this.inherited = args.inherited;
   }
+
+  toInstruction(): InstructableDNPItem {
+    return {
+      ...this,
+      inherited: InheritanceState.toInstruction(this.inherited),
+    }
+  }
+}
+export interface InstructableDNPItem {
+  key: web3.PublicKey;
+  inherited: InstructableInheritanceState;
 }
 
-export class ItemUsage {
+export class ItemUsage implements Instructable {
   index: number;
-  basicItemEffects: null | BasicItemEffect[];
+  basicItemEffects: BasicItemEffect[];
   usagePermissiveness: PermissivenessType[];
-  inherited: AnchorInheritanceState | InheritanceState;
+  inherited: InheritanceState;
   itemClassType: ItemClassType;
   callback: null | Callback;
   validation: null | Callback;
-  doNotPairWithSelf: boolean | InheritedBoolean;
-  dnp: null | DNPItem[];
+  doNotPairWithSelf: InheritedBoolean;
+  dnp: DNPItem[];
 
   constructor(args: {
     index: number;
-    basicItemEffects: null | BasicItemEffect[];
+    basicItemEffects: BasicItemEffect[];
     usagePermissiveness: PermissivenessType[];
-    inherited: AnchorInheritanceState | InheritanceState;
+    inherited: InheritanceState;
     itemClassType: ItemClassType;
     callback: null | Callback;
     validation: null | Callback;
-    doNotPairWithSelf: boolean | InheritedBoolean;
-    dnp: null | DNPItem[];
+    doNotPairWithSelf: InheritedBoolean;
+    dnp: DNPItem[];
   }) {
     this.index = args.index;
     this.basicItemEffects = args.basicItemEffects;
@@ -238,10 +388,34 @@ export class ItemUsage {
     this.doNotPairWithSelf = args.doNotPairWithSelf;
     this.dnp = args.dnp;
   }
+
+  toInstruction(): InstructableItemUsage {
+    return {
+      ...this,
+      basicItemEffects: this.basicItemEffects.map((e) => e.toInstruction()),
+      usagePermissiveness: this.usagePermissiveness.map((p) => PermissivenessType.toInstruction(p)),
+      inherited: InheritanceState.toInstruction(this.inherited),
+      itemClassType: this.itemClassType.toInstruction(),
+      callback: this.callback ? this.callback.toInstruction() : null,
+      validation: this.validation ? this.validation.toInstruction() : null,
+      doNotPairWithSelf: this.doNotPairWithSelf.toInstruction(),
+      dnp: this.dnp.map((d) => d.toInstruction()),
+    }
+  }
+}
+export interface InstructableItemUsage {
+  index: number;
+  basicItemEffects: InstructableBasicItemEffect[];
+  usagePermissiveness: InstructablePermissivenessType[];
+  inherited: InstructableInheritanceState;
+  itemClassType: InstructableItemClassType;
+  callback: InstructableCallback | null;
+  validation: InstructableCallback | null;
+  doNotPairWithSelf: InstructableInheritedBoolean;
+  dnp: InstructableDNPItem[];
 }
 
-export class ItemClass {
-  key: BN;
+export class ItemClass implements Instructable {
   namespaces: NamespaceAndIndex[] | null;
   parent: web3.PublicKey | null;
   mint: web3.PublicKey | null;
@@ -252,7 +426,6 @@ export class ItemClass {
   itemClassData: ItemClassData;
 
   constructor(args: {
-    key: BN;
     namespaces: NamespaceAndIndex[] | null;
     parent: web3.PublicKey | null;
     mint: web3.PublicKey | null;
@@ -262,7 +435,6 @@ export class ItemClass {
     existingChildren: BN;
     itemClassData: ItemClassData;
   }) {
-    this.key = args.key;
     this.namespaces = args.namespaces;
     this.parent = args.parent;
     this.mint = args.mint;
@@ -272,9 +444,27 @@ export class ItemClass {
     this.existingChildren = args.existingChildren;
     this.itemClassData = args.itemClassData;
   }
+
+  toInstruction(): InstructableItemClass {
+    return {
+      ...this,
+      namespaces: this.namespaces ? this.namespaces.map((n) => n.toInstruction()) : null,
+      itemClassData: this.itemClassData.toInstruction(),
+    }
+  }
+}
+export interface InstructableItemClass {
+  namespaces: InstructableNamespaceAndIndex[] | null;
+  parent: web3.PublicKey | null;
+  mint: web3.PublicKey | null;
+  metadata: web3.PublicKey | null;
+  edition: web3.PublicKey | null;
+  bump: number;
+  existingChildren: BN;
+  itemClassData: InstructableItemClassData;
 }
 
-export class ItemClassType {
+export class ItemClassType implements Instructable {
   wearable?: Wearable | null;
   consumable?: Consumable | null;
 
@@ -282,9 +472,20 @@ export class ItemClassType {
     this.wearable = args.wearable;
     this.consumable = args.consumable;
   }
+
+  toInstruction(): InstructableItemClassType {
+    return {
+      wearable: this.wearable ? this.wearable.toInstruction() : null,
+      consumable: this.consumable ? this.consumable.toInstruction() : null,
+    }
+  }
+}
+export interface InstructableItemClassType {
+  wearable?: InstructableWearable | null;
+  consumable?: InstructableConsumable | null;
 }
 
-export class Wearable {
+export class Wearable implements Instructable {
   bodyPart: string[];
   limitPerPart: BN;
 
@@ -292,9 +493,19 @@ export class Wearable {
     this.bodyPart = args.bodyPart;
     this.limitPerPart = args.limitPerPart;
   }
+
+  toInstruction(): InstructableWearable {
+    return {
+      ...this,
+    }
+  }
+}
+export interface InstructableWearable {
+  bodyPart: string[];
+  limitPerPart: BN;
 }
 
-export class Consumable {
+export class Consumable implements Instructable {
   maxUses: null | BN;
   // If none, is assumed to be 1 (to save space)
   maxPlayersPerUse: null | BN;
@@ -316,6 +527,20 @@ export class Consumable {
     this.cooldownDuration = args.cooldownDuration;
     this.warmupDuration = args.warmupDuration;
   }
+
+  toInstruction(): InstructableConsumable {
+    return {
+      ...this,
+      itemUsageType: ItemUsageType.toInstruction(this.itemUsageType),
+    }
+  }
+}
+export interface InstructableConsumable {
+  maxUses: null | BN;
+  maxPlayersPerUse: null | BN;
+  itemUsageType: InstructableItemUsageType;
+  cooldownDuration: null | BN;
+  warmupDuration: null | BN;
 }
 
 export enum ItemUsageType {
@@ -323,8 +548,27 @@ export enum ItemUsageType {
   Destruction,
   Infinite,
 }
+export namespace ItemUsageType {
+  export function toInstruction(state: ItemUsageType): InstructableItemUsageType {
+    switch (state) {
+      case ItemUsageType.Exhaustion:
+        return { exhaustion: true}
+      case ItemUsageType.Destruction:
+        return { destruction: true}
+      case ItemUsageType.Infinite:
+        return { infinite: true}
+      default:
+        throw new Error(`Unknown ItemUsageType: ${state}`)
+    }
+  }
+}
+export interface InstructableItemUsageType {
+  exhaustion?: boolean;
+  destruction?: boolean;
+  infinite?: boolean;
+}
 
-export class BasicItemEffect {
+export class BasicItemEffect implements Instructable {
   amount: BN;
   stat: string;
   itemEffectType: BasicItemEffectType;
@@ -356,6 +600,24 @@ export class BasicItemEffect {
     this.stakingDurationDivisor = args.stakingDurationDivisor;
     this.maxUses = args.maxUses;
   }
+
+  toInstruction(): InstructableBasicItemEffect {
+    return {
+      ...this,
+      itemEffectType: BasicItemEffectType.toInstruction(this.itemEffectType),
+    }
+  }
+}
+export interface InstructableBasicItemEffect {
+  amount: BN;
+  stat: string;
+  itemEffectType: InstructableBasicItemEffectType;
+  activeDuration: null | BN;
+  stakingAmountNumerator: null | BN;
+  stakingAmountDivisor: null | BN;
+  stakingDurationNumerator: null | BN;
+  stakingDurationDivisor: null | BN;
+  maxUses: null | BN;
 }
 
 export enum BasicItemEffectType {
@@ -365,6 +627,34 @@ export enum BasicItemEffectType {
   DecrementPercent,
   IncrementPercentFromBase,
   DecrementPercentFromBase,
+}
+export namespace BasicItemEffectType {
+  export function toInstruction(state: BasicItemEffectType): InstructableBasicItemEffectType {
+    switch (state) {
+      case BasicItemEffectType.Increment:
+        return { increment: true};
+      case BasicItemEffectType.Decrement:
+        return { decrement: true};
+      case BasicItemEffectType.IncrementPercent:
+        return { incrementPercent: true};
+      case BasicItemEffectType.DecrementPercent:
+        return { decrementPercent: true};
+      case BasicItemEffectType.IncrementPercentFromBase:
+        return { incrementPercentFromBase: true};
+      case BasicItemEffectType.DecrementPercentFromBase:
+        return { decrementPercentFromBase: true};
+      default:
+        throw new Error(`Unknown BasicItemEffectType: ${state}`);
+    }
+  }
+}
+export interface InstructableBasicItemEffectType {
+  increment?: boolean;
+  decrement?: boolean;
+  incrementPercent?: boolean;
+  decrementPercent?: boolean;
+  incrementPercentFromBase?: boolean;
+  decrementPercentFromBase?: boolean;
 }
 
 export const ITEM_SCHEMA = new Map<any, any>([

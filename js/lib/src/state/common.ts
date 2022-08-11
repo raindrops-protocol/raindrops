@@ -1,6 +1,10 @@
 import { web3, BN } from "@project-serum/anchor";
 
-export class Permissiveness {
+export abstract class Instructable {
+  public abstract toInstruction();
+}
+
+export class Permissiveness implements Instructable {
   inherited: InheritanceState;
   permissivenessType: PermissivenessType;
 
@@ -11,9 +15,20 @@ export class Permissiveness {
     this.inherited = args.inherited;
     this.permissivenessType = args.permissivenessType;
   }
+
+  toInstruction(): InstructablePermissiveness {
+    return {
+      inherited: InheritanceState.toInstruction(this.inherited),
+      permissivenessType: PermissivenessType.toInstruction(this.permissivenessType),
+    }
+  }
+}
+export interface InstructablePermissiveness {
+  inherited: InstructableInheritanceState;
+  permissivenessType: InstructablePermissivenessType;
 }
 
-export class ChildUpdatePropagationPermissiveness {
+export class ChildUpdatePropagationPermissiveness implements Instructable {
   overridable: boolean;
   inherited: InheritanceState;
   childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType;
@@ -28,9 +43,24 @@ export class ChildUpdatePropagationPermissiveness {
     this.childUpdatePropagationPermissivenessType =
       args.childUpdatePropagationPermissivenessType;
   }
+
+  toInstruction(): InstructableChildUpdatePropagationPermissiveness {
+    return {
+      ...this,
+      inherited: InheritanceState.toInstruction(this.inherited),
+      childUpdatePropagationPermissivenessType: ChildUpdatePropagationPermissivenessType.toInstruction(
+        this.childUpdatePropagationPermissivenessType
+      ),
+    }
+  }
+}
+export interface InstructableChildUpdatePropagationPermissiveness {
+  overridable: boolean;
+  inherited: InstructableInheritanceState;
+  childUpdatePropagationPermissivenessType: InstructableChildUpdatePropagationPermissivenessType;
 }
 
-export class InheritedBoolean {
+export class InheritedBoolean implements Instructable {
   inherited: InheritanceState;
   boolean: boolean;
 
@@ -38,6 +68,17 @@ export class InheritedBoolean {
     this.inherited = args.inherited;
     this.boolean = args.boolean;
   }
+
+  toInstruction(): InstructableInheritedBoolean {
+    return {
+      ...this,
+      inherited: InheritanceState.toInstruction(this.inherited),
+    }
+  }
+}
+export interface InstructableInheritedBoolean {
+  inherited: InstructableInheritanceState;
+  boolean: boolean;
 }
 
 export enum PermissivenessType {
@@ -46,8 +87,23 @@ export enum PermissivenessType {
   UpdateAuthority,
   Anybody,
 }
-
-export interface AnchorPermissivenessType {
+export namespace PermissivenessType {
+  export function toInstruction(state: PermissivenessType): InstructablePermissivenessType {
+    switch (state) {
+      case PermissivenessType.TokenHolder:
+        return { tokenHolder: true };
+      case PermissivenessType.ParentTokenHolder:
+        return { parentTokenHolder: true };
+      case PermissivenessType.UpdateAuthority:
+        return { updateAuthority: true };
+      case PermissivenessType.Anybody:
+        return { anybody: true };
+      default:
+        throw new Error(`Unknown PermissivenessType: ${state}`);
+    }
+  }
+}
+export interface InstructablePermissivenessType {
   tokenHolder?: boolean;
   parentTokenHolder?: boolean;
   updateAuthority?: boolean;
@@ -66,12 +122,45 @@ export enum ChildUpdatePropagationPermissivenessType {
   Namespaces,
   FreeBuildPermissiveness,
 }
-
-export function toAnchor(enumVal: any, enumClass: any): any {
-  if (enumVal === undefined || enumVal === null) return null;
-  const name = enumClass[enumVal];
-  const converted = name.charAt(0).toLowerCase() + name.slice(1);
-  return { [converted]: true };
+export namespace ChildUpdatePropagationPermissivenessType {
+  export function toInstruction(state: ChildUpdatePropagationPermissivenessType): InstructableChildUpdatePropagationPermissivenessType {
+    switch (state) {
+      case ChildUpdatePropagationPermissivenessType.Usages:
+        return { usages: true };
+      case ChildUpdatePropagationPermissivenessType.Components:
+        return { components: true };
+      case ChildUpdatePropagationPermissivenessType.UpdatePermissiveness:
+        return { updatePermissiveness: true };
+      case ChildUpdatePropagationPermissivenessType.BuildPermissiveness:
+        return { buildPermissiveness: true };
+      case ChildUpdatePropagationPermissivenessType.ChildUpdatePropagationPermissiveness:
+        return { childUpdatePropagationPermissiveness: true };
+      case ChildUpdatePropagationPermissivenessType.ChildrenMustBeEditionsPermissiveness:
+        return { childrenMustBeEditionsPermissiveness: true };
+      case ChildUpdatePropagationPermissivenessType.BuilderMustBeHolderPermissiveness:
+        return { builderMustBeHolderPermissiveness: true };
+      case ChildUpdatePropagationPermissivenessType.StakingPermissiveness:
+        return { stakingPermissiveness: true };
+      case ChildUpdatePropagationPermissivenessType.Namespaces:
+        return { namespaces: true };
+      case ChildUpdatePropagationPermissivenessType.FreeBuildPermissiveness:
+        return { freeBuildPermissiveness: true };
+      default:
+        throw new Error(`Unknown ChildUpdatePropagationPermissivenessType: ${state}`);
+    }
+  }
+}
+export interface InstructableChildUpdatePropagationPermissivenessType {
+  usages?: boolean;
+  components?: boolean;
+  updatePermissiveness?: boolean;
+  buildPermissiveness?: boolean;
+  childUpdatePropagationPermissiveness?: boolean;
+  childrenMustBeEditionsPermissiveness?: boolean;
+  builderMustBeHolderPermissiveness?: boolean;
+  stakingPermissiveness?: boolean;
+  namespaces?: boolean;
+  freeBuildPermissiveness?: boolean;
 }
 
 export enum InheritanceState {
@@ -79,14 +168,27 @@ export enum InheritanceState {
   Inherited,
   Overridden,
 }
-
-export interface AnchorInheritanceState {
+export namespace InheritanceState {
+  export function toInstruction(state: InheritanceState): InstructableInheritanceState {
+    switch (state) {
+      case InheritanceState.NotInherited:
+        return { notInherited: true };
+      case InheritanceState.Inherited:
+        return { inherited: true };
+      case InheritanceState.Overridden:
+        return { overridden: true };
+      default:
+        throw new Error(`Unknown inheritance state: ${state}`);
+    }
+  }
+}
+export interface InstructableInheritanceState {
   notInherited?: boolean;
   inherited?: boolean;
   overridden?: boolean;
 }
 
-export class Root {
+export class Root implements Instructable {
   inherited: InheritanceState;
   root: web3.PublicKey;
 
@@ -94,9 +196,20 @@ export class Root {
     this.inherited = args.inherited;
     this.root = args.root;
   }
+
+  toInstruction(): InstructableRoot {
+    return {
+      ...this,
+      inherited: InheritanceState.toInstruction(this.inherited),
+    }
+  }
+}
+export interface InstructableRoot {
+  inherited: InstructableInheritanceState;
+  root: web3.PublicKey;
 }
 
-export class Callback {
+export class Callback implements Instructable {
   key: web3.PublicKey;
   code: BN;
 
@@ -104,9 +217,17 @@ export class Callback {
     this.key = args.key;
     this.code = args.code;
   }
+
+  toInstruction(): InstructableCallback {
+    return this;
+  }
+}
+export interface InstructableCallback {
+  key: web3.PublicKey;
+  code: BN;
 }
 
-export class NamespaceAndIndex {
+export class NamespaceAndIndex implements Instructable {
   namespace: web3.PublicKey;
   indexed: boolean;
   inherited: InheritanceState;
@@ -120,4 +241,17 @@ export class NamespaceAndIndex {
     this.indexed = args.indexed;
     this.inherited = args.inherited;
   }
+
+  toInstruction(): InstructableNamespaceAndIndex {
+    return {
+      ...this,
+      inherited: InheritanceState.toInstruction(this.inherited),
+    }
+  }
+}
+
+export interface InstructableNamespaceAndIndex {
+  namespace: web3.PublicKey;
+  indexed: boolean;
+  inherited: InstructableInheritanceState;
 }

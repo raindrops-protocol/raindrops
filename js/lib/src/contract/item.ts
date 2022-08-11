@@ -21,25 +21,19 @@ export class ItemProgram extends Program.Program {
   async fetchItemClass(
     mint: web3.PublicKey,
     index: BN
-  ): Promise<ItemClassWrapper | null> {
-    let itemClass = (await getItemPDA(mint, index))[0];
+  ): Promise<ItemClass | null> {
+    let itemClassPDA = (await getItemPDA(mint, index))[0];
 
     // Need a manual deserializer due to our hack we had to do.
     let itemClassObj = await (
       this.client.provider as AnchorProvider
-    ).connection.getAccountInfo(itemClass);
+    ).connection.getAccountInfo(itemClassPDA);
 
     if (!itemClassObj?.data) {
       return Promise.resolve(null);
     }
-    const ic = decodeItemClass(itemClassObj.data);
 
-    return new ItemClassWrapper({
-      program: this,
-      key: itemClass,
-      data: itemClassObj.data,
-      object: ic,
-    });
+    return decodeItemClass(itemClassObj.data);
   }
 
   async fetchItem(
@@ -209,7 +203,7 @@ export class ItemProgram extends Program.Program {
     }
 
     const instruction = await this.instruction.beginItemActivation(
-      { ...args, itemClass },
+      { ...args, itemClass: itemClass.toInstruction() },
       { ...accounts, itemTransferAuthority },
       additionalArgs
     );
