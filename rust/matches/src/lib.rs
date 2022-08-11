@@ -32,6 +32,7 @@ pub struct CreateOrUpdateOracleArgs {
     token_transfers: Option<Vec<TokenDelta>>,
     seed: Pubkey,
     space: u64,
+    resize: bool,
     finalized: bool,
 }
 
@@ -121,6 +122,31 @@ pub mod matches {
 
         win_oracle.finalized = finalized;
         win_oracle.token_transfer_root = token_transfer_root.clone();
+
+
+        if args.resize == true {
+            let payer = &ctx.accounts.payer;
+            let payer_account = payer.to_account_info();
+            let win_oracle_account = win_oracle.to_account_info();
+            let new_size = win_oracle_account.data.borrow().len() + args.space;
+
+            let rent = Rent::get()?;
+            let new_minimum_balance = rent.minimum_balance(new_size);
+
+            let lamports_diff = new_minimum_balance.saturating_sub(win_oracle_account.lamports());
+            invoke(
+                &system_instruction::transfer(payer_account.key, win_oracle_account.key, lamports_diff),
+                &[
+                    payer_account.clone(),
+                    win_oracle_account.clone(),
+                    system_program.clone(),
+                ],
+            )?;
+
+            win_oracle_account.realloc(new_size, false)?;
+
+        }
+
         win_oracle.token_transfers = token_transfers.clone();
 
         return Ok(());
