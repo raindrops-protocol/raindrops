@@ -123,7 +123,7 @@ export interface CreateMatchAdditionalArgs {
 export interface CreateOrUpdateOracleArgs {
   seed: string;
   authority: web3.PublicKey;
-  resize: boolean,
+  resize: BN,
   space: BN;
   finalized: boolean;
   tokenTransferRoot: null;
