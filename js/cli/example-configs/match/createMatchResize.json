@@ -1,16 +1,16 @@
 {
     "winOracle": null,
-    "matchState": { "initialized": true },
+    "matchState": { "started": true },
     "winOracleCooldown": 0,
     "space": 150,
-    "resize": true,
+    "resize": 300,
     "minimumAllowedEntryTime": null,
     "tokenEntryValidation": null,
     "authority": "CMVfmxKAK1VQMFAQifnpsmTmg2JEdLtw5MkmqqHm9wCY",
     "leaveAllowed": true,
     "joinAllowedDuringStart": true,
     "oracleState": {
-      "seed": "9Nt72hBgpuu25qX9LCNX8gfRWMCiEKP842WPUg63mG7N",
+      "seed": "8A2vFzJbq1vAR6HrY3J8uoqowK93hW7LXdyjnUtf2nre",
       "authority": "CMVfmxKAK1VQMFAQifnpsmTmg2JEdLtw5MkmqqHm9wCY",
       "finalized": false,
       "tokenTransferRoot": null,
@@ -18,8 +18,8 @@
     },
     "tokensToJoin": [
       {
-        "mint": "DpKt7EjFeQ8AnRxsg2MsYZbGzeuBhqCPSWK3G1GCaF33",
-        "amount": 13800,
+        "mint": "HQaQJG6d1CsmaosGY7HTV4UTN1ShpeqjNKZhj1rFSShn",
+        "amount": 1,
         "sourceType": 1,
         "index": 0,
         "validationProgram": "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"

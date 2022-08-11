@@ -2,7 +2,7 @@
   "winOracle": null,
   "matchState": { "started": true },
   "winOracleCooldown": 10,
-  "resize": false,
+  "resize": 300,
   "space": 300,
   "minimumAllowedEntryTime": null,
   "tokenEntryValidation": [

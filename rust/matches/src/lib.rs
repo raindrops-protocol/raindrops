@@ -23,7 +23,7 @@ use metaplex_token_metadata::instruction::{
     mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
 };
 use spl_token::instruction::{initialize_account2, mint_to};
-anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
+anchor_lang::declare_id!("9UPxDy3p6LjDck7LJAvCwqCXa8qUCG6oq2feuw7pgvH");
 pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -32,7 +32,7 @@ pub struct CreateOrUpdateOracleArgs {
     token_transfers: Option<Vec<TokenDelta>>,
     seed: Pubkey,
     space: u64,
-    resize: bool,
+    resize: u64,
     finalized: bool,
 }
 
@@ -124,11 +124,13 @@ pub mod matches {
         win_oracle.token_transfer_root = token_transfer_root.clone();
 
 
-        if args.resize == true {
+        let win_oracle_account = win_oracle.to_account_info();
+        
+        if args.resize as usize > win_oracle_account.data.borrow().len() {
+            let system_program = &ctx.accounts.system_program;
             let payer = &ctx.accounts.payer;
             let payer_account = payer.to_account_info();
-            let win_oracle_account = win_oracle.to_account_info();
-            let new_size = win_oracle_account.data.borrow().len() + args.space;
+            let new_size = args.resize as usize;
 
             let rent = Rent::get()?;
             let new_minimum_balance = rent.minimum_balance(new_size);
@@ -139,7 +141,7 @@ pub mod matches {
                 &[
                     payer_account.clone(),
                     win_oracle_account.clone(),
-                    system_program.clone(),
+                    system_program.to_account_info().clone(),
                 ],
             )?;
 
