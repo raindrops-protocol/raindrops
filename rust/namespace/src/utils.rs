@@ -69,11 +69,16 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
 }
 
 pub fn check_permissiveness_against_holder<'a>(
+    program_id: &Pubkey,
     artifact: &UncheckedAccount<'a>,
     token_holder: &UncheckedAccount<'a>,
     namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
     permissiveness: &Permissiveness,
 ) -> Result<()> {
+    if !artifact.owner.eq(&program_id) {
+        return Err(error!(ErrorCode::IncorrectOwner));
+    }
+
     let art_namespaces = pull_namespaces(artifact)?;
     msg!("found {} art_namespaces", art_namespaces.len());
     match permissiveness {
@@ -173,49 +178,6 @@ pub fn check_permissiveness_against_holder<'a>(
     }
 }
 
-pub fn assert_can_add_to_namespace<'a>(
-    artifact: &UncheckedAccount<'a>,
-    token_holder: &UncheckedAccount<'a>,
-    namespace: &Account<'a, Namespace>,
-    namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
-) -> Result<()> {
-    let art_namespaces = if artifact.owner.eq(&raindrops_player::id()) {
-        msg!("player_id match");
-        check_permissiveness_against_holder(
-            artifact,
-            token_holder,
-            namespace_gatekeeper,
-            &namespace.permissiveness_settings.player_permissiveness,
-        )?
-    } else if artifact.owner.eq(&raindrops_player::id()) {
-        msg!("item_id match");
-        check_permissiveness_against_holder(
-            artifact,
-            token_holder,
-            namespace_gatekeeper,
-            &namespace.permissiveness_settings.item_permissiveness,
-        )?
-    } else if artifact.owner.eq(&raindrops_matches::id()) {
-        msg!("match_id match");
-        check_permissiveness_against_holder(
-            artifact,
-            token_holder,
-            namespace_gatekeeper,
-            &namespace.permissiveness_settings.match_permissiveness,
-        )?
-    } else if artifact.owner == &crate::id() {
-        msg!("namespace_id match");
-        check_permissiveness_against_holder(
-            artifact,
-            token_holder,
-            namespace_gatekeeper,
-            &namespace.permissiveness_settings.namespace_permissiveness,
-        )?
-    } else {
-        return Err(error!(ErrorCode::CannotJoinNamespace));
-    };
-    return Ok(art_namespaces);
-}
 pub fn assert_metadata_valid<'a>(
     metadata: &UncheckedAccount,
     edition: Option<&UncheckedAccount>,

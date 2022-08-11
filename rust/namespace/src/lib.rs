@@ -5,16 +5,13 @@ use crate::utils::{
 };
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use raindrops_item::{
-    cpi::{
-        accounts::{
-            ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-            ItemClassUnCacheNamespace,
-        },
-        item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
-        item_class_uncache_namespace,
+use raindrops_item::cpi::{
+    accounts::{
+        ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
+        ItemClassUnCacheNamespace,
     },
-    program::Item,
+    item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
+    item_class_uncache_namespace,
 };
 
 use raindrops_matches::cpi::{
@@ -24,7 +21,6 @@ use raindrops_matches::cpi::{
     match_cache_namespace, match_join_namespace, match_leave_namespace, match_uncache_namespace,
 };
 
-use std::str::FromStr;
 anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
 
 pub const PREFIX: &str = "namespace";
@@ -228,7 +224,7 @@ pub mod namespace {
         // add item to cache
         index.caches.push(artifact.key());
 
-        // increment highest page if this is the last item that can be added to the cache
+        // if page is now full, add the page to the full_pages list
         if index.caches.len() == MAX_CACHED_ITEMS_PER_INDEX {
             msg!("{} page is full", index.page);
             namespace.full_pages.push(index.page);
@@ -239,59 +235,74 @@ pub mod namespace {
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
-        let accounts = ItemClassCacheNamespace {
-            item_class: ctx.accounts.artifact.to_account_info(),
-            namespace: ctx.accounts.namespace.to_account_info(),
-            instructions: ctx.accounts.instructions.to_account_info(),
-        };
+        let rd_program = ctx.accounts.raindrops_program.to_account_info();
 
-        let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
+        if raindrops_item::check_id(&rd_program.key()) {
+            let accounts = ItemClassCacheNamespace {
+                item_class: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
 
-        item_class_cache_namespace(cpi_ctx, index.page)
+            item_class_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
+        } else if raindrops_matches::check_id(&rd_program.key()) {
+            let accounts = MatchCacheNamespace {
+                match_state: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            match_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
+        } else {
+            return Err(error!(ErrorCode::CannotUncacheArtifact));
+        }
     }
 
     pub fn uncache_artifact<'info>(
         ctx: Context<'_, '_, '_, 'info, UncacheArtifact<'info>>,
         args: UncacheArtifactArgs,
     ) -> Result<()> {
-        let UncacheArtifactArgs { page, .. } = args;
-        let namespace = &mut ctx.accounts.namespace;
-        let index = &mut ctx.accounts.index;
-        let artifact = &mut ctx.accounts.artifact;
+        let rd_program = ctx.accounts.raindrops_program.to_account_info();
 
-        // check artifact is part of this namespace
-        let mut in_namespace = false;
-        let art_namespaces = pull_namespaces(&artifact).unwrap();
-        for art_ns in art_namespaces {
-            if art_ns == namespace.key() {
-                in_namespace = true;
+        if raindrops_item::check_id(&rd_program.key()) {
+            let accounts = ItemClassUnCacheNamespace {
+                item_class: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
             };
+
+            item_class_uncache_namespace(CpiContext::new(rd_program, accounts))?;
+        } else if raindrops_matches::check_id(&rd_program.key()) {
+            let accounts = MatchUncacheNamespace {
+                match_state: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            match_uncache_namespace(CpiContext::new(rd_program, accounts))?;
+        } else {
+            return Err(error!(ErrorCode::CannotUncacheArtifact));
         }
-        if !in_namespace {
-            return Err(error!(ErrorCode::ArtifactLacksNamespace));
-        }
+
+        let UncacheArtifactArgs { page, .. } = args;
 
         // remove item from index
-        index.caches.retain(|&item| item != artifact.key());
+        let artifact_key = ctx.accounts.artifact.key();
+        ctx.accounts
+            .index
+            .caches
+            .retain(|&item| &item != &artifact_key);
 
-        // remove page from full pages list
-        namespace.full_pages.retain(|&i| i != page);
+        // if page was full, remove the page from full pages list
+        ctx.accounts.namespace.full_pages.retain(|&i| i != page);
 
-        namespace.artifacts_cached = namespace
+        ctx.accounts
+            .namespace
             .artifacts_cached
             .checked_sub(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
-        // remove cache information from item
-        let accounts = ItemClassUnCacheNamespace {
-            item_class: ctx.accounts.artifact.to_account_info(),
-            namespace: ctx.accounts.namespace.to_account_info(),
-            instructions: ctx.accounts.instructions.to_account_info(),
-        };
-
-        let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
-
-        item_class_uncache_namespace(cpi_ctx)
+        return Ok(());
     }
 
     pub fn create_namespace_gatekeeper<'info>(
@@ -329,55 +340,11 @@ pub mod namespace {
     pub fn leave_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, LeaveNamespace<'info>>,
     ) -> Result<()> {
-        let artifact = &mut ctx.accounts.artifact.clone();
-        let namespace = &mut ctx.accounts.namespace.clone();
+        let rd_program = ctx.accounts.raindrops_program.to_account_info();
 
-        namespace.artifacts_added = namespace
-            .artifacts_added
-            .checked_sub(1)
-            .ok_or(ErrorCode::NumericalOverflowError)?;
-
-        let art_namespaces = pull_namespaces(artifact)?;
-
-        msg!("art_namespaces found");
-        for n in &art_namespaces {
-            msg!("art_ns: {}", n.key().to_string());
-            if n == &namespace.key() {
-                msg!("modifying artifact");
-                let accounts = ItemClassLeaveNamespace {
-                    item_class: ctx.accounts.artifact.to_account_info(),
-                    namespace: ctx.accounts.namespace.to_account_info(),
-                    instructions: ctx.accounts.instructions.to_account_info(),
-                };
-                let cpi_ctx =
-                    CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
-
-                item_class_leave_namespace(cpi_ctx)?;
-
-                return Ok(());
-            }
-        }
-
-        return Err(error!(ErrorCode::ArtifactNotPartOfNamespace));
-    }
-
-    pub fn join_namespace<'info>(
-        ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
-    ) -> Result<()> {
-        let program = ctx.remaining_accounts[0].clone();
-
-        let ns_program_id = *ctx.program_id;
-        let mut program_id = ns_program_id;
-        if ctx.remaining_accounts.len() == 1 {
-            program_id = program.key();
-        }
-
-        if raindrops_item::check_id(&program_id) {
-            if ctx.accounts.artifact.owner.eq(&program_id) {
-                return Err(error!(ErrorCode::IncorrectOwner));
-            }
-
+        if raindrops_item::check_id(&rd_program.key()) {
             check_permissiveness_against_holder(
+                &rd_program.key(),
                 &ctx.accounts.artifact,
                 &ctx.accounts.token_holder,
                 &ctx.accounts.namespace_gatekeeper,
@@ -385,24 +352,18 @@ pub mod namespace {
                     .namespace
                     .permissiveness_settings
                     .item_permissiveness,
-            )
-            .unwrap();
+            )?;
 
-            let accounts = ItemClassJoinNamespace {
+            let accounts = ItemClassLeaveNamespace {
                 item_class: ctx.accounts.artifact.to_account_info(),
                 namespace: ctx.accounts.namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            let cpi_ctx = CpiContext::new(program, accounts);
-
-            item_class_join_namespace(cpi_ctx)?;
-        } else if raindrops_matches::check_id(&program_id) {
-            if ctx.accounts.artifact.owner.eq(&program_id) {
-                return Err(error!(ErrorCode::IncorrectOwner));
-            }
-
+            item_class_leave_namespace(CpiContext::new(rd_program, accounts))?;
+        } else if raindrops_matches::check_id(&rd_program.key()) {
             check_permissiveness_against_holder(
+                &rd_program.key(),
                 &ctx.accounts.artifact,
                 &ctx.accounts.token_holder,
                 &ctx.accounts.namespace_gatekeeper,
@@ -410,8 +371,63 @@ pub mod namespace {
                     .namespace
                     .permissiveness_settings
                     .match_permissiveness,
-            )
-            .unwrap();
+            )?;
+
+            let accounts = MatchLeaveNamespace {
+                match_state: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            match_leave_namespace(CpiContext::new(rd_program, accounts))?;
+        } else {
+            return Err(error!(ErrorCode::CannotLeaveNamespace));
+        }
+
+        ctx.accounts
+            .namespace
+            .artifacts_added
+            .checked_sub(1)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        return Ok(());
+    }
+
+    pub fn join_namespace<'info>(
+        ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
+    ) -> Result<()> {
+        let rd_program = ctx.accounts.raindrops_program.to_account_info();
+
+        if raindrops_item::check_id(&rd_program.key()) {
+            check_permissiveness_against_holder(
+                &rd_program.key(),
+                &ctx.accounts.artifact,
+                &ctx.accounts.token_holder,
+                &ctx.accounts.namespace_gatekeeper,
+                &ctx.accounts
+                    .namespace
+                    .permissiveness_settings
+                    .item_permissiveness,
+            )?;
+
+            let accounts = ItemClassJoinNamespace {
+                item_class: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            item_class_join_namespace(CpiContext::new(rd_program, accounts))?;
+        } else if raindrops_matches::check_id(&rd_program.key()) {
+            check_permissiveness_against_holder(
+                &rd_program.key(),
+                &ctx.accounts.artifact,
+                &ctx.accounts.token_holder,
+                &ctx.accounts.namespace_gatekeeper,
+                &ctx.accounts
+                    .namespace
+                    .permissiveness_settings
+                    .match_permissiveness,
+            )?;
 
             let accounts = MatchJoinNamespace {
                 match_state: ctx.accounts.artifact.to_account_info(),
@@ -419,9 +435,7 @@ pub mod namespace {
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            let cpi_ctx = CpiContext::new(program, accounts);
-
-            match_join_namespace(cpi_ctx)?;
+            match_join_namespace(CpiContext::new(rd_program, accounts))?;
         } else {
             return Err(error!(ErrorCode::CannotJoinNamespace));
         }
@@ -748,7 +762,8 @@ pub struct JoinNamespace<'info> {
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    item_program: Program<'info, Item>,
+    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    raindrops_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -764,7 +779,8 @@ pub struct LeaveNamespace<'info> {
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    item_program: Program<'info, Item>,
+    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    raindrops_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -785,7 +801,8 @@ pub struct CacheArtifact<'info> {
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
-    item_program: Program<'info, Item>,
+    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    raindrops_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -804,7 +821,8 @@ pub struct UncacheArtifact<'info> {
     rent: Sysvar<'info, Rent>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    item_program: Program<'info, Item>,
+    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    raindrops_program: UncheckedAccount<'info>,
 }
 
 #[error_code]
@@ -847,8 +865,14 @@ pub enum ErrorCode {
     ArtifactNotPartOfNamespace,
     #[msg("You do not have permissions to join this namespace")]
     CannotJoinNamespace,
+    #[msg("Error leaving namespace")]
+    CannotLeaveNamespace,
     #[msg("You cannot remove an artifact from a namespace while it is still cached there. Uncache it first.")]
     ArtifactStillCached,
     #[msg("Artifact Cache full")]
     CacheFull,
+    #[msg("Cannot Uncache Artifact")]
+    CannotUncacheArtifact,
+    #[msg("Cannot Cache Artifact")]
+    CannotCacheArtifact,
 }
