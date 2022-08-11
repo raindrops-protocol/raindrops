@@ -1,8 +1,7 @@
 pub mod utils;
 
 use crate::utils::{
-    assert_can_add_to_namespace, assert_initialized, assert_metadata_valid, lowest_available_page,
-    pull_namespaces,
+    assert_initialized, assert_metadata_valid, lowest_available_page, pull_namespaces,
 };
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -17,11 +16,16 @@ use raindrops_item::{
     },
     program::Item,
 };
+
+use raindrops_matches::cpi::{
+    accounts::{
+        MatchCacheNamespace, MatchJoinNamespace, MatchLeaveNamespace, MatchUncacheNamespace,
+    },
+    match_cache_namespace, match_join_namespace, match_leave_namespace, match_uncache_namespace,
+};
+
 use std::str::FromStr;
 anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
-pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const MATCH_ID: &str = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ";
-pub const ITEM_ID: &str = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6";
 
 pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
@@ -55,6 +59,8 @@ pub struct UncacheArtifactArgs {
 
 #[program]
 pub mod namespace {
+
+    use crate::utils::check_permissiveness_against_holder;
 
     use super::*;
     pub fn initialize_namespace<'info>(
@@ -188,9 +194,9 @@ pub mod namespace {
             return Err(error!(ErrorCode::ArtifactLacksNamespace));
         }
 
-        if artifact.owner != &Pubkey::from_str(PLAYER_ID).unwrap()
-            && artifact.owner != &Pubkey::from_str(MATCH_ID).unwrap()
-            && artifact.owner != &Pubkey::from_str(ITEM_ID).unwrap()
+        if artifact.owner != &raindrops_player::ID
+            && artifact.owner != &raindrops_matches::ID
+            && artifact.owner != &raindrops_item::ID
             && artifact.owner != &id()
         {
             return Err(error!(ErrorCode::CanOnlyCacheValidRaindropsObjects));
@@ -358,24 +364,70 @@ pub mod namespace {
     pub fn join_namespace<'info>(
         ctx: Context<'_, '_, '_, 'info, JoinNamespace<'info>>,
     ) -> Result<()> {
-        let accounts = ItemClassJoinNamespace {
-            item_class: ctx.accounts.artifact.to_account_info(),
-            namespace: ctx.accounts.namespace.to_account_info(),
-            instructions: ctx.accounts.instructions.to_account_info(),
-        };
+        let program = ctx.remaining_accounts[0].clone();
 
-        let namespace_gatekeeper = &ctx.accounts.namespace_gatekeeper;
-        let artifact = &mut ctx.accounts.artifact;
-        let token_holder = &ctx.accounts.token_holder;
-        let namespace = &mut ctx.accounts.namespace;
+        let ns_program_id = *ctx.program_id;
+        let mut program_id = ns_program_id;
+        if ctx.remaining_accounts.len() == 1 {
+            program_id = program.key();
+        }
 
-        assert_can_add_to_namespace(artifact, token_holder, namespace, namespace_gatekeeper)?;
+        if raindrops_item::check_id(&program_id) {
+            if ctx.accounts.artifact.owner.eq(&program_id) {
+                return Err(error!(ErrorCode::IncorrectOwner));
+            }
 
-        let cpi_ctx = CpiContext::new(ctx.accounts.item_program.to_account_info(), accounts);
+            check_permissiveness_against_holder(
+                &ctx.accounts.artifact,
+                &ctx.accounts.token_holder,
+                &ctx.accounts.namespace_gatekeeper,
+                &ctx.accounts
+                    .namespace
+                    .permissiveness_settings
+                    .item_permissiveness,
+            )
+            .unwrap();
 
-        item_class_join_namespace(cpi_ctx)?;
+            let accounts = ItemClassJoinNamespace {
+                item_class: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
 
-        namespace.artifacts_added = namespace
+            let cpi_ctx = CpiContext::new(program, accounts);
+
+            item_class_join_namespace(cpi_ctx)?;
+        } else if raindrops_matches::check_id(&program_id) {
+            if ctx.accounts.artifact.owner.eq(&program_id) {
+                return Err(error!(ErrorCode::IncorrectOwner));
+            }
+
+            check_permissiveness_against_holder(
+                &ctx.accounts.artifact,
+                &ctx.accounts.token_holder,
+                &ctx.accounts.namespace_gatekeeper,
+                &ctx.accounts
+                    .namespace
+                    .permissiveness_settings
+                    .match_permissiveness,
+            )
+            .unwrap();
+
+            let accounts = MatchJoinNamespace {
+                match_state: ctx.accounts.artifact.to_account_info(),
+                namespace: ctx.accounts.namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            let cpi_ctx = CpiContext::new(program, accounts);
+
+            match_join_namespace(cpi_ctx)?;
+        } else {
+            return Err(error!(ErrorCode::CannotJoinNamespace));
+        }
+
+        ctx.accounts
+            .namespace
             .artifacts_added
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;

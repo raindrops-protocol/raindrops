@@ -1,4 +1,4 @@
-use crate::{ErrorCode, Filter, TokenValidation, ValidationArgs};
+use crate::{ErrorCode, Filter, TokenValidation, ValidationArgs, NAMESPACE_ID};
 use anchor_lang::{
     error,
     prelude::{
@@ -19,7 +19,7 @@ use anchor_spl::token::{Mint, Token};
 use arrayref::array_ref;
 use spl_associated_token_account::get_associated_token_address;
 use spl_token::instruction::close_account;
-use std::convert::TryInto;
+use std::{convert::TryInto, str::FromStr};
 
 pub fn assert_is_ata(
     ata: &AccountInfo,
@@ -420,4 +420,17 @@ pub fn is_valid_validation<'info>(
     }
 
     return Ok(true);
+}
+
+// returns true if the namespace program called the item program
+pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
+    let current_ix =
+        anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns)
+            .unwrap();
+
+    if current_ix.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
+        return false;
+    };
+
+    return true;
 }

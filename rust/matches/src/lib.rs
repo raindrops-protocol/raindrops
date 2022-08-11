@@ -1,30 +1,15 @@
 pub mod utils;
 
 use crate::utils::{
-    assert_derivation, assert_initialized, assert_is_ata, assert_owned_by, close_token_account,
-    create_or_allocate_account_raw, get_mask_and_index_for_seq, is_part_of_namespace,
-    is_valid_validation, spl_token_burn, spl_token_mint_to, spl_token_transfer, verify,
-    TokenBurnParams, TokenTransferParams,
+    assert_is_ata, close_token_account, is_namespace_program_caller, is_valid_validation,
+    spl_token_burn, spl_token_transfer, verify, TokenBurnParams, TokenTransferParams,
 };
-use anchor_lang::{
-    prelude::*,
-    solana_program::{
-        program::{invoke, invoke_signed},
-        program_option::COption,
-        program_pack::Pack,
-        system_instruction, system_program,
-    },
-    AnchorDeserialize, AnchorSerialize, Discriminator,
-};
+use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
-use metaplex_token_metadata::instruction::{
-    create_master_edition, create_metadata_accounts,
-    mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
-};
-use spl_token::instruction::{initialize_account2, mint_to};
 anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
 pub const PREFIX: &str = "matches";
+pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateOrUpdateOracleArgs {
@@ -623,6 +608,146 @@ pub mod matches {
 
         Ok(())
     }
+
+    pub fn match_join_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchJoinNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_state = &mut ctx.accounts.match_state;
+
+        let namespaces = match match_state.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToJoinNamespace)),
+        };
+
+        let mut joined = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+                ns.namespace = ctx.accounts.namespace.key();
+                ns.index = None;
+                ns.inherited = InheritanceState::NotInherited;
+                joined = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !joined {
+            return Err(error!(ErrorCode::FailedToJoinNamespace));
+        }
+        match_state.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn match_leave_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchLeaveNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_state = &mut ctx.accounts.match_state;
+
+        let namespaces = match match_state.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToLeaveNamespace)),
+        };
+
+        let mut left = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !left {
+                // if the artifact is still cached, error
+                if ns.index != None {
+                    return Err(error!(ErrorCode::FailedToLeaveNamespace));
+                };
+                ns.namespace = anchor_lang::solana_program::system_program::id();
+                ns.inherited = InheritanceState::NotInherited;
+                left = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !left {
+            return Err(error!(ErrorCode::FailedToLeaveNamespace));
+        }
+        match_state.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn match_cache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchCacheNamespace<'info>>,
+        page: u64,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_state = &mut ctx.accounts.match_state;
+
+        let namespaces = match match_state.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToCache)),
+        };
+
+        let mut cached = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !cached {
+                ns.index = Some(page);
+                cached = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !cached {
+            return Err(error!(ErrorCode::FailedToCache));
+        }
+        match_state.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn match_uncache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchUncacheNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_state = &mut ctx.accounts.match_state;
+
+        let namespaces = match match_state.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToUncache)),
+        };
+
+        let mut uncached = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !uncached {
+                ns.index = None;
+                uncached = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !uncached {
+            return Err(error!(ErrorCode::FailedToUncache));
+        }
+        match_state.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -768,6 +893,47 @@ pub struct CreateOrUpdateOracle<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
+#[derive(Accounts)]
+pub struct MatchJoinNamespace<'info> {
+    #[account(mut)]
+    match_state: Account<'info, Match>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct MatchLeaveNamespace<'info> {
+    #[account(mut)]
+    match_state: Account<'info, Match>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(page: u64)]
+pub struct MatchCacheNamespace<'info> {
+    #[account(mut)]
+    match_state: Account<'info, Match>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct MatchUncacheNamespace<'info> {
+    #[account(mut)]
+    match_state: Account<'info, Match>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum MatchState {
     Draft,
@@ -815,7 +981,7 @@ pub struct ValidationArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
     namespace: Pubkey,
-    indexed: bool,
+    index: Option<u64>,
     inherited: InheritanceState,
 }
 
@@ -999,4 +1165,18 @@ pub enum ErrorCode {
     NoParentPresent,
     #[msg("Reinitialization hack detected")]
     ReinitializationDetected,
+    #[msg("Failed to leave Namespace")]
+    FailedToLeaveNamespace,
+    #[msg("Failed to join Namespace")]
+    FailedToJoinNamespace,
+    #[msg("Unauthorized Caller")]
+    UnauthorizedCaller,
+    #[msg("Failed to cache")]
+    FailedToCache,
+    #[msg("Failed to uncache")]
+    FailedToUncache,
+    #[msg("Already cached")]
+    AlreadyCached,
+    #[msg("Not cached")]
+    NotCached,
 }
