@@ -12,7 +12,7 @@ import {
   getMatchesProgram,
   Utils,
   State
-} from "@raindrops-protocol/raindrops";
+} from "../../lib/";
 
 const { loadWalletKey } = Wallet;
 const { PDA } = Utils
@@ -430,6 +430,7 @@ programCommand("create_or_update_oracle")
       tokenTransferRoot: config.oracleState.tokenTransferRoot,
       tokenTransfers: config.oracleState.tokenTransfers,
       space: config.space ? new BN(config.space) : new BN(150),
+      resize: config.resize ? config.resize : true,
       finalized: config.oracleState.finalized,
     });
   });
