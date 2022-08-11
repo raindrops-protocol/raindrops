@@ -8,7 +8,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::cpi::{
     accounts::{
         ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-        ItemClassUnCacheNamespace,
+        ItemClassUncacheNamespace,
     },
     item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
     item_class_uncache_namespace,
@@ -247,7 +247,7 @@ pub mod namespace {
             item_class_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
         } else if raindrops_matches::check_id(&rd_program.key()) {
             let accounts = MatchCacheNamespace {
-                match_state: ctx.accounts.artifact.to_account_info(),
+                match_instance: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
@@ -272,7 +272,7 @@ pub mod namespace {
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         if raindrops_item::check_id(&rd_program.key()) {
-            let accounts = ItemClassUnCacheNamespace {
+            let accounts = ItemClassUncacheNamespace {
                 item_class: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
@@ -281,7 +281,7 @@ pub mod namespace {
             item_class_uncache_namespace(CpiContext::new(rd_program, accounts))?;
         } else if raindrops_matches::check_id(&rd_program.key()) {
             let accounts = MatchUncacheNamespace {
-                match_state: ctx.accounts.artifact.to_account_info(),
+                match_instance: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
@@ -374,7 +374,7 @@ pub mod namespace {
             )?;
 
             let accounts = MatchLeaveNamespace {
-                match_state: ctx.accounts.artifact.to_account_info(),
+                match_instance: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
@@ -426,7 +426,7 @@ pub mod namespace {
             msg!("permissiveness passed");
 
             let accounts = MatchJoinNamespace {
-                match_state: ctx.accounts.artifact.to_account_info(),
+                match_instance: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
@@ -865,4 +865,6 @@ pub enum ErrorCode {
     CannotUncacheArtifact,
     #[msg("Cannot Cache Artifact")]
     CannotCacheArtifact,
+    #[msg("Artifact not configured for namespaces")]
+    DesiredNamespacesNone
 }

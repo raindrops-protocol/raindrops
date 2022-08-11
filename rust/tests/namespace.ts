@@ -679,7 +679,7 @@ describe("namespace", () => {
     assert(nsData.artifactsCached === 0);
   });
 
-  it("join item class to namespace then then cache it and remove from cache", async () => {
+  it("join item class, cache, uncache then leave ns", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -803,7 +803,7 @@ describe("namespace", () => {
     assert(nsData.artifactsCached === 0);
   });
 
-  it.only("join match to namespace then then cache it and remove from cache and finally leave", async () => {
+  it("join match, cache, uncache then leave ns", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,

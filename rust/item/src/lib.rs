@@ -1787,7 +1787,7 @@ pub mod item {
     }
 
     pub fn item_class_uncache_namespace<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, ItemClassUnCacheNamespace<'info>>,
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassUncacheNamespace<'info>>,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
             return Err(error!(ErrorCode::UnauthorizedCaller));
@@ -2663,7 +2663,7 @@ pub struct ItemClassCacheNamespace<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ItemClassUnCacheNamespace<'info> {
+pub struct ItemClassUncacheNamespace<'info> {
     #[account(mut)]
     item_class: Account<'info, ItemClass>,
     #[account()]

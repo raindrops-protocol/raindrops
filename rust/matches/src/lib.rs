@@ -634,9 +634,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_state = &mut ctx.accounts.match_state;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_state.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToJoinNamespace)),
         };
@@ -657,7 +657,7 @@ pub mod matches {
         if !joined {
             return Err(error!(ErrorCode::FailedToJoinNamespace));
         }
-        match_state.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -669,9 +669,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_state = &mut ctx.accounts.match_state;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_state.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToLeaveNamespace)),
         };
@@ -695,7 +695,7 @@ pub mod matches {
         if !left {
             return Err(error!(ErrorCode::FailedToLeaveNamespace));
         }
-        match_state.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -708,9 +708,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_state = &mut ctx.accounts.match_state;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_state.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToCache)),
         };
@@ -729,7 +729,7 @@ pub mod matches {
         if !cached {
             return Err(error!(ErrorCode::FailedToCache));
         }
-        match_state.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -741,9 +741,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_state = &mut ctx.accounts.match_state;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_state.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToUncache)),
         };
@@ -762,7 +762,7 @@ pub mod matches {
         if !uncached {
             return Err(error!(ErrorCode::FailedToUncache));
         }
-        match_state.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -914,7 +914,7 @@ pub struct CreateOrUpdateOracle<'info> {
 #[derive(Accounts)]
 pub struct MatchJoinNamespace<'info> {
     #[account(mut)]
-    match_state: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -924,7 +924,7 @@ pub struct MatchJoinNamespace<'info> {
 #[derive(Accounts)]
 pub struct MatchLeaveNamespace<'info> {
     #[account(mut)]
-    match_state: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -935,7 +935,7 @@ pub struct MatchLeaveNamespace<'info> {
 #[instruction(page: u64)]
 pub struct MatchCacheNamespace<'info> {
     #[account(mut)]
-    match_state: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -945,7 +945,7 @@ pub struct MatchCacheNamespace<'info> {
 #[derive(Accounts)]
 pub struct MatchUncacheNamespace<'info> {
     #[account(mut)]
-    match_state: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
