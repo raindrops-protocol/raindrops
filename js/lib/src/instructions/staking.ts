@@ -6,7 +6,7 @@ import {
 import { Token } from "@solana/spl-token";
 import { ITEM_ID, PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { ContractCommon } from "../contract/common";
-import { AnchorPermissivenessType } from "../state/common";
+import { InstructablePermissivenessType } from "../state/common";
 import {
   getArtifactIntermediaryStakingAccount,
   getArtifactIntermediaryStakingCounterForWarmup,
@@ -24,7 +24,7 @@ export interface BeginArtifactStakeWarmupArgs {
   artifactClassMint: web3.PublicKey;
   artifactMint: web3.PublicKey;
   stakingAmount: BN;
-  stakingPermissivenessToUse: AnchorPermissivenessType | null;
+  stakingPermissivenessToUse: InstructablePermissivenessType | null;
 }
 
 export interface BeginArtifactStakeWarmupAccounts {
@@ -60,7 +60,7 @@ export interface BeginArtifactStakeCooldownArgs {
   stakingIndex: BN;
   artifactClassMint: web3.PublicKey;
   artifactMint: web3.PublicKey;
-  stakingPermissivenessToUse: AnchorPermissivenessType | null;
+  stakingPermissivenessToUse: InstructablePermissivenessType | null;
 }
 
 export interface BeginArtifactStakeCooldownAccounts {

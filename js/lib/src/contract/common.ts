@@ -1,4 +1,4 @@
-import { AnchorPermissivenessType, PermissivenessType } from "../state/common";
+import { InstructablePermissivenessType, PermissivenessType } from "../state/common";
 import { Program as SolKitProgram } from "@raindrop-studios/sol-kit";
 import { Program, web3, BN, AnchorProvider } from "@project-serum/anchor";
 import { getAtaForMint, getItemPDA, getMetadata } from "../utils/pda";
@@ -12,7 +12,7 @@ export interface ObjectWrapper<T, V> {
 
 export namespace ContractCommon {
   export async function generateRemainingAccountsGivenPermissivenessToUse(args: {
-    permissivenessToUse: AnchorPermissivenessType | null;
+    permissivenessToUse: InstructablePermissivenessType | null;
     tokenMint: web3.PublicKey;
     parentMint: web3.PublicKey | null;
     parentIndex: BN | null;
@@ -110,7 +110,7 @@ export namespace ContractCommon {
   }
 
   export async function generateRemainingAccountsForGivenPermissivenessToUse(args: {
-    permissivenessToUse: AnchorPermissivenessType | null;
+    permissivenessToUse: InstructablePermissivenessType | null;
     tokenMint: web3.PublicKey;
     parentClassMint: web3.PublicKey | null;
     parentClass: web3.PublicKey | null;
@@ -211,7 +211,7 @@ export namespace ContractCommon {
   // produces slightly different remainingAccounts. So this method is used instead for class creation.
   // If parent is set, defaults to using update authority as a permissiveness to make the new token class.
   export async function generateRemainingAccountsForCreateClass(args: {
-    permissivenessToUse: AnchorPermissivenessType | null;
+    permissivenessToUse: InstructablePermissivenessType | null;
     // Token is going to be a new Class
     tokenMint: web3.PublicKey;
     // The parent of the new class (if needed)
