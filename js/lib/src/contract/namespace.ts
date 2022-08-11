@@ -4,7 +4,7 @@ import { web3 } from "@project-serum/anchor";
 import * as NamespaceInstruction from "../instructions/namespace";
 import { NAMESPACE_ID } from "../constants/programIds";
 import { PREFIX } from "../constants/namespace";
-import { Namespace, NamespaceGatekeeper } from "../state/namespace";
+import { Namespace, NamespaceGatekeeper, NamespaceIndex } from "../state/namespace";
 import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
 export class NamespaceProgram extends Program.Program {
@@ -40,6 +40,11 @@ export class NamespaceProgram extends Program.Program {
     const namespaceGatekeeperObj =
       await this.client.account.namespaceGatekeeper.fetch(namespaceGatekeeper);
     return new NamespaceGatekeeper(namespaceGatekeeper, namespaceGatekeeperObj);
+  }
+
+  async fetchNamespaceIndex(namespaceIndex: web3.PublicKey): Promise<NamespaceIndex> {
+    const namespaceIndexObj = await this.client.account.namespaceIndex.fetch(namespaceIndex);
+    return new NamespaceIndex(namespaceIndex, namespaceIndexObj);
   }
 
   async updateNamespace(

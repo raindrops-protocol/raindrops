@@ -1,11 +1,11 @@
 import { web3 } from "@project-serum/anchor";
 
 export const NAMESPACE_ID = new web3.PublicKey(
-  "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
+  "AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X"
 );
 
 export const ITEM_ID = new web3.PublicKey(
-  "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
+  "CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4"
 );
 
 export const PLAYER_ID = new web3.PublicKey(
@@ -13,7 +13,7 @@ export const PLAYER_ID = new web3.PublicKey(
 );
 
 export const MATCHES_ID = new web3.PublicKey(
-  "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+  "7LyB5WFdVLBQ1zZ21djZRjSr6WzBSfPvNBsJxnhUTCQK"
 );
 
 export const STAKING_ID = new web3.PublicKey(

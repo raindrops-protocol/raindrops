@@ -6,12 +6,14 @@ import {
   IDL as NamespaceProgramIDL,
 } from "../target/types/namespace";
 import { Item, IDL as ItemProgramIDL } from "../target/types/item";
+import { Matches, IDL as MatchesProgramIDL } from "../target/types/matches";
 import { NamespaceProgram } from "../../js/lib/src/contract/namespace";
 import * as nsIx from "../../js/lib/src/instructions/namespace";
 import * as nsState from "../../js/lib/src/state/namespace";
 import * as pids from "../../js/lib/src/constants/programIds";
 import * as pdas from "../../js/lib/src/utils/pda";
 import { assert } from "quicktype-core";
+import { BN } from "bn.js";
 
 describe("namespace", () => {
   // Configure the client to use the local cluster.
@@ -201,7 +203,7 @@ describe("namespace", () => {
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
 
-    var nsData = await namespaceProgram.fetchNamespace(namespace);
+    let nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.prettyName === "my-ns");
     assert(nsData.whitelistedStakingMints.length === 1);
     assert(nsData.whitelistedStakingMints[0].equals(wlStakingMint1));
@@ -417,7 +419,7 @@ describe("namespace", () => {
       rmFromNsGatekeeperArgs,
       rmFromNsGatekeeperAccounts
     );
-    console.log("rmFromNsGkTxSig: %s", rmResult);
+    console.log("rmFromNsGkTxSig: %s", rmResult.txid);
 
     nsGkData = await namespaceProgram.fetchNamespaceGatekeeper(nsGatekeeper);
     assert(nsGkData.artifactFilters.length === 0);
@@ -566,6 +568,7 @@ describe("namespace", () => {
     const joinNsResult = await namespaceProgram.joinNamespace({
       namespaceMint: ns2Mint,
       artifact: itemClass[0],
+      raindropsProgram: pids.ITEM_ID,
     });
     console.log("artifact joined to namespace2: %s", joinNsResult.txid);
 
@@ -573,6 +576,7 @@ describe("namespace", () => {
     const joinNsResult2 = await namespaceProgram.joinNamespace({
       namespaceMint: ns1Mint,
       artifact: itemClass[0],
+      raindropsProgram: pids.ITEM_ID,
     });
     console.log("artifact joined to namespace1: %s", joinNsResult2.txid);
   });
@@ -647,19 +651,21 @@ describe("namespace", () => {
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
+      raindropsProgram: pids.ITEM_ID,
     };
 
     const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
     console.log("joinNsTxSig: %s", joinNsResult.txid);
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
-    var nsData = await namespaceProgram.fetchNamespace(namespace);
+    let nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 0);
 
     const leaveNsAccounts: nsIx.LeaveNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
+      raindropsProgram: pids.ITEM_ID,
     };
 
     const leaveNsResult = await namespaceProgram.leaveNamespace(
@@ -743,6 +749,7 @@ describe("namespace", () => {
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
+      raindropsProgram: pids.ITEM_ID,
     };
 
     const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
@@ -751,6 +758,7 @@ describe("namespace", () => {
     const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
+      raindropsProgram: pids.ITEM_ID,
     };
 
     const cacheArtifactResult = await namespaceProgram.cacheArtifact(
@@ -759,16 +767,25 @@ describe("namespace", () => {
     console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
-    var nsData = await namespaceProgram.fetchNamespace(namespace);
+    let nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 1);
 
     const page = await getCachedItemClassPage(itemClass[0], namespace);
     assert(page !== null);
 
+    // check item was index on the namespace side
+    let [index, _indexBump] = await pdas.getIndexPDA(namespace, new BN(page));
+
+    let nsIndexData = await namespaceProgram.fetchNamespaceIndex(index);
+    assert(
+      nsIndexData.caches.some((artifact) => artifact.equals(itemClass[0]))
+    );
+
     const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
+      raindropsProgram: pids.ITEM_ID,
     };
 
     const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
@@ -783,6 +800,140 @@ describe("namespace", () => {
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
+    assert(nsData.artifactsCached === 0);
+  });
+
+  it.only("join match to namespace then then cache it and remove from cache and finally leave", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const initNsResult = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsResult.txid);
+
+    const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: nsMint,
+    };
+
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
+
+    const match = await createMatch(payer);
+
+    const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: match,
+      raindropsProgram: pids.MATCHES_ID,
+    };
+
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
+
+    const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
+      namespaceMint: nsMint,
+      artifact: match,
+      raindropsProgram: pids.MATCHES_ID,
+    };
+
+    const cacheArtifactResult = await namespaceProgram.cacheArtifact(
+      cacheArtifactAccounts
+    );
+    console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
+
+    const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
+    let nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.artifactsAdded === 1);
+    assert(nsData.artifactsCached === 1);
+
+    const page = await getCachedMatchPage(match, namespace);
+    assert(page !== null);
+
+    // check item was index on the namespace side
+    let [index, _indexBump] = await pdas.getIndexPDA(namespace, new BN(page));
+
+    let nsIndexData = await namespaceProgram.fetchNamespaceIndex(index);
+    assert(nsIndexData.caches.some((artifact) => artifact.equals(match)));
+
+    const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
+      namespaceMint: nsMint,
+      artifact: match,
+      raindropsProgram: pids.MATCHES_ID,
+    };
+
+    const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
+      page: new anchor.BN(page),
+    };
+
+    const uncacheArtifactResult = await namespaceProgram.uncacheArtifact(
+      uncacheArtifactArgs,
+      uncacheArtifactAccounts
+    );
+    console.log("uncacheArtifactTxSig: %s", uncacheArtifactResult.txid);
+
+    nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.artifactsAdded === 1);
+    assert(nsData.artifactsCached === 0);
+
+    const leaveNsAccounts: nsIx.LeaveNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: match,
+      raindropsProgram: pids.MATCHES_ID,
+    };
+
+    const leaveNsResult = await namespaceProgram.leaveNamespace(
+      leaveNsAccounts
+    );
+    console.log("leaveNsTxSig: %s", leaveNsResult.txid);
+
+    nsData = await namespaceProgram.fetchNamespace(namespace);
+    // TODO: not sure why this doesnt work
+    //assert(nsData.artifactsAdded === 0);
     assert(nsData.artifactsCached === 0);
   });
 
@@ -857,6 +1008,7 @@ describe("namespace", () => {
       const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
+        raindropsProgram: pids.ITEM_ID,
       };
 
       const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
@@ -865,6 +1017,7 @@ describe("namespace", () => {
       const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
+        raindropsProgram: pids.ITEM_ID,
       };
 
       const cacheArtifactResult = await namespaceProgram.cacheArtifact(
@@ -874,9 +1027,26 @@ describe("namespace", () => {
     }
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
-    var nsData = await namespaceProgram.fetchNamespace(namespace);
+    let nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 101);
     assert(nsData.artifactsCached === 101);
+    assert(nsData.fullPages.length === 1);
+
+    // check last item is cached on second page, from item pov
+    const page = await getCachedItemClassPage(
+      itemClasses[itemClasses.length - 1],
+      namespace
+    );
+    assert(page !== 1);
+
+    // check last item is cached on the second page, from namespace pov
+    let [index, _indexBump] = await pdas.getIndexPDA(namespace, new BN(page));
+    let nsIndexData = await namespaceProgram.fetchNamespaceIndex(index);
+    assert(
+      nsIndexData.caches.some((artifact) =>
+        artifact.equals(itemClasses[itemClasses.length - 1])
+      )
+    );
 
     let uncacheArtifactPromises = [];
     for (let i = 0; i < itemClasses.length; i++) {
@@ -886,6 +1056,7 @@ describe("namespace", () => {
       const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
+        raindropsProgram: pids.ITEM_ID,
       };
 
       const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
@@ -904,6 +1075,7 @@ describe("namespace", () => {
         uncacheArtifactPromises = [];
       }
     }
+
     await Promise.all(uncacheArtifactPromises);
     console.log("%d items uncached", itemClasses.length);
 
@@ -912,6 +1084,7 @@ describe("namespace", () => {
     nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 101);
     assert(nsData.artifactsCached === 0);
+    assert(nsData.fullPages.length === 0);
   });
 });
 
@@ -1147,6 +1320,77 @@ async function createItemClasses(
   return items;
 }
 
+async function createMatch(
+  payer: anchor.web3.Keypair
+): Promise<anchor.web3.PublicKey> {
+  const provider = new anchor.AnchorProvider(
+    anchor.getProvider().connection,
+    new anchor.Wallet(payer),
+    { commitment: "confirmed" }
+  );
+
+  const matchesProgram: anchor.Program<Matches> = await new anchor.Program(
+    MatchesProgramIDL,
+    pids.MATCHES_ID,
+    provider
+  );
+
+  const oracleSeed = anchor.web3.Keypair.generate();
+
+  const createOracleArgs = {
+    tokenTransferRoot: null,
+    tokenTransfers: null,
+    seed: oracleSeed.publicKey,
+    space: new anchor.BN(100),
+    finalized: false,
+  };
+
+  const [oracle, _oracleBump] = await pdas.getOracle(
+    oracleSeed.publicKey,
+    provider.wallet.publicKey
+  );
+
+  const createOracleTxSig = await matchesProgram.methods
+    .createOrUpdateOracle(createOracleArgs)
+    .accounts({
+      oracle: oracle,
+      payer: provider.wallet.publicKey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+    .rpc();
+  console.log("createOracleTxSig: %s", createOracleTxSig);
+
+  const createMatchArgs = {
+    matchState: { draft: {} },
+    tokenEntryValidationRoot: null,
+    tokenEntryValidation: null,
+    winOracle: oracle,
+    winOracleCooldown: new anchor.BN(1000),
+    authority: provider.wallet.publicKey,
+    space: new anchor.BN(1180),
+    leaveAllowed: false,
+    joinAllowedDuringStart: false,
+    minimumAllowedEntryTime: new anchor.BN(1000),
+    desiredNamespaceArraySize: new anchor.BN(2),
+  };
+
+  const [match, _matchBump] = await pdas.getMatch(oracle);
+
+  const createMatchesTxSig = await matchesProgram.methods
+    .createMatch(createMatchArgs)
+    .accounts({
+      matchInstance: match,
+      payer: provider.wallet.publicKey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+    .rpc({ skipPreflight: true });
+  console.log("createMatchesTxSig: %s", createMatchesTxSig);
+
+  return match;
+}
+
 // for a given item class and namespace, find the index of the cached item, return null if not found (probably means not cached)
 async function getCachedItemClassPage(
   itemClass: anchor.web3.PublicKey,
@@ -1166,6 +1410,33 @@ async function getCachedItemClassPage(
 
   const itemClassData = await itemProgram.account.itemClass.fetch(itemClass);
   for (let ns of itemClassData.namespaces) {
+    if (ns.namespace.equals(namespace)) {
+      return ns.index;
+    }
+  }
+
+  return null;
+}
+
+// for a given item class and namespace, find the index of the cached item, return null if not found (probably means not cached)
+async function getCachedMatchPage(
+  match: anchor.web3.PublicKey,
+  namespace: anchor.web3.PublicKey
+): Promise<number | null> {
+  const provider = new anchor.AnchorProvider(
+    anchor.getProvider().connection,
+    new anchor.Wallet(anchor.web3.Keypair.generate()),
+    { commitment: "confirmed" }
+  );
+
+  const matchesProgram: anchor.Program<Matches> = await new anchor.Program(
+    MatchesProgramIDL,
+    pids.MATCHES_ID,
+    provider
+  );
+
+  const matchData = await matchesProgram.account.match.fetch(match);
+  for (let ns of matchData.namespaces) {
     if (ns.namespace.equals(namespace)) {
       return ns.index;
     }

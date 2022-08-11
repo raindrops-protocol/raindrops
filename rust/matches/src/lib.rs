@@ -7,9 +7,8 @@ use crate::utils::{
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
-anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
+anchor_lang::declare_id!("7LyB5WFdVLBQ1zZ21djZRjSr6WzBSfPvNBsJxnhUTCQK");
 pub const PREFIX: &str = "matches";
-pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateOrUpdateOracleArgs {
@@ -37,6 +36,7 @@ pub struct CreateMatchArgs {
     leave_allowed: bool,
     join_allowed_during_start: bool,
     minimum_allowed_entry_time: Option<u64>,
+    desired_namespace_array_size: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -124,6 +124,7 @@ pub mod matches {
             authority,
             leave_allowed,
             minimum_allowed_entry_time,
+            desired_namespace_array_size,
             ..
         } = args;
 
@@ -145,6 +146,23 @@ pub mod matches {
         match_instance.authority = authority;
         match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
         match_instance.leave_allowed = leave_allowed;
+
+        msg!("namespaces");
+        if desired_namespace_array_size > 0 {
+            let mut namespace_arr = vec![];
+
+            for _n in 0..desired_namespace_array_size {
+                namespace_arr.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
+            }
+
+            match_instance.namespaces = Some(namespace_arr);
+        } else {
+            match_instance.namespaces = None
+        }
 
         Ok(())
     }
@@ -980,9 +998,9 @@ pub struct ValidationArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
-    namespace: Pubkey,
-    index: Option<u64>,
-    inherited: InheritanceState,
+    pub namespace: Pubkey,
+    pub index: Option<u64>,
+    pub inherited: InheritanceState,
 }
 
 pub const MIN_MATCH_SIZE: usize = 8 + // discriminator
@@ -1004,25 +1022,25 @@ use anchor_spl::token::Token;
 
 #[account]
 pub struct Match {
-    namespaces: Option<Vec<NamespaceAndIndex>>,
+    pub namespaces: Option<Vec<NamespaceAndIndex>>,
     // Win oracle must always present some rewards struct
     // for redistributing items
-    win_oracle: Pubkey,
-    win_oracle_cooldown: u64,
-    last_oracle_check: u64,
-    authority: Pubkey,
-    state: MatchState,
-    leave_allowed: bool,
-    minimum_allowed_entry_time: Option<u64>,
-    bump: u8,
+    pub win_oracle: Pubkey,
+    pub win_oracle_cooldown: u64,
+    pub last_oracle_check: u64,
+    pub authority: Pubkey,
+    pub state: MatchState,
+    pub leave_allowed: bool,
+    pub minimum_allowed_entry_time: Option<u64>,
+    pub bump: u8,
     /// Increased by 1 every time the next token transfer
     /// in the win oracle is completed.
-    current_token_transfer_index: u64,
-    token_types_added: u64,
-    token_types_removed: u64,
-    token_entry_validation: Option<Vec<TokenValidation>>,
-    token_entry_validation_root: Option<Root>,
-    join_allowed_during_start: bool,
+    pub current_token_transfer_index: u64,
+    pub token_types_added: u64,
+    pub token_types_removed: u64,
+    pub token_entry_validation: Option<Vec<TokenValidation>>,
+    pub token_entry_validation_root: Option<Root>,
+    pub join_allowed_during_start: bool,
 }
 
 #[account]

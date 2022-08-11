@@ -1,4 +1,4 @@
-use crate::{ErrorCode, Filter, TokenValidation, ValidationArgs, NAMESPACE_ID};
+use crate::{ErrorCode, Filter, TokenValidation, ValidationArgs};
 use anchor_lang::{
     error,
     prelude::{
@@ -20,6 +20,8 @@ use arrayref::array_ref;
 use spl_associated_token_account::get_associated_token_address;
 use spl_token::instruction::close_account;
 use std::{convert::TryInto, str::FromStr};
+
+pub const NAMESPACE_ID: &str = "AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X";
 
 pub fn assert_is_ata(
     ata: &AccountInfo,

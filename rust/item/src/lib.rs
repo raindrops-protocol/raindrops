@@ -19,14 +19,14 @@ use anchor_lang::{
     },
     AnchorDeserialize, AnchorSerialize, Discriminator,
 };
-anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
+anchor_lang::declare_id!("CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4");
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use arrayref::array_ref;
 use std::str::FromStr;
 pub const PREFIX: &str = "item";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
+pub const NAMESPACE_ID: &str = "AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X";
 pub const STAKING_ID: &str = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -2638,7 +2638,7 @@ pub struct ItemClassJoinNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2648,7 +2648,7 @@ pub struct ItemClassLeaveNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2659,7 +2659,7 @@ pub struct ItemClassCacheNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2669,7 +2669,7 @@ pub struct ItemClassUnCacheNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    pub instructions: UncheckedAccount<'info>,
+    instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

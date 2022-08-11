@@ -66,16 +66,19 @@ export interface RemoveFromNamespaceGatekeeperAccounts {
 export interface JoinNamespaceAccounts {
   namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
+  raindropsProgram: web3.PublicKey;
 }
 
 export interface LeaveNamespaceAccounts {
   namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
+  raindropsProgram: web3.PublicKey;
 }
 
 export interface CacheArtifactAccounts {
   namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
+  raindropsProgram: web3.PublicKey;
 }
 
 export interface UncacheArtifactArgs {
@@ -85,6 +88,7 @@ export interface UncacheArtifactArgs {
 export interface UncacheArtifactAccounts {
   namespaceMint: web3.PublicKey;
   artifact: web3.PublicKey;
+  raindropsProgram: web3.PublicKey;
 }
 
 export class Instruction extends SolKitInstruction {
@@ -347,7 +351,7 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
-          itemProgram: ITEM_ID,
+          raindropsProgram: accounts.raindropsProgram,
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -381,7 +385,7 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
-          itemProgram: ITEM_ID,
+          raindropsProgram: accounts.raindropsProgram,
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -434,7 +438,7 @@ export class Instruction extends SolKitInstruction {
           tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-          itemProgram: ITEM_ID,
+          raindropsProgram: accounts.raindropsProgram,
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -472,7 +476,7 @@ export class Instruction extends SolKitInstruction {
           tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-          itemProgram: ITEM_ID,
+          raindropsProgram: accounts.raindropsProgram,
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),

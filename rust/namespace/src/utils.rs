@@ -10,6 +10,7 @@ use anchor_lang::{
 };
 use arrayref::array_ref;
 use raindrops_item::ItemClass;
+use raindrops_matches::Match;
 
 pub fn assert_part_of_namespace<'a>(
     artifact: &AccountInfo<'a>,
@@ -56,16 +57,23 @@ pub fn assert_signer(account: &UncheckedAccount) -> Result<()> {
 }
 
 pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
-    let data = artifact.data.borrow_mut();
-    let item_class: ItemClass = try_from_slice_unchecked(&data[8..])?;
-
     let mut namespaces: Vec<Pubkey> = vec![];
 
-    for ns in item_class.namespaces.unwrap() {
-        namespaces.push(ns.namespace);
+    if let Ok(item_class) = Account::<'_, ItemClass>::try_from(artifact) {
+        for ns in item_class.namespaces.as_ref().unwrap() {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
+    } else if let Ok(match_state) = Account::<'_, Match>::try_from(artifact) {
+        for ns in match_state.namespaces.as_ref().unwrap() {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
     }
 
-    Ok(namespaces)
+    Err(error!(ErrorCode::IncorrectOwner))
 }
 
 pub fn check_permissiveness_against_holder<'a>(
@@ -78,6 +86,7 @@ pub fn check_permissiveness_against_holder<'a>(
     if !artifact.owner.eq(&program_id) {
         return Err(error!(ErrorCode::IncorrectOwner));
     }
+    msg!("artifact owner correct");
 
     let art_namespaces = pull_namespaces(artifact)?;
     msg!("found {} art_namespaces", art_namespaces.len());

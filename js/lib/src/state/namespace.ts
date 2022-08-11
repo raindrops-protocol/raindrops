@@ -267,3 +267,19 @@ export class NamespaceGatekeeper {
     this.bump = data.bump;
   }
 }
+
+export class NamespaceIndex {
+  address: web3.PublicKey;
+  namespace: web3.PublicKey;
+  bump: number;
+  page: number;
+  caches: web3.PublicKey[];
+
+  constructor(address, data) {
+    this.address = address;
+    this.namespace = data.namespace;
+    this.bump = data.bump;
+    this.page = data.page;
+    this.caches = data.caches;
+  }
+}
