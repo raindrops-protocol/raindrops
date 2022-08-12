@@ -92,7 +92,10 @@ CLI.programCommandWithConfig(
         whitelistedStakingMints: whitelistedStakingMints || null,
       },
       {
-        namespaceMint: new web3.PublicKey(config.mint),
+        mint: new web3.PublicKey(config.mint),
+        namespaceToken: new web3.PublicKey(config.namespaceToken),
+        tokenHolder: (namespaceProgram.client.provider as AnchorProvider).wallet
+          .publicKey,
       }
     );
 
