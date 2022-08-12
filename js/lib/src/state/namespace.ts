@@ -166,7 +166,7 @@ export class Namespace {
       this.namespaces.map((n) => {
         log.info(`{`);
         log.info(`\tnamespace: ${n.namespace.toBase58()}`);
-        log.info(`\tindexed: ${n.indexed}`);
+        log.info(`\tindex: ${n.index}`);
         log.info(`\tinherited: ${Object.keys(n.inherited).join(", ")}`);
         log.info(`}`);
       });

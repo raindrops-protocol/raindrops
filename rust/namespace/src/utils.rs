@@ -2,10 +2,7 @@ use crate::{ErrorCode, Filter, Namespace, NamespaceGatekeeper, Permissiveness};
 use anchor_lang::{
     error,
     prelude::{msg, Account, AccountInfo, ProgramError, Pubkey, Result, UncheckedAccount},
-    solana_program::{
-        borsh::try_from_slice_unchecked,
-        program_pack::{IsInitialized, Pack},
-    },
+    solana_program::program_pack::{IsInitialized, Pack},
     Key, ToAccountInfo,
 };
 use arrayref::array_ref;
@@ -67,6 +64,12 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
         return Ok(namespaces);
     } else if let Ok(match_state) = Account::<'_, Match>::try_from(artifact) {
         for ns in match_state.namespaces.as_ref().unwrap() {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
+    } else if let Ok(namespace) = Account::<'_, Namespace>::try_from(artifact) {
+        for ns in namespace.namespaces.as_ref().unwrap() {
             namespaces.push(ns.namespace);
         }
 

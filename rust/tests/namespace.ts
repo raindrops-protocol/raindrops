@@ -674,8 +674,7 @@ describe("namespace", () => {
     console.log("leaveNsTxSig: %s", leaveNsResult.txid);
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
-    // TODO: not sure why this doesnt work
-    //assert(nsData.artifactsAdded === 0);
+    assert(nsData.artifactsAdded === 0);
     assert(nsData.artifactsCached === 0);
   });
 
@@ -932,9 +931,193 @@ describe("namespace", () => {
     console.log("leaveNsTxSig: %s", leaveNsResult.txid);
 
     nsData = await namespaceProgram.fetchNamespace(namespace);
-    // TODO: not sure why this doesnt work
-    //assert(nsData.artifactsAdded === 0);
+    assert(nsData.artifactsAdded === 0);
     assert(nsData.artifactsCached === 0);
+  });
+
+  it("join match, cache, uncache then leave ns", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [ns1Mint, ns1Metadata, ns1MasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings1: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs1: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings1,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts1: nsIx.InitializeNamespaceAccounts = {
+      mint: ns1Mint,
+      metadata: ns1Metadata,
+      masterEdition: ns1MasterEdition,
+    };
+
+    const initNs1Result = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs1,
+      initializeNamespaceAccounts1
+    );
+
+    console.log("initNs1TxSig: %s", initNs1Result.txid);
+
+    const [ns2Mint, ns2Metadata, ns2MasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings2: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs2: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings2,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts2: nsIx.InitializeNamespaceAccounts = {
+      mint: ns2Mint,
+      metadata: ns2Metadata,
+      masterEdition: ns2MasterEdition,
+    };
+
+    const initNs2Result = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs2,
+      initializeNamespaceAccounts2
+    );
+
+    console.log("initNs2TxSig: %s", initNs2Result.txid);
+
+    const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: ns1Mint,
+    };
+
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
+
+    const [namespace2, _namespace2Bump] = await pdas.getNamespacePDA(ns2Mint);
+
+    const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
+      namespaceMint: ns1Mint,
+      artifact: namespace2,
+      raindropsProgram: pids.NAMESPACE_ID,
+    };
+
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
+
+    const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
+      namespaceMint: ns1Mint,
+      artifact: namespace2,
+      raindropsProgram: pids.NAMESPACE_ID,
+    };
+
+    const cacheArtifactResult = await namespaceProgram.cacheArtifact(
+      cacheArtifactAccounts
+    );
+    console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
+
+    const [namespace1, _namespace1Bump] = await pdas.getNamespacePDA(ns1Mint);
+    let ns1Data = await namespaceProgram.fetchNamespace(namespace1);
+    assert(ns1Data.artifactsAdded === 1);
+    assert(ns1Data.artifactsCached === 1);
+
+    // check namespace2 which was joined to namespace1 and cached, shows that its cached
+    let ns2Data = await namespaceProgram.fetchNamespace(namespace2);
+    assert(
+      ns2Data.namespaces.some((ns2Index) =>
+        ns2Index.namespace.equals(namespace1)
+      )
+    );
+
+    // check item was index on the namespace side
+    let [index, _indexBump] = await pdas.getIndexPDA(namespace1, new BN(0));
+
+    let nsIndexData = await namespaceProgram.fetchNamespaceIndex(index);
+    assert(nsIndexData.caches.some((artifact) => artifact.equals(namespace2)));
+
+    const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
+      namespaceMint: ns1Mint,
+      artifact: namespace2,
+      raindropsProgram: pids.NAMESPACE_ID,
+    };
+
+    const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
+      page: new anchor.BN(0),
+    };
+
+    const uncacheArtifactResult = await namespaceProgram.uncacheArtifact(
+      uncacheArtifactArgs,
+      uncacheArtifactAccounts
+    );
+    console.log("uncacheArtifactTxSig: %s", uncacheArtifactResult.txid);
+
+    ns1Data = await namespaceProgram.fetchNamespace(namespace1);
+    assert(ns1Data.artifactsAdded === 1);
+    assert(ns1Data.artifactsCached === 0);
+
+    // assert artifact is uncached from namespace pov
+    nsIndexData = await namespaceProgram.fetchNamespaceIndex(index);
+    assert(!nsIndexData.caches.includes(namespace2));
+    assert(nsIndexData.caches.length === 0);
+
+    ns2Data = await namespaceProgram.fetchNamespace(namespace2);
+    for (let ns of ns2Data.namespaces) {
+      assert(ns.index === null);
+    }
+
+    const leaveNsAccounts: nsIx.LeaveNamespaceAccounts = {
+      namespaceMint: ns1Mint,
+      artifact: namespace2,
+      raindropsProgram: pids.NAMESPACE_ID,
+    };
+
+    const leaveNsResult = await namespaceProgram.leaveNamespace(
+      leaveNsAccounts
+    );
+    console.log("leaveNsTxSig: %s", leaveNsResult.txid);
+
+    ns1Data = await namespaceProgram.fetchNamespace(namespace1);
+    assert(ns1Data.artifactsAdded === 0);
+    assert(ns1Data.artifactsCached === 0);
   });
 
   it("cache 101 items to namespace, tests cache pagination, then uncache them all", async () => {

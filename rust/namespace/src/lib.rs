@@ -1,7 +1,8 @@
 pub mod utils;
 
 use crate::utils::{
-    assert_initialized, assert_metadata_valid, lowest_available_page, pull_namespaces,
+    assert_initialized, assert_metadata_valid, check_permissiveness_against_holder,
+    lowest_available_page, pull_namespaces,
 };
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -55,8 +56,6 @@ pub struct UncacheArtifactArgs {
 
 #[program]
 pub mod namespace {
-
-    use crate::utils::check_permissiveness_against_holder;
 
     use super::*;
     pub fn initialize_namespace<'info>(
@@ -178,10 +177,11 @@ pub mod namespace {
         let index = &mut ctx.accounts.index;
         let artifact = &mut ctx.accounts.artifact;
 
-        // check artifact is part of this namespace
+        // check artifact is joined to this namespace
         let mut in_namespace = false;
         let art_namespaces = pull_namespaces(&artifact).unwrap();
         for art_ns in art_namespaces {
+            msg!("{}, {}", art_ns, namespace.key());
             if art_ns == namespace.key() {
                 in_namespace = true;
             };
@@ -253,8 +253,31 @@ pub mod namespace {
             };
 
             match_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
+        } else if crate::id().eq(&rd_program.key()) {
+            let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
+
+            let mut cached = false;
+            let mut new_namespaces: Vec<NamespaceAndIndex> = vec![];
+            for ns in artifact_ns.namespaces.clone().unwrap() {
+                if ns.namespace == namespace.key() && !cached {
+                    cached = true;
+                    new_namespaces.push(NamespaceAndIndex {
+                        namespace: namespace.key(),
+                        index: Some(index.page),
+                        inherited: InheritanceState::NotInherited,
+                    });
+                } else {
+                    msg!("else: {}", ns.namespace);
+                    new_namespaces.push(ns);
+                }
+            }
+            if !cached {
+                return Err(error!(ErrorCode::CannotCacheArtifact));
+            }
+            artifact_ns.namespaces = Some(new_namespaces);
+            artifact_ns.exit(&crate::id())
         } else {
-            return Err(error!(ErrorCode::CannotUncacheArtifact));
+            return Err(error!(ErrorCode::CannotCacheArtifact));
         }
     }
 
@@ -287,6 +310,28 @@ pub mod namespace {
             };
 
             match_uncache_namespace(CpiContext::new(rd_program, accounts))?;
+        } else if crate::id().eq(&rd_program.key()) {
+            let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
+
+            let mut uncached = false;
+            let mut new_namespaces: Vec<NamespaceAndIndex> = vec![];
+            for ns in artifact_ns.namespaces.clone().unwrap() {
+                if ns.namespace == namespace.key() && !uncached {
+                    uncached = true;
+                    new_namespaces.push(NamespaceAndIndex {
+                        namespace: namespace.key(),
+                        index: None,
+                        inherited: InheritanceState::NotInherited,
+                    });
+                } else {
+                    new_namespaces.push(ns);
+                }
+            }
+            if !uncached {
+                return Err(error!(ErrorCode::CannotUncacheArtifact));
+            }
+            artifact_ns.namespaces = Some(new_namespaces);
+            artifact_ns.exit(&crate::id()).unwrap();
         } else {
             return Err(error!(ErrorCode::CannotUncacheArtifact));
         }
@@ -380,6 +425,31 @@ pub mod namespace {
             };
 
             match_leave_namespace(CpiContext::new(rd_program, accounts))
+        } else if crate::id().eq(&rd_program.key()) {
+            let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
+
+            let mut left = false;
+            let mut new_namespaces: Vec<NamespaceAndIndex> = vec![];
+            for ns in artifact_ns.namespaces.clone().unwrap() {
+                if ns.namespace == namespace.key() && !left {
+                    if ns.index != None {
+                        return Err(error!(ErrorCode::CannotLeaveNamespace));
+                    }
+                    left = true;
+                    new_namespaces.push(NamespaceAndIndex {
+                        namespace: anchor_lang::solana_program::system_program::id(),
+                        index: None,
+                        inherited: InheritanceState::NotInherited,
+                    });
+                } else {
+                    new_namespaces.push(ns);
+                }
+            }
+            if !left {
+                return Err(error!(ErrorCode::CannotLeaveNamespace));
+            }
+            artifact_ns.namespaces = Some(new_namespaces);
+            artifact_ns.exit(&crate::id())
         } else {
             return Err(error!(ErrorCode::CannotLeaveNamespace));
         }
@@ -423,7 +493,6 @@ pub mod namespace {
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.match_permissiveness,
             )?;
-            msg!("permissiveness passed");
 
             let accounts = MatchJoinNamespace {
                 match_instance: ctx.accounts.artifact.to_account_info(),
@@ -432,6 +501,38 @@ pub mod namespace {
             };
 
             match_join_namespace(CpiContext::new(rd_program, accounts))?;
+        } else if crate::id().eq(&rd_program.key()) {
+            msg!("joining namespace to namespace");
+            check_permissiveness_against_holder(
+                &rd_program.key(),
+                &ctx.accounts.artifact,
+                &ctx.accounts.token_holder,
+                &ctx.accounts.namespace_gatekeeper,
+                &namespace.permissiveness_settings.namespace_permissiveness,
+            )?;
+
+            let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
+
+            let mut joined = false;
+            let mut new_namespaces: Vec<NamespaceAndIndex> = vec![];
+            for ns in artifact_ns.namespaces.clone().unwrap() {
+                if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+                    joined = true;
+                    new_namespaces.push(NamespaceAndIndex {
+                        namespace: namespace.key(),
+                        index: None,
+                        inherited: InheritanceState::NotInherited,
+                    });
+                } else {
+                    new_namespaces.push(ns);
+                }
+            }
+            if !joined {
+                return Err(error!(ErrorCode::CannotJoinNamespace));
+            }
+            msg!("writing to artifact_ns");
+            artifact_ns.namespaces = Some(new_namespaces);
+            artifact_ns.exit(&crate::id()).unwrap();
         } else {
             return Err(error!(ErrorCode::CannotJoinNamespace));
         }
@@ -866,5 +967,5 @@ pub enum ErrorCode {
     #[msg("Cannot Cache Artifact")]
     CannotCacheArtifact,
     #[msg("Artifact not configured for namespaces")]
-    DesiredNamespacesNone
+    DesiredNamespacesNone,
 }
