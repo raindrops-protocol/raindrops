@@ -7,7 +7,7 @@ use crate::utils::{
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
-anchor_lang::declare_id!("7LyB5WFdVLBQ1zZ21djZRjSr6WzBSfPvNBsJxnhUTCQK");
+anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
 pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
