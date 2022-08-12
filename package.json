@@ -8,7 +8,13 @@
     "js/lib",
     "rust"
   ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint"
+  },
   "devDependencies": {
-    "@metaplex-foundation/amman": "^0.10.0"
+    "@metaplex-foundation/amman": "^0.10.0",
+    "turbo": "^1.4.3"
   }
 }
