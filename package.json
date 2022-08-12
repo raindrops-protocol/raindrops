@@ -1,10 +1,13 @@
 {
-  "name": "@raindrops-protocol/raindrops",
   "version": "0.1.0",
   "private": true,
   "license": "ISC",
-  "scripts": {},
-  "dependencies": {},
+  "packageManager": "yarn@3.2.0",
+  "workspaces": [
+    "js/cli",
+    "js/lib",
+    "rust"
+  ],
   "devDependencies": {
     "@metaplex-foundation/amman": "^0.10.0"
   }

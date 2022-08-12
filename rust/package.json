@@ -1,11 +1,11 @@
 {
-  "name": "@metaplex/metaplex-programs",
+  "name": "@raindrops-protocol/raindrops-programs",
   "version": "1.0.0",
   "private": true,
-  "description": "Metaplex Program Tests",
+  "description": "Raindrops Program Tests",
   "license": "MIT",
   "type": "module",
-  "author": "Metaplex Contributors",
+  "author": "Raindrops Contributors",
   "devDependencies": {
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.1",
