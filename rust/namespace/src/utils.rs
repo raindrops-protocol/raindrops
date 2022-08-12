@@ -57,19 +57,37 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
     let mut namespaces: Vec<Pubkey> = vec![];
 
     if let Ok(item_class) = Account::<'_, ItemClass>::try_from(artifact) {
-        for ns in item_class.namespaces.as_ref().unwrap() {
+        let artifact_namespaces = match item_class.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
             namespaces.push(ns.namespace);
         }
 
         return Ok(namespaces);
     } else if let Ok(match_state) = Account::<'_, Match>::try_from(artifact) {
-        for ns in match_state.namespaces.as_ref().unwrap() {
+        let artifact_namespaces = match match_state.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
             namespaces.push(ns.namespace);
         }
 
         return Ok(namespaces);
     } else if let Ok(namespace) = Account::<'_, Namespace>::try_from(artifact) {
-        for ns in namespace.namespaces.as_ref().unwrap() {
+        let artifact_namespaces = match namespace.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
             namespaces.push(ns.namespace);
         }
 
@@ -89,10 +107,8 @@ pub fn check_permissiveness_against_holder<'a>(
     if !artifact.owner.eq(&program_id) {
         return Err(error!(ErrorCode::IncorrectOwner));
     }
-    msg!("artifact owner correct");
 
     let art_namespaces = pull_namespaces(artifact)?;
-    msg!("found {} art_namespaces", art_namespaces.len());
     match permissiveness {
         Permissiveness::All => {
             msg!("All match");
@@ -103,10 +119,8 @@ pub fn check_permissiveness_against_holder<'a>(
             let deserialized: Account<'_, NamespaceGatekeeper> =
                 Account::try_from(&namespace_gatekeeper.to_account_info())?;
             for filter in &deserialized.artifact_filters {
-                msg!("filter found");
                 match &filter.filter {
                     Filter::Namespace { namespaces } => {
-                        msg!("ns filter");
                         for n in &art_namespaces {
                             for other_n in namespaces {
                                 if other_n == n {

@@ -863,7 +863,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const match = await createMatch(payer);
+    const match = await createMatch(payer, 2);
 
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -935,7 +935,7 @@ describe("namespace", () => {
     assert(nsData.artifactsCached === 0);
   });
 
-  it("join match, cache, uncache then leave ns", async () => {
+  it("join namespace, cache, uncache then leave ns", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -1269,6 +1269,85 @@ describe("namespace", () => {
     assert(nsData.artifactsCached === 0);
     assert(nsData.fullPages.length === 0);
   });
+
+  it("join match to namespace without any space allocated for namespaces in the match account", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: NamespaceProgramIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: nsState.PermissivenessSettings = {
+      namespacePermissiveness: nsState.Permissiveness.All,
+      itemPermissiveness: nsState.Permissiveness.All,
+      playerPermissiveness: nsState.Permissiveness.All,
+      matchPermissiveness: nsState.Permissiveness.All,
+      missionPermissiveness: nsState.Permissiveness.All,
+      cachePermissiveness: nsState.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "123456",
+      prettyName: "my-ns",
+      permissivenessSettings: permissivenessSettings,
+      whitelistedStakingMints: [],
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: nsMint,
+      metadata: nsMetadata,
+      masterEdition: nsMasterEdition,
+    };
+
+    const initNsResult = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsResult.txid);
+
+    const createNsGKAccounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: nsMint,
+    };
+
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
+
+    // create match without any space allocated for namespaces
+    const match = await createMatch(payer, 0);
+
+    const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: match,
+      raindropsProgram: pids.MATCHES_ID,
+    };
+
+    let failed = false;
+    try {
+      await namespaceProgram.joinNamespace(joinNsAccounts);
+    } catch (e) {
+      failed = true;
+    }
+    assert(failed);
+  });
 });
 
 async function createMintMetadataAndMasterEditionAccounts(
@@ -1504,7 +1583,8 @@ async function createItemClasses(
 }
 
 async function createMatch(
-  payer: anchor.web3.Keypair
+  payer: anchor.web3.Keypair,
+  desiredNamespaceArraySize: number
 ): Promise<anchor.web3.PublicKey> {
   const provider = new anchor.AnchorProvider(
     anchor.getProvider().connection,
@@ -1555,7 +1635,7 @@ async function createMatch(
     leaveAllowed: false,
     joinAllowedDuringStart: false,
     minimumAllowedEntryTime: new anchor.BN(1000),
-    desiredNamespaceArraySize: new anchor.BN(2),
+    desiredNamespaceArraySize: new anchor.BN(desiredNamespaceArraySize),
   };
 
   const [match, _matchBump] = await pdas.getMatch(oracle);

@@ -530,7 +530,6 @@ pub mod namespace {
             if !joined {
                 return Err(error!(ErrorCode::CannotJoinNamespace));
             }
-            msg!("writing to artifact_ns");
             artifact_ns.namespaces = Some(new_namespaces);
             artifact_ns.exit(&crate::id()).unwrap();
         } else {

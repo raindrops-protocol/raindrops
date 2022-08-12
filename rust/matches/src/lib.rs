@@ -1003,11 +1003,16 @@ pub struct NamespaceAndIndex {
     pub inherited: InheritanceState,
 }
 
+impl NamespaceAndIndex {
+    pub const SPACE: usize = 32 + 9 + 2;
+}
+
 pub const MIN_MATCH_SIZE: usize = 8 + // discriminator
 32 + // win oracle
 8 + // oracle cooldown
 8 + // last oracle check
 32 + // authority,
+1 + 4 + (NamespaceAndIndex::SPACE * 10) + // Option<Vec<NamespaceAndIndex>> allow max 10
 1 + // match state
 1 + // leave allowed
 1 + // min valid entry

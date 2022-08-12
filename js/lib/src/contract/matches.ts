@@ -86,6 +86,7 @@ export interface CreateMatchArgs {
   leaveAllowed: boolean;
   joinAllowedDuringStart: boolean;
   minimumAllowedEntryTime: BN | null;
+  desiredNamespaceArraySize: number;
 }
 
 export interface UpdateMatchArgs {
