@@ -466,10 +466,14 @@ export class Instruction extends SolKitInstruction {
           .accounts({
             playerClass: playerClassKey,
             parentClass:
-              accounts.parent ||
-              (
-                await getPlayerPDA(accounts.parentMint, args.parentClassIndex)
-              )[0],
+              accounts.parent || accounts.parentMint
+                ? (
+                    await getPlayerPDA(
+                      accounts.parentMint,
+                      args.parentClassIndex
+                    )
+                  )[0]
+                : playerClassKey,
             receiver: (this.program.client.provider as AnchorProvider).wallet
               .publicKey,
           })

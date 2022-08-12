@@ -46,7 +46,7 @@ CLI.programCommandWithConfig(
           playerMint: new web3.PublicKey(config.mint),
           parent: config.parent
             ? (
-                await PDA.getItemPDA(
+                await PDA.getPlayerPDA(
                   new web3.PublicKey(config.parent.mint),
                   new BN(config.parent.index)
                 )
@@ -94,7 +94,7 @@ CLI.programCommandWithConfig(
           playerMint: new web3.PublicKey(config.mint),
           parent: config.parent
             ? (
-                await PDA.getItemPDA(
+                await PDA.getPlayerPDA(
                   new web3.PublicKey(config.parent.mint),
                   new BN(config.parent.index)
                 )
@@ -109,6 +109,47 @@ CLI.programCommandWithConfig(
         },
         {
           permissionless: config.updatePermissivenessToUse ? false : true,
+        }
+      )
+    ).rpc();
+  }
+);
+
+CLI.programCommandWithConfig(
+  "drain_player_class",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    await (
+      await playerProgram.drainPlayerClass(
+        {
+          classIndex: new BN(config.index || 0),
+          parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+          updatePermissivenessToUse: config.updatePermissivenessToUse,
+          playerClassMint: new web3.PublicKey(config.mint),
+        },
+        {
+          playerMint: new web3.PublicKey(config.mint),
+          parent: config.parent
+            ? (
+                await PDA.getPlayerPDA(
+                  new web3.PublicKey(config.parent.mint),
+                  new BN(config.parent.index)
+                )
+              )[0]
+            : null,
+          parentMint: config.parent
+            ? new web3.PublicKey(config.parent.mint)
+            : null,
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new web3.PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
         }
       )
     ).rpc();

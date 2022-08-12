@@ -181,7 +181,7 @@
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
-  "index": 1,
+  "index": 0,
   "updatePermissivenessToUse": { "tokenHolder": true },
   "namespaceRequirement": 1,
   "totalSpaceBytes": 400

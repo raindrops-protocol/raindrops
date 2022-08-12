@@ -2,7 +2,7 @@ pub mod utils;
 
 use {
     crate::utils::*,
-    anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
+    anchor_lang::{prelude::*, system_program, AnchorDeserialize, AnchorSerialize},
     anchor_spl::token::{close_account, CloseAccount, Mint, Token, TokenAccount},
     raindrops_item::utils::{
         assert_keys_equal, assert_metadata_valid, get_item_usage, spl_token_transfer,
@@ -417,7 +417,6 @@ pub mod player {
         let player_class = &mut ctx.accounts.player_class;
         let receiver = &ctx.accounts.receiver;
         let parent = &ctx.accounts.parent_class;
-
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &player_class.to_account_info(),
@@ -431,7 +430,10 @@ pub mod player {
 
         require!(player_class.existing_children == 0, ChildrenStillExist);
 
-        if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
+        if !parent.data_is_empty()
+            && parent.key() != player_class.key()
+            && parent.to_account_info().owner == ctx.program_id
+        {
             let mut parent_deserialized: Account<'_, PlayerClass> =
                 Account::try_from(&parent.to_account_info())?;
 
@@ -1563,10 +1565,11 @@ pub struct DrainPlayerClass<'info> {
     player_class: Account<'info, PlayerClass>,
     #[account(
         mut,
-        constraint=player_class.parent.unwrap() == parent_class.key()
+        constraint= (player_class.parent.is_none() && parent_class.key() == player_class.key()) || player_class.parent.unwrap() == parent_class.key()
     )]
     parent_class: UncheckedAccount<'info>,
-    receiver: Signer<'info>,
+    #[account(mut)]
+    receiver: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for this
 }
 
