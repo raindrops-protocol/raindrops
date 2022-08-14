@@ -229,75 +229,129 @@ CLI.programCommand("show_player")
       const configString = fs.readFileSync(configPath);
       //@ts-ignore
       const config = JSON.parse(configString);
-      actualMint = new web3.PublicKey(config.mint);
-      actualIndex = new BN(config.index);
+      actualMint = new web3.PublicKey(
+        config.mint || config.newPlayerMint || config.playerMint
+      );
+      actualIndex = new BN(
+        config.index || config.newPlayerIndex || config.playerIndex
+      );
     }
 
-    const itemKey = (await PDA.getItemPDA(actualMint, actualIndex))[0];
+    const playerKey = (await PDA.getPlayerPDA(actualMint, actualIndex))[0];
 
-    const item = (await anchorProgram.client.account.item.fetch(
-      itemKey
+    const player = (await anchorProgram.client.account.player.fetch(
+      playerKey
     )) as any;
 
-    const itemParent = (await anchorProgram.client.account.itemClass.fetch(
-      item.parent
+    const playerParent = (await anchorProgram.client.account.playerClass.fetch(
+      player.parent
     )) as any;
     log.setLevel("info");
-    log.info("Item", itemKey.toBase58());
+    log.info("Player", playerKey.toBase58());
     log.info(
       "Namespaces:",
-      item.namespaces
-        ? item.namespaces.map((u) => {
+      player.namespaces
+        ? player.namespaces.map((u) => {
             if (!u.namespace.equals(SystemProgram.programId))
               log.info(
                 `--> ${
                   InheritanceState[u.inherited]
-                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+                } ${u.namespace.toBase58()} Index: ${
+                  u.indexed || u.index?.toNumber()
+                }`
               );
           })
         : "Not Set"
     );
     log.info(
       "Parent:",
-      item.parent.toBase58(),
+      player.parent.toBase58(),
       "Index:",
-      item.classIndex.toNumber(),
+      player.classIndex.toNumber(),
       "Mint:",
-      itemParent.mint ? itemParent.mint.toBase58() : "Not cached on object"
+      playerParent.mint ? playerParent.mint.toBase58() : "Not cached on object"
     );
     log.info(
       "Mint:",
-      item.mint ? item.mint.toBase58() : "Not cached on object"
+      player.mint ? player.mint.toBase58() : "Not cached on object"
     );
     log.info(
       "Metadata:",
-      item.metadata ? item.metadata.toBase58() : "Not cached on object"
+      player.metadata ? player.metadata.toBase58() : "Not cached on object"
     );
     log.info(
       "Edition:",
-      item.edition ? item.edition.toBase58() : "Not cached on object"
+      player.edition ? player.edition.toBase58() : "Not cached on object"
     );
-    log.info("tokensStaked:", item.tokensStaked.toNumber());
+    log.info("Tokens Staked:", player.tokensStaked.toNumber());
+    log.info("Active Item Counter:", player.activeItemCounter.toNumber());
+    log.info("Items in Backpack:", player.itemsInBackpack.toNumber());
 
-    log.info("Item Data:");
+    log.info("Player Data:");
     log.info(
-      "--> Usage State Root:",
-      item.data.usageStateRoot
-        ? `(${
-            InheritanceState[item.data.usageStateRoot.inherited]
-          }) ${item.data.usageStateRoot.root.toBase58()}`
-        : "Not Set"
+      "--> Stats Uri:",
+      player.data.statsUri
+        ? ` (${Object.keys(player.data.statsUri.inherited)[0]}) ${
+            player.data.statsUri.statsUri
+          }`
+        : "Not set"
     );
-    log.info("--> Usage States:");
-    if (item.data.usageStates)
-      item.data.usageStates.map((u) => {
+
+    log.info(
+      "--> Category:",
+      player.data.category
+        ? ` (${Object.keys(player.data.category.inherited)[0]}) ${
+            player.data.category.category
+          }`
+        : "Not set"
+    );
+
+    log.info("--> Basic Stats:");
+    if (player.data.basicStats)
+      player.data.basicStats.map((u) => {
         log.info("----> Index:", u.index);
-        log.info("----> # Times Used:", u.uses);
+        const playerStatTempl = playerParent.data.config?.basicStats?.find(
+          (b) => b.index == u.index
+        );
+        if (playerStatTempl) {
+          log.info("----> Name:", playerStatTempl.name);
+          if (u.enum) {
+            log.info(
+              "----> Enum Value:",
+              playerStatTempl.statType.values.find(
+                (v) => v.value == u.enum.current
+              ).name
+            );
+          } else if (u.integer) {
+            log.info("----> Integer Value:", u.statType.current.toNumber());
+          } else if (u.bool) {
+            log.info("----> Bool Value:", u.statType.current);
+          } else if (u.string) {
+            log.info("----> String Value:", u.statType.current);
+          }
+        } else
+          log.info(
+            "----> Value: Not found b/c Player & Class out of sync. Try Permissionless update of player."
+          );
+      });
+
+    log.info("--> Equipped Items:");
+    player.equippedItems.map((u) => {
+      log.info("----> Index:", u.index);
+      log.info("----> Amount:", u.amount.toNumber());
+      log.info("----> Pubkey:", u.item.toBase58());
+    });
+
+    log.info("--> Player's Body Parts:");
+    const config = playerParent.data.config;
+    if (config.bodyParts)
+      config.bodyParts.forEach((u) => {
+        log.info("----> Index:", u.index);
+        log.info("----> Inherited:", Object.keys(u.inherited)[0]);
+        log.info("----> Body Part:", u.bodyPart);
         log.info(
-          "----> Activated At:",
-          u.activatedAt
-            ? new Date(u.activatedAt.toNumber() * 1000)
-            : "Not Active"
+          "----> Total item spots:",
+          u.totalItemSpots ? u.totalItemSpots.toNumber() : "Not Set"
         );
       });
   });
@@ -369,7 +423,9 @@ CLI.programCommand("show_player_class")
               log.info(
                 `--> ${
                   InheritanceState[u.inherited]
-                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+                } ${u.namespace.toBase58()} Indexed: ${
+                  u.indexed || u.index?.toNumber()
+                }`
               );
           })
         : "Not Set"

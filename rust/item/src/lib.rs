@@ -285,6 +285,8 @@ pub mod item {
 
     use std::borrow::Borrow;
 
+    use anchor_lang::Discriminator;
+
     use super::*;
 
     pub fn create_item_class<'a, 'b, 'c, 'info>(
