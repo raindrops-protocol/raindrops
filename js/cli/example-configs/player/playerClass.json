@@ -155,7 +155,7 @@
           }
         },
         {
-          "index": 2,
+          "index": 1,
           "name": "name",
           "inherited": { "notInherited": true },
           "statType": {

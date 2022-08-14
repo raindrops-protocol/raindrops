@@ -1774,7 +1774,6 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         } else {
                             remaining_accounts[2].key()
                         };
-
                         assert_signer(token_holder)?;
 
                         let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
@@ -1782,7 +1781,6 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         if acct.amount == 0 {
                             return Err(error!(ErrorCode::InsufficientBalance));
                         }
-
                         assert_derivation(
                             program_id,
                             given_account,

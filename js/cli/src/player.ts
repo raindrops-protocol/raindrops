@@ -14,7 +14,8 @@ import PermissivenessType = State;
 import PlayerState = State.Player;
 
 const { PDA } = Utils;
-const { getPlayerPDA } = PDA;
+const { getPlayerPDA, getAtaForMint } = PDA;
+const { PublicKey } = web3;
 
 CLI.programCommandWithConfig(
   "create_player_class",
@@ -150,6 +151,53 @@ CLI.programCommandWithConfig(
           metadataUpdateAuthority: config.metadataUpdateAuthority
             ? new web3.PublicKey(config.metadataUpdateAuthority)
             : keypair.publicKey,
+        }
+      )
+    ).rpc();
+  }
+);
+
+CLI.programCommandWithConfig(
+  "build_player",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const wallet = await Wallet.loadWalletKey(keypair);
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      wallet,
+      env,
+      rpcUrl
+    );
+
+    await (
+      await playerProgram.buildPlayer(
+        {
+          newPlayerIndex: new BN(config.newPlayerIndex),
+          parentClassIndex: config.parent ? new BN(config.parent.index) : null,
+          classIndex: new BN(config.classIndex),
+          buildPermissivenessToUse: config.buildPermissivenessToUse,
+          playerClassMint: new web3.PublicKey(config.playerClassMint),
+          space: new BN(config.totalSpaceBytes),
+          storeMint: config.storeMint,
+          storeMetadataFields: config.storeMetadataFields,
+        },
+        {
+          parentMint: config.parent ? new PublicKey(config.parent.mint) : null,
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+          newPlayerMint: new PublicKey(config.newPlayerMint),
+          newPlayerToken: (
+            await getAtaForMint(
+              new PublicKey(config.newPlayerMint),
+              config.newPlayerTokenHolder
+                ? new PublicKey(config.newPlayerTokenHolder)
+                : wallet.publicKey
+            )
+          )[0],
+          newPlayerTokenHolder: config.newPlayerTokenHolder
+            ? new PublicKey(config.newPlayerTokenHolder)
+            : wallet.publicKey,
         }
       )
     ).rpc();

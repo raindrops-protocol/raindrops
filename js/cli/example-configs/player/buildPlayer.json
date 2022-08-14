@@ -1,0 +1,13 @@
+{
+  "newPlayerMint": "A9qdUrpzgMqYYG3jDirVCcnCUj8qdktWXxJuYudVjiE5",
+  "playerClassMint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
+  "buildPermissivenessToUse": { "tokenHolder": true },
+  "newPlayerTokenHolder": null,
+  "classIndex": 0,
+  "newPlayerIndex": 0,
+  "parent": null,
+  "totalSpaceBytes": 200,
+  "storeMetadataFields": false,
+  "storeMint": false,
+  "metadataUpdateAuthority": null
+}

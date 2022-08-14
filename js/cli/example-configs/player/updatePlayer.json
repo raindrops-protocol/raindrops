@@ -1,0 +1,24 @@
+{
+  "playerMint": "2BFeWV3n6zQkFDYMvsfNLoQFzTCcrKrcRW1jctniJQE5",
+  "playerClassMint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "updatePermissivenessToUse": { "tokenHolder": true },
+  "classIndex": 0,
+  "index": 1,
+  "metadataUpdateAuthority": null,
+  "updates": {
+    "statsUri": null,
+    "category": null,
+    "basicStats": [
+      {
+        "index": 0,
+        "state": {
+          "integer": {
+            "current": 5,
+            "calculatedIntermediate": 0,
+            "calculated": 0
+          }
+        }
+      }
+    ]
+  }
+}

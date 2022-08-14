@@ -272,7 +272,6 @@ export interface UpdatePlayerAdditionalArgs {
 }
 
 export interface BuildPlayerAccounts {
-  playerClassMint: web3.PublicKey;
   newPlayerMint: web3.PublicKey;
   newPlayerToken: web3.PublicKey | null;
   newPlayerTokenHolder: web3.PublicKey | null;
@@ -492,12 +491,15 @@ export class Instruction extends SolKitInstruction {
     const remainingAccounts =
       await generateRemainingAccountsGivenPermissivenessToUse({
         permissivenessToUse: args.buildPermissivenessToUse,
-        tokenMint: accounts.newPlayerMint,
-        parentMint: accounts.playerClassMint,
-        parentIndex: args.classIndex,
-        parent: (
-          await getPlayerPDA(accounts.playerClassMint, args.classIndex)
-        )[0],
+        tokenMint: args.playerClassMint,
+        parentMint: accounts.parentMint,
+        parentIndex: args.parentClassIndex,
+        parent:
+          accounts.parentMint && !!args.parentClassIndex
+            ? (
+                await getPlayerPDA(accounts.parentMint, args.parentClassIndex)
+              )[0]
+            : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
         program: this.program.client,
       });
@@ -510,7 +512,7 @@ export class Instruction extends SolKitInstruction {
     ]);
 
     const [playerClassKey, _] = await getPlayerPDA(
-      accounts.playerClassMint,
+      args.playerClassMint,
       args.classIndex
     );
 

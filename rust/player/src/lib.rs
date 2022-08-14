@@ -1668,7 +1668,7 @@ pub struct UpdatePlayer<'info> {
         bump=player.bump
     )]
     player: Account<'info, Player>,
-    // These below only needed if trying to do something other than permissionelss inheritance propagation
+    // These below only needed if trying to do something other than permissionless inheritance propagation
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
