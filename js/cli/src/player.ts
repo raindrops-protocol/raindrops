@@ -204,7 +204,43 @@ CLI.programCommandWithConfig(
   }
 );
 
+CLI.programCommandWithConfig(
+  "update_player",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const wallet = await Wallet.loadWalletKey(keypair);
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      wallet,
+      env,
+      rpcUrl
+    );
+
+    await (
+      await playerProgram.updatePlayer(
+        {
+          index: new BN(config.index),
+          classIndex: new BN(config.classIndex),
+          updatePermissivenessToUse: config.updatePermissivenessToUse,
+          playerClassMint: new web3.PublicKey(config.playerClassMint),
+          playerMint: new web3.PublicKey(config.playerMint),
+          newData: config.updates,
+        },
+        {
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+        },
+        {
+          permissionless: config.updatePermissivenessToUse ? false : true,
+        }
+      )
+    ).rpc();
+  }
+);
+
 CLI.programCommand("show_player")
+  .option("-cp, --config-path <string>", "JSON file with player class settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
   .option(
     "-i, --index <string>",
@@ -315,24 +351,28 @@ CLI.programCommand("show_player")
         );
         if (playerStatTempl) {
           log.info("----> Name:", playerStatTempl.name);
-          if (u.enum) {
+          if (u.state.enum) {
             log.info(
               "----> Enum Value:",
               playerStatTempl.statType.values.find(
-                (v) => v.value == u.enum.current
+                (v) => v.value == u.state.enum.current
               ).name
             );
-          } else if (u.integer) {
-            log.info("----> Integer Value:", u.statType.current.toNumber());
-          } else if (u.bool) {
-            log.info("----> Bool Value:", u.statType.current);
-          } else if (u.string) {
-            log.info("----> String Value:", u.statType.current);
+          } else if (u.state.integer) {
+            log.info(
+              "----> Integer Value:",
+              u.state.integer.current.toNumber()
+            );
+          } else if (u.state.bool) {
+            log.info("----> Bool Value:", u.state.bool.current);
+          } else if (u.state.string) {
+            log.info("----> String Value:", u.state.string.current);
           }
         } else
           log.info(
             "----> Value: Not found b/c Player & Class out of sync. Try Permissionless update of player."
           );
+        log.info("----");
       });
 
     log.info("--> Equipped Items:");

@@ -186,7 +186,7 @@ pub struct UpdatePlayerArgs {
     pub player_mint: Pubkey,
     pub update_permissiveness_to_use: Option<PermissivenessType>,
     pub player_class_mint: Pubkey,
-    pub new_data: Vec<u8>,
+    pub new_data: Option<PlayerData>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -525,8 +525,8 @@ pub mod player {
             ..
         } = args;
 
-        if new_data.len() > 0 {
-            let data: PlayerData = AnchorDeserialize::try_from_slice(&new_data)?;
+        if let Some(data) = new_data {
+            // let data: PlayerData = AnchorDeserialize::try_from_slice(&new_data)?;
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: &player.to_account_info(),
@@ -1656,7 +1656,7 @@ pub struct UpdatePlayer<'info> {
         ],
         bump=player_class.bump
     )]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     #[account(
         mut,
         constraint=player.parent == player_class.key(),
@@ -1667,7 +1667,7 @@ pub struct UpdatePlayer<'info> {
         ],
         bump=player.bump
     )]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     // These below only needed if trying to do something other than permissionless inheritance propagation
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }

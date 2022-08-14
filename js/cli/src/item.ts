@@ -1135,7 +1135,7 @@ programCommand("update_item_class")
     "Permissionlessly update inherited fields"
   )
   .action(async (files: string[], cmd) => {
-    const { keypair, env, configPath, rpcUrl, inheritenceUpdate } = cmd.opts();
+    const { keypair, env, configPath, rpcUrl, inheritanceUpdate } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
@@ -1183,7 +1183,9 @@ programCommand("update_item_class")
           : walletKeyPair.publicKey,
       },
       {
-        permissionless: inheritenceUpdate,
+        permissionless:
+          inheritanceUpdate ||
+          (config.updatePermissivenessToUse ? false : true),
       }
     );
   });

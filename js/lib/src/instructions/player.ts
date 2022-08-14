@@ -44,6 +44,12 @@ const PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS = [
   "playerClassData.config.addToPackValidation.code",
 ];
 
+const PLAYER_DATA_ARGS_CONVERT_TO_BNS = [
+  "newData.basicStats.[].state.integer.current",
+  "newData.basicStats.[].state.integer.calculatedIntermediate",
+  "newData.basicStats.[].state.integer.calculated",
+];
+
 const PLAYER_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS = [
   "playerClassData.config.equipValidation.key",
   "playerClassData.config.addToPackValidation.key",
@@ -565,7 +571,11 @@ export class Instruction extends SolKitInstruction {
           program: this.program.client,
         });
 
-    InstructionUtils.convertNumbersToBNs(args, ["classIndex", "index"]);
+    InstructionUtils.convertNumbersToBNs(args, [
+      "classIndex",
+      "index",
+      ...PLAYER_DATA_ARGS_CONVERT_TO_BNS,
+    ]);
 
     const playerKey = (await getPlayerPDA(args.playerMint, args.index))[0];
 

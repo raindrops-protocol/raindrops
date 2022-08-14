@@ -1,9 +1,9 @@
 {
-  "playerMint": "2BFeWV3n6zQkFDYMvsfNLoQFzTCcrKrcRW1jctniJQE5",
-  "playerClassMint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "playerMint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "playerClassMint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
   "updatePermissivenessToUse": { "tokenHolder": true },
   "classIndex": 0,
-  "index": 1,
+  "index": 0,
   "metadataUpdateAuthority": null,
   "updates": {
     "statsUri": null,
