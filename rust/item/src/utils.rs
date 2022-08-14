@@ -1,33 +1,32 @@
-use {
-    crate::{
-        ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
-        InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
-        ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState,
-        ItemUsageType, Permissiveness, PermissivenessType, UsageInfo, PREFIX,
-    },
-    anchor_lang::{
-        error,
-        prelude::{
-            msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
-            Pubkey, Rent, Result, SolanaSysvar, System, Sysvar, UncheckedAccount,
-        },
-        require,
-        solana_program::{
-            hash,
-            program::{invoke, invoke_signed},
-            program_option::COption,
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
-        },
-        Key, ToAccountInfo,
-    },
-    anchor_spl::token::{Mint, Token},
-    arrayref::array_ref,
-    spl_associated_token_account::get_associated_token_address,
-    spl_token::instruction::{close_account, initialize_account2, set_authority, AuthorityType},
-    std::cell::RefCell,
-    std::convert::TryInto,
+use std::str::FromStr;
+
+use crate::{
+    ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
+    InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
+    ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType,
+    Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
 };
+use anchor_lang::{
+    error,
+    prelude::{
+        msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
+        Pubkey, Rent, Result, SolanaSysvar, System, Sysvar, UncheckedAccount,
+    },
+    require,
+    solana_program::{
+        hash,
+        program::{invoke, invoke_signed},
+        program_option::COption,
+        program_pack::{IsInitialized, Pack},
+        system_instruction,
+    },
+    Key, ToAccountInfo,
+};
+use anchor_spl::token::{Mint, Token};
+use arrayref::array_ref;
+use spl_associated_token_account::get_associated_token_address;
+use spl_token::instruction::{close_account, initialize_account2, set_authority, AuthorityType};
+use std::{cell::RefCell, convert::TryInto};
 
 impl ItemClass {
     pub fn item_class_data(&self, data: &RefCell<&mut [u8]>) -> Result<ItemClassData> {
@@ -1165,28 +1164,6 @@ pub fn assert_mint_authority_matches_mint(
     Ok(())
 }
 
-pub fn assert_part_of_namespace<'a, 'b>(
-    artifact: &'b AccountInfo<'a>,
-    namespace: &'b AccountInfo<'a>,
-) -> Result<Account<'a, raindrops_namespace::Namespace>> {
-    assert_owned_by(namespace, &raindrops_namespace::id())?;
-
-    let deserialized: Account<raindrops_namespace::Namespace> = Account::try_from(namespace)?;
-
-    assert_derivation(
-        &raindrops_namespace::id(),
-        namespace,
-        &[
-            raindrops_namespace::PREFIX.as_bytes(),
-            deserialized.mint.key().as_ref(),
-        ],
-    )?;
-
-    raindrops_namespace::utils::assert_part_of_namespace(artifact, &deserialized)?;
-
-    Ok(deserialized)
-}
-
 pub struct TransferMintAuthorityArgs<'b, 'info> {
     pub item_class_key: &'b Pubkey,
     pub item_class_info: &'b AccountInfo<'info>,
@@ -1831,4 +1808,15 @@ pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
     };
 
     Ok(item_usage)
+}
+
+// returns true if the namespace program called the item program
+pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
+    let current_ix = anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns).unwrap();
+
+    if current_ix.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
+        return false;
+    };
+
+    return true;
 }

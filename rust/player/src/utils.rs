@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use {
     crate::{
         AddOrRemoveItemValidationArgs, BasicItemEffect, BasicItemEffectType, BasicStat,

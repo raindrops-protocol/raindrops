@@ -1,0 +1,18 @@
+{
+  "classIndex": 11,
+  "parentClassIndex": null,
+  "index": 20,
+  "stakingIndex": 0,
+  "artifactClassMint": "HVfbCH1wRsGVnrj95LFaytRiQ1mgb7gdGiKJsaHx3qJ5",
+  "artifactClass": "DvtUpy2KGLAiA4SvLwxrmTaNUs6Zjk1i6a4vAY3ov6UC",
+  "artifactMint": "HVfbCH1wRsGVnrj95LFaytRiQ1mgb7gdGiKJsaHx3qJ5",
+  "artifact": "5grecm6WVz31Dy9aiUKBuVuTiuerdEqR8gHFAfMWHMuZ",
+  "parentClassMint": null,
+  "parentClass": null,
+  "stakingAmount": 10000000000,
+  "stakingPermissivenessToUse": { "updateAuthority": true },
+  "stakingAccount": "BztKBroQAb42i93UUgqCoNmeTv6wiceHdp8tVhNXfVPW",
+  "stakingMint": "3SRBwtc6r84HPLBqMNQCLNFFuGCwMc7Aof7Ngiqg9JsX",
+  "metadataUpdateAuthority": "HGyYRWMfXurNiGce5cBdrSkgourS97Tp8poDRuaDVZUD",
+  "namespace": "AmoCTRBCNWDVuseq3Va6E8d1Et29bxTw8YrP1hgXYV1D"
+}

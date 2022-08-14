@@ -1,1 +1,2 @@
-export const PREFIX: string = "namespace";
+export const PREFIX = "namespace";
+export const GATEKEEPER_PREFIX = "gatekeeper";

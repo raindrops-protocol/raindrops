@@ -681,13 +681,13 @@ programCommand("show_item_build")
   });
 
 programCommand("show_item")
-  .option("-m, --mint <string>", "If no json file, provide mint directly")
-  .option(
+  .requiredOption("-m, --mint <string>", "mint")
+  .requiredOption(
     "-i, --index <string>",
     "index. Normally is 0, defaults to 0. Allows for more than one item class def per nft."
   )
   .action(async (files: string[], cmd) => {
-    const { keypair, env, configPath, rpcUrl, mint, index } = cmd.opts();
+    const { keypair, env, rpcUrl, mint, index } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
@@ -924,7 +924,7 @@ programCommand("show_item_class")
       ? settings.childUpdatePropagationPermissiveness.map((u) => {
           log.info(
             `------> ${InheritanceState[u.inherited]} ${
-              ItemState.ChildUpdatePropagationPermissivenessType[
+              State.ChildUpdatePropagationPermissivenessType[
                 u.childUpdatePropagationPermissivenessType
               ]
             } - is overridable? ${u.overridable}`

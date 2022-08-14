@@ -1,31 +1,33 @@
 pub mod utils;
 
-use {
-    crate::utils::{
-        assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal,
-        assert_metadata_valid, assert_mint_authority_matches_mint, assert_permissiveness_access,
-        assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
-        propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
-        spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
-        verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
-        AssertPermissivenessAccessArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
-        TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
-        VerifyCooldownArgs,
-    },
-    anchor_lang::{
-        prelude::*,
-        solana_program::{instruction::Instruction, program::invoke, program_option::COption},
-        AnchorDeserialize, AnchorSerialize, Discriminator,
-    },
-    anchor_spl::token::{Mint, Token, TokenAccount},
-    arrayref::array_ref,
+use crate::utils::{
+    assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
+    assert_mint_authority_matches_mint, assert_permissiveness_access,
+    assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
+    is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
+    spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+    update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
+    verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
+    GetItemUsageArgs, TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
+    VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
 };
+use anchor_lang::{
+    prelude::*,
+    solana_program::{
+        instruction::Instruction, program::invoke, program_option::COption, sysvar,
+        sysvar::instructions::get_instruction_relative,
+    },
+};
+use anchor_spl::token::{Mint, Token, TokenAccount};
+use arrayref::array_ref;
+use std::str::FromStr;
 anchor_lang::declare_id!("56M2fQE8cy9v4q3LYxyDHSPz6BDHnWQJAucZZ49ybq9y");
+
 pub const PREFIX: &str = "item";
-pub const STAKING_COUNTER: &str = "staking";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const RENT_ID: &str = "SysvarRent111111111111111111111111111111111";
+pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
+pub const STAKING_ID: &str = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassArgs {
@@ -270,6 +272,14 @@ pub struct EndItemActivationArgs {
     pub usage: Option<ItemUsage>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UpdateTokensStakedArgs {
+    pub item_mint: Pubkey,
+    pub index: u64,
+    pub staked: bool,
+    pub amount: u64,
+}
+
 #[program]
 pub mod item {
 
@@ -336,7 +346,7 @@ pub mod item {
             for _n in 0..desired_namespace_array_size {
                 namespace_arr.push(NamespaceAndIndex {
                     namespace: anchor_lang::solana_program::system_program::id(),
-                    indexed: false,
+                    index: None,
                     inherited: InheritanceState::NotInherited,
                 });
             }
@@ -413,6 +423,23 @@ pub mod item {
         msg!("store_mint");
         if store_mint {
             item_class.mint = Some(item_mint.key());
+        }
+
+        msg!("namespaces");
+        if desired_namespace_array_size > 0 {
+            let mut namespace_arr = vec![];
+
+            for _n in 0..desired_namespace_array_size {
+                namespace_arr.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
+            }
+
+            item_class.namespaces = Some(namespace_arr);
+        } else {
+            item_class.namespaces = None
         }
 
         msg!("write_data");
@@ -677,7 +704,7 @@ pub mod item {
             if let Some(ns_index) = namespace_index {
                 item_escrow.namespaces = Some(vec![NamespaceAndIndex {
                     namespace: namespaces[ns_index as usize].namespace,
-                    indexed: false,
+                    index: None,
                     inherited: InheritanceState::Inherited,
                 }]);
             }
@@ -1668,6 +1695,176 @@ pub mod item {
 
         Ok(())
     }
+
+    pub fn item_class_join_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassJoinNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToJoinNamespace)),
+        };
+
+        let mut joined = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+                ns.namespace = ctx.accounts.namespace.key();
+                ns.index = None;
+                ns.inherited = InheritanceState::NotInherited;
+                joined = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !joined {
+            return Err(error!(ErrorCode::FailedToJoinNamespace));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn item_class_leave_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassLeaveNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToLeaveNamespace)),
+        };
+
+        let mut left = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !left {
+                // if the artifact is still cached, error
+                if ns.index != None {
+                    return Err(error!(ErrorCode::FailedToLeaveNamespace));
+                };
+                ns.namespace = anchor_lang::solana_program::system_program::id();
+                ns.inherited = InheritanceState::NotInherited;
+                left = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !left {
+            return Err(error!(ErrorCode::FailedToLeaveNamespace));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn item_class_cache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassCacheNamespace<'info>>,
+        page: u64,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToCache)),
+        };
+
+        let mut cached = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !cached {
+                ns.index = Some(page);
+                cached = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !cached {
+            return Err(error!(ErrorCode::FailedToCache));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn item_class_uncache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemClassUnCacheNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let item_class = &mut ctx.accounts.item_class;
+
+        let namespaces = match item_class.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToUncache)),
+        };
+
+        let mut uncached = false;
+        let mut new_namespaces = vec![];
+        for mut ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !uncached {
+                ns.index = None;
+                uncached = true;
+                new_namespaces.push(ns);
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !uncached {
+            return Err(error!(ErrorCode::FailedToUncache));
+        }
+        item_class.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn update_tokens_staked<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, UpdateTokensStaked<'info>>,
+        args: UpdateTokensStakedArgs,
+    ) -> Result<()> {
+        let item = &mut ctx.accounts.item;
+        let instruction_sysvar_account = &ctx.accounts.instruction_sysvar_account;
+
+        let instruction_sysvar_account_info = instruction_sysvar_account.to_account_info();
+        let current_ix = get_instruction_relative(0, &instruction_sysvar_account_info).unwrap();
+
+        require!(
+            current_ix.program_id == Pubkey::from_str(STAKING_ID).unwrap(),
+            ErrorCode::MustBeCalledByStakingProgram
+        );
+
+        if args.staked {
+            item.tokens_staked = item
+                .tokens_staked
+                .checked_add(args.amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        } else {
+            item.tokens_staked = item
+                .tokens_staked
+                .checked_sub(args.amount)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        Ok(())
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
@@ -1767,7 +1964,7 @@ pub struct CreateItemEscrow<'info> {
             args.component_scope.as_bytes()
         ],
         bump,
-        space=if args.namespace_index.is_none() { 37 } else { 4 + 1 + raindrops_namespace::NAMESPACE_AND_INDEX_SIZE + 36},
+        space=if args.namespace_index.is_none() { 37 } else { 4 + 1 + 34 + 36},
         payer=payer
     )]
     item_escrow: Box<Account<'info, ItemEscrow>>,
@@ -2447,6 +2644,65 @@ pub struct EndItemActivation<'info> {
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
+#[derive(Accounts)]
+pub struct ItemClassJoinNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ItemClassLeaveNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(page: u64)]
+pub struct ItemClassCacheNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ItemClassUnCacheNamespace<'info> {
+    #[account(mut)]
+    item_class: Account<'info, ItemClass>,
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(args: UpdateTokensStakedArgs)]
+pub struct UpdateTokensStaked<'info> {
+    #[account(
+        mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            args.item_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        bump=item.bump
+    )]
+    item: Account<'info, Item>,
+    /// CHECK: account constraints checked in account trait
+    #[account(address = sysvar::instructions::id())]
+    instruction_sysvar_account: UncheckedAccount<'info>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Callback {
     pub key: Pubkey,
@@ -2600,7 +2856,7 @@ pub enum InheritanceState {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
     pub namespace: Pubkey,
-    pub indexed: bool,
+    pub index: Option<u64>,
     pub inherited: InheritanceState,
 }
 
@@ -2986,4 +3242,20 @@ pub enum ErrorCode {
     AtaShouldNotHaveDelegate,
     #[msg("Reinitialization hack detected")]
     ReinitializationDetected,
+    #[msg("Failed to join namespace")]
+    FailedToJoinNamespace,
+    #[msg("Failed to leave namespace")]
+    FailedToLeaveNamespace,
+    #[msg("Failed to cache")]
+    FailedToCache,
+    #[msg("Failed to uncache")]
+    FailedToUncache,
+    #[msg("Already cached")]
+    AlreadyCached,
+    #[msg("Not cached")]
+    NotCached,
+    #[msg("Unauthorized Caller")]
+    UnauthorizedCaller,
+    #[msg("Must be called by staking program")]
+    MustBeCalledByStakingProgram,
 }

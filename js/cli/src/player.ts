@@ -204,6 +204,104 @@ CLI.programCommandWithConfig(
   }
 );
 
+CLI.programCommand("show_player")
+  .option("-m, --mint <string>", "If no json file, provide mint directly")
+  .option(
+    "-i, --index <string>",
+    "index. Normally is 0, defaults to 0. Allows for more than one player def per nft."
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, mint, index } = cmd.opts();
+
+    const anchorProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    let actualMint: web3.PublicKey, actualIndex: BN;
+
+    if (configPath === undefined) {
+      actualMint = new web3.PublicKey(mint);
+      actualIndex = new BN(index);
+    } else {
+      const configString = fs.readFileSync(configPath);
+      //@ts-ignore
+      const config = JSON.parse(configString);
+      actualMint = new web3.PublicKey(config.mint);
+      actualIndex = new BN(config.index);
+    }
+
+    const itemKey = (await PDA.getItemPDA(actualMint, actualIndex))[0];
+
+    const item = (await anchorProgram.client.account.item.fetch(
+      itemKey
+    )) as any;
+
+    const itemParent = (await anchorProgram.client.account.itemClass.fetch(
+      item.parent
+    )) as any;
+    log.setLevel("info");
+    log.info("Item", itemKey.toBase58());
+    log.info(
+      "Namespaces:",
+      item.namespaces
+        ? item.namespaces.map((u) => {
+            if (!u.namespace.equals(SystemProgram.programId))
+              log.info(
+                `--> ${
+                  InheritanceState[u.inherited]
+                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+              );
+          })
+        : "Not Set"
+    );
+    log.info(
+      "Parent:",
+      item.parent.toBase58(),
+      "Index:",
+      item.classIndex.toNumber(),
+      "Mint:",
+      itemParent.mint ? itemParent.mint.toBase58() : "Not cached on object"
+    );
+    log.info(
+      "Mint:",
+      item.mint ? item.mint.toBase58() : "Not cached on object"
+    );
+    log.info(
+      "Metadata:",
+      item.metadata ? item.metadata.toBase58() : "Not cached on object"
+    );
+    log.info(
+      "Edition:",
+      item.edition ? item.edition.toBase58() : "Not cached on object"
+    );
+    log.info("tokensStaked:", item.tokensStaked.toNumber());
+
+    log.info("Item Data:");
+    log.info(
+      "--> Usage State Root:",
+      item.data.usageStateRoot
+        ? `(${
+            InheritanceState[item.data.usageStateRoot.inherited]
+          }) ${item.data.usageStateRoot.root.toBase58()}`
+        : "Not Set"
+    );
+    log.info("--> Usage States:");
+    if (item.data.usageStates)
+      item.data.usageStates.map((u) => {
+        log.info("----> Index:", u.index);
+        log.info("----> # Times Used:", u.uses);
+        log.info(
+          "----> Activated At:",
+          u.activatedAt
+            ? new Date(u.activatedAt.toNumber() * 1000)
+            : "Not Active"
+        );
+      });
+  });
+
 CLI.programCommand("show_player_class")
   .option("-cp, --config-path <string>", "JSON file with player class settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")

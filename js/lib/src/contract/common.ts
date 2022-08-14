@@ -55,14 +55,19 @@ export namespace ContractCommon {
         isWritable: false,
         isSigner: true,
       });
-    } else if (permissivenessToUse?.parentTokenHolder && parentMint && parentIndex) {
+    } else if (
+      permissivenessToUse?.parentTokenHolder &&
+      parentMint &&
+      parentIndex
+    ) {
       const parentToken = (
         await getAtaForMint(
           parentMint,
           (program.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
-      const parentHolder = (program.provider as AnchorProvider).wallet.publicKey;
+      const parentHolder = (program.provider as AnchorProvider).wallet
+        .publicKey;
       const parentClass =
         parent || (await getItemPDA(parentMint, parentIndex))[0];
 
@@ -91,6 +96,104 @@ export namespace ContractCommon {
         pubkey:
           metadataUpdateAuthority ||
           (program.provider as AnchorProvider).wallet.publicKey,
+        isWritable: false,
+        isSigner: true,
+      });
+      remainingAccounts.push({
+        pubkey: await getMetadata(tokenMint),
+        isWritable: false,
+        isSigner: false,
+      });
+    }
+
+    return remainingAccounts;
+  }
+
+  export async function generateRemainingAccountsForGivenPermissivenessToUse(args: {
+    permissivenessToUse: AnchorPermissivenessType | null;
+    tokenMint: web3.PublicKey;
+    parentClassMint: web3.PublicKey | null;
+    parentClass: web3.PublicKey | null;
+    metadataUpdateAuthority: web3.PublicKey | null;
+    owner: web3.PublicKey;
+    program: Program;
+  }): Promise<
+    { pubkey: web3.PublicKey; isWritable: boolean; isSigner: boolean }[]
+  > {
+    const {
+      permissivenessToUse,
+      tokenMint,
+      parentClassMint,
+      parentClass,
+      metadataUpdateAuthority,
+      owner,
+      program,
+    } = args;
+
+    const remainingAccounts: {
+      pubkey: web3.PublicKey;
+      isWritable: boolean;
+      isSigner: boolean;
+    }[] = [];
+
+    if (!permissivenessToUse) {
+      remainingAccounts.push({
+        pubkey: metadataUpdateAuthority || owner,
+        isWritable: false,
+        isSigner: true,
+      });
+      remainingAccounts.push({
+        pubkey: await getMetadata(tokenMint),
+        isWritable: false,
+        isSigner: false,
+      });
+
+      return remainingAccounts;
+    }
+
+    if (permissivenessToUse.tokenHolder) {
+      remainingAccounts.push({
+        pubkey: await getTokenAccountForMint({
+          mint: tokenMint,
+          owner,
+          program,
+        }),
+        isWritable: false,
+        isSigner: false,
+      });
+      remainingAccounts.push({
+        pubkey: owner,
+        isWritable: false,
+        isSigner: true,
+      });
+    } else if (permissivenessToUse.parentTokenHolder) {
+      remainingAccounts.push({
+        pubkey: await getTokenAccountForMint({
+          mint: parentClassMint,
+          owner,
+          program,
+        }),
+        isWritable: false,
+        isSigner: false,
+      });
+      remainingAccounts.push({
+        pubkey: owner,
+        isWritable: false,
+        isSigner: true,
+      });
+      remainingAccounts.push({
+        pubkey: parentClass,
+        isWritable: false,
+        isSigner: false,
+      });
+      remainingAccounts.push({
+        pubkey: parentClassMint,
+        isWritable: false,
+        isSigner: false,
+      });
+    } else if (permissivenessToUse.updateAuthority || !permissivenessToUse) {
+      remainingAccounts.push({
+        pubkey: metadataUpdateAuthority || owner,
         isWritable: false,
         isSigner: true,
       });
@@ -162,7 +265,8 @@ export namespace ContractCommon {
           (program.client.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
-      const tokenHolder = (program.client.provider as AnchorProvider).wallet.publicKey;
+      const tokenHolder = (program.client.provider as AnchorProvider).wallet
+        .publicKey;
       remainingAccounts.push({
         pubkey: tokenAccount,
         isWritable: false,
@@ -193,7 +297,9 @@ export namespace ContractCommon {
         .publicKey;
       const parentClass =
         parentOfParentClass ||
-        (await getItemPDA(parentOfParentClassMint, parentOfParentClassIndex))[0];
+        (
+          await getItemPDA(parentOfParentClassMint, parentOfParentClassIndex)
+        )[0];
       remainingAccounts.push({
         pubkey: parentToken,
         isWritable: false,
@@ -234,5 +340,37 @@ export namespace ContractCommon {
       });
     }
     return remainingAccounts;
+  }
+
+  // Token can be minted to both ATA or non-ATA.
+  // If token is an NFT, there's only one token account that holds this nft.
+  // If it's not an NFT, this function returns the first token account.
+  // In most cases, this util function is used for NFT token account.
+  export async function getTokenAccountForMint(args: {
+    mint: web3.PublicKey;
+    owner: web3.PublicKey;
+    program: Program;
+  }): Promise<web3.PublicKey> {
+    const { mint, owner, program } = args;
+
+    const tokenAccounts = (
+      await program.provider.connection.getParsedTokenAccountsByOwner(
+        owner,
+        {
+          mint,
+        },
+        "confirmed"
+      )
+    ).value.filter(
+      (account) =>
+        account.account.data.parsed.info.tokenAmount.amount === "1" &&
+        account.account.data.parsed.info.tokenAmount.decimals === 0
+    );
+
+    if (tokenAccounts.length < 1) {
+      throw Error("Cannot find token account");
+    }
+
+    return tokenAccounts[0].pubkey;
   }
 }
