@@ -1,0 +1,16 @@
+{
+  "newPlayerMint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "playerClassMint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "buildPermissivenessToUse": { "tokenHolder": true },
+  "newPlayerTokenHolder": null,
+  "classIndex": 4,
+  "newPlayerIndex": 5,
+  "parent": {
+    "index": 3,
+    "mint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY"
+  },
+  "totalSpaceBytes": 200,
+  "storeMetadataFields": false,
+  "storeMint": false,
+  "metadataUpdateAuthority": null
+}

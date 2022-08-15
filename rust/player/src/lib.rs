@@ -308,6 +308,16 @@ pub mod player {
                 &parent_deserialized,
                 &parent_deserialized.data,
             );
+
+            // Horribly inefficient but TODO replace later with something smarter.
+            let parent_data = &mut parent_info.data.borrow_mut();
+            let new_parent_data = parent_deserialized.try_to_vec()?;
+
+            let mut i = 8;
+            for data in new_parent_data {
+                parent_data[i] = data;
+                i += 1
+            }
         } else {
             msg!("2 assert_permissiveness_access");
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
@@ -437,10 +447,22 @@ pub mod player {
             let mut parent_deserialized: Account<'_, PlayerClass> =
                 Account::try_from(&parent.to_account_info())?;
 
-            parent_deserialized.existing_children = parent_deserialized
-                .existing_children
-                .checked_sub(1)
-                .ok_or(ErrorCode::NumericalOverflowError)?;
+            if parent_deserialized.existing_children > 0 {
+                parent_deserialized.existing_children = parent_deserialized
+                    .existing_children
+                    .checked_sub(1)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                // Horribly inefficient but TODO replace later with something smarter.
+                let parent_data = &mut parent.data.borrow_mut();
+                let new_parent_data = parent_deserialized.try_to_vec()?;
+
+                let mut i = 8;
+                for data in new_parent_data {
+                    parent_data[i] = data;
+                    i += 1
+                }
+            }
         }
 
         let player_class_info = player_class.to_account_info();
@@ -491,10 +513,12 @@ pub mod player {
             RemoveAllItemsFromBackpackFirst
         );
 
-        player_class.existing_children = player_class
-            .existing_children
-            .checked_sub(1)
-            .ok_or(ErrorCode::NumericalOverflowError)?;
+        if player_class.existing_children > 0 {
+            player_class.existing_children = player_class
+                .existing_children
+                .checked_sub(1)
+                .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
 
         let player_info = player.to_account_info();
         let snapshot: u64 = player_info.lamports();

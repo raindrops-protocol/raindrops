@@ -1,0 +1,101 @@
+{
+  "data": {
+    "settings": {
+      "defaultCategory": {
+        "category": "Concrete Warrior",
+        "inherited": { "notInherited": true }
+      },
+      "childrenMustBeEditions": {
+        "boolean": false,
+        "inherited": { "notInherited": true }
+      },
+      "builderMustBeHolder": {
+        "boolean": true,
+        "inherited": { "notInherited": true }
+      },
+      "updatePermissiveness": [
+        {
+          "permissivenessType": { "parentTokenHolder": true },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "permissivenessType": { "updateAuthority": true },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "permissivenessType": { "anybody": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "instanceUpdatePermissiveness": null,
+      "buildPermissiveness": null,
+      "equipItemPermissiveness": null,
+      "addItemPermissiveness": null,
+      "useItemPermissiveness": null,
+      "unequipItemPermissiveness": null,
+      "removeItemPermissiveness": null,
+      "stakingWarmUpDuration": 10,
+      "stakingCooldownDuration": 10,
+      "stakingPermissiveness": null,
+      "unstakingPermissiveness": null,
+      "childUpdatePropagationPermissiveness": [
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "bodyParts": true
+          },
+          "overridable": true,
+          "inherited": { "notInherited": true }
+        }
+      ]
+    },
+    "config": {
+      "startingStatsUri": null,
+      "basicStats": [
+        {
+          "index": 2,
+          "name": "alive",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "bool": {
+              "starting": false,
+              "stakingFlip": null
+            }
+          }
+        },
+        {
+          "index": 3,
+          "name": "state",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "enum": {
+              "starting": 0,
+              "values": [{ "name": "Billy", "value": 0 }]
+            }
+          }
+        }
+      ],
+      "bodyParts": [
+        {
+          "index": 1,
+          "bodyPart": "Leg",
+          "totalItemSpots": 1,
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "equipValidation": null,
+      "addToPackValidation": null
+    }
+  },
+  "metadataUpdateAuthority": null,
+  "storeMint": false,
+  "storeMetadataFields": false,
+  "mint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "index": 3,
+  "parent": {
+    "index": 2,
+    "mint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh"
+  },
+  "updatePermissivenessToUse": { "tokenHolder": true },
+  "namespaceRequirement": 1,
+  "totalSpaceBytes": 400
+}

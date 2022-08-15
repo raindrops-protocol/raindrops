@@ -40,7 +40,7 @@ CLI.programCommandWithConfig(
           storeMetadataFields: config.storeMetadataFields,
           playerClassData: config.data,
           parentOfParentClassIndex: config.parent?.parent
-            ? config.parent.parent.index
+            ? new BN(config.parent.parent.index)
             : null,
         },
         {
@@ -63,7 +63,7 @@ CLI.programCommandWithConfig(
             ? new web3.PublicKey(config.metadataUpdateAuthority)
             : keypair.publicKey,
           parentUpdateAuthority: config.parent
-            ? config.parent.metadataUpdateAuthority
+            ? config.parent.metadataUpdateAuthority || keypair.publicKey
             : null,
         },
         {}
@@ -89,7 +89,9 @@ CLI.programCommandWithConfig(
           classIndex: new BN(config.index || 0),
           parentClassIndex: config.parent ? new BN(config.parent.index) : null,
           updatePermissivenessToUse: config.updatePermissivenessToUse,
-          playerClassData: config.data,
+          playerClassData: config.updatePermissivenessToUse
+            ? config.data
+            : null,
         },
         {
           playerMint: new web3.PublicKey(config.mint),
@@ -252,12 +254,15 @@ CLI.programCommandWithConfig(
     await (
       await playerProgram.updatePlayer(
         {
-          index: new BN(config.index),
+          index: new BN(config.index || config.newPlayerIndex),
           classIndex: new BN(config.classIndex),
-          updatePermissivenessToUse: config.updatePermissivenessToUse,
+          updatePermissivenessToUse:
+            config.updatePermissivenessToUse || config.buildPermissivenessToUse,
           playerClassMint: new web3.PublicKey(config.playerClassMint),
-          playerMint: new web3.PublicKey(config.playerMint),
-          newData: config.updates,
+          playerMint: new web3.PublicKey(
+            config.playerMint || config.newPlayerMint
+          ),
+          newData: config.updatePermissivenessToUse ? config.updates : null,
         },
         {
           metadataUpdateAuthority: config.metadataUpdateAuthority
@@ -387,7 +392,7 @@ CLI.programCommand("show_player")
           if (u.state.enum) {
             log.info(
               "----> Enum Value:",
-              playerStatTempl.statType.values.find(
+              playerStatTempl.statType.enum.values.find(
                 (v) => v.value == u.state.enum.current
               ).name
             );
@@ -426,6 +431,7 @@ CLI.programCommand("show_player")
           "----> Total item spots:",
           u.totalItemSpots ? u.totalItemSpots.toNumber() : "Not Set"
         );
+        log.info("----");
       });
   });
 
@@ -525,17 +531,28 @@ CLI.programCommand("show_player_class")
     log.info("--> Player Class Settings:");
 
     log.info(
-      "----> Default Category:",
+      `----> Default Category (${
+        Object.keys(settings.defaultCategory?.inherited)[0]
+      }):`,
       settings.defaultCategory ? settings.defaultCategory.category : "Not Set"
     );
     log.info(
-      "----> Children must be editions:",
+      `----> Children must be editions (${
+        settings.childrenMustBeEditions
+          ? Object.keys(settings.childrenMustBeEditions?.inherited)[0]
+          : ""
+      }):`,
       settings.childrenMustBeEditions
         ? settings.childrenMustBeEditions.boolean
         : "Not Set"
     );
+
     log.info(
-      "----> Builder must be holder:",
+      `----> Builder must be holder (${
+        settings.builderMustBeHolder
+          ? Object.keys(settings.builderMustBeHolder?.inherited)[0]
+          : ""
+      }):`,
       settings.builderMustBeHolder
         ? settings.builderMustBeHolder.boolean
         : "Not Set"
@@ -671,6 +688,7 @@ CLI.programCommand("show_player_class")
           "------> Total item spots:",
           u.totalItemSpots ? u.totalItemSpots.toNumber() : "Not Set"
         );
+        log.info("------");
       });
 
     log.info("-------");

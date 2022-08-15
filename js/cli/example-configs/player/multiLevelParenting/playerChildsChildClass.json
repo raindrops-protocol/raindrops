@@ -1,0 +1,73 @@
+{
+  "data": {
+    "settings": {
+      "defaultCategory": {
+        "category": "Final Warrior",
+        "inherited": { "notInherited": true }
+      },
+      "childrenMustBeEditions": {
+        "boolean": false,
+        "inherited": { "notInherited": true }
+      },
+      "builderMustBeHolder": {
+        "boolean": true,
+        "inherited": { "notInherited": true }
+      },
+      "updatePermissiveness": [],
+      "instanceUpdatePermissiveness": null,
+      "buildPermissiveness": null,
+      "equipItemPermissiveness": null,
+      "addItemPermissiveness": null,
+      "useItemPermissiveness": null,
+      "unequipItemPermissiveness": null,
+      "removeItemPermissiveness": null,
+      "stakingWarmUpDuration": 10,
+      "stakingCooldownDuration": 10,
+      "stakingPermissiveness": null,
+      "unstakingPermissiveness": null,
+      "childUpdatePropagationPermissiveness": []
+    },
+    "config": {
+      "startingStatsUri": null,
+      "basicStats": [
+        {
+          "index": 4,
+          "name": "dead",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "bool": {
+              "starting": false,
+              "stakingFlip": null
+            }
+          }
+        }
+      ],
+      "bodyParts": [
+        {
+          "index": 2,
+          "bodyPart": "Head",
+          "totalItemSpots": 1,
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "equipValidation": null,
+      "addToPackValidation": null
+    }
+  },
+  "metadataUpdateAuthority": null,
+  "storeMint": false,
+  "storeMetadataFields": false,
+  "mint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "index": 4,
+  "parent": {
+    "index": 3,
+    "mint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+    "parent": {
+      "index": 2,
+      "mint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh"
+    }
+  },
+  "updatePermissivenessToUse": { "tokenHolder": true },
+  "namespaceRequirement": 1,
+  "totalSpaceBytes": 400
+}
