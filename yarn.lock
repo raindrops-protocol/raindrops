@@ -2060,7 +2060,7 @@ __metadata:
     "@project-serum/anchor": ^0.24.2
     "@raindrop-studios/sol-command": ^0.4.0
     "@raindrop-studios/sol-kit": ^0.1.78
-    "@raindrops-protocol/raindrops": "workspace:js/lib"
+    "@raindrops-protocol/raindrops": "workspace:*"
     "@solana/spl-token": ^0.1.8
     "@types/node": ^18.0.3
     "@typescript-eslint/eslint-plugin": latest
@@ -2101,7 +2101,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@raindrops-protocol/raindrops@workspace:js/lib":
+"@raindrops-protocol/raindrops@workspace:*, @raindrops-protocol/raindrops@workspace:js/lib":
   version: 0.0.0-use.local
   resolution: "@raindrops-protocol/raindrops@workspace:js/lib"
   dependencies:
