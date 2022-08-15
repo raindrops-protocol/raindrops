@@ -1585,7 +1585,7 @@ pub struct DrainPlayer<'info> {
         ],
         bump=player.bump
     )]
-    player: Account<'info, Player>,
+    player: Box<Account<'info, Player>>,
     #[account(
         mut,
         seeds=[
@@ -1596,7 +1596,7 @@ pub struct DrainPlayer<'info> {
         bump=player_class.bump,
         constraint=player.parent == player_class.key()
     )]
-    player_class: Account<'info, PlayerClass>,
+    player_class: Box<Account<'info, PlayerClass>>,
     receiver: Signer<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }

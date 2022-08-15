@@ -158,6 +158,39 @@ CLI.programCommandWithConfig(
 );
 
 CLI.programCommandWithConfig(
+  "drain_player",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    await (
+      await playerProgram.drainPlayer(
+        {
+          index: new BN(config.index || config.newPlayerIndex),
+          classIndex: new BN(config.classIndex),
+          updatePermissivenessToUse:
+            config.updatePermissivenessToUse || config.buildPermissivenessToUse,
+          playerClassMint: new web3.PublicKey(config.playerClassMint),
+          playerMint: new web3.PublicKey(
+            config.playerMint || config.newPlayerMint
+          ),
+        },
+        {
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+        }
+      )
+    ).rpc();
+  }
+);
+
+CLI.programCommandWithConfig(
   "build_player",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
