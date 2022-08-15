@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Raindrops Programs",
-  "license": "MIT",
+  "license": "AGPL 3.0",
   "type": "module",
   "author": "Raindrops Contributors",
   "devDependencies": {
