@@ -25,6 +25,7 @@ import { ContractCommon } from "../contract/common";
 import { getPlayerPDA } from "../utils/pda";
 import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { ItemProgram } from "../contract";
+import { Token } from "@solana/spl-token";
 const {
   generateRemainingAccountsForCreateClass,
   generateRemainingAccountsGivenPermissivenessToUse,
@@ -310,6 +311,7 @@ export interface AddItemAdditionalArgs {
   itemClassMint: PublicKey;
   itemClassIndex: BN;
   itemProgram: ItemProgram;
+  totalItemsAvailable: BN;
 }
 
 export interface RemoveItemAdditionalArgs {
@@ -980,6 +982,14 @@ export class Instruction extends SolKitInstruction {
 
     return {
       instructions: [
+        Token.createApproveInstruction(
+          TOKEN_PROGRAM_ID,
+          accounts.itemAccount,
+          itemTransferAuthority.publicKey,
+          (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          [],
+          args.amount.toNumber()
+        ),
         await this.program.client.methods
           .addItem(args)
           .accounts({
@@ -1008,6 +1018,18 @@ export class Instruction extends SolKitInstruction {
           })
           .remainingAccounts(remainingAccounts)
           .instruction(),
+        ...(additionalArgs.totalItemsAvailable.toNumber() >
+        args.amount.toNumber()
+          ? [
+              Token.createRevokeInstruction(
+                TOKEN_PROGRAM_ID,
+                accounts.itemAccount,
+                (this.program.client.provider as AnchorProvider).wallet
+                  .publicKey,
+                []
+              ),
+            ]
+          : []),
       ],
       signers,
     };

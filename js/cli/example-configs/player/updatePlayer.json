@@ -2,8 +2,8 @@
   "playerMint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
   "playerClassMint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
   "updatePermissivenessToUse": { "tokenHolder": true },
-  "classIndex": 0,
-  "index": 0,
+  "classIndex": 3,
+  "index": 3,
   "metadataUpdateAuthority": null,
   "updates": {
     "statsUri": null,
@@ -13,9 +13,33 @@
         "index": 0,
         "state": {
           "integer": {
-            "current": 5,
+            "current": 12,
             "calculatedIntermediate": 0,
             "calculated": 0
+          }
+        }
+      },
+      {
+        "index": 2,
+        "state": {
+          "bool": {
+            "current": true
+          }
+        }
+      },
+      {
+        "index": 3,
+        "state": {
+          "enum": {
+            "current": 1
+          }
+        }
+      },
+      {
+        "index": 1,
+        "state": {
+          "string": {
+            "current": "bobby"
           }
         }
       }

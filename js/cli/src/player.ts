@@ -5,13 +5,11 @@ import * as fs from "fs";
 import { BN, web3 } from "@project-serum/anchor";
 
 import { Wallet, CLI } from "@raindrop-studios/sol-command";
-import { PlayerProgram } from "@raindrops-protocol/raindrops";
+import { PlayerProgram, ItemProgram } from "@raindrops-protocol/raindrops";
 import { Utils, State } from "@raindrops-protocol/raindrops";
 import { SystemProgram } from "@solana/web3.js";
 
 import InheritanceState = State;
-import PermissivenessType = State;
-import PlayerState = State.Player;
 
 const { PDA } = Utils;
 const { getPlayerPDA, getAtaForMint } = PDA;
@@ -277,8 +275,78 @@ CLI.programCommandWithConfig(
   }
 );
 
+CLI.programCommand("add_item")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with player settings, including an addItemPermissivenessToUse or updatePermissivenessToUse"
+  )
+  .requiredOption("-m, --mint <string>", "Item mint")
+  .option("-cm, --class-mint <string>", "Item Class mint")
+  .requiredOption(
+    "-i, --index <string>",
+    "Item index. Normally is 0, defaults to 0."
+  )
+  .requiredOption("-a, --amount <string>", "Amount")
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, mint, index, amount, classMint } =
+      cmd.opts();
+
+    const anchorProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    const itemProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      ItemProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    const configString = fs.readFileSync(configPath);
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    const playerMint = new PublicKey(
+      config.playerMint || config.newPlayerMint || config.mint
+    );
+    const playerIndex = new BN(
+      config.index || config.newPlayerIndex || config.playerIndex
+    );
+
+    const itemIndex = new BN(index);
+    const itemMint = new PublicKey(mint);
+
+    await (
+      await anchorProgram.addItem(
+        {
+          index: playerIndex,
+          addItemPermissivenessToUse:
+            config.addItemPermissivenessToUse ||
+            config.updatePermissivenessToUse,
+          playerMint,
+          amount: new BN(amount),
+          itemIndex,
+        },
+        {
+          itemMint,
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+        },
+        {
+          itemProgram,
+          playerClassMint: new PublicKey(config.playerClassMint),
+          itemClassMint: classMint ? new PublicKey(classMint) : null,
+        }
+      )
+    ).rpc();
+  });
+
 CLI.programCommand("show_player")
-  .option("-cp, --config-path <string>", "JSON file with player class settings")
+  .option("-cp, --config-path <string>", "JSON file with player settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
   .option(
     "-i, --index <string>",

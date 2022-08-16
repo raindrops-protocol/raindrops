@@ -208,7 +208,7 @@ export class PlayerProgram extends Program.Program {
       );
     }
 
-    this.setPlayerClassIndexIfNecessary(
+    await this.setPlayerClassIndexIfNecessary(
       args.playerMint,
       args.index,
       additionalArgs
@@ -272,7 +272,7 @@ export class PlayerProgram extends Program.Program {
       throw new Error("Must pass itemMint!");
     }
 
-    this.setPlayerClassIndexIfNecessary(
+    await this.setPlayerClassIndexIfNecessary(
       args.playerMint,
       args.index,
       additionalArgs
@@ -322,7 +322,7 @@ export class PlayerProgram extends Program.Program {
       );
     }
 
-    this.setPlayerClassIndexIfNecessary(
+    await this.setPlayerClassIndexIfNecessary(
       args.playerMint,
       args.index,
       additionalArgs
@@ -353,7 +353,11 @@ export class PlayerProgram extends Program.Program {
     signers: Signer[];
   }> {
     if (!accounts.itemMint) {
-      throw new Error("Missing itemMint");
+      throw new Error("Missing itemMint in accounts");
+    }
+
+    if (!additionalArgs.itemProgram) {
+      throw new Error("Missing itemProgram in additionalArgs");
     }
 
     if (!accounts.itemAccount) {
@@ -371,25 +375,16 @@ export class PlayerProgram extends Program.Program {
       );
     }
 
-    this.setPlayerClassIndexIfNecessary(
+    await this.setPlayerClassIndexIfNecessary(
       args.playerMint,
       args.index,
       additionalArgs
     );
 
-    if (!additionalArgs.itemClassIndex) {
-      const item = await additionalArgs.itemProgram.client.account.item.fetch(
-        (
-          await getItemPDA(accounts.itemMint, args.itemIndex)
-        )[0]
-      );
-
-      additionalArgs.itemClassIndex = item.classIndex as BN;
-      additionalArgs.itemClassMint = item.parent as PublicKey;
-    }
+    await this.setItemInfoIfNecessary(args, accounts, additionalArgs);
 
     if (!accounts?.validationProgram) {
-      const playerClass = (await this.client.account.player.fetch(
+      const playerClass = (await this.client.account.playerClass.fetch(
         (
           await getPlayerPDA(
             additionalArgs.playerClassMint,
@@ -402,6 +397,16 @@ export class PlayerProgram extends Program.Program {
         accounts.validationProgram =
           playerClass.data.config.addToPackValidation;
       }
+    }
+
+    if (!additionalArgs.totalItemsAvailable) {
+      additionalArgs.totalItemsAvailable = new BN(
+        (
+          await this.client.provider.connection.getTokenAccountBalance(
+            accounts.itemAccount
+          )
+        ).value.uiAmount
+      );
     }
 
     const { instructions, signers } = await this.instruction.addItem(
@@ -431,6 +436,10 @@ export class PlayerProgram extends Program.Program {
       throw new Error("Missing itemMint");
     }
 
+    if (!additionalArgs.itemProgram) {
+      throw new Error("Missing itemProgram in additionalArgs");
+    }
+
     if (!accounts.itemAccount) {
       accounts.itemAccount = (
         await getAtaForMint(
@@ -439,31 +448,23 @@ export class PlayerProgram extends Program.Program {
         )
       )[0];
     }
+
     if (!accounts?.metadataUpdateAuthority) {
       accounts.metadataUpdateAuthority = await this.getMetadataUpdateAuthority(
         args.playerMint
       );
     }
 
-    this.setPlayerClassIndexIfNecessary(
+    await this.setPlayerClassIndexIfNecessary(
       args.playerMint,
       args.index,
       additionalArgs
     );
 
-    if (!additionalArgs.itemClassIndex) {
-      const item = await additionalArgs.itemProgram.client.account.item.fetch(
-        (
-          await getItemPDA(accounts.itemMint, args.itemIndex)
-        )[0]
-      );
-
-      additionalArgs.itemClassIndex = item.classIndex as BN;
-      additionalArgs.itemClassMint = item.parent as PublicKey;
-    }
+    await this.setItemInfoIfNecessary(args, accounts, additionalArgs);
 
     if (!accounts?.validationProgram) {
-      const playerClass = (await this.client.account.player.fetch(
+      const playerClass = (await this.client.account.playerClass.fetch(
         (
           await getPlayerPDA(
             additionalArgs.playerClassMint,
@@ -496,17 +497,54 @@ export class PlayerProgram extends Program.Program {
     index: BN,
     additionalArgs: any
   ) {
-    if (!additionalArgs.classIndex) {
+    if (!additionalArgs.classIndex || !additionalArgs.playerClassMint) {
       const player = await this.client.account.player.fetch(
         (
           await getPlayerPDA(playerMint, index)
         )[0]
       );
       additionalArgs.classIndex = player.classIndex as BN;
-    }
 
-    if (!additionalArgs.playerClassMint) {
-      throw new Error("Please set playerClassMint");
+      if (!additionalArgs.playerClassMint) {
+        const playerClass = await this.client.account.playerClass.fetch(
+          player.parent as PublicKey
+        );
+
+        if (!playerClass.mint) {
+          throw new Error(
+            "Unable to derive player class mint from player class, please pass it in"
+          );
+        } else {
+          additionalArgs.playerClassMint = playerClass.mint as PublicKey;
+        }
+      }
+    }
+  }
+
+  async setItemInfoIfNecessary(args: any, accounts: any, additionalArgs: any) {
+    if (!additionalArgs.itemClassIndex || !additionalArgs.itemClassMint) {
+      const item = await additionalArgs.itemProgram.client.account.item.fetch(
+        (
+          await getItemPDA(accounts.itemMint, args.itemIndex)
+        )[0]
+      );
+
+      additionalArgs.itemClassIndex = item.classIndex as BN;
+
+      if (!additionalArgs.itemClassMint) {
+        const itemClass =
+          await additionalArgs.itemProgram.client.account.itemClass.fetch(
+            item.parent as PublicKey
+          );
+
+        if (!itemClass.mint) {
+          throw new Error(
+            "Unable to derive item class mint from item, please pass it in"
+          );
+        } else {
+          additionalArgs.itemClassMint = itemClass.mint as PublicKey;
+        }
+      }
     }
   }
 
@@ -526,7 +564,7 @@ export class PlayerProgram extends Program.Program {
       );
     }
 
-    this.setPlayerClassIndexIfNecessary(
+    await this.setPlayerClassIndexIfNecessary(
       args.playerMint,
       args.index,
       additionalArgs
