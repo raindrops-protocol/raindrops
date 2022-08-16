@@ -23,7 +23,7 @@ use metaplex_token_metadata::instruction::{
     mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
 };
 use spl_token::instruction::{initialize_account2, mint_to};
-anchor_lang::declare_id!("9UPxDy3p6LjDck7LJAvCwqCXa8qUCG6oq2feuw7pgvH");
+anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
 pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -32,10 +32,13 @@ pub struct CreateOrUpdateOracleArgs {
     token_transfers: Option<Vec<TokenDelta>>,
     seed: Pubkey,
     space: u64,
-    resize: u64,
     finalized: bool,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ResizeOracleArgs {
+    resize: u64,
+}
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainOracleArgs {
     seed: Pubkey,
@@ -96,6 +99,41 @@ pub mod matches {
 
     use super::*;
 
+    pub fn resize_oracle<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ReizeOracle<'info>>,
+        args: ResizeOracleArgs,
+    ) -> Result<()> {
+          
+        let win_oracle = &mut ctx.accounts.oracle;
+
+        let win_oracle_account = win_oracle.to_account_info();
+        
+        if args.resize as usize > win_oracle_account.data.borrow().len() {
+            let system_program = &ctx.accounts.system_program;
+            let payer = &ctx.accounts.payer;
+            let payer_account = payer.to_account_info();
+            let new_size = args.resize as usize;
+
+            let rent = Rent::get()?;
+            let new_minimum_balance = rent.minimum_balance(new_size);
+
+            let lamports_diff = new_minimum_balance.saturating_sub(win_oracle_account.lamports());
+            invoke(
+                &system_instruction::transfer(payer_account.key, win_oracle_account.key, lamports_diff),
+                &[
+                    payer_account.clone(),
+                    win_oracle_account.clone(),
+                    system_program.to_account_info().clone(),
+                ],
+            )?;
+
+            win_oracle_account.realloc(new_size, false)?;
+
+        }
+        
+        Ok(())
+    }
+
     pub fn create_or_update_oracle<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, CreateOrUpdateOracle<'info>>,
         args: CreateOrUpdateOracleArgs,
@@ -122,32 +160,6 @@ pub mod matches {
 
         win_oracle.finalized = finalized;
         win_oracle.token_transfer_root = token_transfer_root.clone();
-
-
-        let win_oracle_account = win_oracle.to_account_info();
-        
-        if args.resize as usize > win_oracle_account.data.borrow().len() {
-            let system_program = &ctx.accounts.system_program;
-            let payer = &ctx.accounts.payer;
-            let payer_account = payer.to_account_info();
-            let new_size = args.resize as usize;
-
-            let rent = Rent::get()?;
-            let new_minimum_balance = rent.minimum_balance(new_size);
-
-            let lamports_diff = new_minimum_balance.saturating_sub(win_oracle_account.lamports());
-            invoke(
-                &system_instruction::transfer(payer_account.key, win_oracle_account.key, lamports_diff),
-                &[
-                    payer_account.clone(),
-                    win_oracle_account.clone(),
-                    system_program.to_account_info().clone(),
-                ],
-            )?;
-
-            win_oracle_account.realloc(new_size, false)?;
-
-        }
 
         win_oracle.token_transfers = token_transfers.clone();
 
@@ -783,6 +795,18 @@ pub struct LeaveMatch<'info> {
     token_program: Program<'info, Token>,
 }
 
+// https://github.com/raindrops-protocol/raindrops/pull/27
+
+#[derive(Accounts)]
+#[instruction(args: ResizeOracleArgs)]
+pub struct ResizeOracle<'info> {
+    #[account(mut, seeds=[PREFIX.as_bytes(), payer.key().as_ref(), args.seed.as_ref()])]
+    oracle: Account<'info, WinOracle>,
+    #[account(mut)]
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
 /// While not required to be an account owned by this program, we provide an easy
 /// set of endpoitns to create oracles using the program if you don't want to do it yourself.
 #[derive(Accounts)]
