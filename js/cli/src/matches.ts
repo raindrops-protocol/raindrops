@@ -12,7 +12,7 @@ import {
   getMatchesProgram,
   Utils,
   State
-} from "../../lib/";
+} from "@raindrops-protocol/raindrops";
 
 const { loadWalletKey } = Wallet;
 const { PDA } = Utils
