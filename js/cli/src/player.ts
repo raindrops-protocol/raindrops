@@ -345,6 +345,76 @@ CLI.programCommand("add_item")
     ).rpc();
   });
 
+CLI.programCommand("remove_item")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with player settings, including an removeItemPermissivenessToUse or updatePermissivenessToUse"
+  )
+  .requiredOption("-m, --mint <string>", "Item mint")
+  .option("-cm, --class-mint <string>", "Item Class mint")
+  .requiredOption(
+    "-i, --index <string>",
+    "Item index. Normally is 0, defaults to 0."
+  )
+  .requiredOption("-a, --amount <string>", "Amount")
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl, mint, index, amount, classMint } =
+      cmd.opts();
+
+    const anchorProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    const itemProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      ItemProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    const configString = fs.readFileSync(configPath);
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    const playerMint = new PublicKey(
+      config.playerMint || config.newPlayerMint || config.mint
+    );
+    const playerIndex = new BN(
+      config.index || config.newPlayerIndex || config.playerIndex
+    );
+
+    const itemIndex = new BN(index);
+    const itemMint = new PublicKey(mint);
+
+    await (
+      await anchorProgram.removeItem(
+        {
+          index: playerIndex,
+          removeItemPermissivenessToUse:
+            config.removeItemPermissivenessToUse ||
+            config.updatePermissivenessToUse,
+          playerMint,
+          amount: new BN(amount),
+          itemIndex,
+        },
+        {
+          itemMint,
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+        },
+        {
+          itemProgram,
+          playerClassMint: new PublicKey(config.playerClassMint),
+          itemClassMint: classMint ? new PublicKey(classMint) : null,
+        }
+      )
+    ).rpc();
+  });
+
 CLI.programCommand("show_player")
   .option("-cp, --config-path <string>", "JSON file with player settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")

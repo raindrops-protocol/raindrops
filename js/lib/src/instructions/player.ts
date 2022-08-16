@@ -25,7 +25,7 @@ import { ContractCommon } from "../contract/common";
 import { getPlayerPDA } from "../utils/pda";
 import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { ItemProgram } from "../contract";
-import { Token } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 const {
   generateRemainingAccountsForCreateClass,
   generateRemainingAccountsGivenPermissivenessToUse,
@@ -301,6 +301,7 @@ export interface AddItemAccounts {
 export interface RemoveItemAccounts {
   itemMint: PublicKey;
   itemAccount: PublicKey;
+  itemAccountOwner?: PublicKey;
   validationProgram: null | PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
@@ -1083,6 +1084,9 @@ export class Instruction extends SolKitInstruction {
             )[0],
             itemMint: accounts.itemMint,
             itemAccount: accounts.itemAccount,
+            itemAccountOwner:
+              accounts.itemAccountOwner ||
+              (this.program.client.provider as AnchorProvider).wallet.publicKey,
             playerItemAccount: (
               await getPlayerItemAccount({ item, player: playerKey })
             )[0],
@@ -1090,6 +1094,7 @@ export class Instruction extends SolKitInstruction {
               .publicKey,
             systemProgram: SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
             validationProgram:
               accounts.validationProgram || SystemProgram.programId,

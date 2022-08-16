@@ -3,7 +3,10 @@ pub mod utils;
 use {
     crate::utils::*,
     anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize},
-    anchor_spl::token::{close_account, CloseAccount, Mint, Token, TokenAccount},
+    anchor_spl::{
+        associated_token::AssociatedToken,
+        token::{close_account, CloseAccount, Mint, Token, TokenAccount},
+    },
     raindrops_item::utils::{
         assert_keys_equal, assert_metadata_valid, get_item_usage, spl_token_transfer,
         GetItemUsageArgs, TokenTransferParams,
@@ -1508,8 +1511,14 @@ pub struct RemoveItem<'info> {
     #[account(constraint=item.parent == item_class.key())]
     item_class: Box<Account<'info, raindrops_item::ItemClass>>,
     item_mint: Box<Account<'info, Mint>>,
-    #[account(mut, constraint=item_account.mint == item_mint.key())]
+    #[account(
+        init_if_needed,
+        associated_token::mint = item_mint,
+        associated_token::authority = item_account_owner,
+        payer=payer
+    )]
     item_account: Box<Account<'info, TokenAccount>>,
+    item_account_owner: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds=[
@@ -1524,6 +1533,7 @@ pub struct RemoveItem<'info> {
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
+    associated_token_program: Program<'info, AssociatedToken>,
     rent: Sysvar<'info, Rent>,
     // System program if there is no validation to call
     // if there is, pass up the validation program
