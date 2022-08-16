@@ -4,7 +4,7 @@
 
 ## Guide
 
-https://long-banana.gitbook.io/raindrops/
+https://docs.raindropstudios.xyz/raindrops
 
 ## About
 
