@@ -21,7 +21,7 @@ import {
   getItemPDA,
   getMetadata,
 } from "../utils/pda";
-import {  TOKEN_PROGRAM_ID } from "../constants/programIds";
+import { TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
@@ -37,6 +37,11 @@ const ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS = [
   "itemClassData.config.components.[].timeToBuild",
   "itemClassData.config.usages.[].validation.code",
   "itemClassData.config.usages.[].callback.code",
+  "itemClassData.config.usages.[].basicItemEffects.[].amount",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingAmountNumerator",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingAmountDivisor",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingDurationDivisor",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingDurationDivisor",
   "itemClassData.config.usages.[].itemClassType.consumable.maxUses",
   "itemClassData.config.usages.[].itemClassType.consumable.maxPlayersPerUse",
   "itemClassData.config.usages.[].itemClassType.consumable.warmupDuration",
@@ -933,23 +938,20 @@ export class Instruction extends SolKitInstruction {
 
   async updateItem(
     args: UpdateItemArgs,
-    accounts: UpdateItemAccounts,
-    additionalArgs: UpdateItemAdditionalArgs
+    _accounts: UpdateItemAccounts,
+    _additionalArgs: UpdateItemAdditionalArgs
   ) {
     const itemClassKey = (
       await getItemPDA(args.itemClassMint, args.classIndex)
     )[0];
 
     const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
-
     return [
       await this.program.client.methods
         .updateItem(args)
         .accounts({
-          accounts: {
-            itemClass: itemClassKey,
-            item: itemKey,
-          },
+          itemClass: itemClassKey,
+          item: itemKey,
         })
         .instruction(),
     ];

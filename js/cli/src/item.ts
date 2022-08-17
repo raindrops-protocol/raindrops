@@ -14,8 +14,7 @@ const { PDA } = Utils;
 const { loadWalletKey } = Wallet;
 
 import ItemState = State.Item;
-import InheritanceState = State;
-import PermissivenessType = State;
+const { PermissivenessType, InheritanceState } = State;
 
 programCommand("create_item_class")
   .requiredOption(
@@ -983,7 +982,6 @@ programCommand("show_item_class")
       });
 
     log.info("----> Usages:");
-
     if (config.usages)
       config.usages.forEach((u) => {
         log.info("------> Index:", u.index);
@@ -1036,7 +1034,7 @@ programCommand("show_item_class")
 
             log.info(
               "--------> Active Duration:",
-              ItemState.BasicItemEffectType[b.itemEffectType]
+              b.activeDuration ? b.activeDuration.toNumber() : "Not Set"
             );
 
             log.info(
@@ -1073,7 +1071,7 @@ programCommand("show_item_class")
           });
         }
 
-        if ((u.itemClassType as any).bodyPart) {
+        if ((u.itemClassType as any).wearable) {
           const itemClassType = u.itemClassType.wearable as ItemState.Wearable;
           log.info("------> Wearable:");
           log.info(
@@ -1082,12 +1080,10 @@ programCommand("show_item_class")
               ? itemClassType.limitPerPart.toNumber()
               : "Not Set"
           );
-          log.info(
-            "--------> Body Parts:",
-            itemClassType.bodyPart.forEach((b) => {
-              log.info(`----------> ${b}`);
-            })
-          );
+          log.info("--------> Body Parts:");
+          itemClassType.bodyPart.forEach((b) => {
+            log.info(`----------> ${b}`);
+          });
         } else {
           const itemClassType = u.itemClassType
             .consumable as ItemState.Consumable;
