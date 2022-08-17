@@ -643,13 +643,13 @@ pub mod matches {
 
         let mut joined = false;
         let mut new_namespaces = vec![];
-        for mut ns in namespaces {
+        for ns in namespaces {
             if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
-                ns.namespace = ctx.accounts.namespace.key();
-                ns.index = None;
-                ns.inherited = InheritanceState::NotInherited;
-                joined = true;
-                new_namespaces.push(ns);
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: ctx.accounts.namespace.key(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
             } else {
                 new_namespaces.push(ns);
             }
@@ -678,16 +678,18 @@ pub mod matches {
 
         let mut left = false;
         let mut new_namespaces = vec![];
-        for mut ns in namespaces {
+        for ns in namespaces {
             if ns.namespace == ctx.accounts.namespace.key() && !left {
                 // if the artifact is still cached, error
                 if ns.index != None {
                     return Err(error!(ErrorCode::FailedToLeaveNamespace));
                 };
-                ns.namespace = anchor_lang::solana_program::system_program::id();
-                ns.inherited = InheritanceState::NotInherited;
                 left = true;
-                new_namespaces.push(ns);
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
             } else {
                 new_namespaces.push(ns);
             }
@@ -717,11 +719,14 @@ pub mod matches {
 
         let mut cached = false;
         let mut new_namespaces = vec![];
-        for mut ns in namespaces {
+        for ns in namespaces {
             if ns.namespace == ctx.accounts.namespace.key() && !cached {
-                ns.index = Some(page);
                 cached = true;
-                new_namespaces.push(ns);
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: ns.namespace,
+                    index: Some(page),
+                    inherited: InheritanceState::NotInherited,
+                });
             } else {
                 new_namespaces.push(ns);
             }
@@ -752,9 +757,12 @@ pub mod matches {
         let mut new_namespaces = vec![];
         for mut ns in namespaces {
             if ns.namespace == ctx.accounts.namespace.key() && !uncached {
-                ns.index = None;
                 uncached = true;
-                new_namespaces.push(ns);
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: ctx.accounts.namespace.key(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
             } else {
                 new_namespaces.push(ns);
             }
@@ -771,7 +779,7 @@ pub mod matches {
 #[derive(Accounts)]
 #[instruction(args: CreateMatchArgs)]
 pub struct CreateMatch<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= MIN_MATCH_SIZE as u64)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= Match::space() as u64)]
     match_instance: Account<'info, Match>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -916,7 +924,10 @@ pub struct MatchJoinNamespace<'info> {
     #[account(mut)]
     match_instance: Account<'info, Match>,
     #[account()]
+    /// CHECK: Use typed Program when we have a commons crate
     namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }
@@ -926,7 +937,11 @@ pub struct MatchLeaveNamespace<'info> {
     #[account(mut)]
     match_instance: Account<'info, Match>,
     #[account()]
+
+    /// CHECK: Use typed Program when we have a commons crate
     namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }
@@ -936,8 +951,12 @@ pub struct MatchLeaveNamespace<'info> {
 pub struct MatchCacheNamespace<'info> {
     #[account(mut)]
     match_instance: Account<'info, Match>,
+
+    /// CHECK: Use typed Program when we have a commons crate
     #[account()]
     namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }
@@ -946,8 +965,12 @@ pub struct MatchCacheNamespace<'info> {
 pub struct MatchUncacheNamespace<'info> {
     #[account(mut)]
     match_instance: Account<'info, Match>,
+
+    /// CHECK: Use typed Program when we have a commons crate
     #[account()]
     namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }
@@ -1007,22 +1030,6 @@ impl NamespaceAndIndex {
     pub const SPACE: usize = 32 + 9 + 2;
 }
 
-pub const MIN_MATCH_SIZE: usize = 8 + // discriminator
-32 + // win oracle
-8 + // oracle cooldown
-8 + // last oracle check
-32 + // authority,
-1 + 4 + (NamespaceAndIndex::SPACE * 10) + // Option<Vec<NamespaceAndIndex>> allow max 10
-1 + // match state
-1 + // leave allowed
-1 + // min valid entry
-1 + // bump
-8 + // current token tfer index
-8 + // token types added
-8 + // token types removed
-1 + // token_entry_validation
-1; // token entry validation root
-
 use anchor_spl::token::Token;
 
 #[account]
@@ -1046,6 +1053,27 @@ pub struct Match {
     pub token_entry_validation: Option<Vec<TokenValidation>>,
     pub token_entry_validation_root: Option<Root>,
     pub join_allowed_during_start: bool,
+}
+
+impl Match {
+    pub fn space() -> usize {
+        8 + 32
+            + 8
+            + 8
+            + 32
+            + 1
+            + 4
+            + (NamespaceAndIndex::SPACE * 10)
+            + 1
+            + 1
+            + 1
+            + 1
+            + 8
+            + 8
+            + 8
+            + 1
+            + 1
+    }
 }
 
 #[account]

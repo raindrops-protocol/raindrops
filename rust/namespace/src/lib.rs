@@ -267,7 +267,6 @@ pub mod namespace {
                         inherited: InheritanceState::NotInherited,
                     });
                 } else {
-                    msg!("else: {}", ns.namespace);
                     new_namespaces.push(ns);
                 }
             }
@@ -852,7 +851,10 @@ pub struct JoinNamespace<'info> {
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    #[account(constraint=raindrops_program.key() == crate::id() ||
+        raindrops_program.key() == raindrops_item::id() ||
+        raindrops_program.key() == raindrops_player::id() ||
+        raindrops_program.key() == raindrops_matches::id())]
     raindrops_program: UncheckedAccount<'info>,
 }
 
@@ -869,7 +871,10 @@ pub struct LeaveNamespace<'info> {
     token_holder: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    #[account(constraint=raindrops_program.key() == crate::id() ||
+    raindrops_program.key() == raindrops_item::id() ||
+    raindrops_program.key() == raindrops_player::id() ||
+    raindrops_program.key() == raindrops_matches::id())]
     raindrops_program: UncheckedAccount<'info>,
 }
 
@@ -891,7 +896,10 @@ pub struct CacheArtifact<'info> {
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
-    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    #[account(constraint=raindrops_program.key() == crate::id() ||
+        raindrops_program.key() == raindrops_item::id() ||
+        raindrops_program.key() == raindrops_player::id() ||
+        raindrops_program.key() == raindrops_matches::id())]
     raindrops_program: UncheckedAccount<'info>,
 }
 
@@ -911,7 +919,10 @@ pub struct UncacheArtifact<'info> {
     rent: Sysvar<'info, Rent>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    #[account(constraint=raindrops_program.key() == crate::id() || raindrops_program.key() == raindrops_item::id() || raindrops_program.key() == raindrops_player::id() || raindrops_program.key() == raindrops_matches::id())]
+    #[account(constraint=raindrops_program.key() == crate::id() ||
+        raindrops_program.key() == raindrops_item::id() ||
+        raindrops_program.key() == raindrops_player::id() ||
+        raindrops_program.key() == raindrops_matches::id())]
     raindrops_program: UncheckedAccount<'info>,
 }
 

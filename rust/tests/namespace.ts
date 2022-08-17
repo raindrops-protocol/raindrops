@@ -1,4 +1,5 @@
 import * as anchor from "@project-serum/anchor";
+import { BN } from "@project-serum/anchor";
 import * as splToken from "../node_modules/@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import {
@@ -12,8 +13,7 @@ import * as nsIx from "../../js/lib/src/instructions/namespace";
 import * as nsState from "../../js/lib/src/state/namespace";
 import * as pids from "../../js/lib/src/constants/programIds";
 import * as pdas from "../../js/lib/src/utils/pda";
-import { assert } from "quicktype-core";
-import { BN } from "bn.js";
+import assert = require("assert");
 
 describe("namespace", () => {
   // Configure the client to use the local cluster.
@@ -1340,13 +1340,9 @@ describe("namespace", () => {
       raindropsProgram: pids.MATCHES_ID,
     };
 
-    let failed = false;
-    try {
-      await namespaceProgram.joinNamespace(joinNsAccounts);
-    } catch (e) {
-      failed = true;
-    }
-    assert(failed);
+    assert.throws(
+      async () => await namespaceProgram.joinNamespace(joinNsAccounts)
+    );
   });
 });
 
