@@ -10,13 +10,14 @@ use item_cpi::{
     cpi::{
         accounts::{
             ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-            ItemClassUncacheNamespace,
+            ItemClassUncacheNamespace, CreateItemClass,
         },
         item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
-        item_class_uncache_namespace,
+        item_class_uncache_namespace, create_item_class
     },
     program::Item,
 };
+use item_cpi::typedefs::CreateItemClassArgs;
 use std::str::FromStr;
 anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
