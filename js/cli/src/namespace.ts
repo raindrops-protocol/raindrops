@@ -1,17 +1,13 @@
 #!/usr/bin/env ts-node
-import { Wallet, CLI } from "@raindrop-studios/sol-command";
+import { CLI } from "@raindrop-studios/sol-command";
 import * as anchor from "@project-serum/anchor";
 import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
 import {
-  Namespace,
   IDL as NamespaceProgramIDL,
 } from "../../../rust/target/types/namespace";
 import { NamespaceProgram } from "../../lib/src/contract/namespace";
 import * as nsIx from "../../lib/src/instructions/namespace";
-import * as nsState from "../../lib/src/state/namespace";
-import * as pids from "../../lib/src/constants/programIds";
-import * as pdas from "../../lib/src/utils/pda";
 
 CLI.programCommandWithConfig(
   "initialize_namespace",
