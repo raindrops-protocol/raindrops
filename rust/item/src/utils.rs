@@ -108,7 +108,7 @@ pub fn get_class_write_offsets(
         ctr += 1;
     }
 
-    ctr += 9; // bump and existing childern (1 + 8)
+    ctr += 9; // bump and existing children (1 + 8)
 
     let mut end_ctr = ctr;
 
@@ -291,8 +291,9 @@ pub fn get_class_write_offsets(
 
             // item_class_type
             if data[end_ctr] == 0 {
+                end_ctr += 1;
                 // wearable
-                let sub = &data[end_ctr + 1..end_ctr + 5];
+                let sub = &data[end_ctr..end_ctr + 4];
                 let num_of_body_parts = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
                 end_ctr += 4;
                 for _ in 0..num_of_body_parts {
