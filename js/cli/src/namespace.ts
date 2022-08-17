@@ -74,9 +74,9 @@ CLI.programCommandWithConfig(
     );
 
     const updateNsArgs: nsIx.UpdateNamespaceArgs = {
-      prettyName: config.prettyName || null,
-      permissivenessSettings: config.permissivenessSettings || null,
-      whitelistedStakingMints: whitelistedStakingMints || null,
+      prettyName: config.prettyName,
+      permissivenessSettings: config.permissivenessSettings,
+      whitelistedStakingMints: whitelistedStakingMints,
     };
 
     const updateNsAccounts: nsIx.UpdateNamespaceAccounts = {
