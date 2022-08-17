@@ -1340,9 +1340,7 @@ describe("namespace", () => {
       raindropsProgram: pids.MATCHES_ID,
     };
 
-    assert.throws(
-      async () => await namespaceProgram.joinNamespace(joinNsAccounts)
-    );
+    assert.rejects(async () => await namespaceProgram.joinNamespace(joinNsAccounts));
   });
 });
 

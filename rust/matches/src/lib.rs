@@ -645,6 +645,7 @@ pub mod matches {
         let mut new_namespaces = vec![];
         for ns in namespaces {
             if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+                joined = true;
                 new_namespaces.push(NamespaceAndIndex {
                     namespace: ctx.accounts.namespace.key(),
                     index: None,
@@ -755,7 +756,7 @@ pub mod matches {
 
         let mut uncached = false;
         let mut new_namespaces = vec![];
-        for mut ns in namespaces {
+        for ns in namespaces {
             if ns.namespace == ctx.accounts.namespace.key() && !uncached {
                 uncached = true;
                 new_namespaces.push(NamespaceAndIndex {
