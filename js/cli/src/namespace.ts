@@ -1,39 +1,46 @@
 #!/usr/bin/env ts-node
 import { Wallet, CLI } from "@raindrop-studios/sol-command";
-import { AnchorProvider, web3 } from "@project-serum/anchor";
+import * as anchor from "@project-serum/anchor";
+import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
-
-import { NamespaceProgram } from "@raindrops-protocol/raindrops";
+import {
+  Namespace,
+  IDL as NamespaceProgramIDL,
+} from "../../../rust/target/types/namespace";
+import { NamespaceProgram } from "../../lib/src/contract/namespace";
+import * as nsIx from "../../lib/src/instructions/namespace";
+import * as nsState from "../../lib/src/state/namespace";
+import * as pids from "../../lib/src/constants/programIds";
+import * as pdas from "../../lib/src/utils/pda";
 
 CLI.programCommandWithConfig(
   "initialize_namespace",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
 
     const whitelistedStakingMints = config.whitelistedStakingMints.map(
-      (mint) => new web3.PublicKey(mint)
+      (mint) => new anchor.web3.PublicKey(mint)
     );
 
+    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: config.uuid,
+      prettyName: config.prettyName,
+      permissivenessSettings: config.permissivenessSettings,
+      whitelistedStakingMints: whitelistedStakingMints,
+    };
+
+    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+      mint: new web3.PublicKey(config.mint),
+      metadata: new web3.PublicKey(config.metadata),
+      masterEdition: new web3.PublicKey(config.masterEdition),
+    };
+
     await namespaceProgram.initializeNamespace(
-      {
-        desiredNamespaceArraySize: config.desiredNamespaceArraySize,
-        uuid: config.uuid,
-        prettyName: config.prettyName,
-        permissivenessSettings: config.permissivenessSettings,
-        whitelistedStakingMints: whitelistedStakingMints,
-      },
-      {
-        mint: new web3.PublicKey(config.mint),
-        metadata: new web3.PublicKey(config.metadata),
-        masterEdition: new web3.PublicKey(config.masterEdition),
-      }
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
     );
 
     log.info("Namespace Initialized :: Run `show_namespace` command to view");
@@ -50,12 +57,7 @@ CLI.programCommandWithArgs(
   async (mint, options, _cmd) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
 
     const namespace = await namespaceProgram.fetchNamespace(mint);
     log.setLevel("info");
@@ -68,36 +70,23 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
 
     const whitelistedStakingMints = config.whitelistedStakingMints.map(
       (mint) => new web3.PublicKey(mint)
     );
 
-    console.log(
-      (
-        namespaceProgram.client.provider as AnchorProvider
-      ).wallet.publicKey.toString()
-    );
+    const updateNsArgs: nsIx.UpdateNamespaceArgs = {
+      prettyName: config.prettyName || null,
+      permissivenessSettings: config.permissivenessSettings || null,
+      whitelistedStakingMints: whitelistedStakingMints || null,
+    };
 
-    await namespaceProgram.updateNamespace(
-      {
-        prettyName: config.prettyName || null,
-        permissivenessSettings: config.permissivenessSettings || null,
-        whitelistedStakingMints: whitelistedStakingMints || null,
-      },
-      {
-        mint: new web3.PublicKey(config.mint),
-        namespaceToken: new web3.PublicKey(config.namespaceToken),
-        tokenHolder: (namespaceProgram.client.provider as AnchorProvider).wallet
-          .publicKey,
-      }
-    );
+    const updateNsAccounts: nsIx.UpdateNamespaceAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+    };
+
+    await namespaceProgram.updateNamespace(updateNsArgs, updateNsAccounts);
 
     log.info(
       "Namespace updated :: Run `show_namespace` command to see the changes"
@@ -110,12 +99,13 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+
+    const accounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+    };
+
+    await namespaceProgram.createNamespaceGatekeeper(accounts);
 
     log.info("Namespace Gatekeeper created");
   }
@@ -125,12 +115,18 @@ CLI.programCommandWithConfig(
   "add_to_namespace_gatekeeper",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+
+    const args: nsIx.AddToNamespaceGatekeeperArgs = {
+      artifactFilter: config.artifactFilter,
+    };
+
+    const accounts: nsIx.AddToNamespaceGatekeeperAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+    };
+
+    await namespaceProgram.addToNamespaceGatekeeper(args, accounts);
 
     log.info("Filter added to Namespace Gatekeeper");
   }
@@ -140,12 +136,17 @@ CLI.programCommandWithConfig(
   "remove_from_namespace_gatekeeper",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+
+    const args: nsIx.RemoveFromNamespaceGatekeeperArgs = {
+      artifactFilter: config.artifactFilter,
+    };
+    const accounts: nsIx.RemoveFromNamespaceGatekeeperAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+    };
+
+    await namespaceProgram.removeFromNamespaceGatekeeper(args, accounts);
 
     log.info("Filter removed from Namespace Gatekeeper");
   }
@@ -155,12 +156,15 @@ CLI.programCommandWithConfig(
   "join_namespace",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+
+    const accounts: nsIx.JoinNamespaceAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+      artifact: new web3.PublicKey(config.artifact),
+    };
+
+    await namespaceProgram.joinNamespace(accounts);
 
     log.info("Artifact joined to Namespace");
   }
@@ -170,12 +174,15 @@ CLI.programCommandWithConfig(
   "leave_namespace",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+
+    const accounts: nsIx.LeaveNamespaceAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+      artifact: new web3.PublicKey(config.artifact),
+    };
+
+    await namespaceProgram.leaveNamespace(accounts);
 
     log.info("Artifact removed from Namespace");
   }
@@ -185,12 +192,15 @@ CLI.programCommandWithConfig(
   "cache_artifact",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+
+    const accounts: nsIx.CacheArtifactAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+      artifact: config.artifact,
+    };
+
+    await namespaceProgram.cacheArtifact(accounts);
 
     log.info("Artifact cached to Namespace");
   }
@@ -200,15 +210,44 @@ CLI.programCommandWithConfig(
   "uncache_artifact",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
-    const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-      NamespaceProgram,
-      await Wallet.loadWalletKey(keypair),
-      env,
-      rpcUrl
-    );
+
+    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+
+    const accounts: nsIx.UncacheArtifactAccounts = {
+      namespaceMint: new web3.PublicKey(config.mint),
+      artifact: config.artifact,
+    };
+
+    const args: nsIx.UncacheArtifactArgs = {
+      page: new anchor.BN(config.page),
+    };
+
+    await namespaceProgram.uncacheArtifact(args, accounts);
 
     log.info("Artifact removed from Namespace cache");
   }
 );
 
 CLI.Program.parseAsync(process.argv);
+
+async function initNsProgram(
+  rpcUrl: string,
+  keypair: web3.Keypair
+): Promise<NamespaceProgram> {
+  const connection = new anchor.web3.Connection(rpcUrl, "confirmed");
+
+  const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+    NamespaceProgram,
+    {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(keypair),
+        { commitment: "confirmed" }
+      ),
+      idl: NamespaceProgramIDL,
+    }
+  );
+
+  return namespaceProgram;
+}
