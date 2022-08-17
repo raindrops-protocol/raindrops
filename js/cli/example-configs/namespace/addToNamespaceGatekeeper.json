@@ -1,7 +1,8 @@
 {
     "mint": "Exr4E56htinshjpxHyAibJyKy5CxCGihyhWVmie6aAHY",
     "artifactFilter": {
-        "filter": { "namespace": { "namespaces": ["Dijj7s7BkPS7Zr75YnnNgJRZQ5y18BcyUx66B6VN1WqX"] } },
+        "filterType": "NAMESPACES",
+        "filterData": ["Exr4E56htinshjpxHyAibJyKy5CxCGihyhWVmie6aAHY"],
         "tokenType": "ITEM"
     }
 } 

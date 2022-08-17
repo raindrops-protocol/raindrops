@@ -9,6 +9,7 @@ import {
 import { NamespaceProgram } from "../../lib/src/contract/namespace";
 import * as nsIx from "../../lib/src/instructions/namespace";
 import fs from "fs";
+import { Filter } from "../../lib/src/state/namespace";
 
 CLI.programCommandWithConfig(
   "initialize_namespace",
@@ -116,7 +117,10 @@ CLI.programCommandWithConfig(
     const namespaceProgram = await initNsProgram(rpcUrl, keypair);
 
     const args: nsIx.AddToNamespaceGatekeeperArgs = {
-      artifactFilter: config.artifactFilter,
+      artifactFilter: {
+        filter: new Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
+        tokenType: config.artifactFilter.tokenType,
+      },
     };
 
     const accounts: nsIx.AddToNamespaceGatekeeperAccounts = {
@@ -137,7 +141,10 @@ CLI.programCommandWithConfig(
     const namespaceProgram = await initNsProgram(rpcUrl, keypair);
 
     const args: nsIx.RemoveFromNamespaceGatekeeperArgs = {
-      artifactFilter: config.artifactFilter,
+      artifactFilter: {
+        filter: new Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
+        tokenType: config.artifactFilter.tokenType,
+      },
     };
     const accounts: nsIx.RemoveFromNamespaceGatekeeperAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
