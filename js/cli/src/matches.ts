@@ -430,6 +430,7 @@ programCommand("create_or_update_oracle")
       tokenTransferRoot: config.oracleState.tokenTransferRoot,
       tokenTransfers: config.oracleState.tokenTransfers,
       space: config.space ? new BN(config.space) : new BN(150),
+      resize: config.resize ? new BN(config.resize) : new BN(150),
       finalized: config.oracleState.finalized,
     });
   });
