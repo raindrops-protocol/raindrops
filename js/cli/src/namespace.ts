@@ -5,9 +5,10 @@ import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
 import {
   IDL as NamespaceProgramIDL,
-} from "../../../rust/target/types/namespace";
+} from "../../idl/namespace";
 import { NamespaceProgram } from "../../lib/src/contract/namespace";
 import * as nsIx from "../../lib/src/instructions/namespace";
+import fs from "fs";
 
 CLI.programCommandWithConfig(
   "initialize_namespace",
@@ -228,9 +229,13 @@ CLI.Program.parseAsync(process.argv);
 
 async function initNsProgram(
   rpcUrl: string,
-  keypair: web3.Keypair
+  keypairPath: string,
 ): Promise<NamespaceProgram> {
   const connection = new anchor.web3.Connection(rpcUrl, "confirmed");
+
+  const keypair = web3.Keypair.fromSecretKey(new Uint8Array(
+    JSON.parse(fs.readFileSync(keypairPath, "utf8"))
+  ));
 
   const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
     NamespaceProgram,

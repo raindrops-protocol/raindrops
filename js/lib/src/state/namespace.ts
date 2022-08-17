@@ -11,10 +11,10 @@ export class PermissivenessSettings {
 }
 
 export enum Permissiveness {
-  All,
-  Whitelist,
-  Blacklist,
-  Namespace,
+  All = "ALL",
+  Whitelist = "WHITELIST",
+  Blacklist = "BLACKLIST",
+  Namespace = "NAMESPACE",
 }
 
 // conver enum to an anchor compatible type
