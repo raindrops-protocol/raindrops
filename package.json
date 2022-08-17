@@ -1,11 +1,22 @@
 {
-  "name": "@raindrops-protocol/raindrops",
   "version": "0.1.0",
   "private": true,
   "license": "ISC",
-  "scripts": {},
-  "dependencies": {},
+  "packageManager": "yarn@3.2.0",
+  "workspaces": [
+    "js/cli",
+    "js/lib",
+    "rust"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "build:lint": "turbo run build:lint",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "lint:check": "turbo run lint:check"
+  },
   "devDependencies": {
-    "@metaplex-foundation/amman": "^0.10.0"
+    "@metaplex-foundation/amman": "^0.10.0",
+    "turbo": "^1.4.3"
   }
 }

@@ -11,6 +11,12 @@ namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
 matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
 staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 
+[programs.devnet]
+item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
+namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
+matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
+
 [programs.mainnet]
 item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
