@@ -8,8 +8,12 @@
     "lint:check": {
       "outputs": ["^lint:check"]
     },
-    "build": {
+    "build:lint": {
       "dependsOn": ["lint:check"],
+      "outputs": ["dist/**", "build/**", "target/**"]
+    },
+    "build": {
+      "dependsOn": [],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
     "test": {
