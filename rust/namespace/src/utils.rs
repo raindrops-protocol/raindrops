@@ -14,7 +14,7 @@ use anchor_lang::{
     Key, ToAccountInfo,
 };
 use arrayref::array_ref;
-use raindrops_item::ItemClass;
+use item_cpi::ItemClass;
 use std::{convert::TryInto, str::FromStr};
 
 pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {

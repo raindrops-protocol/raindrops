@@ -4,7 +4,7 @@ use crate::{
     ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
     InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
     ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType,
-    Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
+    Permissiveness, PermissivenessType, UsageInfo, PREFIX,
 };
 use anchor_lang::{
     error,
@@ -1808,7 +1808,7 @@ pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
 pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
     let current_ix = anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns).unwrap();
 
-    if current_ix.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
+    if current_ix.program_id != raindrops_namespace::ID {
         return false;
     };
 

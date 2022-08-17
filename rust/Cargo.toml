@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "item/",
+  "item-cpi/",
   "player/",
   "namespace/",
   "matches/",
