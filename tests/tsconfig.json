@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "outDir": "./build",
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "noImplicitAny": false,
+    "removeComments": false,
+    "isolatedModules": false,
+    "experimentalDecorators": true,
+    "downlevelIteration": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "noLib": false,
+    "preserveConstEnums": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "resolveJsonModule": true,
+    "lib": ["dom", "es2019"],
+    "types": ["jest", "node"]
+  },
+  "include": ["./src/**/*"],
+  "exclude": ["node_modules"],
+  "atom": {
+    "rewriteTsconfig": false
+  }
+}
