@@ -1,10 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { Transaction } from "@raindrop-studios/sol-kit";
-import {
-  ItemProgram,
-  Instructions,
-  State,
-} from "@raindrops-protocol/raindrops";
+import { ItemProgram, Instructions } from "@raindrops-protocol/raindrops";
 import { IDL as ItemProgramIDL } from "./types/item";
 import { createMintNFTInstructions } from "./utils/token";
 
@@ -51,27 +47,70 @@ describe("Item Program", () => {
       updatePermissivenessToUse: { tokenHolder: true },
       storeMint: false,
       storeMetadataFields: false,
-      itemClassData: new State.Item.ItemClassData({
-        settings: new State.Item.ItemClassSettings({
+      itemClassData: {
+        settings: {
           freeBuild: null,
           childrenMustBeEditions: null,
           builderMustBeHolder: null,
-          updatePermissiveness: null,
-          buildPermissiveness: null,
+          updatePermissiveness: [
+            {
+              permissivenessType: { tokenHolder: true },
+              inherited: { notInherited: true },
+            },
+          ],
+          buildPermissiveness: [
+            {
+              permissivenessType: { tokenHolder: true },
+              inherited: { notInherited: true },
+            },
+          ],
           stakingWarmUpDuration: null,
           stakingCooldownDuration: null,
           stakingPermissiveness: null,
           unstakingPermissiveness: null,
-          childUpdatePropagationPermissiveness: null,
-        }),
-        config: new State.Item.ItemClassConfig({
+          childUpdatePropagationPermissiveness: [
+            {
+              childUpdatePropagationPermissivenessType: { usages: true },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: { components: true },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                updatePermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                buildPermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                stakingPermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                freeBuildPermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+          ],
+        },
+        config: {
           usageRoot: null,
           usageStateRoot: null,
           componentRoot: null,
           usages: null,
           components: null,
-        }),
-      }),
+        },
+      },
       parentOfParentClassIndex: null,
     } as Instructions.Item.CreateItemClassArgs;
 
@@ -103,8 +142,6 @@ describe("Item Program", () => {
       );
 
     expect(createItemClassTxid).toBeDefined();
-
-    console.log("Successfully created item class");
 
     // STEP 2: Creates an item escrow
 
@@ -157,7 +194,5 @@ describe("Item Program", () => {
       );
 
     expect(createItemEscrowTxid).toBeDefined();
-
-    console.log("Successfully created item escrow");
   });
 });
