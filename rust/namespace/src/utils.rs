@@ -14,8 +14,8 @@ use anchor_lang::{
     Key, ToAccountInfo,
 };
 use arrayref::array_ref;
-use raindrops_item_cpi::ItemClass;
-use std::{convert::TryInto, str::FromStr};
+use raindrops_item::ItemClass;
+use std::convert::TryInto;
 
 pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
@@ -390,7 +390,7 @@ pub fn assert_can_add_to_namespace<'a>(
     namespace: &Account<'a, Namespace>,
     namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
 ) -> Result<()> {
-    let art_namespaces = if artifact.owner == &Pubkey::from_str(crate::PLAYER_ID).unwrap() {
+    let art_namespaces = if artifact.owner.eq(&raindrops_player::ID) {
         msg!("player_id match");
         check_permissiveness_against_holder(
             artifact,
@@ -398,7 +398,7 @@ pub fn assert_can_add_to_namespace<'a>(
             namespace_gatekeeper,
             &namespace.permissiveness_settings.player_permissiveness,
         )?
-    } else if artifact.owner == &Pubkey::from_str(crate::ITEM_ID).unwrap() {
+    } else if artifact.owner.eq(&raindrops_item::ID) {
         msg!("item_id match");
         check_permissiveness_against_holder(
             artifact,
@@ -406,7 +406,7 @@ pub fn assert_can_add_to_namespace<'a>(
             namespace_gatekeeper,
             &namespace.permissiveness_settings.item_permissiveness,
         )?
-    } else if artifact.owner == &Pubkey::from_str(crate::MATCH_ID).unwrap() {
+    } else if artifact.owner.eq(&raindrops_matches::ID) {
         msg!("match_id match");
         check_permissiveness_against_holder(
             artifact,
@@ -414,7 +414,7 @@ pub fn assert_can_add_to_namespace<'a>(
             namespace_gatekeeper,
             &namespace.permissiveness_settings.match_permissiveness,
         )?
-    } else if artifact.owner == &crate::id() {
+    } else if artifact.owner.eq(&crate::id()) {
         msg!("namespace_id match");
         check_permissiveness_against_holder(
             artifact,

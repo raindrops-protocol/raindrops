@@ -8,7 +8,7 @@ use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize, Discriminator}
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
 use raindrops_namespace_cpi::typedefs::NamespaceAndIndex;
-anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
+anchor_lang::declare_id!("7LyB5WFdVLBQ1zZ21djZRjSr6WzBSfPvNBsJxnhUTCQK");
 pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

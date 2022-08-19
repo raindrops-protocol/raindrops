@@ -17,7 +17,7 @@ describe("namespace", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  it("init namespace", async () => {
+  it.only("init namespace", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,

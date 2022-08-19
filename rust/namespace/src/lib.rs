@@ -6,22 +6,18 @@ use crate::utils::{
 };
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use raindrops_item_cpi::{
+use raindrops_item::{
     cpi::{
         accounts::{
             ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-            ItemClassUncacheNamespace,
+            ItemClassUnCacheNamespace,
         },
         item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
         item_class_uncache_namespace,
     },
     program::Item,
 };
-use std::str::FromStr;
-anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
-pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const MATCH_ID: &str = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ";
-pub const ITEM_ID: &str = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6";
+anchor_lang::declare_id!("AguQatwNFEaZSFUHsTj5fcU3LdsNFQLrYSHQjZ4erC8X");
 
 pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
@@ -188,9 +184,9 @@ pub mod namespace {
             return Err(error!(ErrorCode::ArtifactLacksNamespace));
         }
 
-        if artifact.owner != &Pubkey::from_str(PLAYER_ID).unwrap()
-            && artifact.owner != &Pubkey::from_str(MATCH_ID).unwrap()
-            && artifact.owner != &Pubkey::from_str(ITEM_ID).unwrap()
+        if artifact.owner.eq(&raindrops_player::ID)
+            && artifact.owner.eq(&raindrops_matches::ID) 
+            && artifact.owner.eq(&raindrops_item::ID)
             && artifact.owner != &id()
         {
             return Err(error!(ErrorCode::CanOnlyCacheValidRaindropsObjects));
@@ -277,7 +273,7 @@ pub mod namespace {
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         // remove cache information from item
-        let accounts = ItemClassUncacheNamespace {
+        let accounts = ItemClassUnCacheNamespace {
             item_class: ctx.accounts.artifact.to_account_info(),
             namespace: ctx.accounts.namespace.to_account_info(),
             instructions: ctx.accounts.instructions.to_account_info(),
