@@ -938,8 +938,8 @@ export class Instruction extends SolKitInstruction {
 
   async updateItem(
     args: UpdateItemArgs,
-    _accounts: UpdateItemAccounts,
-    _additionalArgs: UpdateItemAdditionalArgs
+    _accounts: UpdateItemAccounts = {},
+    _additionalArgs: UpdateItemAdditionalArgs = {}
   ) {
     const itemClassKey = (
       await getItemPDA(args.itemClassMint, args.classIndex)

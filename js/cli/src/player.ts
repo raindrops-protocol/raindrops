@@ -415,6 +415,71 @@ CLI.programCommand("remove_item")
     ).rpc();
   });
 
+CLI.programCommandWithConfig(
+  "toggle_equip_items",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const wallet = await Wallet.loadWalletKey(keypair);
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      wallet,
+      env,
+      rpcUrl
+    );
+
+    const itemProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      ItemProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    const playerMint = new PublicKey(
+      config.playerMint || config.newPlayerMint || config.mint
+    );
+    const playerIndex = new BN(
+      config.index || config.newPlayerIndex || config.playerIndex
+    );
+
+    for (let i = 0; i < config.items.length; i++) {
+      const itemConfig = config.items[i];
+      const itemIndex = new BN(itemConfig.itemIndex);
+      const itemMint = new PublicKey(itemConfig.itemMint);
+
+      await (
+        await playerProgram.toggleEquipItem(
+          {
+            index: playerIndex,
+            equipItemPermissivenessToUse:
+              config.equipItemPermissivenessToUse ||
+              config.updatePermissivenessToUse,
+            playerMint,
+            amount: new BN(itemConfig.amount),
+            itemIndex,
+            itemMint,
+            itemClassMint: new PublicKey(itemConfig.itemClassMint),
+            equipping: itemConfig.equipping,
+            bodyPartIndex: itemConfig.bodyPartIndex,
+            itemUsageIndex: itemConfig.itemUsageIndex,
+            itemUsageProof: null,
+            itemUsage: null,
+          },
+          {
+            metadataUpdateAuthority: config.metadataUpdateAuthority
+              ? new PublicKey(config.metadataUpdateAuthority)
+              : keypair.publicKey,
+          },
+          {
+            itemProgram,
+            classIndex: new BN(config.classIndex),
+            playerClassMint: new PublicKey(config.playerClassMint),
+          }
+        )
+      ).rpc();
+    }
+  }
+);
+
 CLI.programCommand("show_player")
   .option("-cp, --config-path <string>", "JSON file with player settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")
@@ -536,8 +601,20 @@ CLI.programCommand("show_player")
             );
           } else if (u.state.integer) {
             log.info(
-              "----> Integer Value:",
-              u.state.integer.current.toNumber()
+              "----> Unprocessed Base Value:",
+              u.state.integer.base.toNumber()
+            );
+            log.info(
+              "----> With changes from increases and decremental items:",
+              u.state.integer.withTemporaryChanges.toNumber()
+            );
+            log.info(
+              "----> With changes from percentage change items and equipment:",
+              u.state.integer.withTemporaryPercentages.toNumber()
+            );
+            log.info(
+              "----> With min and max applied:",
+              u.state.integer.finalized.toNumber()
             );
           } else if (u.state.bool) {
             log.info("----> Bool Value:", u.state.bool.current);
@@ -556,7 +633,9 @@ CLI.programCommand("show_player")
       log.info("----> Index:", u.index);
       log.info("----> Amount:", u.amount.toNumber());
       log.info("----> Pubkey:", u.item.toBase58());
+      log.info("----");
     });
+    log.info("--");
 
     log.info("--> Player's Body Parts:");
     const config = playerParent.data.config;

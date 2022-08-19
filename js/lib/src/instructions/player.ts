@@ -46,9 +46,10 @@ const PLAYER_CLASS_DATA_ARGS_CONVERT_TO_BNS = [
 ];
 
 const PLAYER_DATA_ARGS_CONVERT_TO_BNS = [
-  "newData.basicStats.[].state.integer.current",
-  "newData.basicStats.[].state.integer.calculatedIntermediate",
-  "newData.basicStats.[].state.integer.calculated",
+  "newData.basicStats.[].state.integer.base",
+  "newData.basicStats.[].state.integer.withTemporaryChanges",
+  "newData.basicStats.[].state.integer.withTemporaryPercentages",
+  "newData.basicStats.[].state.integer.finalized",
 ];
 
 const PLAYER_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS = [

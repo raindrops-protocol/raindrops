@@ -1,0 +1,19 @@
+{
+  "playerMint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "playerClassMint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
+  "equipItemPermissivenessToUse": { "tokenHolder": true },
+  "classIndex": 3,
+  "index": 3,
+  "metadataUpdateAuthority": null,
+  "items": [
+    {
+      "itemClassMint": "AQ62DZyafWLzXYEn5ngfW5NmUz5Yot6RnRbK9GJU7Y9j",
+      "itemMint": "AQ62DZyafWLzXYEn5ngfW5NmUz5Yot6RnRbK9GJU7Y9j",
+      "itemIndex": 1,
+      "amount": 1,
+      "bodyPartIndex": 0,
+      "itemUsageIndex": 0,
+      "equipping": false
+    }
+  ]
+}

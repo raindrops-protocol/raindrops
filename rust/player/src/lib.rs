@@ -566,6 +566,7 @@ pub mod player {
             })?;
 
             map_new_stats_into_player(player_class, player, &data.basic_stats)?;
+            msg!("Now player is {:?}", player.data.basic_stats);
             player.data.stats_uri = data.stats_uri;
             player.data.category = data.category;
         }
@@ -1706,7 +1707,7 @@ pub struct UpdatePlayer<'info> {
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct EquippedItem {
     item: Pubkey,
     amount: u64,
@@ -2009,7 +2010,7 @@ pub struct BasicStatTemplate {
     pub inherited: InheritanceState,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BasicStat {
     pub index: u16,
     pub state: BasicStatState,
@@ -2043,15 +2044,16 @@ pub enum BasicStatType {
     },
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum BasicStatState {
     Enum {
         current: u8,
     },
     Integer {
-        current: i64,
-        calculated_intermediate: i64,
-        calculated: i64,
+        base: i64,
+        with_temporary_changes: i64,
+        with_temporary_percentages: i64,
+        finalized: i64,
     },
     Bool {
         current: bool,

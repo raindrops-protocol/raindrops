@@ -235,7 +235,7 @@ export class PlayerProgram extends Program.Program {
         itemClass.object.itemClassData.config.usages[args.itemUsageIndex];
 
       if (usage) {
-        accounts.validationProgram = usage.validation.key;
+        accounts.validationProgram = usage?.validation?.key;
       }
     }
 
@@ -289,7 +289,7 @@ export class PlayerProgram extends Program.Program {
         : null;
 
       if (usage) {
-        accounts.validationProgram = usage.validation.key;
+        accounts.validationProgram = usage?.validation?.key;
       }
     }
 

@@ -1,3 +1,5 @@
+use anchor_lang::solana_program::msg;
+
 use {
     crate::{
         AddOrRemoveItemValidationArgs, BasicItemEffect, BasicItemEffectType, BasicStat,
@@ -412,47 +414,44 @@ pub fn propagate_player_class_data_fields_to_player_data(
                         min, max, starting, ..
                     } => match existing.state {
                         BasicStatState::Integer {
-                            calculated,
-                            calculated_intermediate,
-                            current,
+                            finalized,
+                            with_temporary_changes,
+                            with_temporary_percentages,
+                            base,
                         } => {
-                            let mut new_calculated = calculated;
-                            let mut new_current = current;
-                            let mut new_ci = calculated_intermediate;
+                            let mut new_finalized = finalized;
+                            let mut new_base = base;
+
                             if let Some(m) = max {
-                                if current > *m {
-                                    new_current = *m;
+                                if new_finalized > *m {
+                                    new_finalized = *m;
                                 }
-                                if new_ci > *m {
-                                    new_current = *m;
-                                }
-                                if calculated > *m {
-                                    new_calculated = *m;
+                                if new_base > *m {
+                                    new_base = *m;
                                 }
                             }
 
                             if let Some(m) = min {
-                                if current < *m {
-                                    new_current = *m;
+                                if new_finalized < *m {
+                                    new_finalized = *m;
                                 }
-                                if calculated_intermediate < *m {
-                                    new_ci = *m;
-                                }
-                                if calculated < *m {
-                                    new_calculated = *m;
+                                if new_base < *m {
+                                    new_base = *m;
                                 }
                             }
 
                             BasicStatState::Integer {
-                                calculated: new_calculated,
-                                calculated_intermediate: new_ci,
-                                current: new_current,
+                                finalized: new_finalized,
+                                with_temporary_changes,
+                                with_temporary_percentages,
+                                base: new_base,
                             }
                         }
                         _ => BasicStatState::Integer {
-                            calculated: *starting,
-                            calculated_intermediate: *starting,
-                            current: *starting,
+                            finalized: *starting,
+                            with_temporary_changes: *starting,
+                            with_temporary_percentages: *starting,
+                            base: *starting,
                         },
                     },
                     BasicStatType::Bool { starting, .. } => match existing.state {
@@ -708,9 +707,10 @@ pub fn build_new_equipped_items_and_provide_counts<'b, 'info>(
                                 .ok_or(ErrorCode::NumericalOverflowError)?;
                             0
                         } else {
+                            let old_moving = moving_amount;
                             moving_amount = 0;
                             ei.amount
-                                .checked_sub(moving_amount)
+                                .checked_sub(old_moving)
                                 .ok_or(ErrorCode::NumericalOverflowError)?
                         }
                     },
@@ -822,7 +822,7 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
         unix_timestamp,
     } = args;
     // for an item without active duration, is permanent increase
-    // for an equipment, no active duration, is temproary until removal
+    // for an equipment, no active duration, is temporary until removal
     // for item with active duration, is by definition an NFT, so wont be more than one
     // for equipment, can be SFT, but then nothing can be staked on it, and if it isnt SFT, it can be staked
     // so staking issues only an issue when one of ones being used, which means if you are adding or removing
@@ -1005,25 +1005,22 @@ pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<
             rebalance_basic_stat(RebalanceBasicStatArgs {
                 basic_stat: bs,
                 basic_stat_template: bst,
-                current_change: modded_amount,
-                ci_change: 0,
-                new_calculated_divisor: 1,
-                new_calculated_numerator: 1,
+                base_change: modded_amount,
+                temp_change: 0,
+                new_divisor: 1,
+                new_numerator: 1,
             })?
         }
         BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
             match bs.state {
                 BasicStatState::Integer {
-                    current,
-
-                    calculated,
-                    ..
+                    base, finalized, ..
                 } => rebalance_basic_stat(RebalanceBasicStatArgs {
                     basic_stat: bs,
                     basic_stat_template: bst,
-                    current_change: current
+                    base_change: base
                         .checked_add(
-                            calculated
+                            finalized
                                 .checked_mul(
                                     100i64
                                         .checked_add(modded_amount)
@@ -1034,29 +1031,27 @@ pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<
                                 .ok_or(ErrorCode::NumericalOverflowError)?,
                         )
                         .ok_or(ErrorCode::NumericalOverflowError)?,
-                    ci_change: 0,
-                    new_calculated_divisor: 1,
-                    new_calculated_numerator: 1,
+                    temp_change: 0,
+                    new_divisor: 1,
+                    new_numerator: 1,
                 })?,
                 _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
             }
         }
         BasicItemEffectType::IncrementPercentFromBase
         | BasicItemEffectType::DecrementPercentFromBase => match bs.state {
-            BasicStatState::Integer { current, .. } => {
-                rebalance_basic_stat(RebalanceBasicStatArgs {
-                    basic_stat: bs,
-                    basic_stat_template: bst,
-                    current_change: modded_amount
-                        .checked_mul(current)
-                        .ok_or(ErrorCode::NumericalOverflowError)?
-                        .checked_div(100)
-                        .ok_or(ErrorCode::NumericalOverflowError)?,
-                    ci_change: 0,
-                    new_calculated_divisor: 1,
-                    new_calculated_numerator: 1,
-                })?
-            }
+            BasicStatState::Integer { base, .. } => rebalance_basic_stat(RebalanceBasicStatArgs {
+                basic_stat: bs,
+                basic_stat_template: bst,
+                base_change: modded_amount
+                    .checked_mul(base)
+                    .ok_or(ErrorCode::NumericalOverflowError)?
+                    .checked_div(100)
+                    .ok_or(ErrorCode::NumericalOverflowError)?,
+                temp_change: 0,
+                new_divisor: 1,
+                new_numerator: 1,
+            })?,
             _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
         },
     }
@@ -1084,10 +1079,10 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
             rebalance_basic_stat(RebalanceBasicStatArgs {
                 basic_stat: bs,
                 basic_stat_template: bst,
-                current_change: 0,
-                ci_change: modded_amount,
-                new_calculated_divisor: 1,
-                new_calculated_numerator: 1,
+                base_change: 0,
+                temp_change: modded_amount,
+                new_divisor: 1,
+                new_numerator: 1,
             })?
         }
         BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
@@ -1101,16 +1096,16 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
             rebalance_basic_stat(RebalanceBasicStatArgs {
                 basic_stat: bs,
                 basic_stat_template: bst,
-                current_change: 0,
-                ci_change: 0,
-                new_calculated_numerator: if adding {
+                base_change: 0,
+                temp_change: 0,
+                new_numerator: if adding {
                     100i64
                         .checked_add(adjusted_modded)
                         .ok_or(ErrorCode::NumericalOverflowError)?
                 } else {
                     100
                 },
-                new_calculated_divisor: if adding {
+                new_divisor: if adding {
                     100
                 } else {
                     100i64
@@ -1121,20 +1116,18 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
         }
         BasicItemEffectType::IncrementPercentFromBase
         | BasicItemEffectType::DecrementPercentFromBase => match bs.state {
-            BasicStatState::Integer { current, .. } => {
-                rebalance_basic_stat(RebalanceBasicStatArgs {
-                    basic_stat: bs,
-                    basic_stat_template: bst,
-                    current_change: 0,
-                    ci_change: modded_amount
-                        .checked_mul(current)
-                        .ok_or(ErrorCode::NumericalOverflowError)?
-                        .checked_div(100)
-                        .ok_or(ErrorCode::NumericalOverflowError)?,
-                    new_calculated_divisor: 1,
-                    new_calculated_numerator: 1,
-                })?
-            }
+            BasicStatState::Integer { base, .. } => rebalance_basic_stat(RebalanceBasicStatArgs {
+                basic_stat: bs,
+                basic_stat_template: bst,
+                base_change: 0,
+                temp_change: modded_amount
+                    .checked_mul(base)
+                    .ok_or(ErrorCode::NumericalOverflowError)?
+                    .checked_div(100)
+                    .ok_or(ErrorCode::NumericalOverflowError)?,
+                new_divisor: 1,
+                new_numerator: 1,
+            })?,
             _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
         },
     }
@@ -1145,82 +1138,86 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
 pub struct RebalanceBasicStatArgs<'a> {
     basic_stat: &'a mut BasicStat,
     basic_stat_template: &'a BasicStatTemplate,
-    current_change: i64,
-    ci_change: i64,
-    new_calculated_numerator: i64,
-    new_calculated_divisor: i64,
+    base_change: i64,
+    temp_change: i64,
+    new_numerator: i64,
+    new_divisor: i64,
 }
 pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
     let RebalanceBasicStatArgs {
         basic_stat,
         basic_stat_template,
-        current_change,
-        ci_change,
-        new_calculated_numerator,
-        new_calculated_divisor,
+        base_change,
+        temp_change,
+        new_numerator,
+        new_divisor,
     } = args;
     match basic_stat.state {
         BasicStatState::Integer {
-            current,
-            calculated_intermediate,
-            calculated,
+            base,
+            with_temporary_changes,
+            with_temporary_percentages,
+            ..
         } => {
             match basic_stat_template.stat_type {
                 BasicStatType::Integer { min, max, .. } => {
-                    let mut new_current = current
-                        .checked_add(current_change)
+                    let mut new_base = base
+                        .checked_add(base_change)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
 
                     if let Some(m) = max {
-                        new_current = std::cmp::min(m, new_current);
+                        new_base = std::cmp::min(m, new_base);
                     }
 
                     if let Some(m) = min {
-                        new_current = std::cmp::max(m, new_current);
+                        new_base = std::cmp::max(m, new_base);
                     }
 
-                    let mut new_calculated_intermediate = calculated_intermediate
-                        .checked_add(ci_change)
+                    let actual_new_base_change = new_base
+                        .checked_sub(base)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
 
-                    new_calculated_intermediate = new_calculated_intermediate
-                        .checked_add(current_change)
+                    let mut new_temp = with_temporary_changes
+                        .checked_add(temp_change)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    new_temp = new_temp
+                        .checked_add(actual_new_base_change)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    let mut new_perc = if with_temporary_percentages != 0 {
+                        with_temporary_percentages
+                            .checked_mul(new_temp)
+                            .ok_or(ErrorCode::NumericalOverflowError)?
+                            .checked_div(with_temporary_changes)
+                            .ok_or(ErrorCode::NumericalOverflowError)?
+                    } else {
+                        new_temp
+                    };
+
+                    new_perc = new_perc
+                        .checked_mul(new_numerator)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    new_perc = new_perc
+                        .checked_div(new_divisor)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    let mut new_finalized = new_perc;
 
                     if let Some(m) = max {
-                        new_calculated_intermediate = std::cmp::min(m, new_calculated_intermediate);
+                        new_finalized = std::cmp::min(m, new_perc);
                     }
 
                     if let Some(m) = min {
-                        new_calculated_intermediate = std::cmp::max(m, new_calculated_intermediate);
-                    }
-
-                    let mut new_calculated = calculated
-                        .checked_mul(new_calculated_intermediate)
-                        .ok_or(ErrorCode::NumericalOverflowError)?
-                        .checked_div(calculated_intermediate)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-
-                    new_calculated = new_calculated
-                        .checked_mul(new_calculated_numerator)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-
-                    new_calculated = new_calculated
-                        .checked_div(new_calculated_divisor)
-                        .ok_or(ErrorCode::NumericalOverflowError)?;
-
-                    if let Some(m) = max {
-                        new_calculated = std::cmp::min(m, new_calculated);
-                    }
-
-                    if let Some(m) = min {
-                        new_calculated = std::cmp::max(m, new_calculated);
+                        new_finalized = std::cmp::max(m, new_finalized);
                     }
 
                     basic_stat.state = BasicStatState::Integer {
-                        current: new_current,
-                        calculated_intermediate: new_calculated_intermediate,
-                        calculated: new_calculated,
+                        base: new_base,
+                        with_temporary_changes: new_temp,
+                        with_temporary_percentages: new_perc,
+                        finalized: new_finalized,
                     };
                 }
                 _ => {
@@ -1249,24 +1246,18 @@ pub fn map_new_stats_into_player(
                     for new_bs in new_bss {
                         if new_bs.index == bs.index {
                             match bs.state {
-                                BasicStatState::Integer {
-                                    current: old_current,
-                                    ..
-                                } => {
+                                BasicStatState::Integer { base: old_base, .. } => {
                                     match new_bs.state {
-                                        BasicStatState::Integer {
-                                            current: new_current,
-                                            ..
-                                        } => {
+                                        BasicStatState::Integer { base: new_base, .. } => {
                                             rebalance_basic_stat(RebalanceBasicStatArgs {
                                                 basic_stat: bs,
                                                 basic_stat_template: bst,
-                                                current_change: new_current
-                                                    .checked_sub(old_current)
+                                                base_change: new_base
+                                                    .checked_sub(old_base)
                                                     .ok_or(ErrorCode::NumericalOverflowError)?,
-                                                ci_change: 0,
-                                                new_calculated_divisor: 1,
-                                                new_calculated_numerator: 1,
+                                                temp_change: 0,
+                                                new_divisor: 1,
+                                                new_numerator: 1,
                                             })?;
                                         }
                                         _ => {

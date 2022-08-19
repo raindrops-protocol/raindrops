@@ -13,9 +13,10 @@
         "index": 0,
         "state": {
           "integer": {
-            "current": 12,
-            "calculatedIntermediate": 0,
-            "calculated": 0
+            "base": 0,
+            "withTemporaryChanges": 0,
+            "withTemporaryPercentages": 0,
+            "finalized": 0
           }
         }
       },
