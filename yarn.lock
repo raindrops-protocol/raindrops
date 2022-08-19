@@ -2105,7 +2105,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@raindrops-protocol/raindrops-tests@workspace:tests"
   dependencies:
-    "@project-serum/anchor": ^0.24.2
+    "@metaplex-foundation/mpl-token-metadata": ^2.2.2
+    "@project-serum/anchor": ^0.25.0
+    "@raindrop-studios/sol-kit": ^0.1.78
     "@raindrops-protocol/raindrops": "workspace:^"
     "@types/jest": ^28.1.5
     "@types/node": ^18.0.3
