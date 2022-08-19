@@ -19,6 +19,8 @@ use anchor_lang::{
     },
     AnchorDeserialize, AnchorSerialize, Discriminator,
 };
+use raindrops_namespace_cpi::typedefs::{InheritanceState, NamespaceAndIndex};
+
 anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use arrayref::array_ref;
@@ -2797,7 +2799,7 @@ pub struct Component {
     pub inherited: InheritanceState,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Permissiveness {
     pub inherited: InheritanceState,
     pub permissiveness_type: PermissivenessType,
@@ -2830,20 +2832,6 @@ pub enum ChildUpdatePropagationPermissivenessType {
     StakingPermissiveness,
     Namespaces,
     FreeBuildPermissiveness,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
-pub enum InheritanceState {
-    NotInherited,
-    Inherited,
-    Overridden,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct NamespaceAndIndex {
-    pub namespace: Pubkey,
-    pub index: Option<u64>,
-    pub inherited: InheritanceState,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

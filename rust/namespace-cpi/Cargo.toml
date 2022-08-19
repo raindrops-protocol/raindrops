@@ -1,5 +1,5 @@
 [package]
-name = "raindrops-item-cpi"
+name = "raindrops-namespace-cpi"
 version = "0.1.0"
 edition = "2021"
 

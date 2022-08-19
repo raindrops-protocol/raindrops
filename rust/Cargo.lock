@@ -708,14 +708,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "item-cpi"
-version = "0.1.0"
-dependencies = [
- "anchor-gen",
- "anchor-lang",
-]
-
-[[package]]
 name = "itertools"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1004,9 +996,17 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
- "raindrops-namespace",
+ "raindrops-namespace-cpi",
  "spl-associated-token-account",
  "spl-token",
+]
+
+[[package]]
+name = "raindrops-item-cpi"
+version = "0.1.0"
+dependencies = [
+ "anchor-gen",
+ "anchor-lang",
 ]
 
 [[package]]
@@ -1016,10 +1016,17 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "arrayref",
- "metaplex-token-metadata",
- "raindrops-namespace",
+ "raindrops-namespace-cpi",
  "spl-associated-token-account",
  "spl-token",
+]
+
+[[package]]
+name = "raindrops-matches-cpi"
+version = "0.1.0"
+dependencies = [
+ "anchor-gen",
+ "anchor-lang",
 ]
 
 [[package]]
@@ -1029,10 +1036,18 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "arrayref",
- "item-cpi",
  "metaplex-token-metadata",
+ "raindrops-item-cpi",
  "spl-associated-token-account",
  "spl-token",
+]
+
+[[package]]
+name = "raindrops-namespace-cpi"
+version = "0.1.0"
+dependencies = [
+ "anchor-gen",
+ "anchor-lang",
 ]
 
 [[package]]
@@ -1043,9 +1058,17 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
- "raindrops-namespace",
+ "raindrops-namespace-cpi",
  "spl-associated-token-account",
  "spl-token",
+]
+
+[[package]]
+name = "raindrops-player-cpi"
+version = "0.1.0"
+dependencies = [
+ "anchor-gen",
+ "anchor-lang",
 ]
 
 [[package]]
@@ -1057,7 +1080,7 @@ dependencies = [
  "arrayref",
  "metaplex-token-metadata",
  "raindrops-item",
- "raindrops-namespace",
+ "raindrops-namespace-cpi",
  "raindrops-player",
  "spl-associated-token-account",
  "spl-token",
@@ -1355,6 +1378,14 @@ dependencies = [
  "num_enum",
  "solana-program",
  "thiserror",
+]
+
+[[package]]
+name = "staking-cpi"
+version = "0.1.0"
+dependencies = [
+ "anchor-gen",
+ "anchor-lang",
 ]
 
 [[package]]

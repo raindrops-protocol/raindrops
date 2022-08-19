@@ -1,37 +1,14 @@
 pub mod utils;
 
-use crate::utils::{
-    assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
-    get_mask_and_index_for_seq, spl_token_burn, spl_token_mint_to, spl_token_transfer,
-    TokenBurnParams, TokenTransferParams,
-};
-use anchor_lang::{
-    prelude::*,
-    solana_program::{
-        program::{invoke, invoke_signed},
-        program_option::COption,
-        program_pack::Pack,
-        system_instruction, system_program,
-    },
-    AnchorDeserialize, AnchorSerialize,
-};
-use anchor_spl::token::{Mint, TokenAccount};
-use metaplex_token_metadata::instruction::{
-    create_master_edition, create_metadata_accounts,
-    mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
-};
-use spl_token::{
-    instruction::{initialize_account2, mint_to},
-    state::Account,
-};
+use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
+
+use raindrops_namespace_cpi::{InheritanceState, NamespaceAndIndex};
 
 anchor_lang::declare_id!("p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98");
 
 pub const PREFIX: &str = "player";
 #[program]
-pub mod player {
-    use super::*;
-}
+pub mod player {}
 
 pub const EQUIPPED_ITEM_SIZE: usize = 32 + //item 
 32 + // item
@@ -78,13 +55,6 @@ pub enum ChildUpdatePropagationPermissiveness {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum InheritanceState {
-    NotInherited,
-    Inherited,
-    Overriden,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PlayerCategory {
     category: String,
     inherited: InheritanceState,
@@ -99,13 +69,6 @@ pub struct StatsUri {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BodyPart {
     body_part: String,
-    inherited: InheritanceState,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct NamespaceAndIndex {
-    namespace: Pubkey,
-    indexed: bool,
     inherited: InheritanceState,
 }
 

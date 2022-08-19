@@ -2331,30 +2331,6 @@
       }
     },
     {
-      "name": "NamespaceAndIndex",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespace",
-            "type": "publicKey"
-          },
-          {
-            "name": "index",
-            "type": {
-              "option": "u64"
-            }
-          },
-          {
-            "name": "inherited",
-            "type": {
-              "defined": "InheritanceState"
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "DNPItem",
       "type": {
         "kind": "struct",
@@ -2947,23 +2923,6 @@
           }
         ]
       }
-    },
-    {
-      "name": "InheritanceState",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "NotInherited"
-          },
-          {
-            "name": "Inherited"
-          },
-          {
-            "name": "Overridden"
-          }
-        ]
-      }
     }
   ],
   "errors": [
@@ -3297,8 +3256,5 @@
       "name": "MustBeCalledByStakingProgram",
       "msg": "Must be called by staking program"
     }
-  ],
-  "metadata": {
-    "address": "CKAcdJsyzBxHJRHgKVEsVzjX9SNcvut8t3PUD34g7ry4"
-  }
+  ]
 }

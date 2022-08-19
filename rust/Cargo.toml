@@ -3,9 +3,13 @@ members = [
   "item/",
   "item-cpi/",
   "player/",
+  "player-cpi/",
   "namespace/",
+  "namespace-cpi/",
   "matches/",
-  "staking/"
+  "matches-cpi/",
+  "staking/",
+  "staking-cpi/"
 ]
 exclude = [
 ]

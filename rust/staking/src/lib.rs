@@ -9,10 +9,13 @@ use raindrops_item::{
         assert_permissiveness_access, close_token_account, spl_token_transfer,
         AssertPermissivenessAccessArgs, TokenTransferParams,
     },
-    Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
+    Boolean, ChildUpdatePropagationPermissiveness,
     PermissivenessType,
+    Permissiveness,
 };
 use raindrops_player::program::Player;
+use raindrops_namespace_cpi::NamespaceAndIndex;
+
 anchor_lang::declare_id!("stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4");
 pub const PREFIX: &str = "staking";
 pub const STAKING_COUNTER: &str = "counter";
@@ -816,4 +819,6 @@ pub enum ErrorCode {
     DiscriminatorMismatch,
     #[msg("Staking for player coming soon")]
     StakingForPlayerComingSoon,
+    #[msg("Artifact not in namespace")]
+    ArtifactLacksNamespace
 }

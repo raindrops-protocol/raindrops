@@ -6,18 +6,17 @@ use crate::utils::{
 };
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use item_cpi::{
+use raindrops_item_cpi::{
     cpi::{
         accounts::{
             ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-            ItemClassUncacheNamespace, CreateItemClass,
+            ItemClassUncacheNamespace,
         },
         item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
-        item_class_uncache_namespace, create_item_class
+        item_class_uncache_namespace,
     },
     program::Item,
 };
-use item_cpi::typedefs::CreateItemClassArgs;
 use std::str::FromStr;
 anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";

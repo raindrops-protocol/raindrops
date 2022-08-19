@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
     ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
     InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
@@ -817,7 +815,7 @@ pub fn propagate_parent_array<T: Inherited>(args: PropagateParentArrayArgs<T>) -
                 Some(c_items) => {
                     let mut new_items: Vec<T> = vec![];
                     for item in c_items {
-                        if item.get_inherited() == &InheritanceState::NotInherited {
+                        if matches!(item.get_inherited(), &InheritanceState::NotInherited) {
                             new_items.push(item.clone())
                         }
                     }
@@ -1806,9 +1804,11 @@ pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
 
 // returns true if the namespace program called the item program
 pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
-    let current_ix = anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns).unwrap();
+    let current_ix =
+        anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns)
+            .unwrap();
 
-    if current_ix.program_id != raindrops_namespace::ID {
+    if current_ix.program_id != raindrops_namespace_cpi::ID {
         return false;
     };
 

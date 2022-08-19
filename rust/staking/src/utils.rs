@@ -2,6 +2,7 @@ use crate::{Artifact, ArtifactClass, ArtifactClassData, ErrorCode};
 use anchor_lang::{prelude::*, require, solana_program::hash};
 use arrayref::array_ref;
 use raindrops_item::{utils::assert_derivation_with_bump, Item, ItemClass};
+use raindrops_namespace_cpi::Namespace;
 
 pub fn assert_is_proper_class<'info>(
     artifact_class: &UncheckedAccount<'info>,
@@ -166,21 +167,21 @@ pub fn assert_is_proper_instance<'info>(
 pub fn assert_part_of_namespace<'a, 'b>(
     artifact: &'b AccountInfo<'a>,
     namespace: &'b AccountInfo<'a>,
-) -> Result<Account<'a, raindrops_namespace::Namespace>> {
-    assert_owned_by(namespace, &raindrops_namespace::id())?;
+) -> Result<Account<'a, raindrops_namespace_cpi::Namespace>> {
+    assert_owned_by(namespace, &raindrops_namespace_cpi::id())?;
 
-    let deserialized: Account<raindrops_namespace::Namespace> = Account::try_from(namespace)?;
+    let deserialized: Account<Namespace> = Account::try_from(namespace)?;
 
     assert_derivation(
-        &raindrops_namespace::id(),
+        &raindrops_namespace_cpi::id(),
         namespace,
         &[
-            raindrops_namespace::PREFIX.as_bytes(),
+            b"NAMESPACE",
             deserialized.mint.key().as_ref(),
         ],
     )?;
 
-    raindrops_namespace::utils::assert_part_of_namespace(artifact, &deserialized)?;
+    is_part_of_namespace(artifact, &deserialized)?;
 
     Ok(deserialized)
 }
@@ -199,4 +200,23 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+pub fn is_part_of_namespace<'a>(
+    artifact: &AccountInfo<'a>,
+    namespace: &Account<'a, Namespace>,
+) -> Result<()> {
+    let data = artifact.data.borrow_mut();
+    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
+    let offset = 12 as usize;
+    msg!("number: {}, offset: {}", number, offset);
+    for i in 0..number {
+        let key_bytes = array_ref![data, offset + i * 33, 32];
+        let key = Pubkey::new_from_array(*key_bytes);
+        if key == namespace.key() {
+            return Ok(());
+        }
+    }
+
+    return Err(error!(ErrorCode::ArtifactLacksNamespace));
 }

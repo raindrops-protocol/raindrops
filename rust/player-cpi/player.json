@@ -1,0 +1,589 @@
+{
+  "version": "0.1.0",
+  "name": "player",
+  "instructions": [],
+  "accounts": [
+    {
+      "name": "PlayerClass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "namespaces",
+            "type": {
+              "option": {
+                "vec": {
+                  "defined": "NamespaceAndIndex"
+                }
+              }
+            }
+          },
+          {
+            "name": "parent",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "mint",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "edition",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "startingStatsUri",
+            "type": {
+              "option": {
+                "defined": "StatsUri"
+              }
+            }
+          },
+          {
+            "name": "defaultCategory",
+            "type": {
+              "option": {
+                "defined": "PlayerCategory"
+              }
+            }
+          },
+          {
+            "name": "childrenMustBeEditions",
+            "type": "bool"
+          },
+          {
+            "name": "builderMustBeHolder",
+            "type": "bool"
+          },
+          {
+            "name": "updatePermissiveness",
+            "type": {
+              "vec": {
+                "defined": "Permissiveness"
+              }
+            }
+          },
+          {
+            "name": "childUpdatePropagationPermissiveness",
+            "type": {
+              "vec": {
+                "defined": "ChildUpdatePropagationPermissiveness"
+              }
+            }
+          },
+          {
+            "name": "bodyParts",
+            "type": {
+              "vec": {
+                "defined": "BodyPart"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Player",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "namespaces",
+            "type": {
+              "option": {
+                "vec": {
+                  "defined": "NamespaceAndIndex"
+                }
+              }
+            }
+          },
+          {
+            "name": "padding",
+            "type": "u8"
+          },
+          {
+            "name": "parent",
+            "type": "publicKey"
+          },
+          {
+            "name": "mint",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "edition",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "statsUri",
+            "type": {
+              "option": {
+                "defined": "StatsUri"
+              }
+            }
+          },
+          {
+            "name": "category",
+            "type": {
+              "option": {
+                "defined": "PlayerCategory"
+              }
+            }
+          },
+          {
+            "name": "updatePermissiveness",
+            "type": {
+              "option": {
+                "vec": {
+                  "defined": "Permissiveness"
+                }
+              }
+            }
+          },
+          {
+            "name": "equippedItems",
+            "type": {
+              "vec": {
+                "defined": "EquippedItem"
+              }
+            }
+          },
+          {
+            "name": "activatedItems",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "basicStats",
+            "type": {
+              "vec": {
+                "defined": "BasicStat"
+              }
+            }
+          },
+          {
+            "name": "bodyParts",
+            "type": {
+              "vec": {
+                "defined": "BodyPart"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "Root",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "inherited",
+            "type": {
+              "defined": "InheritanceState"
+            }
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EquippedItem",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "item",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "bodyPart",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "type": "string"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerCategory",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "category",
+            "type": "string"
+          },
+          {
+            "name": "inherited",
+            "type": {
+              "defined": "InheritanceState"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StatsUri",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "statsUri",
+            "type": "string"
+          },
+          {
+            "name": "inherited",
+            "type": {
+              "defined": "InheritanceState"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BodyPart",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bodyPart",
+            "type": "string"
+          },
+          {
+            "name": "inherited",
+            "type": {
+              "defined": "InheritanceState"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BasicStat",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "statType",
+            "type": {
+              "defined": "BasicStatType"
+            }
+          },
+          {
+            "name": "inherited",
+            "type": {
+              "defined": "InheritanceState"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Permissiveness",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TokenHolder",
+            "fields": [
+              {
+                "name": "inherited",
+                "type": {
+                  "defined": "InheritanceState"
+                }
+              }
+            ]
+          },
+          {
+            "name": "PlayerParentTokenHolder",
+            "fields": [
+              {
+                "name": "inherited",
+                "type": {
+                  "defined": "InheritanceState"
+                }
+              }
+            ]
+          },
+          {
+            "name": "UpdateAuthority",
+            "fields": [
+              {
+                "name": "inherited",
+                "type": {
+                  "defined": "InheritanceState"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Anybody",
+            "fields": [
+              {
+                "name": "inherited",
+                "type": {
+                  "defined": "InheritanceState"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChildUpdatePropagationPermissiveness",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Usages"
+          },
+          {
+            "name": "Components"
+          },
+          {
+            "name": "UpdatePermissiveness"
+          },
+          {
+            "name": "BuildPermissiveness"
+          },
+          {
+            "name": "ChildUpdatePropagationPermissiveness"
+          },
+          {
+            "name": "ChildrenMustBeEditionsPermissiveness"
+          },
+          {
+            "name": "BuilderMustBeHolderPermissiveness"
+          },
+          {
+            "name": "StakingPermissiveness"
+          },
+          {
+            "name": "Namespaces"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BasicStatType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Enum",
+            "fields": [
+              {
+                "name": "initial",
+                "type": "u8"
+              },
+              {
+                "name": "values",
+                "type": {
+                  "vec": {
+                    "defined": "Threshold"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "Integer",
+            "fields": [
+              {
+                "name": "min",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
+                "name": "max",
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
+                "name": "initial",
+                "type": "i64"
+              },
+              {
+                "name": "staking_amount_scaler",
+                "type": {
+                  "option": "u64"
+                }
+              },
+              {
+                "name": "staking_duration_scaler",
+                "type": {
+                  "option": "u64"
+                }
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              },
+              {
+                "name": "padding2",
+                "type": {
+                  "array": [
+                    "u8",
+                    8
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Bool",
+            "fields": [
+              {
+                "name": "initial",
+                "type": "bool"
+              },
+              {
+                "name": "staking_flip",
+                "type": {
+                  "option": "u64"
+                }
+              },
+              {
+                "name": "padding",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              },
+              {
+                "name": "padding2",
+                "type": {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                }
+              },
+              {
+                "name": "padding3",
+                "type": {
+                  "array": [
+                    "u8",
+                    8
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "String",
+            "fields": [
+              {
+                "name": "initial",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "IncorrectOwner",
+      "msg": "Account does not have correct owner!"
+    },
+    {
+      "code": 6001,
+      "name": "Uninitialized",
+      "msg": "Account is not initialized!"
+    },
+    {
+      "code": 6002,
+      "name": "MintMismatch",
+      "msg": "Mint Mismatch!"
+    },
+    {
+      "code": 6003,
+      "name": "TokenTransferFailed",
+      "msg": "Token transfer failed"
+    },
+    {
+      "code": 6004,
+      "name": "NumericalOverflowError",
+      "msg": "Numerical overflow error"
+    },
+    {
+      "code": 6005,
+      "name": "TokenMintToFailed",
+      "msg": "Token mint to failed"
+    },
+    {
+      "code": 6006,
+      "name": "TokenBurnFailed",
+      "msg": "TokenBurnFailed"
+    },
+    {
+      "code": 6007,
+      "name": "DerivedKeyInvalid",
+      "msg": "Derived key is invalid"
+    }
+  ]
+}
