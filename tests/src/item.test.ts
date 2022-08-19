@@ -9,7 +9,7 @@ import { IDL as ItemProgramIDL } from "./types/item";
 import { createMintNFTInstructions } from "./utils/token";
 
 describe("Item Program", () => {
-  it.concurrent("Creates an item class", async () => {
+  it.concurrent("Item Flow", async () => {
     const walletKeypair = anchor.web3.Keypair.generate();
 
     const provider = new anchor.AnchorProvider(
@@ -29,17 +29,22 @@ describe("Item Program", () => {
       idl: ItemProgramIDL,
     });
 
-    const ixs = [];
+    let ixs, args, accounts, additionalArgs;
 
-    const mintKeypair = anchor.web3.Keypair.generate();
+    // STEP 1: Creates an item class
 
-    const createMintNFTIxs = await createMintNFTInstructions(
+    ixs = [];
+
+    const itemClassMintKeypair = anchor.web3.Keypair.generate();
+    const itemClassIndex = 0;
+
+    const createItemClassMintIxs = await createMintNFTInstructions(
       provider,
-      mintKeypair.publicKey
+      itemClassMintKeypair.publicKey
     );
 
-    const args: Instructions.Item.CreateItemClassArgs = {
-      classIndex: new anchor.BN(0),
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
       parentClassIndex: null,
       space: new anchor.BN(300),
       desiredNamespaceArraySize: 1,
@@ -68,18 +73,18 @@ describe("Item Program", () => {
         }),
       }),
       parentOfParentClassIndex: null,
-    };
+    } as Instructions.Item.CreateItemClassArgs;
 
-    const accounts: Instructions.Item.CreateItemClassAccounts = {
-      itemMint: mintKeypair.publicKey,
+    accounts = {
+      itemMint: itemClassMintKeypair.publicKey,
       parent: null,
       parentMint: null,
       parentOfParentClassMint: null,
       metadataUpdateAuthority: walletKeypair.publicKey,
       parentUpdateAuthority: null,
-    };
+    } as Instructions.Item.CreateItemClassAccounts;
 
-    const additionalArgs: Instructions.Item.CreateItemClassAdditionalArgs = {};
+    additionalArgs = {} as Instructions.Item.CreateItemClassAdditionalArgs;
 
     const createItemClassIxs = await itemProgram.instruction.createItemClass(
       args,
@@ -87,15 +92,72 @@ describe("Item Program", () => {
       additionalArgs
     );
 
-    ixs.push(...createMintNFTIxs, ...createItemClassIxs);
+    ixs.push(...createItemClassMintIxs, ...createItemClassIxs);
 
-    const { txid } = await Transaction.sendTransactionWithRetry(
-      provider.connection,
-      provider.wallet,
-      ixs,
-      [mintKeypair]
+    const { txid: createItemClassTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        [itemClassMintKeypair]
+      );
+
+    expect(createItemClassTxid).toBeDefined();
+
+    console.log("Successfully created item class");
+
+    // STEP 2: Creates an item escrow
+
+    ixs = [];
+
+    const craftItemEscrowIndex = 0;
+    const itemMintKeypair = anchor.web3.Keypair.generate();
+
+    const createItemMintIxs = await createMintNFTInstructions(
+      provider,
+      itemMintKeypair.publicKey
     );
 
-    expect(txid).toBeDefined();
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
+      craftEscrowIndex: new anchor.BN(craftItemEscrowIndex),
+      componentScope: "none",
+      buildPermissivenessToUse: { tokenHolder: true },
+      namespaceIndex: null,
+      itemClassMint: itemClassMintKeypair.publicKey,
+      amountToMake: new anchor.BN(1),
+      parentClassIndex: null,
+    } as Instructions.Item.CreateItemEscrowArgs;
+
+    accounts = {
+      newItemMint: itemMintKeypair.publicKey,
+      newItemToken: null, // item ATA
+      newItemTokenHolder: walletKeypair.publicKey, // wallet
+      parentMint: null,
+      itemClassMint: itemClassMintKeypair.publicKey,
+      metadataUpdateAuthority: walletKeypair.publicKey,
+    } as Instructions.Item.CreateItemEscrowAccounts;
+
+    additionalArgs = {};
+
+    const createItemEscrowIxs = await itemProgram.instruction.createItemEscrow(
+      args,
+      accounts,
+      additionalArgs
+    );
+
+    ixs.push(...createItemMintIxs, ...createItemEscrowIxs);
+
+    const { txid: createItemEscrowTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        [itemMintKeypair]
+      );
+
+    expect(createItemEscrowTxid).toBeDefined();
+
+    console.log("Successfully created item escrow");
   });
 });
