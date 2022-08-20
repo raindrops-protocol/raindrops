@@ -39,6 +39,71 @@ describe("Item Program", () => {
       itemClassMintKeypair.publicKey
     );
 
+    const itemClassData = {
+      settings: {
+        freeBuild: null,
+        childrenMustBeEditions: null,
+        builderMustBeHolder: null,
+        updatePermissiveness: [
+          {
+            permissivenessType: { tokenHolder: true },
+            inherited: { notInherited: true },
+          },
+        ],
+        buildPermissiveness: [
+          {
+            permissivenessType: { tokenHolder: true },
+            inherited: { notInherited: true },
+          },
+        ],
+        stakingWarmUpDuration: null,
+        stakingCooldownDuration: null,
+        stakingPermissiveness: null,
+        unstakingPermissiveness: null,
+        childUpdatePropagationPermissiveness: [
+          {
+            childUpdatePropagationPermissivenessType: { usages: true },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: { components: true },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              updatePermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              buildPermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              stakingPermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              freeBuildPermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+        ],
+      },
+      config: {
+        usageRoot: null,
+        usageStateRoot: null,
+        componentRoot: null,
+        usages: null,
+        components: null,
+      },
+    };
+
     args = {
       classIndex: new anchor.BN(itemClassIndex),
       parentClassIndex: null,
@@ -47,70 +112,7 @@ describe("Item Program", () => {
       updatePermissivenessToUse: { tokenHolder: true },
       storeMint: false,
       storeMetadataFields: false,
-      itemClassData: {
-        settings: {
-          freeBuild: null,
-          childrenMustBeEditions: null,
-          builderMustBeHolder: null,
-          updatePermissiveness: [
-            {
-              permissivenessType: { tokenHolder: true },
-              inherited: { notInherited: true },
-            },
-          ],
-          buildPermissiveness: [
-            {
-              permissivenessType: { tokenHolder: true },
-              inherited: { notInherited: true },
-            },
-          ],
-          stakingWarmUpDuration: null,
-          stakingCooldownDuration: null,
-          stakingPermissiveness: null,
-          unstakingPermissiveness: null,
-          childUpdatePropagationPermissiveness: [
-            {
-              childUpdatePropagationPermissivenessType: { usages: true },
-              inherited: { notInherited: true },
-            },
-            {
-              childUpdatePropagationPermissivenessType: { components: true },
-              inherited: { notInherited: true },
-            },
-            {
-              childUpdatePropagationPermissivenessType: {
-                updatePermissiveness: true,
-              },
-              inherited: { notInherited: true },
-            },
-            {
-              childUpdatePropagationPermissivenessType: {
-                buildPermissiveness: true,
-              },
-              inherited: { notInherited: true },
-            },
-            {
-              childUpdatePropagationPermissivenessType: {
-                stakingPermissiveness: true,
-              },
-              inherited: { notInherited: true },
-            },
-            {
-              childUpdatePropagationPermissivenessType: {
-                freeBuildPermissiveness: true,
-              },
-              inherited: { notInherited: true },
-            },
-          ],
-        },
-        config: {
-          usageRoot: null,
-          usageStateRoot: null,
-          componentRoot: null,
-          usages: null,
-          components: null,
-        },
-      },
+      itemClassData,
       parentOfParentClassIndex: null,
     } as Instructions.Item.CreateItemClassArgs;
 
@@ -143,7 +145,68 @@ describe("Item Program", () => {
 
     expect(createItemClassTxid).toBeDefined();
 
-    // STEP 2: Creates an item escrow
+    // STEP 2: Updates item class with components item class data
+
+    ixs = [];
+
+    const componentScope = "SCOPE_1";
+    const craftItemMintKeypair = anchor.web3.Keypair.generate();
+
+    const createCraftItemMintIxs = await createMintNFTInstructions(
+      provider,
+      craftItemMintKeypair.publicKey
+    );
+
+    itemClassData.config.components = [
+      {
+        mint: craftItemMintKeypair.publicKey,
+        amount: new anchor.BN(1),
+        classIndex: new anchor.BN(itemClassIndex),
+        timeToBuild: null,
+        componentScope: componentScope,
+        useUsageIndex: 0,
+        condition: { presence: true },
+        inherited: { notInherited: true },
+      },
+    ];
+
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
+      updatePermissivenessToUse: { tokenHolder: true },
+      parentClassIndex: null,
+      itemClassData,
+    } as Instructions.Item.UpdateItemClassArgs;
+
+    accounts = {
+      itemMint: itemClassMintKeypair.publicKey,
+      parent: null,
+      parentMint: null,
+      metadataUpdateAuthority: walletKeypair.publicKey,
+    } as Instructions.Item.UpdateItemClassAccounts;
+
+    additionalArgs = {
+      permissionless: true,
+    } as Instructions.Item.UpdateItemClassAdditionalArgs;
+
+    const updateItemClassIxs = await itemProgram.instruction.updateItemClass(
+      args,
+      accounts,
+      additionalArgs
+    );
+
+    ixs.push(...createCraftItemMintIxs, ...updateItemClassIxs);
+
+    const { txid: updateItemClassTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        [craftItemMintKeypair]
+      );
+
+    expect(updateItemClassTxid).toBeDefined();
+
+    // STEP 3: Creates an item escrow
 
     ixs = [];
 
@@ -194,5 +257,41 @@ describe("Item Program", () => {
       );
 
     expect(createItemEscrowTxid).toBeDefined();
+
+    // Adds craft item to escrow
+
+    // ixs = [];
+
+    // const craftItemIndex = 0;
+
+    // args = {
+    //   classIndex: new anchor.BN(itemClassIndex),
+    //   parentClassIndex: null,
+    //   craftItemIndex: new anchor.BN(),
+    //   newItemMint: itemMintKeypair.publicKey,
+    // } as Instructions.Item.AddCraftItemToEscrowArgs;
+
+    // accounts = {} as Instructions.Item.AddCraftItemToEscrowAccounts;
+
+    // additionalArgs = {} as Instructions.Item.AddCraftItemToEscrowAdditionalArgs;
+
+    // const addCraftItemToEscrowIxs =
+    //   await itemProgram.instruction.addCraftItemToEscrow(
+    //     args,
+    //     accounts,
+    //     additionalArgs
+    //   );
+
+    // ixs.push(...addCraftItemToEscrowIxs);
+
+    // const { txid: addCraftItemToEscrowTxid } =
+    //   await Transaction.sendTransactionWithRetry(
+    //     provider.connection,
+    //     provider.wallet,
+    //     ixs,
+    //     []
+    //   );
+
+    // expect(addCraftItemToEscrowTxid).toBeDefined();
   });
 });
