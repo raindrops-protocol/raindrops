@@ -14,6 +14,15 @@
       "bodyPartIndex": 0,
       "itemUsageIndex": 0,
       "equipping": false
+    },
+    {
+      "itemClassMint": "7t5G3x4Zq5p2ZbAX8owcSi1tiLwLwYTDMJc1FmAYYpb7",
+      "itemMint": "7t5G3x4Zq5p2ZbAX8owcSi1tiLwLwYTDMJc1FmAYYpb7",
+      "itemIndex": 1,
+      "amount": 1,
+      "bodyPartIndex": 1,
+      "itemUsageIndex": 0,
+      "equipping": false
     }
   ]
 }

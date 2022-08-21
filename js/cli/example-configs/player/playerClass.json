@@ -193,7 +193,13 @@
       "bodyParts": [
         {
           "index": 0,
-          "bodyPart": "Arm",
+          "bodyPart": "Right Arm",
+          "totalItemSpots": 1,
+          "inherited": { "notInherited": true }
+        },
+        {
+          "index": 1,
+          "bodyPart": "Left Arm",
           "totalItemSpots": 1,
           "inherited": { "notInherited": true }
         }

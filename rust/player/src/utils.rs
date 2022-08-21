@@ -1093,6 +1093,7 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
                     .checked_mul(-1)
                     .ok_or(ErrorCode::NumericalOverflowError)?;
             }
+
             rebalance_basic_stat(RebalanceBasicStatArgs {
                 basic_stat: bs,
                 basic_stat_template: bst,
@@ -1109,7 +1110,7 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
                     100
                 } else {
                     100i64
-                        .checked_add(modded_amount)
+                        .checked_add(adjusted_modded)
                         .ok_or(ErrorCode::NumericalOverflowError)?
                 },
             })?
@@ -1195,13 +1196,18 @@ pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
                         new_temp
                     };
 
+                    msg!("New numer {:?} {:?}", new_numerator, new_divisor);
+                    msg!("1 New perc {:?}", new_perc);
+
                     new_perc = new_perc
                         .checked_mul(new_numerator)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
+                    msg!("2 New perc {:?}", new_perc);
 
                     new_perc = new_perc
                         .checked_div(new_divisor)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
+                    msg!("3 New perc {:?}", new_perc);
 
                     let mut new_finalized = new_perc;
 

@@ -13,7 +13,7 @@
         "index": 0,
         "state": {
           "integer": {
-            "base": 0,
+            "base": 6,
             "withTemporaryChanges": 0,
             "withTemporaryPercentages": 0,
             "finalized": 0

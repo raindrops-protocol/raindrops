@@ -58,9 +58,9 @@
   "storeMint": false,
   "storeMetadataFields": false,
   "mint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
-  "index": 4,
+  "index": 5,
   "parent": {
-    "index": 3,
+    "index": 4,
     "mint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
     "parent": {
       "index": 2,
