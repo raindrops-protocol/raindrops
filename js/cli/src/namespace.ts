@@ -4,25 +4,20 @@ import * as anchor from "@project-serum/anchor";
 import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
 import fs from "fs";
-import {
-  Namespace as NamespaceProgramIDL,
-} from "../../lib/src/idls/namespace.idl"
-import { NamespaceProgram } from "../../lib/src/contract/namespace";
-import * as nsIx from "../../lib/src/instructions/namespace";
-import { Filter } from "../../lib/src/state/namespace";
+import { State, Instructions, NamespaceProgram } from "@raindrops-protocol/raindrops";
 
 CLI.programCommandWithConfig(
   "initialize_namespace",
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
     const whitelistedStakingMints = config.whitelistedStakingMints.map(
       (mint) => new web3.PublicKey(mint)
     );
 
-    const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs = {
       desiredNamespaceArraySize: new anchor.BN(2),
       uuid: config.uuid,
       prettyName: config.prettyName,
@@ -30,7 +25,7 @@ CLI.programCommandWithConfig(
       whitelistedStakingMints: whitelistedStakingMints,
     };
 
-    const initializeNamespaceAccounts: nsIx.InitializeNamespaceAccounts = {
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts = {
       mint: new web3.PublicKey(config.mint),
       metadata: new web3.PublicKey(config.metadata),
       masterEdition: new web3.PublicKey(config.masterEdition),
@@ -55,7 +50,7 @@ CLI.programCommandWithArgs(
   async (mint, options, _cmd) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
     const namespace = await namespaceProgram.fetchNamespace(mint);
     log.setLevel("info");
@@ -68,19 +63,19 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
     const whitelistedStakingMints = config.whitelistedStakingMints.map(
       (mint) => new web3.PublicKey(mint)
     );
 
-    const updateNsArgs: nsIx.UpdateNamespaceArgs = {
+    const updateNsArgs: Instructions.Namespace.UpdateNamespaceArgs = {
       prettyName: config.prettyName,
       permissivenessSettings: config.permissivenessSettings,
       whitelistedStakingMints: whitelistedStakingMints,
     };
 
-    const updateNsAccounts: nsIx.UpdateNamespaceAccounts = {
+    const updateNsAccounts: Instructions.Namespace.UpdateNamespaceAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
     };
 
@@ -97,9 +92,9 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
-    const accounts: nsIx.CreateNamespaceGatekeeperAccounts = {
+    const accounts: Instructions.Namespace.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
     };
 
@@ -114,16 +109,16 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
-    const args: nsIx.AddToNamespaceGatekeeperArgs = {
+    const args: Instructions.Namespace.AddToNamespaceGatekeeperArgs = {
       artifactFilter: {
-        filter: new Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
+        filter: new State.Namespace.Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
         tokenType: config.artifactFilter.tokenType,
       },
     };
 
-    const accounts: nsIx.AddToNamespaceGatekeeperAccounts = {
+    const accounts: Instructions.Namespace.AddToNamespaceGatekeeperAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
     };
 
@@ -138,15 +133,15 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
-    const args: nsIx.RemoveFromNamespaceGatekeeperArgs = {
+    const args: Instructions.Namespace.RemoveFromNamespaceGatekeeperArgs = {
       artifactFilter: {
-        filter: new Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
+        filter: new State.Namespace.Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
         tokenType: config.artifactFilter.tokenType,
       },
     };
-    const accounts: nsIx.RemoveFromNamespaceGatekeeperAccounts = {
+    const accounts: Instructions.Namespace.RemoveFromNamespaceGatekeeperAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
     };
 
@@ -161,9 +156,9 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
-    const accounts: nsIx.JoinNamespaceAccounts = {
+    const accounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: new web3.PublicKey(config.artifact),
     };
@@ -179,9 +174,9 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
-    const accounts: nsIx.LeaveNamespaceAccounts = {
+    const accounts: Instructions.Namespace.LeaveNamespaceAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: new web3.PublicKey(config.artifact),
     };
@@ -197,9 +192,9 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
-    const accounts: nsIx.CacheArtifactAccounts = {
+    const accounts: Instructions.Namespace.CacheArtifactAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: config.artifact,
     };
@@ -215,14 +210,14 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl } = options;
 
-    const namespaceProgram = await initNsProgram(rpcUrl, keypair);
+    const namespaceProgram = await initNsProgram(rpcUrl, env, keypair);
 
-    const accounts: nsIx.UncacheArtifactAccounts = {
+    const accounts: Instructions.Namespace.UncacheArtifactAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: config.artifact,
     };
 
-    const args: nsIx.UncacheArtifactArgs = {
+    const args: Instructions.Namespace.UncacheArtifactArgs = {
       page: new anchor.BN(config.page),
     };
 
@@ -236,6 +231,7 @@ CLI.Program.parseAsync(process.argv);
 
 async function initNsProgram(
   rpcUrl: string,
+  env: string,
   keypairPath: string,
 ): Promise<NamespaceProgram> {
   const connection = new anchor.web3.Connection(rpcUrl, "confirmed");
@@ -244,18 +240,9 @@ async function initNsProgram(
     JSON.parse(fs.readFileSync(keypairPath, "utf8"))
   ));
 
-  const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
-    NamespaceProgram,
-    {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(keypair),
-        { commitment: "confirmed" }
-      ),
-      idl: NamespaceProgramIDL,
-    }
-  );
+  const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
+    NamespaceProgram, keypair, env, rpcUrl
+  )
 
   return namespaceProgram;
 }
