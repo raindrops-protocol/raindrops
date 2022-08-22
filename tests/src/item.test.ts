@@ -163,7 +163,7 @@ describe("Item Program", () => {
         amount: new anchor.BN(1),
         classIndex: new anchor.BN(itemClassIndex),
         timeToBuild: null,
-        componentScope: componentScope,
+        componentScope,
         useUsageIndex: 0,
         condition: { presence: true },
         inherited: { notInherited: true },
@@ -258,7 +258,55 @@ describe("Item Program", () => {
 
     expect(createItemEscrowTxid).toBeDefined();
 
-    // Adds craft item to escrow
+    // STEP 4: Starts item escrow build phase
+
+    ixs = [];
+
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
+      parentClassIndex: null,
+      craftEscrowIndex: new anchor.BN(craftItemEscrowIndex),
+      componentScope: "none",
+      amountToMake: new anchor.BN(1),
+      itemClassMint: itemClassMintKeypair.publicKey,
+      originator: walletKeypair.publicKey,
+      newItemMint: itemMintKeypair.publicKey,
+      buildPermissivenessToUse: { tokenHolder: true },
+      endNodeProof: null,
+      totalSteps: null,
+    } as Instructions.Item.StartItemEscrowBuildPhaseArgs;
+
+    accounts = {
+      itemClassMint: itemClassMintKeypair.publicKey,
+      newItemToken: null,
+      newItemTokenHolder: walletKeypair.publicKey,
+      parentMint: null,
+      metadataUpdateAuthority: walletKeypair.publicKey,
+    } as Instructions.Item.StartItemEscrowBuildPhaseAccounts;
+
+    additionalArgs =
+      {} as Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs;
+
+    const startItemEscrowBuildPhaseIxs =
+      await itemProgram.instruction.startItemEscrowBuildPhase(
+        args,
+        accounts,
+        additionalArgs
+      );
+
+    ixs.push(...startItemEscrowBuildPhaseIxs);
+
+    const { txid: startItemEscrowBuildPhaseTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        []
+      );
+
+    expect(startItemEscrowBuildPhaseTxid).toBeDefined();
+
+    // STEP X: Adds craft item to escrow
 
     // ixs = [];
 
@@ -267,8 +315,9 @@ describe("Item Program", () => {
     // args = {
     //   classIndex: new anchor.BN(itemClassIndex),
     //   parentClassIndex: null,
-    //   craftItemIndex: new anchor.BN(),
-    //   newItemMint: itemMintKeypair.publicKey,
+    //   craftItemIndex: new anchor.BN(craftItemIndex),
+    //   craftEscrowIndex: new anchor.BN(craftItemEscrowIndex),
+    //   newItemMint: craftItemMintKeypair.publicKey,
     // } as Instructions.Item.AddCraftItemToEscrowArgs;
 
     // accounts = {} as Instructions.Item.AddCraftItemToEscrowAccounts;
