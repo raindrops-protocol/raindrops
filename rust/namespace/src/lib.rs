@@ -9,7 +9,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::cpi::{
     accounts::{
         ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-        ItemClassUncacheNamespace,
+        ItemClassUnCacheNamespace,
     },
     item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
     item_class_uncache_namespace,
@@ -294,7 +294,7 @@ pub mod namespace {
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         if raindrops_item::check_id(&rd_program.key()) {
-            let accounts = ItemClassUncacheNamespace {
+            let accounts = ItemClassUnCacheNamespace {
                 item_class: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
