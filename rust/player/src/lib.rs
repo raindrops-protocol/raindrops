@@ -133,6 +133,13 @@ pub struct ToggleEquipItemArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ResetPlayerStatsArgs {
+    pub index: u64,
+    pub player_mint: Pubkey,
+    pub equip_item_permissiveness_to_use: Option<PermissivenessType>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainPlayerArgs {
     pub index: u64,
     pub class_index: u64,
@@ -1201,6 +1208,63 @@ pub mod player {
 
         Ok(())
     }
+
+    // If the math in this early contract breaks and you need to reset things.
+    pub fn reset_player_stats<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ResetPlayerStats<'info>>,
+        args: ResetPlayerStatsArgs,
+    ) -> Result<()> {
+        let ResetPlayerStatsArgs {
+            equip_item_permissiveness_to_use,
+            player_mint,
+            index,
+        } = args;
+
+        let player = &mut ctx.accounts.player;
+        let player_class = &ctx.accounts.player_class;
+
+        require!(
+            player.active_item_counter == 0,
+            CannotResetPlayerStatsUntilItemEffectsAreRemoved
+        );
+
+        assert_permissiveness_access(AssertPermissivenessAccessArgs {
+            program_id: ctx.program_id,
+            given_account: &player.to_account_info(),
+            remaining_accounts: ctx.remaining_accounts,
+            permissiveness_to_use: &equip_item_permissiveness_to_use,
+            permissiveness_array: &player_class.data.settings.equip_item_permissiveness,
+            index: index,
+            class_index: Some(player.class_index),
+            account_mint: Some(&player_mint),
+        })?;
+
+        player.equipped_items = vec![];
+        if let Some(stats) = &player.data.basic_stats {
+            let mut new_stats = vec![];
+            for stat in stats {
+                let mut new_bs = stat.clone();
+                match new_bs.state {
+                    BasicStatState::Integer { base, .. } => {
+                        new_bs.state = BasicStatState::Integer {
+                            base: base,
+                            with_temporary_changes: base,
+                            finalized: base,
+                            temporary_numerator: 1,
+                            temporary_denominator: 1,
+                        }
+                    }
+                    _ => {
+                        // do nothing
+                    }
+                };
+                new_stats.push(new_bs)
+            }
+            player.data.basic_stats = Some(new_stats);
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -1539,6 +1603,16 @@ pub struct RemoveItem<'info> {
     // System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,
+    // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after for add item permissiveness
+}
+
+#[derive(Accounts)]
+#[instruction(args: ResetPlayerStatsArgs)]
+pub struct ResetPlayerStats<'info> {
+    #[account(mut)]
+    player: Box<Account<'info, Player>>,
+    #[account(constraint=player.parent == player_class.key())]
+    player_class: Box<Account<'info, PlayerClass>>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after for add item permissiveness
 }
 
@@ -2203,4 +2277,6 @@ pub enum ErrorCode {
     IndexAlreadyUsed,
     #[msg("Cannot use the same name in basic stats or body parts twice")]
     NameAlreadyUsed,
+    #[msg("Cannot reset player until item effects removed")]
+    CannotResetPlayerStatsUntilItemEffectsAreRemoved,
 }

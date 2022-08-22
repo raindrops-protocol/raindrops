@@ -252,6 +252,41 @@ export class PlayerProgram extends Program.Program {
     };
   }
 
+  async resetPlayerStats(
+    args: PlayerInstruction.ResetPlayerStatsArgs,
+    accounts: Partial<PlayerInstruction.ResetPlayerStatsAccounts>,
+    additionalArgs: Partial<PlayerInstruction.ResetPlayerStatsAdditionalArgs>,
+    options?: { commitment: web3.Commitment; timeout?: number }
+  ): Promise<{
+    rpc: () => Promise<{ txid: string; slot: number }>;
+    instructions: TransactionInstruction[];
+    signers: Signer[];
+  }> {
+    if (!accounts.metadataUpdateAuthority) {
+      accounts.metadataUpdateAuthority = await this.getMetadataUpdateAuthority(
+        args.playerMint
+      );
+    }
+
+    await this.setPlayerClassIndexIfNecessary(
+      args.playerMint,
+      args.index,
+      additionalArgs
+    );
+
+    const { instructions, signers } = await this.instruction.resetPlayerStats(
+      args as PlayerInstruction.ResetPlayerStatsArgs,
+      accounts as PlayerInstruction.ResetPlayerStatsAccounts,
+      additionalArgs as PlayerInstruction.ResetPlayerStatsAdditionalArgs
+    );
+
+    return {
+      instructions,
+      signers,
+      rpc: () => this.sendWithRetry(instructions, signers, options),
+    };
+  }
+
   async useItem(
     args: PlayerInstruction.UseItemArgs,
     accounts: Partial<PlayerInstruction.UseItemAccounts>,

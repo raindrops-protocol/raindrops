@@ -480,6 +480,48 @@ CLI.programCommandWithConfig(
   }
 );
 
+CLI.programCommandWithConfig(
+  "reset_player_stats",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const wallet = await Wallet.loadWalletKey(keypair);
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      wallet,
+      env,
+      rpcUrl
+    );
+
+    const playerMint = new PublicKey(
+      config.playerMint || config.newPlayerMint || config.mint
+    );
+    const playerIndex = new BN(
+      config.index || config.newPlayerIndex || config.playerIndex
+    );
+
+    await (
+      await playerProgram.resetPlayerStats(
+        {
+          index: playerIndex,
+          equipItemPermissivenessToUse:
+            config.equipItemPermissivenessToUse ||
+            config.updatePermissivenessToUse,
+          playerMint,
+        },
+        {
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+        },
+        {
+          classIndex: new BN(config.classIndex),
+          playerClassMint: new PublicKey(config.playerClassMint),
+        }
+      )
+    ).rpc();
+  }
+);
+
 CLI.programCommand("show_player")
   .option("-cp, --config-path <string>", "JSON file with player settings")
   .option("-m, --mint <string>", "If no json file, provide mint directly")

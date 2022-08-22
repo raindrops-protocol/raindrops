@@ -73,6 +73,12 @@ export interface ToggleEquipItemArgs {
   itemUsage: null;
 }
 
+export interface ResetPlayerStatsArgs {
+  index: BN;
+  playerMint: PublicKey;
+  equipItemPermissivenessToUse: null | AnchorPermissivenessType;
+}
+
 export interface UpdateValidForUseIfWarmupPassedOnItemArgs {
   itemIndex: BN;
   itemMint: PublicKey;
@@ -247,11 +253,21 @@ export interface ToggleEquipItemAccounts {
   validationProgram: web3.PublicKey | null;
 }
 
+export interface ResetPlayerStatsAccounts {
+  metadataUpdateAuthority: web3.PublicKey | null;
+  validationProgram: web3.PublicKey | null;
+}
+
 export interface ToggleEquipItemAdditionalArgs {
   playerClassMint: PublicKey;
   classIndex: BN;
   itemClassIndex: BN;
   itemProgram: ItemProgram;
+}
+
+export interface ResetPlayerStatsAdditionalArgs {
+  playerClassMint: PublicKey;
+  classIndex: BN;
 }
 
 export interface UpdatePlayerClassAccounts {
@@ -691,6 +707,47 @@ export class Instruction extends SolKitInstruction {
             )[0],
             validationProgram:
               accounts.validationProgram || SystemProgram.programId,
+          })
+          .remainingAccounts(remainingAccounts)
+          .instruction(),
+      ],
+      signers: [],
+    };
+  }
+
+  async resetPlayerStats(
+    args: ResetPlayerStatsArgs,
+    accounts: ResetPlayerStatsAccounts,
+    additionalArgs: ResetPlayerStatsAdditionalArgs
+  ) {
+    const parent = (
+      await getPlayerPDA(
+        additionalArgs.playerClassMint,
+        additionalArgs.classIndex
+      )
+    )[0];
+    const remainingAccounts =
+      await generateRemainingAccountsGivenPermissivenessToUse({
+        permissivenessToUse: args.equipItemPermissivenessToUse,
+        tokenMint: args.playerMint,
+        parentMint: additionalArgs.playerClassMint,
+        parentIndex: additionalArgs.classIndex,
+        parent,
+        metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        program: this.program.client,
+      });
+
+    InstructionUtils.convertNumbersToBNs(args, ["index"]);
+
+    const player = (await getPlayerPDA(args.playerMint, args.index))[0];
+
+    return {
+      instructions: [
+        await this.program.client.methods
+          .resetPlayerStats(args)
+          .accounts({
+            playerClass: parent,
+            player,
           })
           .remainingAccounts(remainingAccounts)
           .instruction(),
