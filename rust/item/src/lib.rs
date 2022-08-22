@@ -2638,7 +2638,7 @@ pub struct ItemClassJoinNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    instructions: UncheckedAccount<'info>,
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2648,7 +2648,7 @@ pub struct ItemClassLeaveNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    instructions: UncheckedAccount<'info>,
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2659,7 +2659,7 @@ pub struct ItemClassCacheNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    instructions: UncheckedAccount<'info>,
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -2669,7 +2669,7 @@ pub struct ItemClassUncacheNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
-    instructions: UncheckedAccount<'info>,
+    pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
