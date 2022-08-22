@@ -306,6 +306,58 @@ describe("Item Program", () => {
 
     expect(startItemEscrowBuildPhaseTxid).toBeDefined();
 
+    // STEP 5: Completes item escrow build phase
+
+    ixs = [];
+
+    const itemIndex = 0;
+
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
+      newItemIndex: new anchor.BN(itemIndex),
+      parentClassIndex: null,
+      craftEscrowIndex: new anchor.BN(craftItemEscrowIndex),
+      componentScope: "none",
+      amountToMake: new anchor.BN(1),
+      space: new anchor.BN(300),
+      itemClassMint: itemClassMintKeypair.publicKey,
+      originator: walletKeypair.publicKey,
+      buildPermissivenessToUse: { tokenHolder: true },
+      storeMint: false,
+      storeMetadataFields: false,
+    } as Instructions.Item.CompleteItemEscrowBuildPhaseArgs;
+
+    accounts = {
+      itemClassMint: itemClassMintKeypair.publicKey,
+      newItemMint: itemMintKeypair.publicKey,
+      newItemToken: null,
+      newItemTokenHolder: walletKeypair.publicKey,
+      parentMint: null,
+      metadataUpdateAuthority: walletKeypair.publicKey,
+    } as Instructions.Item.CompleteItemEscrowBuildPhaseAccounts;
+
+    additionalArgs =
+      {} as Instructions.Item.CompleteItemEscrowBuildPhaseAdditionalArgs;
+
+    const completeItemEscrowBuildPhaseIxs =
+      await itemProgram.instruction.completeItemEscrowBuildPhase(
+        args,
+        accounts,
+        additionalArgs
+      );
+
+    ixs.push(...completeItemEscrowBuildPhaseIxs);
+
+    const { txid: completeItemEscrowBuildPhaseTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        []
+      );
+
+    expect(completeItemEscrowBuildPhaseTxid).toBeDefined();
+
     // STEP X: Adds craft item to escrow
 
     // ixs = [];
