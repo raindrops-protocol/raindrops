@@ -605,15 +605,19 @@ CLI.programCommand("show_player")
               u.state.integer.base.toNumber()
             );
             log.info(
-              "----> With changes from increases and decremental items:",
+              "----> With changes from increases and decremental and percent from base items:",
               u.state.integer.withTemporaryChanges.toNumber()
             );
             log.info(
-              "----> With changes from percentage change items and equipment:",
-              u.state.integer.withTemporaryPercentages.toNumber()
+              "----> Stored Numerator from Percentage Items:",
+              u.state.integer.temporaryNumerator.toNumber()
             );
             log.info(
-              "----> With min and max applied:",
+              "----> Stored Denominator from Percentage Items:",
+              u.state.integer.temporaryDenominator.toNumber()
+            );
+            log.info(
+              "----> With min, max and numerator and denom applied to that change number:",
               u.state.integer.finalized.toNumber()
             );
           } else if (u.state.bool) {

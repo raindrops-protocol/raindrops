@@ -2052,7 +2052,8 @@ pub enum BasicStatState {
     Integer {
         base: i64,
         with_temporary_changes: i64,
-        with_temporary_percentages: i64,
+        temporary_numerator: i64,
+        temporary_denominator: i64,
         finalized: i64,
     },
     Bool {

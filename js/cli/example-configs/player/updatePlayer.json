@@ -15,7 +15,8 @@
           "integer": {
             "base": 6,
             "withTemporaryChanges": 0,
-            "withTemporaryPercentages": 0,
+            "temporaryNumerator": 0,
+            "temporaryDivisor": 0,
             "finalized": 0
           }
         }

@@ -416,7 +416,8 @@ pub fn propagate_player_class_data_fields_to_player_data(
                         BasicStatState::Integer {
                             finalized,
                             with_temporary_changes,
-                            with_temporary_percentages,
+                            temporary_numerator,
+                            temporary_denominator,
                             base,
                         } => {
                             let mut new_finalized = finalized;
@@ -443,14 +444,16 @@ pub fn propagate_player_class_data_fields_to_player_data(
                             BasicStatState::Integer {
                                 finalized: new_finalized,
                                 with_temporary_changes,
-                                with_temporary_percentages,
+                                temporary_numerator,
+                                temporary_denominator,
                                 base: new_base,
                             }
                         }
                         _ => BasicStatState::Integer {
                             finalized: *starting,
                             with_temporary_changes: *starting,
-                            with_temporary_percentages: *starting,
+                            temporary_numerator: 1,
+                            temporary_denominator: 1,
                             base: *starting,
                         },
                     },
@@ -1007,8 +1010,10 @@ pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<
                 basic_stat_template: bst,
                 base_change: modded_amount,
                 temp_change: 0,
-                new_divisor: 1,
+                new_denominator: 1,
                 new_numerator: 1,
+                remove_numerator: None,
+                remove_denominator: None,
             })?
         }
         BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
@@ -1032,8 +1037,10 @@ pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<
                         )
                         .ok_or(ErrorCode::NumericalOverflowError)?,
                     temp_change: 0,
-                    new_divisor: 1,
+                    new_denominator: 1,
                     new_numerator: 1,
+                    remove_numerator: None,
+                    remove_denominator: None,
                 })?,
                 _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
             }
@@ -1049,8 +1056,10 @@ pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<
                     .checked_div(100)
                     .ok_or(ErrorCode::NumericalOverflowError)?,
                 temp_change: 0,
-                new_divisor: 1,
+                new_denominator: 1,
                 new_numerator: 1,
+                remove_numerator: None,
+                remove_denominator: None,
             })?,
             _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
         },
@@ -1081,8 +1090,10 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
                 basic_stat_template: bst,
                 base_change: 0,
                 temp_change: modded_amount,
-                new_divisor: 1,
+                new_denominator: 1,
                 new_numerator: 1,
+                remove_numerator: None,
+                remove_denominator: None,
             })?
         }
         BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
@@ -1104,15 +1115,19 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
                         .checked_add(adjusted_modded)
                         .ok_or(ErrorCode::NumericalOverflowError)?
                 } else {
-                    100
+                    1
                 },
-                new_divisor: if adding {
-                    100
+                new_denominator: if adding { 100 } else { 1 },
+                remove_numerator: if adding {
+                    None
                 } else {
-                    100i64
-                        .checked_add(adjusted_modded)
-                        .ok_or(ErrorCode::NumericalOverflowError)?
+                    Some(
+                        100i64
+                            .checked_add(adjusted_modded)
+                            .ok_or(ErrorCode::NumericalOverflowError)?,
+                    )
                 },
+                remove_denominator: if adding { None } else { Some(100) },
             })?
         }
         BasicItemEffectType::IncrementPercentFromBase
@@ -1126,8 +1141,10 @@ pub fn rebalance_stat_temporarily(args: RebalanceStatTemporarilyArgs) -> Result<
                     .ok_or(ErrorCode::NumericalOverflowError)?
                     .checked_div(100)
                     .ok_or(ErrorCode::NumericalOverflowError)?,
-                new_divisor: 1,
+                new_denominator: 1,
                 new_numerator: 1,
+                remove_numerator: None,
+                remove_denominator: None,
             })?,
             _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
         },
@@ -1142,7 +1159,9 @@ pub struct RebalanceBasicStatArgs<'a> {
     base_change: i64,
     temp_change: i64,
     new_numerator: i64,
-    new_divisor: i64,
+    new_denominator: i64,
+    remove_numerator: Option<i64>,
+    remove_denominator: Option<i64>,
 }
 pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
     let RebalanceBasicStatArgs {
@@ -1151,13 +1170,16 @@ pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
         base_change,
         temp_change,
         new_numerator,
-        new_divisor,
+        new_denominator,
+        remove_numerator,
+        remove_denominator,
     } = args;
     match basic_stat.state {
         BasicStatState::Integer {
             base,
             with_temporary_changes,
-            with_temporary_percentages,
+            temporary_numerator,
+            temporary_denominator,
             ..
         } => {
             match basic_stat_template.stat_type {
@@ -1186,33 +1208,41 @@ pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
                         .checked_add(actual_new_base_change)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
 
-                    let mut new_perc = if with_temporary_percentages != 0 {
-                        with_temporary_percentages
-                            .checked_mul(new_temp)
-                            .ok_or(ErrorCode::NumericalOverflowError)?
-                            .checked_div(with_temporary_changes)
-                            .ok_or(ErrorCode::NumericalOverflowError)?
-                    } else {
-                        new_temp
-                    };
+                    msg!("New numer {:?} {:?}", new_numerator, new_denominator);
 
-                    msg!("New numer {:?} {:?}", new_numerator, new_divisor);
-                    msg!("1 New perc {:?}", new_perc);
-
-                    new_perc = new_perc
+                    let mut new_temporary_numerator = temporary_numerator
                         .checked_mul(new_numerator)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
-                    msg!("2 New perc {:?}", new_perc);
-
-                    new_perc = new_perc
-                        .checked_div(new_divisor)
+                    let mut new_temporary_denominator = temporary_denominator
+                        .checked_mul(new_denominator)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
-                    msg!("3 New perc {:?}", new_perc);
 
-                    let mut new_finalized = new_perc;
+                    if let Some(remove) = remove_numerator {
+                        new_temporary_numerator = new_temporary_numerator
+                            .checked_div(remove)
+                            .ok_or(ErrorCode::NumericalOverflowError)?;
+                    }
+
+                    if let Some(remove) = remove_denominator {
+                        new_temporary_denominator = new_temporary_denominator
+                            .checked_div(remove)
+                            .ok_or(ErrorCode::NumericalOverflowError)?;
+                    }
+
+                    if new_temporary_denominator == 0 {
+                        new_temporary_denominator = 1;
+                    }
+
+                    let mut new_finalized = new_temp
+                        .checked_mul(new_temporary_numerator)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
+
+                    new_finalized = new_finalized
+                        .checked_div(new_temporary_denominator)
+                        .ok_or(ErrorCode::NumericalOverflowError)?;
 
                     if let Some(m) = max {
-                        new_finalized = std::cmp::min(m, new_perc);
+                        new_finalized = std::cmp::min(m, new_finalized);
                     }
 
                     if let Some(m) = min {
@@ -1222,7 +1252,8 @@ pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
                     basic_stat.state = BasicStatState::Integer {
                         base: new_base,
                         with_temporary_changes: new_temp,
-                        with_temporary_percentages: new_perc,
+                        temporary_numerator: new_temporary_numerator,
+                        temporary_denominator: new_temporary_denominator,
                         finalized: new_finalized,
                     };
                 }
@@ -1262,8 +1293,10 @@ pub fn map_new_stats_into_player(
                                                     .checked_sub(old_base)
                                                     .ok_or(ErrorCode::NumericalOverflowError)?,
                                                 temp_change: 0,
-                                                new_divisor: 1,
+                                                new_denominator: 1,
                                                 new_numerator: 1,
+                                                remove_numerator: None,
+                                                remove_denominator: None,
                                             })?;
                                         }
                                         _ => {
