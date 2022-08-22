@@ -1,5 +1,6 @@
 import { web3 } from "@project-serum/anchor";
 import { NamespaceAndIndex } from "./common";
+import * as pids from "../constants/programIds";
 
 export class PermissivenessSettings {
   namespacePermissiveness: Permissiveness;
@@ -281,5 +282,32 @@ export class NamespaceIndex {
     this.bump = data.bump;
     this.page = data.page;
     this.caches = data.caches;
+  }
+}
+
+export enum RaindropsProgram {
+  Item,
+  Namespace,
+  Matches,
+  Staking,
+  Player,
+}
+
+export namespace RaindropsProgram {
+  export function getRaindropsProgram(program: RaindropsProgram): web3.PublicKey {
+    switch(program) {
+      case RaindropsProgram.Item:
+        return pids.ITEM_ID;
+      case RaindropsProgram.Namespace:
+        return pids.NAMESPACE_ID;
+      case RaindropsProgram.Matches:
+        return pids.MATCHES_ID;
+      case RaindropsProgram.Player:
+        return pids.PLAYER_ID;
+      case RaindropsProgram.Staking:
+        return pids.STAKING_ID;
+      default:
+        throw new Error(`Unknown RaindropsProgram: ${program}`);
+    };
   }
 }

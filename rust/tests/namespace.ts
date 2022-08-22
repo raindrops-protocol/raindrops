@@ -2,10 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { BN } from "@project-serum/anchor";
 import * as splToken from "../node_modules/@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
-import {
-  Namespace,
-  IDL as NamespaceProgramIDL,
-} from "../target/types/namespace";
+import { IDL as NamespaceProgramIDL } from "../target/types/namespace";
 import { Item, IDL as ItemProgramIDL } from "../target/types/item";
 import { Matches, IDL as MatchesProgramIDL } from "../target/types/matches";
 import { NamespaceProgram } from "../../js/lib/src/contract/namespace";
@@ -203,7 +200,7 @@ describe("namespace", () => {
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
 
-    let nsData = await namespaceProgram.fetchNamespace(namespace);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.prettyName === "my-ns");
     assert(nsData.whitelistedStakingMints.length === 1);
     assert(nsData.whitelistedStakingMints[0].equals(wlStakingMint1));
@@ -232,10 +229,10 @@ describe("namespace", () => {
     );
     console.log("updateNsTxSig: %s", updateResult.txid);
 
-    nsData = await namespaceProgram.fetchNamespace(namespace);
-    assert(nsData.prettyName === "new-name");
-    assert(nsData.whitelistedStakingMints.length === 1);
-    assert(nsData.whitelistedStakingMints[0].equals(wlStakingMint2));
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.prettyName === "new-name");
+    assert(nsDataUpdated.whitelistedStakingMints.length === 1);
+    assert(nsDataUpdated.whitelistedStakingMints[0].equals(wlStakingMint2));
   });
 
   it("create ns gatekeeper", async () => {
@@ -398,7 +395,7 @@ describe("namespace", () => {
     let nsGkData = await namespaceProgram.fetchNamespaceGatekeeper(
       nsGatekeeper
     );
-    assert(nsGkData.artifactFilters.length === 1);
+    assert((nsGkData.artifactFilters.length as number) === 1);
 
     const rmFromNsGatekeeperArgs: nsIx.RemoveFromNamespaceGatekeeperArgs = {
       artifactFilter: {
@@ -568,7 +565,7 @@ describe("namespace", () => {
     const joinNsResult = await namespaceProgram.joinNamespace({
       namespaceMint: ns2Mint,
       artifact: itemClass[0],
-      raindropsProgram: pids.ITEM_ID,
+      raindropsProgram: nsState.RaindropsProgram.Item,
     });
     console.log("artifact joined to namespace2: %s", joinNsResult.txid);
 
@@ -576,7 +573,7 @@ describe("namespace", () => {
     const joinNsResult2 = await namespaceProgram.joinNamespace({
       namespaceMint: ns1Mint,
       artifact: itemClass[0],
-      raindropsProgram: pids.ITEM_ID,
+      raindropsProgram: nsState.RaindropsProgram.Item,
     });
     console.log("artifact joined to namespace1: %s", joinNsResult2.txid);
   });
@@ -651,21 +648,21 @@ describe("namespace", () => {
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
-      raindropsProgram: pids.ITEM_ID,
+      raindropsProgram: nsState.RaindropsProgram.Item,
     };
 
     const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
     console.log("joinNsTxSig: %s", joinNsResult.txid);
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
-    let nsData = await namespaceProgram.fetchNamespace(namespace);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 0);
 
     const leaveNsAccounts: nsIx.LeaveNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
-      raindropsProgram: pids.ITEM_ID,
+      raindropsProgram: nsState.RaindropsProgram.Item,
     };
 
     const leaveNsResult = await namespaceProgram.leaveNamespace(
@@ -673,9 +670,9 @@ describe("namespace", () => {
     );
     console.log("leaveNsTxSig: %s", leaveNsResult.txid);
 
-    nsData = await namespaceProgram.fetchNamespace(namespace);
-    assert(nsData.artifactsAdded === 0);
-    assert(nsData.artifactsCached === 0);
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 0);
+    assert(nsDataUpdated.artifactsCached === 0);
   });
 
   it("join item class, cache, uncache then leave ns", async () => {
@@ -748,7 +745,7 @@ describe("namespace", () => {
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
-      raindropsProgram: pids.ITEM_ID,
+      raindropsProgram: nsState.RaindropsProgram.Item,
     };
 
     const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
@@ -757,7 +754,7 @@ describe("namespace", () => {
     const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
-      raindropsProgram: pids.ITEM_ID,
+      raindropsProgram: nsState.RaindropsProgram.Item,
     };
 
     const cacheArtifactResult = await namespaceProgram.cacheArtifact(
@@ -766,7 +763,7 @@ describe("namespace", () => {
     console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
-    let nsData = await namespaceProgram.fetchNamespace(namespace);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 1);
 
@@ -784,7 +781,7 @@ describe("namespace", () => {
     const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
-      raindropsProgram: pids.ITEM_ID,
+      raindropsProgram: nsState.RaindropsProgram.Item,
     };
 
     const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
@@ -797,9 +794,9 @@ describe("namespace", () => {
     );
     console.log("uncacheArtifactTxSig: %s", uncacheArtifactResult.txid);
 
-    nsData = await namespaceProgram.fetchNamespace(namespace);
-    assert(nsData.artifactsAdded === 1);
-    assert(nsData.artifactsCached === 0);
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 1);
+    assert(nsDataUpdated.artifactsCached === 0);
   });
 
   it("join match, cache, uncache then leave ns", async () => {
@@ -868,7 +865,7 @@ describe("namespace", () => {
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: match,
-      raindropsProgram: pids.MATCHES_ID,
+      raindropsProgram: nsState.RaindropsProgram.Matches,
     };
 
     const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
@@ -877,7 +874,7 @@ describe("namespace", () => {
     const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: match,
-      raindropsProgram: pids.MATCHES_ID,
+      raindropsProgram: nsState.RaindropsProgram.Matches,
     };
 
     const cacheArtifactResult = await namespaceProgram.cacheArtifact(
@@ -886,7 +883,7 @@ describe("namespace", () => {
     console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
-    let nsData = await namespaceProgram.fetchNamespace(namespace);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 1);
 
@@ -902,7 +899,7 @@ describe("namespace", () => {
     const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
       namespaceMint: nsMint,
       artifact: match,
-      raindropsProgram: pids.MATCHES_ID,
+      raindropsProgram: nsState.RaindropsProgram.Matches,
     };
 
     const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
@@ -915,14 +912,14 @@ describe("namespace", () => {
     );
     console.log("uncacheArtifactTxSig: %s", uncacheArtifactResult.txid);
 
-    nsData = await namespaceProgram.fetchNamespace(namespace);
-    assert(nsData.artifactsAdded === 1);
-    assert(nsData.artifactsCached === 0);
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 1);
+    assert(nsDataUpdated.artifactsCached === 0);
 
     const leaveNsAccounts: nsIx.LeaveNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: match,
-      raindropsProgram: pids.MATCHES_ID,
+      raindropsProgram: nsState.RaindropsProgram.Matches,
     };
 
     const leaveNsResult = await namespaceProgram.leaveNamespace(
@@ -930,9 +927,9 @@ describe("namespace", () => {
     );
     console.log("leaveNsTxSig: %s", leaveNsResult.txid);
 
-    nsData = await namespaceProgram.fetchNamespace(namespace);
-    assert(nsData.artifactsAdded === 0);
-    assert(nsData.artifactsCached === 0);
+    const nsDataUpdatedAgain = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdatedAgain.artifactsAdded === 0);
+    assert(nsDataUpdatedAgain.artifactsCached === 0);
   });
 
   it("join namespace, cache, uncache then leave ns", async () => {
@@ -1038,7 +1035,7 @@ describe("namespace", () => {
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: ns1Mint,
       artifact: namespace2,
-      raindropsProgram: pids.NAMESPACE_ID,
+      raindropsProgram: nsState.RaindropsProgram.Namespace,
     };
 
     const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
@@ -1047,7 +1044,7 @@ describe("namespace", () => {
     const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
       namespaceMint: ns1Mint,
       artifact: namespace2,
-      raindropsProgram: pids.NAMESPACE_ID,
+      raindropsProgram: nsState.RaindropsProgram.Namespace,
     };
 
     const cacheArtifactResult = await namespaceProgram.cacheArtifact(
@@ -1077,7 +1074,7 @@ describe("namespace", () => {
     const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
       namespaceMint: ns1Mint,
       artifact: namespace2,
-      raindropsProgram: pids.NAMESPACE_ID,
+      raindropsProgram: nsState.RaindropsProgram.Namespace,
     };
 
     const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
@@ -1107,7 +1104,7 @@ describe("namespace", () => {
     const leaveNsAccounts: nsIx.LeaveNamespaceAccounts = {
       namespaceMint: ns1Mint,
       artifact: namespace2,
-      raindropsProgram: pids.NAMESPACE_ID,
+      raindropsProgram: nsState.RaindropsProgram.Namespace,
     };
 
     const leaveNsResult = await namespaceProgram.leaveNamespace(
@@ -1191,7 +1188,7 @@ describe("namespace", () => {
       const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
-        raindropsProgram: pids.ITEM_ID,
+        raindropsProgram: nsState.RaindropsProgram.Item,
       };
 
       const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
@@ -1200,7 +1197,7 @@ describe("namespace", () => {
       const cacheArtifactAccounts: nsIx.CacheArtifactAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
-        raindropsProgram: pids.ITEM_ID,
+        raindropsProgram: nsState.RaindropsProgram.Item,
       };
 
       const cacheArtifactResult = await namespaceProgram.cacheArtifact(
@@ -1210,7 +1207,7 @@ describe("namespace", () => {
     }
 
     const [namespace, _namespaceBump] = await pdas.getNamespacePDA(nsMint);
-    let nsData = await namespaceProgram.fetchNamespace(namespace);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.artifactsAdded === 101);
     assert(nsData.artifactsCached === 101);
     assert(nsData.fullPages.length === 1);
@@ -1239,7 +1236,7 @@ describe("namespace", () => {
       const uncacheArtifactAccounts: nsIx.UncacheArtifactAccounts = {
         namespaceMint: nsMint,
         artifact: itemClasses[i],
-        raindropsProgram: pids.ITEM_ID,
+        raindropsProgram: nsState.RaindropsProgram.Item,
       };
 
       const uncacheArtifactArgs: nsIx.UncacheArtifactArgs = {
@@ -1264,10 +1261,10 @@ describe("namespace", () => {
 
     await new Promise((f) => setTimeout(f, 5000));
 
-    nsData = await namespaceProgram.fetchNamespace(namespace);
-    assert(nsData.artifactsAdded === 101);
-    assert(nsData.artifactsCached === 0);
-    assert(nsData.fullPages.length === 0);
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 101);
+    assert(nsDataUpdated.artifactsCached === 0);
+    assert(nsDataUpdated.fullPages.length === 0);
   });
 
   it("join match to namespace without any space allocated for namespaces in the match account", async () => {
@@ -1337,10 +1334,10 @@ describe("namespace", () => {
     const joinNsAccounts: nsIx.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: match,
-      raindropsProgram: pids.MATCHES_ID,
+      raindropsProgram: nsState.RaindropsProgram.Matches,
     };
 
-    assert.rejects(async () => await namespaceProgram.joinNamespace(joinNsAccounts));
+    await assert.rejects(namespaceProgram.joinNamespace(joinNsAccounts));
   });
 });
 

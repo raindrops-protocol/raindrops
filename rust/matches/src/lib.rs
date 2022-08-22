@@ -128,24 +128,24 @@ pub mod matches {
             ..
         } = args;
 
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        match_account.bump = *ctx.bumps.get("match_account").unwrap();
+        match_instance.bump = *ctx.bumps.get("match_instance").unwrap();
         require!(
             match_state == MatchState::Draft || match_state == MatchState::Initialized,
             InvalidStartingMatchState
         );
-        match_account.state = match_state;
+        match_instance.state = match_state;
         if token_entry_validation.is_some() {
-            match_account.token_entry_validation = token_entry_validation;
+            match_instance.token_entry_validation = token_entry_validation;
         } else {
-            match_account.token_entry_validation_root = token_entry_validation_root;
+            match_instance.token_entry_validation_root = token_entry_validation_root;
         }
-        match_account.win_oracle = win_oracle;
-        match_account.win_oracle_cooldown = win_oracle_cooldown;
-        match_account.authority = authority;
-        match_account.minimum_allowed_entry_time = minimum_allowed_entry_time;
-        match_account.leave_allowed = leave_allowed;
+        match_instance.win_oracle = win_oracle;
+        match_instance.win_oracle_cooldown = win_oracle_cooldown;
+        match_instance.authority = authority;
+        match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
+        match_instance.leave_allowed = leave_allowed;
 
         msg!("namespaces");
         if desired_namespace_array_size > 0 {
@@ -159,9 +159,9 @@ pub mod matches {
                 });
             }
 
-            match_account.namespaces = Some(namespace_arr);
+            match_instance.namespaces = Some(namespace_arr);
         } else {
-            match_account.namespaces = None
+            match_instance.namespaces = None
         }
 
         Ok(())
@@ -183,9 +183,9 @@ pub mod matches {
             ..
         } = args;
 
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        match match_account.state {
+        match match_instance.state {
             MatchState::Draft => {
                 require!(
                     match_state == MatchState::Initialized
@@ -225,18 +225,18 @@ pub mod matches {
             }
         }
 
-        match_account.state = match_state;
+        match_instance.state = match_state;
         if token_entry_validation.is_some() {
-            match_account.token_entry_validation = token_entry_validation;
+            match_instance.token_entry_validation = token_entry_validation;
         } else {
-            match_account.token_entry_validation_root = token_entry_validation_root;
+            match_instance.token_entry_validation_root = token_entry_validation_root;
         }
-        match_account.authority = authority;
-        match_account.win_oracle_cooldown = win_oracle_cooldown;
+        match_instance.authority = authority;
+        match_instance.win_oracle_cooldown = win_oracle_cooldown;
 
-        match_account.minimum_allowed_entry_time = minimum_allowed_entry_time;
-        match_account.leave_allowed = leave_allowed;
-        match_account.join_allowed_during_start = join_allowed_during_start;
+        match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
+        match_instance.leave_allowed = leave_allowed;
+        match_instance.join_allowed_during_start = join_allowed_during_start;
 
         Ok(())
     }
@@ -244,34 +244,34 @@ pub mod matches {
     pub fn update_match_from_oracle<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, UpdateMatchFromOracle<'info>>,
     ) -> Result<()> {
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
         let win_oracle = &ctx.accounts.win_oracle;
         let clock = &ctx.accounts.clock;
 
         let win_oracle_instance: Account<'_, WinOracle> =
             Account::try_from(&win_oracle.to_account_info())?;
 
-        if match_account.last_oracle_check != 0 {
+        if match_instance.last_oracle_check != 0 {
             require!(
-                clock.unix_timestamp - match_account.win_oracle_cooldown as i64
-                    > match_account.last_oracle_check as i64,
+                clock.unix_timestamp - match_instance.win_oracle_cooldown as i64
+                    > match_instance.last_oracle_check as i64,
                 OracleCooldownNotPassed
             );
         }
 
         require!(
-            match_account.state == MatchState::Started
-                || match_account.state == MatchState::Initialized,
+            match_instance.state == MatchState::Started
+                || match_instance.state == MatchState::Initialized,
             InvalidOracleUpdate
         );
 
         if win_oracle_instance.finalized {
-            match_account.state = MatchState::Finalized;
+            match_instance.state = MatchState::Finalized;
         } else {
-            match_account.state = MatchState::Started;
+            match_instance.state = MatchState::Started;
         }
 
-        match_account.last_oracle_check = clock.unix_timestamp as u64;
+        match_instance.last_oracle_check = clock.unix_timestamp as u64;
 
         Ok(())
     }
@@ -280,10 +280,10 @@ pub mod matches {
         ctx: Context<'a, 'b, 'c, 'info, DrainOracle<'info>>,
         _args: DrainOracleArgs,
     ) -> Result<()> {
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
 
         require!(
-            match_account.to_account_info().data_is_empty(),
+            match_instance.to_account_info().data_is_empty(),
             MatchMustBeDrained
         );
 
@@ -306,20 +306,20 @@ pub mod matches {
     pub fn drain_match<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, DrainMatch<'info>>,
     ) -> Result<()> {
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
         let receiver = &mut ctx.accounts.receiver;
         require!(
-            match_account.state == MatchState::Deactivated
-                || match_account.state == MatchState::PaidOut,
+            match_instance.state == MatchState::Deactivated
+                || match_instance.state == MatchState::PaidOut,
             CannotDrainYet
         );
 
         require!(
-            match_account.token_types_removed == match_account.token_types_added,
+            match_instance.token_types_removed == match_instance.token_types_added,
             CannotDrainYet
         );
 
-        let info = match_account.to_account_info();
+        let info = match_instance.to_account_info();
         let snapshot: u64 = info.lamports();
 
         **info.lamports.borrow_mut() = 0;
@@ -336,7 +336,7 @@ pub mod matches {
         ctx: Context<'a, 'b, 'c, 'info, LeaveMatch<'info>>,
         _args: LeaveMatchArgs,
     ) -> Result<()> {
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;
         let destination_token_account = &ctx.accounts.destination_token_account;
         let token_mint = &ctx.accounts.token_mint;
@@ -344,38 +344,38 @@ pub mod matches {
         let token_program = &ctx.accounts.token_program;
         let destination_info = destination_token_account.to_account_info();
         let token_escrow_info = token_account_escrow.to_account_info();
-        let match_info = match_account.to_account_info();
+        let match_info = match_instance.to_account_info();
         let token_info = token_program.to_account_info();
         let receiver_info = receiver.to_account_info();
 
         assert_is_ata(&destination_info, &receiver.key(), &token_mint.key(), None)?;
 
         require!(
-            match_account.state == MatchState::Deactivated
-                || match_account.state == MatchState::PaidOut
-                || match_account.state == MatchState::Initialized
-                || match_account.state == MatchState::Started,
+            match_instance.state == MatchState::Deactivated
+                || match_instance.state == MatchState::PaidOut
+                || match_instance.state == MatchState::Initialized
+                || match_instance.state == MatchState::Started,
             CannotLeaveMatch
         );
 
-        if match_account.state == MatchState::Initialized
-            || match_account.state == MatchState::Started
+        if match_instance.state == MatchState::Initialized
+            || match_instance.state == MatchState::Started
         {
-            require!(match_account.leave_allowed, CannotLeaveMatch);
+            require!(match_instance.leave_allowed, CannotLeaveMatch);
             require!(receiver.is_signer, ReceiverMustBeSigner)
         }
 
         let match_seeds = &[
             PREFIX.as_bytes(),
-            match_account.win_oracle.as_ref(),
-            &[match_account.bump],
+            match_instance.win_oracle.as_ref(),
+            &[match_instance.bump],
         ];
 
         spl_token_transfer(TokenTransferParams {
             source: token_account_escrow.to_account_info(),
             destination: destination_info,
             amount: token_account_escrow.amount,
-            authority: match_account.to_account_info(),
+            authority: match_instance.to_account_info(),
             authority_signer_seeds: match_seeds,
             token_program: token_info,
         })?;
@@ -388,7 +388,7 @@ pub mod matches {
             match_seeds,
         )?;
 
-        match_account.token_types_removed = match_account
+        match_instance.token_types_removed = match_instance
             .token_types_removed
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
@@ -400,7 +400,7 @@ pub mod matches {
         ctx: Context<'a, 'b, 'c, 'info, DisburseTokensByOracle<'info>>,
         args: DisburseTokensByOracleArgs,
     ) -> Result<()> {
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;
         let destination_token_account = &ctx.accounts.destination_token_account;
         let token_mint = &ctx.accounts.token_mint;
@@ -414,7 +414,7 @@ pub mod matches {
         } = args;
 
         require!(
-            match_account.state == MatchState::Finalized,
+            match_instance.state == MatchState::Finalized,
             MatchMustBeInFinalized
         );
 
@@ -430,7 +430,7 @@ pub mod matches {
                 let chief_node = anchor_lang::solana_program::keccak::hashv(&[
                     &[0x00],
                     &AnchorSerialize::try_to_vec(&token_delta)?,
-                    &match_account.current_token_transfer_index.to_le_bytes(),
+                    &match_instance.current_token_transfer_index.to_le_bytes(),
                 ]);
                 require!(
                     verify(&token_delta_proof, &root.root, chief_node.0),
@@ -440,18 +440,18 @@ pub mod matches {
                 let total_node =
                     anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total.to_le_bytes()]);
                 require!(verify(&total_proof, &root.root, total_node.0), InvalidProof);
-                if match_account.current_token_transfer_index == (total - 1) as u64 {
-                    match_account.state = MatchState::PaidOut;
+                if match_instance.current_token_transfer_index == (total - 1) as u64 {
+                    match_instance.state = MatchState::PaidOut;
                 }
                 token_delta
             } else {
                 return Err(error!(ErrorCode::RootNotPresent));
             }
         } else if let Some(tfer_arr) = &win_oracle.token_transfers {
-            if match_account.current_token_transfer_index == (tfer_arr.len() - 1) as u64 {
-                match_account.state = MatchState::PaidOut;
+            if match_instance.current_token_transfer_index == (tfer_arr.len() - 1) as u64 {
+                match_instance.state = MatchState::PaidOut;
             }
-            tfer_arr[match_account.current_token_transfer_index as usize].clone()
+            tfer_arr[match_instance.current_token_transfer_index as usize].clone()
         } else {
             return Err(error!(ErrorCode::NoDeltasFound));
         };
@@ -475,8 +475,8 @@ pub mod matches {
         let time_to_close = token_account_escrow.amount == tfer.amount;
         let match_seeds = &[
             PREFIX.as_bytes(),
-            match_account.win_oracle.as_ref(),
-            &[match_account.bump],
+            match_instance.win_oracle.as_ref(),
+            &[match_instance.bump],
         ];
 
         if let Some(to) = tfer.to {
@@ -489,7 +489,7 @@ pub mod matches {
                 source: token_account_escrow.to_account_info(),
                 destination: dest_acct_info,
                 amount: tfer.amount,
-                authority: match_account.to_account_info(),
+                authority: match_instance.to_account_info(),
                 authority_signer_seeds: match_seeds,
                 token_program: token_program.to_account_info(),
             })?;
@@ -498,7 +498,7 @@ pub mod matches {
                 mint: token_mint.to_account_info(),
                 source: token_account_escrow.to_account_info(),
                 amount: tfer.amount,
-                authority: match_account.to_account_info(),
+                authority: match_instance.to_account_info(),
                 authority_signer_seeds: Some(match_seeds),
                 token_program: token_program.to_account_info(),
             })?;
@@ -510,16 +510,16 @@ pub mod matches {
                 &token_account_escrow.to_account_info(),
                 &original_sender.to_account_info(),
                 token_program,
-                &match_account.to_account_info(),
+                &match_instance.to_account_info(),
                 match_seeds,
             )?;
-            match_account.token_types_removed = match_account
+            match_instance.token_types_removed = match_instance
                 .token_types_removed
                 .checked_add(1)
                 .ok_or(ErrorCode::NumericalOverflowError)?;
         }
 
-        match_account.current_token_transfer_index = match_account
+        match_instance.current_token_transfer_index = match_instance
             .current_token_transfer_index
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
@@ -531,7 +531,7 @@ pub mod matches {
         ctx: Context<'a, 'b, 'c, 'info, JoinMatch<'info>>,
         args: JoinMatchArgs,
     ) -> Result<()> {
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
         let token_account_escrow = &ctx.accounts.token_account_escrow;
         let source_token_account = &ctx.accounts.source_token_account;
         let token_transfer_authority = &ctx.accounts.token_transfer_authority;
@@ -557,21 +557,21 @@ pub mod matches {
             Some(&token_transfer_authority.key()),
         )?;
 
-        if match_account.join_allowed_during_start {
+        if match_instance.join_allowed_during_start {
             require!(
-                match_account.state == MatchState::Initialized
-                    || match_account.state == MatchState::Started,
+                match_instance.state == MatchState::Initialized
+                    || match_instance.state == MatchState::Started,
                 CannotEnterMatch
             );
         } else {
             require!(
-                match_account.state == MatchState::Initialized,
+                match_instance.state == MatchState::Initialized,
                 CannotEnterMatch
             );
         }
 
         if let Some(proof) = token_entry_validation_proof {
-            if let Some(root) = &match_account.token_entry_validation_root {
+            if let Some(root) = &match_instance.token_entry_validation_root {
                 if let Some(validation) = token_entry_validation {
                     let chief_node = anchor_lang::solana_program::keccak::hashv(&[
                         &[0x00],
@@ -592,7 +592,7 @@ pub mod matches {
             } else {
                 return Err(error!(ErrorCode::RootNotPresent));
             }
-        } else if let Some(val_arr) = &match_account.token_entry_validation {
+        } else if let Some(val_arr) = &match_instance.token_entry_validation {
             let mut validation = false;
             for val in val_arr {
                 if is_valid_validation(
@@ -619,7 +619,7 @@ pub mod matches {
             token_program: token_info,
         })?;
 
-        match_account.token_types_added = match_account
+        match_instance.token_types_added = match_instance
             .token_types_added
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
@@ -634,9 +634,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_account.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToJoinNamespace)),
         };
@@ -658,7 +658,7 @@ pub mod matches {
         if !joined {
             return Err(error!(ErrorCode::FailedToJoinNamespace));
         }
-        match_account.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -670,9 +670,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_account.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToLeaveNamespace)),
         };
@@ -698,7 +698,7 @@ pub mod matches {
         if !left {
             return Err(error!(ErrorCode::FailedToLeaveNamespace));
         }
-        match_account.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -711,9 +711,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_account.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToCache)),
         };
@@ -735,7 +735,7 @@ pub mod matches {
         if !cached {
             return Err(error!(ErrorCode::FailedToCache));
         }
-        match_account.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -747,9 +747,9 @@ pub mod matches {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let match_account = &mut ctx.accounts.match_account;
+        let match_instance = &mut ctx.accounts.match_instance;
 
-        let namespaces = match match_account.namespaces.clone() {
+        let namespaces = match match_instance.namespaces.clone() {
             Some(namespaces) => namespaces,
             None => return Err(error!(ErrorCode::FailedToUncache)),
         };
@@ -771,7 +771,7 @@ pub mod matches {
         if !uncached {
             return Err(error!(ErrorCode::FailedToUncache));
         }
-        match_account.namespaces = Some(new_namespaces);
+        match_instance.namespaces = Some(new_namespaces);
 
         Ok(())
     }
@@ -781,7 +781,7 @@ pub mod matches {
 #[instruction(args: CreateMatchArgs)]
 pub struct CreateMatch<'info> {
     #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= Match::space() as u64)]
-    match_account: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
@@ -791,26 +791,26 @@ pub struct CreateMatch<'info> {
 #[derive(Accounts)]
 #[instruction(args: UpdateMatchArgs)]
 pub struct UpdateMatch<'info> {
-    #[account(mut, constraint=match_account.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref()], bump=match_account.bump)]
-    match_account: Account<'info, Match>,
-    #[account(constraint=win_oracle.key() == match_account.win_oracle)]
+    #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
+    #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
     authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UpdateMatchFromOracle<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref()], bump=match_account.bump)]
-    match_account: Account<'info, Match>,
-    #[account(constraint=win_oracle.key() == match_account.win_oracle)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
+    #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]
 pub struct DrainMatch<'info> {
-    #[account(mut, constraint=match_account.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref()], bump=match_account.bump)]
-    match_account: Account<'info, Match>,
+    #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
     authority: Signer<'info>,
     receiver: UncheckedAccount<'info>,
 }
@@ -819,7 +819,7 @@ pub struct DrainMatch<'info> {
 #[instruction(args: DrainOracleArgs)]
 pub struct DrainOracle<'info> {
     #[account(seeds=[PREFIX.as_bytes(), oracle.key().as_ref()], bump)]
-    match_account: UncheckedAccount<'info>,
+    match_instance: UncheckedAccount<'info>,
     #[account(mut, seeds=[PREFIX.as_bytes(), authority.key().as_ref(), args.seed.as_ref()], bump)]
     oracle: Account<'info, WinOracle>,
     authority: Signer<'info>,
@@ -830,10 +830,10 @@ pub struct DrainOracle<'info> {
 #[derive(Accounts)]
 #[instruction(args: JoinMatchArgs)]
 pub struct JoinMatch<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref()], bump=match_account.bump)]
-    match_account: Box<Account<'info, Match>>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Box<Account<'info, Match>>,
     token_transfer_authority: Signer<'info>,
-    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref(), token_mint.key().as_ref(), source_token_account.owner.as_ref()], bump, token::mint = token_mint, token::authority = match_account, payer=payer)]
+    #[account(init_if_needed, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), source_token_account.owner.as_ref()], bump, token::mint = token_mint, token::authority = match_instance, payer=payer)]
     token_account_escrow: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     token_mint: Box<Account<'info, Mint>>,
@@ -852,15 +852,15 @@ pub struct JoinMatch<'info> {
 #[derive(Accounts)]
 #[instruction(args: DisburseTokensByOracleArgs)]
 pub struct DisburseTokensByOracle<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref()], bump=match_account.bump)]
-    match_account: Account<'info, Match>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref(), token_mint.key().as_ref(), original_sender.key().as_ref()], bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), original_sender.key().as_ref()], bump)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     token_mint: Account<'info, Mint>,
     #[account(mut, constraint=destination_token_account.mint == token_mint.key())]
     destination_token_account: Account<'info, TokenAccount>,
-    #[account(constraint=win_oracle.key() == match_account.win_oracle)]
+    #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: Box<Account<'info, WinOracle>>,
     #[account(mut)]
     original_sender: UncheckedAccount<'info>,
@@ -872,9 +872,9 @@ pub struct DisburseTokensByOracle<'info> {
 #[derive(Accounts)]
 #[instruction(args: DisburseTokensByOracleArgs)]
 pub struct DisbursePlayerTokensByOracle<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref()], bump=match_account.bump)]
-    match_account: Account<'info, Match>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref(), player_token_mint.key().as_ref(), original_sender.key().as_ref()], bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), player_token_mint.key().as_ref(), original_sender.key().as_ref()], bump)]
     player_token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     player_token_mint: Account<'info, Mint>,
@@ -884,7 +884,7 @@ pub struct DisbursePlayerTokensByOracle<'info> {
     player_item_token_account: Account<'info, TokenAccount>,
     #[account(mut, constraint=destination_token_account.mint == token_mint.key())]
     destination_token_account: Account<'info, TokenAccount>,
-    #[account(constraint=win_oracle.key() == match_account.win_oracle)]
+    #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
     #[account(mut)]
     original_sender: UncheckedAccount<'info>,
@@ -895,10 +895,10 @@ pub struct DisbursePlayerTokensByOracle<'info> {
 #[derive(Accounts)]
 #[instruction(args: LeaveMatchArgs)]
 pub struct LeaveMatch<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref()], bump=match_account.bump)]
-    match_account: Account<'info, Match>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
     receiver: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), match_account.win_oracle.as_ref(), token_mint.key().as_ref(), receiver.key().as_ref()], bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), receiver.key().as_ref()], bump)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
     token_mint: Account<'info, Mint>,
@@ -923,7 +923,7 @@ pub struct CreateOrUpdateOracle<'info> {
 #[derive(Accounts)]
 pub struct MatchJoinNamespace<'info> {
     #[account(mut)]
-    match_account: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
     #[account()]
     /// CHECK: Use typed Program when we have a commons crate
     namespace: UncheckedAccount<'info>,
@@ -936,7 +936,7 @@ pub struct MatchJoinNamespace<'info> {
 #[derive(Accounts)]
 pub struct MatchLeaveNamespace<'info> {
     #[account(mut)]
-    match_account: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
     #[account()]
 
     /// CHECK: Use typed Program when we have a commons crate
@@ -951,7 +951,7 @@ pub struct MatchLeaveNamespace<'info> {
 #[instruction(page: u64)]
 pub struct MatchCacheNamespace<'info> {
     #[account(mut)]
-    match_account: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
 
     /// CHECK: Use typed Program when we have a commons crate
     #[account()]
@@ -965,7 +965,7 @@ pub struct MatchCacheNamespace<'info> {
 #[derive(Accounts)]
 pub struct MatchUncacheNamespace<'info> {
     #[account(mut)]
-    match_account: Account<'info, Match>,
+    match_instance: Account<'info, Match>,
 
     /// CHECK: Use typed Program when we have a commons crate
     #[account()]
@@ -999,6 +999,12 @@ pub struct Root {
     root: [u8; 32],
 }
 
+impl Root {
+    pub fn space() -> usize {
+        32
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
 pub enum InheritanceState {
     NotInherited,
@@ -1010,6 +1016,12 @@ pub enum InheritanceState {
 pub struct Callback {
     pub key: Pubkey,
     pub code: u64,
+}
+
+impl Callback {
+    pub fn space() -> usize {
+        32 + 8
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1058,22 +1070,22 @@ pub struct Match {
 
 impl Match {
     pub fn space() -> usize {
-        8 + 32
-            + 8
-            + 8
-            + 32
-            + 1
-            + 4
-            + (NamespaceAndIndex::SPACE * 10)
-            + 1
-            + 1
-            + 1
-            + 1
-            + 8
-            + 8
-            + 8
-            + 1
-            + 1
+        8 // anchor discriminator
+        + (1 + 4 + (NamespaceAndIndex::SPACE * 10)) // max 10 namespaces
+        + 32 // win_oracle
+        + 8 // win_oracle_cooldown
+        + 8 // last_oracle_check
+        + 32 // authority
+        + (1 + 8) // MatchState
+        + 1 // leave_allowed
+        + (1 + 8) // minimum_allowed_entry_time
+        + 1 // bump
+        + 8 // current_token_transfer_index
+        + 8 // token_types_added
+        + 8 // token_types_removed
+        + (1 + 4 + (TokenValidation::space() * 10)) // max 10 token_entry_validation
+        + (1 + Root::space()) // token_entry_validation_root
+        + 1 // join_allowed_during_start
     }
 }
 
@@ -1132,11 +1144,23 @@ pub enum Filter {
     Mint { mint: Pubkey },
 }
 
+impl Filter {
+    pub fn space() -> usize {
+        1 + 32
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TokenValidation {
     filter: Filter,
     is_blacklist: bool,
     validation: Option<Callback>,
+}
+
+impl TokenValidation {
+    pub fn space() -> usize {
+        Filter::space() + 1 + Callback::space()
+    }
 }
 
 #[error_code]
