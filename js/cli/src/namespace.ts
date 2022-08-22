@@ -3,12 +3,12 @@ import { CLI } from "@raindrop-studios/sol-command";
 import * as anchor from "@project-serum/anchor";
 import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
+import fs from "fs";
 import {
-  IDL as NamespaceProgramIDL,
-} from "../../idl/namespace";
+  Namespace as NamespaceProgramIDL,
+} from "../../lib/src/idls/namespace.idl"
 import { NamespaceProgram } from "../../lib/src/contract/namespace";
 import * as nsIx from "../../lib/src/instructions/namespace";
-import fs from "fs";
 import { Filter } from "../../lib/src/state/namespace";
 
 CLI.programCommandWithConfig(
@@ -19,7 +19,7 @@ CLI.programCommandWithConfig(
     const namespaceProgram = await initNsProgram(rpcUrl, keypair);
 
     const whitelistedStakingMints = config.whitelistedStakingMints.map(
-      (mint) => new anchor.web3.PublicKey(mint)
+      (mint) => new web3.PublicKey(mint)
     );
 
     const initializeNamespaceArgs: nsIx.InitializeNamespaceArgs = {

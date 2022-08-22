@@ -6,13 +6,25 @@
   "prettyName": "Trash with Frens",
   "desiredNamespaceArraySize": 2,
   "permissivenessSettings": {
-    "namespacePermissiveness": "ALL",
-    "itemPermissiveness": "ALL",
-    "playerPermissiveness": "ALL",
-    "matchPermissiveness": "ALL",
-    "missionPermissiveness": "NAMESPACE",
-    "cachePermissiveness": "ALL"
-  },
+    "namespacePermissiveness": {
+      "namespace": true
+    },
+    "itemPermissiveness": {
+      "whitelist": true
+    },
+    "playerPermissiveness": {
+      "all": true
+    },
+    "matchPermissiveness": {
+      "whitelist": true
+    },
+    "missionPermissiveness": {
+      "blacklist": true
+    },
+    "cachePermissiveness": {
+      "all": true
+    }
+  }, 
   "whitelistedStakingMints": [
     "AeVUZ6ZHBZhCHVyg7CtfE7ysRgH45iMD4k3CRLM37ffH"
   ]
