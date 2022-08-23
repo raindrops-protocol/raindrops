@@ -422,7 +422,7 @@ programCommand("drain_oracle")
     //@ts-ignore
     const config = JSON.parse(configString);
 
-    if (config.resize === undefined) {
+    if (!config.resize) {
       throw new Error("Must specify a new size");
     }
     await anchorProgram.resizeOracle({
@@ -431,7 +431,6 @@ programCommand("drain_oracle")
         : walletKeyPair.publicKey,
       seed: config.oracleState.seed,
       resize: new BN(config.resize),
-
     });
   });
 

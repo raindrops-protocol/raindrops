@@ -545,8 +545,6 @@ export class MatchesInstruction {
 
   async resizeOracle(
     args: ResizeOracleArgs,
-    _accounts = {},
-    _additionalArgs = {}
   ) {
     const [oracle, _oracleBump] = await getOracle(
       new web3.PublicKey(args.seed),
