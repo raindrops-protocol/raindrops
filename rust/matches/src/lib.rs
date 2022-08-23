@@ -100,7 +100,7 @@ pub mod matches {
     use super::*;
 
     pub fn resize_oracle<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, ReizeOracle<'info>>,
+        ctx: Context<'a, 'b, 'c, 'info, ResizeOracle<'info>>,
         args: ResizeOracleArgs,
     ) -> Result<()> {
           
@@ -795,13 +795,13 @@ pub struct LeaveMatch<'info> {
     token_program: Program<'info, Token>,
 }
 
-// https://github.com/raindrops-protocol/raindrops/pull/27
-
 #[derive(Accounts)]
 #[instruction(args: ResizeOracleArgs)]
 pub struct ResizeOracle<'info> {
-    #[account(mut, seeds=[PREFIX.as_bytes(), payer.key().as_ref(), args.seed.as_ref()])]
-    oracle: Account<'info, WinOracle>,
+    #[account(constraint=oracle.key() == match_instance.win_oracle)]
+    oracle: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,

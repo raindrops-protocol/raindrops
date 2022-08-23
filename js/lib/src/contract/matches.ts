@@ -119,7 +119,11 @@ export interface CreateMatchAdditionalArgs {
   tokenTransferRoot: null;
   tokenTransfers: null | AnchorTokenDelta[];
 }
-
+export interface ResizeOracleArgs {
+  seed: string;
+  authority: web3.PublicKey;
+  resize: BN;
+}
 export interface CreateOrUpdateOracleArgs {
   seed: string;
   authority: web3.PublicKey;
@@ -538,6 +542,37 @@ export class MatchesInstruction {
       signers: [],
     };
   }
+
+  async resizeOracle(
+    args: ResizeOracleArgs,
+    _accounts = {},
+    _additionalArgs = {}
+  ) {
+    const [oracle, _oracleBump] = await getOracle(
+      new web3.PublicKey(args.seed),
+      args.authority
+    );
+
+    const match = (await getMatch(oracle))[0];
+  
+    return {
+      instructions: [
+        await this.program.methods
+          .resizeOracle({
+            ...args,
+          })
+          .accounts({
+            oracle,
+            matchInstance: match,
+            payer: (this.program.provider as AnchorProvider).wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+          })
+          .instruction(),
+      ],
+      signers: [],
+    };
+  }
 }
 
 export class MatchesProgram {
@@ -737,6 +772,22 @@ export class MatchesProgram {
   ) {
     const { instructions, signers } =
       await this.instruction.createOrUpdateOracle(args);
+
+    await sendTransactionWithRetry(
+      (this.program.provider as AnchorProvider).connection,
+      (this.program.provider as AnchorProvider).wallet,
+      instructions,
+      signers
+    );
+  }
+
+  async resizeOracle(
+    args: ResizeOracleArgs,
+    _accounts = {},
+    _additionalArgs = {}
+  ) {
+    const { instructions, signers } =
+      await this.instruction.resizeOracle(args);
 
     await sendTransactionWithRetry(
       (this.program.provider as AnchorProvider).connection,

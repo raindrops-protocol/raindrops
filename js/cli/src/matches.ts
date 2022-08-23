@@ -403,6 +403,35 @@ programCommand("drain_oracle")
     );
   });
 
+  programCommand("resize_oracle")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    await anchorProgram.resizeOracle({
+      authority: config.oracleState.authority
+        ? new web3.PublicKey(config.oracleState.authority)
+        : walletKeyPair.publicKey,
+      seed: config.oracleState.seed,
+      resize: config.resize ? new BN(config.resize) : new BN(150),
+
+    });
+  });
+
 programCommand("create_or_update_oracle")
   .requiredOption(
     "-cp, --config-path <string>",
@@ -430,7 +459,6 @@ programCommand("create_or_update_oracle")
       tokenTransferRoot: config.oracleState.tokenTransferRoot,
       tokenTransfers: config.oracleState.tokenTransfers,
       space: config.space ? new BN(config.space) : new BN(150),
-      resize: config.resize ? new BN(config.resize) : new BN(150),
       finalized: config.oracleState.finalized,
     });
   });
