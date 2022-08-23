@@ -2079,10 +2079,7 @@ __metadata:
     "@metaplex-foundation/mpl-token-metadata": ^2.2.2
     "@project-serum/anchor": ^0.25.0
     "@project-serum/common": ^0.0.1-beta.3
-<<<<<<< HEAD
     "@raindrops-protocol/raindrops": "workspace:^"
-=======
->>>>>>> 777c2d3ec2d75f4415da8f4ce88251cdbb94a880
     "@solana/spl-token": ^0.3.1
     "@types/bn.js": ^5.1.0
     "@types/chai": ^4.3.1
