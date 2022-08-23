@@ -73,6 +73,7 @@ programCommand("create_item_class")
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
           : null,
+        parentOfParentClass: null,
         parentOfParentClassMint: config.parent?.parent
           ? new web3.PublicKey(config.parent.parent.mint)
           : null,
