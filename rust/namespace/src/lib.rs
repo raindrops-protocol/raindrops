@@ -609,9 +609,7 @@ pub struct NamespaceGatekeeper {
 
 // TODO get this right
 impl NamespaceGatekeeper {
-    pub fn space() -> usize {
-        8 + 1 + 32 + ARTIFACT_FILTER_SIZE
-    }
+    pub const SPACE: usize = 8 + 1 + 32 + ARTIFACT_FILTER_SIZE;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -653,9 +651,7 @@ pub struct NamespaceIndex {
 }
 
 impl NamespaceIndex {
-    pub fn space() -> usize {
-        8 + 32 + 1 + 8 + (4 + (32 * MAX_CACHED_ITEMS_PER_INDEX))
-    }
+    pub const SPACE: usize = 8 + 32 + 1 + 8 + (4 + (32 * MAX_CACHED_ITEMS_PER_INDEX));
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -751,7 +747,7 @@ pub struct CreateNamespaceGatekeeper<'info> {
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(init, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, payer=payer, space=NamespaceGatekeeper::space())]
+    #[account(init, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, payer=payer, space=NamespaceGatekeeper::SPACE)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: Signer<'info>,
     #[account(mut)]
@@ -885,7 +881,7 @@ pub struct CacheArtifact<'info> {
     namespace: Account<'info, Namespace>,
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(init_if_needed, payer = payer, space = NamespaceIndex::space(), seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
+    #[account(init_if_needed, payer = payer, space = NamespaceIndex::SPACE, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,

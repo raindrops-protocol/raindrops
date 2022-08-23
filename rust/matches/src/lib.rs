@@ -780,7 +780,7 @@ pub mod matches {
 #[derive(Accounts)]
 #[instruction(args: CreateMatchArgs)]
 pub struct CreateMatch<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= Match::space() as u64)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= Match::SPACE as u64)]
     match_instance: Account<'info, Match>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -1000,9 +1000,7 @@ pub struct Root {
 }
 
 impl Root {
-    pub fn space() -> usize {
-        32
-    }
+    pub const SPACE: usize = 32;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
@@ -1019,9 +1017,7 @@ pub struct Callback {
 }
 
 impl Callback {
-    pub fn space() -> usize {
-        32 + 8
-    }
+    pub const SPACE: usize = 32 + 8; 
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1069,7 +1065,7 @@ pub struct Match {
 }
 
 impl Match {
-    pub fn space() -> usize {
+    pub const SPACE: usize =
         8 // anchor discriminator
         + (1 + 4 + (NamespaceAndIndex::SPACE * 10)) // max 10 namespaces
         + 32 // win_oracle
@@ -1083,10 +1079,9 @@ impl Match {
         + 8 // current_token_transfer_index
         + 8 // token_types_added
         + 8 // token_types_removed
-        + (1 + 4 + (TokenValidation::space() * 10)) // max 10 token_entry_validation
-        + (1 + Root::space()) // token_entry_validation_root
-        + 1 // join_allowed_during_start
-    }
+        + (1 + 4 + (TokenValidation::SPACE * 10)) // max 10 token_entry_validation
+        + (1 + Root::SPACE) // token_entry_validation_root
+        + 1; // join_allowed_during_start
 }
 
 #[account]
@@ -1145,9 +1140,7 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub fn space() -> usize {
-        1 + 32
-    }
+    pub const SPACE: usize = 1 + 32; 
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1158,9 +1151,7 @@ pub struct TokenValidation {
 }
 
 impl TokenValidation {
-    pub fn space() -> usize {
-        Filter::space() + 1 + Callback::space()
-    }
+    pub const SPACE: usize = Filter::SPACE + 1 + Callback::SPACE;
 }
 
 #[error_code]
