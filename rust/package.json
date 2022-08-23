@@ -27,7 +27,12 @@
     "@metaplex-foundation/mpl-token-metadata": "^2.2.2",
     "@project-serum/anchor": "^0.25.0",
     "@project-serum/common": "^0.0.1-beta.3",
+<<<<<<< HEAD
     "@raindrops-protocol/raindrops": "workspace:^",
     "@solana/spl-token": "^0.3.1"
+=======
+    "@solana/spl-token": "^0.3.1",
+    "quicktype-core": "^6.0.70"
+>>>>>>> 777c2d3ec2d75f4415da8f4ce88251cdbb94a880
   }
 }
