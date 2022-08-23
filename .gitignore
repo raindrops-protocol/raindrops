@@ -9,6 +9,7 @@
 .DS_Store
 .env
 .idea
+.gitpod.yml
 ./package-lock.json
 .vscode
 bin

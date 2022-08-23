@@ -104,7 +104,7 @@ pub mod matches {
         args: ResizeOracleArgs,
     ) -> Result<()> {
           
-        let win_oracle = &mut ctx.accounts.oracle;
+        let win_oracle = &mut ctx.accounts.winOracle;
 
         let win_oracle_account = win_oracle.to_account_info();
         
@@ -798,8 +798,8 @@ pub struct LeaveMatch<'info> {
 #[derive(Accounts)]
 #[instruction(args: ResizeOracleArgs)]
 pub struct ResizeOracle<'info> {
-    #[account(constraint=oracle.key() == match_instance.win_oracle)]
-    oracle: UncheckedAccount<'info>,
+    #[account(constraint=winOracle.key() == match_instance.win_oracle)]
+    winOracle: UncheckedAccount<'info>,
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
     #[account(mut)]
