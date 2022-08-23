@@ -11,10 +11,10 @@ export class PermissivenessSettings {
 }
 
 export enum Permissiveness {
-  All,
-  Whitelist,
-  Blacklist,
-  Namespace,
+  All = "ALL",
+  Whitelist = "WHITELIST",
+  Blacklist = "BLACKLIST",
+  Namespace = "NAMESPACE",
 }
 
 // conver enum to an anchor compatible type
@@ -75,9 +75,9 @@ export class Filter {
 }
 
 export enum FilterType {
-  FilterNamespaces,
-  FilterCategories,
-  FilterKey,
+  FilterNamespaces = "NAMESPACES",
+  FilterCategories = "CATEGORIES",
+  FilterKey = "KEY",
 }
 
 export class FilterNamespaces {
@@ -101,10 +101,10 @@ export interface FilterKey {
 }
 
 export enum TokenType {
-  Player,
-  Item,
-  Mission,
-  Namespace,
+  Player = "PLAYER",
+  Item = "ITEM",
+  Mission = "MISSION",
+  Namespace = "NAMESPACE",
 }
 
 // conver enum to an anchor compatible type
