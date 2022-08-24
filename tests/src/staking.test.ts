@@ -2,14 +2,12 @@ import * as anchor from "@project-serum/anchor";
 import { Transaction } from "@raindrop-studios/sol-kit";
 import {
   ItemProgram,
-  NamespaceProgram,
   StakingProgram,
   Instructions,
   Utils,
 } from "@raindrops-protocol/raindrops";
 import { IDL as ItemProgramIDL } from "./types/item";
 import { IDL as StakingProgramIDL } from "./types/staking";
-import { IDL as NamespaceProgramIDL } from "./types/namespace";
 import {
   createMintNFTInstructions,
   createMintTokensInstructions,
@@ -35,15 +33,6 @@ describe("Staking Program", () => {
       provider,
       idl: ItemProgramIDL,
     });
-
-    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
-      NamespaceProgram,
-      {
-        asyncSigning: false,
-        provider,
-        idl: NamespaceProgramIDL,
-      }
-    );
 
     const stakingProgram = await StakingProgram.getProgramWithConfig(
       StakingProgram,
@@ -459,5 +448,114 @@ describe("Staking Program", () => {
       );
 
     expect(beginArtifactStakeWarmupTxid).toBeDefined();
+
+    // STEP 9: Ends artifact stake warmup
+
+    ixs = [];
+
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
+      index: new anchor.BN(itemIndex),
+      stakingIndex: new anchor.BN(stakingIndex),
+      artifactClassMint: itemClassMintKeypair.publicKey,
+      artifactMint: itemMintKeypair.publicKey,
+    } as Instructions.Staking.EndArtifactStakeWarmupArgs;
+
+    accounts = {
+      artifactClass: artifactClassPDA,
+      artifact: artifactPDA,
+      stakingMint: stakingMintKeypair.publicKey,
+    } as Instructions.Staking.EndArtifactStakeWarmupAccounts;
+
+    const endArtifactStakeWarmupIxs =
+      await stakingProgram.instruction.beginArtifactStakeWarmup(args, accounts);
+
+    ixs.push(...endArtifactStakeWarmupIxs);
+
+    const { txid: endArtifactStakeWarmupTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        []
+      );
+
+    expect(endArtifactStakeWarmupTxid).toBeDefined();
+
+    // STEP 10: Begins artifact stake cooldown
+
+    ixs = [];
+
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
+      parentClassIndex: null,
+      index: new anchor.BN(itemIndex),
+      stakingIndex: new anchor.BN(stakingIndex),
+      artifactClassMint: itemClassMintKeypair.publicKey,
+      artifactMint: itemMintKeypair.publicKey,
+      stakingPermissivenessToUse: { tokenHolder: true },
+    } as Instructions.Staking.BeginArtifactStakeCooldownArgs;
+
+    accounts = {
+      artifactClass: artifactClassPDA,
+      artifact: artifactPDA,
+      stakingAccount: stakingMintAta,
+      parentClassAccount: null,
+      parentClassMint: null,
+      parentClass: null,
+      metadataUpdateAuthority: walletKeypair.publicKey,
+    } as Instructions.Staking.BeginArtifactStakeCooldownAccounts;
+
+    const beginArtifactStakeCooldownIxs =
+      await stakingProgram.instruction.beginArtifactStakeCooldown(
+        args,
+        accounts
+      );
+
+    ixs.push(...beginArtifactStakeCooldownIxs);
+
+    const { txid: beginArtifactStakeCooldownTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        []
+      );
+
+    expect(beginArtifactStakeCooldownTxid).toBeDefined();
+
+    // STEP 11: Ends artifact stake cooldown
+
+    ixs = [];
+
+    args = {
+      classIndex: new anchor.BN(itemClassIndex),
+      index: new anchor.BN(itemIndex),
+      stakingIndex: new anchor.BN(stakingIndex),
+      artifactClassMint: itemClassMintKeypair.publicKey,
+      artifactMint: itemMintKeypair.publicKey,
+    } as Instructions.Staking.EndArtifactStakeCooldownArgs;
+
+    accounts = {
+      artifactClass: artifactClassPDA,
+      artifact: artifactPDA,
+      stakingAccount: stakingMintAta,
+      stakingMint: stakingMintKeypair.publicKey,
+    } as Instructions.Staking.EndArtifactStakeCooldownAccounts;
+
+    const endArtifactStakeCooldownIxs =
+      await stakingProgram.instruction.endArtifactStakeCooldown(args, accounts);
+
+    ixs.push(...endArtifactStakeCooldownIxs);
+
+    const { txid: endArtifactStakeCooldownTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        []
+      );
+
+    expect(endArtifactStakeCooldownTxid).toBeDefined();
   });
 });
