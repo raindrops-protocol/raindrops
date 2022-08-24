@@ -1208,7 +1208,7 @@ pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
                         .checked_add(actual_new_base_change)
                         .ok_or(ErrorCode::NumericalOverflowError)?;
 
-                    msg!("New numer {:?} {:?}", new_numerator, new_denominator);
+                    msg!("Temp change is {:?}", temp_change);
 
                     let mut new_temporary_numerator = temporary_numerator
                         .checked_mul(new_numerator)

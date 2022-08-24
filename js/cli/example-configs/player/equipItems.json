@@ -7,11 +7,11 @@
   "metadataUpdateAuthority": null,
   "items": [
     {
-      "itemClassMint": "AQ62DZyafWLzXYEn5ngfW5NmUz5Yot6RnRbK9GJU7Y9j",
-      "itemMint": "AQ62DZyafWLzXYEn5ngfW5NmUz5Yot6RnRbK9GJU7Y9j",
+      "itemClassMint": "7t5G3x4Zq5p2ZbAX8owcSi1tiLwLwYTDMJc1FmAYYpb7",
+      "itemMint": "7t5G3x4Zq5p2ZbAX8owcSi1tiLwLwYTDMJc1FmAYYpb7",
       "itemIndex": 1,
       "amount": 1,
-      "bodyPartIndex": 0,
+      "bodyPartIndex": 1,
       "itemUsageIndex": 0,
       "equipping": false
     }
