@@ -5,17 +5,11 @@ import log from "loglevel";
 import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
 
-import {
- Wallet
-} from "@raindrop-studios/sol-command";
-import {
-  getMatchesProgram,
-  Utils,
-  State
-} from "@raindrops-protocol/raindrops";
+import { Wallet } from "@raindrop-studios/sol-command";
+import { getMatchesProgram, Utils, State, CreateMatchArgs } from "@raindrops-protocol/raindrops";
 
 const { loadWalletKey } = Wallet;
-const { PDA } = Utils
+const { PDA } = Utils;
 import MatchesState = State.Matches;
 
 programCommand("create_match")
@@ -37,38 +31,39 @@ programCommand("create_match")
     //@ts-ignore
     const config = JSON.parse(configString);
 
-    await anchorProgram.createMatch(
-      {
-        winOracle: config.winOracle
-          ? new web3.PublicKey(config.winOracle)
-          : (
-              await PDA.getOracle(
-                new web3.PublicKey(config.oracleState.seed),
+    let createMatchArgs: CreateMatchArgs = {
+      winOracle: config.winOracle
+        ? new web3.PublicKey(config.winOracle)
+        : (
+            await PDA.getOracle(
+              new web3.PublicKey(config.oracleState.seed),
 
-                config.oracleState.authority
-                  ? new web3.PublicKey(config.oracleState.authority)
-                  : walletKeyPair.publicKey
-              )
-            )[0],
-        matchState: config.matchState || { draft: true },
-        tokenEntryValidationRoot: null,
-        tokenEntryValidation: config.tokenEntryValidation
-          ? config.tokenEntryValidation
-          : null,
-        winOracleCooldown: new BN(config.winOracleCooldown || 0),
-        authority: config.authority
-          ? new web3.PublicKey(config.authority)
-          : walletKeyPair.publicKey,
-        space: config.space ? new BN(config.space) : new BN(150),
-        leaveAllowed: config.leaveAllowed,
-        joinAllowedDuringStart: config.joinAllowedDuringStart,
-        minimumAllowedEntryTime: config.minimumAllowedEntryTime
-          ? new BN(config.minimumAllowedEntryTime)
-          : null,
-      },
-      {},
-      config.oracleState
-    );
+              config.oracleState.authority
+                ? new web3.PublicKey(config.oracleState.authority)
+                : walletKeyPair.publicKey
+            )
+          )[0],
+      matchState: config.matchState || { draft: true },
+      tokenEntryValidationRoot: null,
+      tokenEntryValidation: config.tokenEntryValidation
+        ? config.tokenEntryValidation
+        : null,
+      winOracleCooldown: new BN(config.winOracleCooldown || 0),
+      authority: config.authority
+        ? new web3.PublicKey(config.authority)
+        : walletKeyPair.publicKey,
+      space: config.space ? new BN(config.space) : new BN(150),
+      leaveAllowed: config.leaveAllowed,
+      joinAllowedDuringStart: config.joinAllowedDuringStart,
+      minimumAllowedEntryTime: config.minimumAllowedEntryTime
+        ? new BN(config.minimumAllowedEntryTime)
+        : null,
+    };
+    if (config.desiredNamespaceArraySize) {
+      createMatchArgs.desiredNamespaceArraySize = new BN(config.desiredNamespaceArraySize);
+    }
+
+    await anchorProgram.createMatch(createMatchArgs, {}, config.oracleState);
   });
 
 programCommand("update_match")
@@ -501,7 +496,10 @@ programCommand("show_match")
       o.tokenTransfers.map((k) => {
         log.info("--> From:", k.from.toBase58());
         log.info("--> To:", k.to ? k.to.toBase58() : "Burn");
-        log.info("--> Transfer Type:", MatchesState.TokenTransferType[k.tokenTransferType]);
+        log.info(
+          "--> Transfer Type:",
+          MatchesState.TokenTransferType[k.tokenTransferType]
+        );
         log.info("--> Mint:", k.mint.toBase58());
         log.info("--> Amount:", k.amount.toNumber());
       });
