@@ -108,16 +108,16 @@ export class Callback {
 
 export class NamespaceAndIndex {
   namespace: web3.PublicKey;
-  indexed: boolean;
+  index: number | null;
   inherited: InheritanceState;
 
   constructor(args: {
     namespace: web3.PublicKey;
-    indexed: boolean;
+    index: number | null;
     inherited: InheritanceState;
   }) {
     this.namespace = args.namespace;
-    this.indexed = args.indexed;
+    this.index = args.index;
     this.inherited = args.inherited;
   }
 }

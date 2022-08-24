@@ -1,28 +1,12 @@
 pub mod utils;
 
 use crate::utils::{
-    assert_derivation, assert_initialized, assert_is_ata, assert_owned_by, close_token_account,
-    create_or_allocate_account_raw, get_mask_and_index_for_seq, is_part_of_namespace,
-    is_valid_validation, spl_token_burn, spl_token_mint_to, spl_token_transfer, verify,
-    TokenBurnParams, TokenTransferParams,
+    assert_is_ata, close_token_account, is_namespace_program_caller, is_valid_validation,
+    spl_token_burn, spl_token_transfer, verify, TokenBurnParams, TokenTransferParams,
 };
-use anchor_lang::{
-    prelude::*,
-    solana_program::{
-        program::{invoke, invoke_signed},
-        program_option::COption,
-        program_pack::Pack,
-        system_instruction, system_program,
-    },
-    AnchorDeserialize, AnchorSerialize, Discriminator,
-};
+use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_spl::token::{Mint, TokenAccount};
 use arrayref::array_ref;
-use metaplex_token_metadata::instruction::{
-    create_master_edition, create_metadata_accounts,
-    mint_new_edition_from_master_edition_via_token, update_metadata_accounts,
-};
-use spl_token::instruction::{initialize_account2, mint_to};
 anchor_lang::declare_id!("mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ");
 pub const PREFIX: &str = "matches";
 
@@ -52,6 +36,7 @@ pub struct CreateMatchArgs {
     leave_allowed: bool,
     join_allowed_during_start: bool,
     minimum_allowed_entry_time: Option<u64>,
+    desired_namespace_array_size: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -139,6 +124,7 @@ pub mod matches {
             authority,
             leave_allowed,
             minimum_allowed_entry_time,
+            desired_namespace_array_size,
             ..
         } = args;
 
@@ -160,6 +146,23 @@ pub mod matches {
         match_instance.authority = authority;
         match_instance.minimum_allowed_entry_time = minimum_allowed_entry_time;
         match_instance.leave_allowed = leave_allowed;
+
+        msg!("namespaces");
+        if desired_namespace_array_size > 0 {
+            let mut namespace_arr = vec![];
+
+            for _n in 0..desired_namespace_array_size {
+                namespace_arr.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
+            }
+
+            match_instance.namespaces = Some(namespace_arr);
+        } else {
+            match_instance.namespaces = None
+        }
 
         Ok(())
     }
@@ -623,12 +626,161 @@ pub mod matches {
 
         Ok(())
     }
+
+    pub fn match_join_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchJoinNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_instance = &mut ctx.accounts.match_instance;
+
+        let namespaces = match match_instance.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToJoinNamespace)),
+        };
+
+        let mut joined = false;
+        let mut new_namespaces = vec![];
+        for ns in namespaces {
+            if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+                joined = true;
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: ctx.accounts.namespace.key(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !joined {
+            return Err(error!(ErrorCode::FailedToJoinNamespace));
+        }
+        match_instance.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn match_leave_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchLeaveNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_instance = &mut ctx.accounts.match_instance;
+
+        let namespaces = match match_instance.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToLeaveNamespace)),
+        };
+
+        let mut left = false;
+        let mut new_namespaces = vec![];
+        for ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !left {
+                // if the artifact is still cached, error
+                if ns.index != None {
+                    return Err(error!(ErrorCode::FailedToLeaveNamespace));
+                };
+                left = true;
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: anchor_lang::solana_program::system_program::id(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !left {
+            return Err(error!(ErrorCode::FailedToLeaveNamespace));
+        }
+        match_instance.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn match_cache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchCacheNamespace<'info>>,
+        page: u64,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_instance = &mut ctx.accounts.match_instance;
+
+        let namespaces = match match_instance.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToCache)),
+        };
+
+        let mut cached = false;
+        let mut new_namespaces = vec![];
+        for ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !cached {
+                cached = true;
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: ns.namespace,
+                    index: Some(page),
+                    inherited: InheritanceState::NotInherited,
+                });
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !cached {
+            return Err(error!(ErrorCode::FailedToCache));
+        }
+        match_instance.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
+
+    pub fn match_uncache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, MatchUncacheNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        let match_instance = &mut ctx.accounts.match_instance;
+
+        let namespaces = match match_instance.namespaces.clone() {
+            Some(namespaces) => namespaces,
+            None => return Err(error!(ErrorCode::FailedToUncache)),
+        };
+
+        let mut uncached = false;
+        let mut new_namespaces = vec![];
+        for ns in namespaces {
+            if ns.namespace == ctx.accounts.namespace.key() && !uncached {
+                uncached = true;
+                new_namespaces.push(NamespaceAndIndex {
+                    namespace: ctx.accounts.namespace.key(),
+                    index: None,
+                    inherited: InheritanceState::NotInherited,
+                });
+            } else {
+                new_namespaces.push(ns);
+            }
+        }
+        if !uncached {
+            return Err(error!(ErrorCode::FailedToUncache));
+        }
+        match_instance.namespaces = Some(new_namespaces);
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
 #[instruction(args: CreateMatchArgs)]
 pub struct CreateMatch<'info> {
-    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= MIN_MATCH_SIZE as u64)]
+    #[account(init, seeds=[PREFIX.as_bytes(), args.win_oracle.as_ref()], bump, payer=payer, space=args.space as usize, constraint=args.space >= Match::SPACE as u64)]
     match_instance: Account<'info, Match>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -768,6 +920,62 @@ pub struct CreateOrUpdateOracle<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
+#[derive(Accounts)]
+pub struct MatchJoinNamespace<'info> {
+    #[account(mut)]
+    match_instance: Account<'info, Match>,
+    #[account()]
+    /// CHECK: Use typed Program when we have a commons crate
+    namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct MatchLeaveNamespace<'info> {
+    #[account(mut)]
+    match_instance: Account<'info, Match>,
+    #[account()]
+
+    /// CHECK: Use typed Program when we have a commons crate
+    namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(page: u64)]
+pub struct MatchCacheNamespace<'info> {
+    #[account(mut)]
+    match_instance: Account<'info, Match>,
+
+    /// CHECK: Use typed Program when we have a commons crate
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct MatchUncacheNamespace<'info> {
+    #[account(mut)]
+    match_instance: Account<'info, Match>,
+
+    /// CHECK: Use typed Program when we have a commons crate
+    #[account()]
+    namespace: UncheckedAccount<'info>,
+
+    // CHECK: checked by address constraint
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    instructions: UncheckedAccount<'info>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum MatchState {
     Draft,
@@ -791,6 +999,10 @@ pub struct Root {
     root: [u8; 32],
 }
 
+impl Root {
+    pub const SPACE: usize = 32;
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
 pub enum InheritanceState {
     NotInherited,
@@ -804,6 +1016,10 @@ pub struct Callback {
     pub code: u64,
 }
 
+impl Callback {
+    pub const SPACE: usize = 32 + 8; 
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ValidationArgs {
     // For enum detection on the other end.
@@ -814,49 +1030,58 @@ pub struct ValidationArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
-    namespace: Pubkey,
-    indexed: bool,
-    inherited: InheritanceState,
+    pub namespace: Pubkey,
+    pub index: Option<u64>,
+    pub inherited: InheritanceState,
 }
 
-pub const MIN_MATCH_SIZE: usize = 8 + // discriminator
-32 + // win oracle
-8 + // oracle cooldown
-8 + // last oracle check
-32 + // authority,
-1 + // match state
-1 + // leave allowed
-1 + // min valid entry
-1 + // bump
-8 + // current token tfer index
-8 + // token types added
-8 + // token types removed
-1 + // token_entry_validation
-1; // token entry validation root
+impl NamespaceAndIndex {
+    pub const SPACE: usize = 32 + 9 + 2;
+}
 
 use anchor_spl::token::Token;
 
 #[account]
 pub struct Match {
-    namespaces: Option<Vec<NamespaceAndIndex>>,
+    pub namespaces: Option<Vec<NamespaceAndIndex>>,
     // Win oracle must always present some rewards struct
     // for redistributing items
-    win_oracle: Pubkey,
-    win_oracle_cooldown: u64,
-    last_oracle_check: u64,
-    authority: Pubkey,
-    state: MatchState,
-    leave_allowed: bool,
-    minimum_allowed_entry_time: Option<u64>,
-    bump: u8,
+    pub win_oracle: Pubkey,
+    pub win_oracle_cooldown: u64,
+    pub last_oracle_check: u64,
+    pub authority: Pubkey,
+    pub state: MatchState,
+    pub leave_allowed: bool,
+    pub minimum_allowed_entry_time: Option<u64>,
+    pub bump: u8,
     /// Increased by 1 every time the next token transfer
     /// in the win oracle is completed.
-    current_token_transfer_index: u64,
-    token_types_added: u64,
-    token_types_removed: u64,
-    token_entry_validation: Option<Vec<TokenValidation>>,
-    token_entry_validation_root: Option<Root>,
-    join_allowed_during_start: bool,
+    pub current_token_transfer_index: u64,
+    pub token_types_added: u64,
+    pub token_types_removed: u64,
+    pub token_entry_validation: Option<Vec<TokenValidation>>,
+    pub token_entry_validation_root: Option<Root>,
+    pub join_allowed_during_start: bool,
+}
+
+impl Match {
+    pub const SPACE: usize =
+        8 // anchor discriminator
+        + (1 + 4 + (NamespaceAndIndex::SPACE * 10)) // max 10 namespaces
+        + 32 // win_oracle
+        + 8 // win_oracle_cooldown
+        + 8 // last_oracle_check
+        + 32 // authority
+        + (1 + 8) // MatchState
+        + 1 // leave_allowed
+        + (1 + 8) // minimum_allowed_entry_time
+        + 1 // bump
+        + 8 // current_token_transfer_index
+        + 8 // token_types_added
+        + 8 // token_types_removed
+        + (1 + 4 + (TokenValidation::SPACE * 10)) // max 10 token_entry_validation
+        + (1 + Root::SPACE) // token_entry_validation_root
+        + 1; // join_allowed_during_start
 }
 
 #[account]
@@ -914,11 +1139,19 @@ pub enum Filter {
     Mint { mint: Pubkey },
 }
 
+impl Filter {
+    pub const SPACE: usize = 1 + 32; 
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TokenValidation {
     filter: Filter,
     is_blacklist: bool,
     validation: Option<Callback>,
+}
+
+impl TokenValidation {
+    pub const SPACE: usize = Filter::SPACE + 1 + Callback::SPACE;
 }
 
 #[error_code]
@@ -999,4 +1232,18 @@ pub enum ErrorCode {
     NoParentPresent,
     #[msg("Reinitialization hack detected")]
     ReinitializationDetected,
+    #[msg("Failed to leave Namespace")]
+    FailedToLeaveNamespace,
+    #[msg("Failed to join Namespace")]
+    FailedToJoinNamespace,
+    #[msg("Unauthorized Caller")]
+    UnauthorizedCaller,
+    #[msg("Failed to cache")]
+    FailedToCache,
+    #[msg("Failed to uncache")]
+    FailedToUncache,
+    #[msg("Already cached")]
+    AlreadyCached,
+    #[msg("Not cached")]
+    NotCached,
 }
