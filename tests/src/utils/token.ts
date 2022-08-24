@@ -128,4 +128,67 @@ const createMintNFTInstructions = async (
   ];
 };
 
-export { createMintNFTInstructions };
+const createMintTokensInstructions = async (
+  provider: anchor.AnchorProvider,
+  mintPubkey: anchor.web3.PublicKey,
+  amount: number,
+  decimals: number
+) => {
+  const tokenProgram = anchor.Spl.token(provider);
+  const associatedTokenProgram = anchor.Spl.associatedToken(provider);
+
+  const mintSpace = tokenProgram.account.mint.size;
+  const balanceNeeded =
+    await provider.connection.getMinimumBalanceForRentExemption(mintSpace);
+
+  const createAccountIx = anchor.web3.SystemProgram.createAccount({
+    fromPubkey: provider.wallet.publicKey,
+    newAccountPubkey: mintPubkey,
+    lamports: balanceNeeded,
+    space: mintSpace,
+    programId: tokenProgram.programId,
+  });
+
+  const createInitMintIx = await tokenProgram.methods
+    .initializeMint(
+      decimals,
+      provider.wallet.publicKey,
+      provider.wallet.publicKey
+    )
+    .accounts({
+      mint: mintPubkey,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+    .instruction();
+
+  const ata = await anchor.utils.token.associatedAddress({
+    mint: mintPubkey,
+    owner: provider.wallet.publicKey,
+  });
+
+  const createAtaIx = await associatedTokenProgram.methods
+    .create()
+    .accounts({
+      authority: provider.wallet.publicKey,
+      associatedAccount: ata,
+      owner: provider.wallet.publicKey,
+      mint: mintPubkey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram: tokenProgram.programId,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+    .instruction();
+
+  const createMintToIx = await tokenProgram.methods
+    .mintTo(new anchor.BN(amount))
+    .accounts({
+      mint: mintPubkey,
+      to: ata,
+      authority: provider.wallet.publicKey,
+    })
+    .instruction();
+
+  return [createAccountIx, createInitMintIx, createAtaIx, createMintToIx];
+};
+
+export { createMintNFTInstructions, createMintTokensInstructions };
