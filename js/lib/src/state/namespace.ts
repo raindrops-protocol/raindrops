@@ -1,5 +1,6 @@
 import { web3 } from "@project-serum/anchor";
 import { NamespaceAndIndex } from "./common";
+import * as pids from "../constants/programIds";
 
 export class PermissivenessSettings {
   namespacePermissiveness: Permissiveness;
@@ -11,10 +12,10 @@ export class PermissivenessSettings {
 }
 
 export enum Permissiveness {
-  All,
-  Whitelist,
-  Blacklist,
-  Namespace,
+  All = "ALL",
+  Whitelist = "WHITELIST",
+  Blacklist = "BLACKLIST",
+  Namespace = "NAMESPACE",
 }
 
 // conver enum to an anchor compatible type
@@ -75,9 +76,9 @@ export class Filter {
 }
 
 export enum FilterType {
-  FilterNamespaces,
-  FilterCategories,
-  FilterKey,
+  FilterNamespaces = "NAMESPACES",
+  FilterCategories = "CATEGORIES",
+  FilterKey = "KEY",
 }
 
 export class FilterNamespaces {
@@ -101,10 +102,10 @@ export interface FilterKey {
 }
 
 export enum TokenType {
-  Player,
-  Item,
-  Mission,
-  Namespace,
+  Player = "PLAYER",
+  Item = "ITEM",
+  Mission = "MISSION",
+  Namespace = "NAMESPACE",
 }
 
 // conver enum to an anchor compatible type
@@ -166,7 +167,7 @@ export class Namespace {
       this.namespaces.map((n) => {
         log.info(`{`);
         log.info(`\tnamespace: ${n.namespace.toBase58()}`);
-        log.info(`\tindexed: ${n.indexed}`);
+        log.info(`\tindex: ${n.index}`);
         log.info(`\tinherited: ${Object.keys(n.inherited).join(", ")}`);
         log.info(`}`);
       });
@@ -265,5 +266,48 @@ export class NamespaceGatekeeper {
     this.artifactFilters = data.artifactFilters;
     this.namespace = data.namespace;
     this.bump = data.bump;
+  }
+}
+
+export class NamespaceIndex {
+  address: web3.PublicKey;
+  namespace: web3.PublicKey;
+  bump: number;
+  page: number;
+  caches: web3.PublicKey[];
+
+  constructor(address, data) {
+    this.address = address;
+    this.namespace = data.namespace;
+    this.bump = data.bump;
+    this.page = data.page;
+    this.caches = data.caches;
+  }
+}
+
+export enum RaindropsProgram {
+  Item,
+  Namespace,
+  Matches,
+  Staking,
+  Player,
+}
+
+export namespace RaindropsProgram {
+  export function getRaindropsProgram(program: RaindropsProgram): web3.PublicKey {
+    switch(program) {
+      case RaindropsProgram.Item:
+        return pids.ITEM_ID;
+      case RaindropsProgram.Namespace:
+        return pids.NAMESPACE_ID;
+      case RaindropsProgram.Matches:
+        return pids.MATCHES_ID;
+      case RaindropsProgram.Player:
+        return pids.PLAYER_ID;
+      case RaindropsProgram.Staking:
+        return pids.STAKING_ID;
+      default:
+        throw new Error(`Unknown RaindropsProgram: ${program}`);
+    };
   }
 }

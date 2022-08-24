@@ -22,3 +22,5 @@ spl-associated-token-account = { version="1.0.3", features = [ "no-entrypoint" ]
 spl-token = { version="3.1.1", features = [ "no-entrypoint" ] }
 metaplex-token-metadata = { version="0.0.1", features = [ "no-entrypoint" ] }
 raindrops-item = { features = [ "no-entrypoint", "cpi"], path = "../item" }
+raindrops-matches = { features = [ "no-entrypoint", "cpi"], path = "../matches" }
+raindrops-player = { features = [ "no-entrypoint", "cpi"], path = "../player" }
