@@ -404,6 +404,7 @@ pub mod item {
         msg!("store_mint");
         if store_mint {
             item_class.mint = Some(item_mint.key());
+            item_class.index = class_index;
         }
 
         msg!("namespaces");
@@ -2855,6 +2856,7 @@ pub struct DNPItem {
 
 pub const MIN_ITEM_CLASS_SIZE: usize = 8 + // key
 1 + // mint
+1 + // index
 1 + // metadata
 1 + // edition
 4 + // number of namespaces
@@ -3001,6 +3003,7 @@ pub struct ItemClass {
     pub namespaces: Option<Vec<NamespaceAndIndex>>,
     pub parent: Option<Pubkey>,
     pub mint: Option<Pubkey>,
+    pub index: Option<u64>,
     pub metadata: Option<Pubkey>,
     /// If not present, only Destruction/Infinite consumption types are allowed,
     /// And no cooldowns because we can't easily track a cooldown
