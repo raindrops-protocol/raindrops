@@ -1,11 +1,13 @@
 pub mod utils;
 
+use std::str::FromStr;
+
 use crate::utils::{
     assert_initialized, assert_metadata_valid, check_permissiveness_against_holder,
     lowest_available_page, pull_namespaces,
 };
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, Token, TokenAccount};
 use raindrops_item::cpi::{
     accounts::{
         ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
@@ -29,6 +31,10 @@ const GATEKEEPER: &str = "gatekeeper";
 const MAX_WHITELIST: usize = 5;
 const MAX_CACHED_ITEMS_PER_INDEX: usize = 100;
 
+const RAIN_TOKEN_MINT: &str = "7uWQV1UcWUXmfUSvJPuqVivcNqJwQFfKZjxrttMkDuch";
+const RAIN_TOKEN_VAULT_AUTHORITY: &str = "D1ZCwPPkGNJabsP8GPshmaVTNHxYwQ9bp1fcE22gftLN";
+const RAIN_PAYMENT_AMOUNT: u64 = 1_000_000_000; // 1 token if 9 decimals
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitializeNamespaceArgs {
     desired_namespace_array_size: u64,
@@ -36,6 +42,7 @@ pub struct InitializeNamespaceArgs {
     pretty_name: String,
     permissiveness_settings: PermissivenessSettings,
     whitelisted_staking_mints: Vec<Pubkey>,
+    payment_amount: Option<u64>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -69,6 +76,7 @@ pub mod namespace {
             pretty_name,
             permissiveness_settings,
             whitelisted_staking_mints,
+            payment_amount,
         } = args;
 
         if uuid.len() > 6 {
@@ -113,6 +121,17 @@ pub mod namespace {
             namespace.namespaces = None
         }
         msg!("{:?}", permissiveness_settings);
+
+        // either 2 or no remaining accounts are allowed
+        if ctx.remaining_accounts.len() == 2 {
+            namespace.payment_mint = Some(ctx.remaining_accounts[0].key());
+            namespace.payment_vault = Some(ctx.remaining_accounts[1].key());
+            namespace.payment_amount = payment_amount;
+        } else {
+            namespace.payment_mint = None;
+            namespace.payment_vault = None;
+            namespace.payment_amount = None;
+        }
 
         namespace.bump = *ctx.bumps.get("namespace").unwrap();
         namespace.uuid = uuid;
@@ -535,7 +554,65 @@ pub mod namespace {
             return Err(error!(ErrorCode::CannotJoinNamespace));
         }
 
-        Ok(())
+        // payment of $RAIN to vault
+        let payment_token_accounts = token::Transfer {
+            from: ctx.accounts.rain_payer_ata.to_account_info(),
+            to: ctx.accounts.rain_token_vault.to_account_info(),
+            authority: ctx.accounts.rain_payer.to_account_info(),
+        };
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                payment_token_accounts,
+            ),
+            RAIN_PAYMENT_AMOUNT,
+        )?;
+
+        // if payments is not configured, exit without error
+        if ctx.accounts.namespace.payment_mint == None
+            && ctx.accounts.namespace.payment_vault == None
+        {
+            return Ok(());
+        };
+
+        // require that payments be passed in
+        if ctx.remaining_accounts.len() != 3 {
+            return Err(error!(ErrorCode::InvalidRemainingAccounts));
+        }
+
+        let payment_mint = Account::<'_, Mint>::try_from(&ctx.remaining_accounts[0])?;
+        let payment_vault =
+            &mut Account::<'_, token::TokenAccount>::try_from(&ctx.remaining_accounts[1])?;
+        let payment_ata =
+            &mut Account::<'_, token::TokenAccount>::try_from(&ctx.remaining_accounts[2])?;
+
+        // check the mint matches for all accounts
+        if payment_ata.mint != payment_mint.key() || payment_vault.mint != payment_mint.key() {
+            return Err(error!(ErrorCode::InvalidRemainingAccounts));
+        }
+
+        // check mint and vault is what is written in the Namespace account
+        if payment_mint.key() != ctx.accounts.namespace.payment_mint.unwrap()
+            || payment_vault.key() != ctx.accounts.namespace.payment_vault.unwrap()
+        {
+            return Err(error!(ErrorCode::InvalidRemainingAccounts));
+        };
+
+        // since we require $RAIN token payment regardless, make the rain_payer also authorize the optional payment transfer
+        let payment_token_accounts = token::Transfer {
+            from: payment_ata.to_account_info(),
+            to: payment_vault.to_account_info(),
+            authority: ctx.accounts.rain_payer.to_account_info(),
+        };
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                payment_token_accounts,
+            ),
+            ctx.accounts.namespace.payment_amount.unwrap(),
+        )
     }
 
     // FOR TESTING ONLY
@@ -639,6 +716,9 @@ pub struct Namespace {
     pub bump: u8,
     pub whitelisted_staking_mints: Vec<Pubkey>,
     pub gatekeeper: Option<Pubkey>,
+    pub payment_mint: Option<Pubkey>,
+    pub payment_vault: Option<Pubkey>,
+    pub payment_amount: Option<u64>,
 }
 
 /// seed ['namespace', namespace program, mint, page number]
@@ -686,6 +766,8 @@ pub const MIN_NAMESPACE_SIZE: usize = 8 + // key
 1 + // bump
 5 + // whitelist staking mints
 1 + 32 + // Namespace gatekeeper optional pubkey
+1 + 32 + // optional payment_token_mint
+1 + 32 + // optional payment_token_vault
 200; // padding
 
 pub const ARTIFACT_FILTER_SIZE: usize = 8 + // key
@@ -699,6 +781,10 @@ FILTER_SIZE + //
 1 + // bump
 100; //padding
 
+// REMAINING_ACCOUNTS
+// Two optional accounts may be passed which will be set in the Namespace account, neither need to be mutable in this instruction
+// payment_mint
+// payment_vault
 #[derive(Accounts)]
 #[instruction(args: InitializeNamespaceArgs)]
 pub struct InitializeNamespace<'info> {
@@ -713,6 +799,11 @@ pub struct InitializeNamespace<'info> {
     mint: Account<'info, Mint>,
     metadata: UncheckedAccount<'info>,
     master_edition: UncheckedAccount<'info>,
+
+    payment_token_mint: Account<'info, Mint>,
+
+    #[account(token::mint = payment_token_mint)]
+    payment_token_vault: Account<'info, token::TokenAccount>,
 
     #[account(mut)]
     payer: Signer<'info>,
@@ -834,24 +925,49 @@ pub struct MatchValidation<'info> {
     mint: UncheckedAccount<'info>,
 }
 
+// REMAINING_ACCOUNTS
+// Three optional accounts may be passed in if the Namespace was configured for optional payments
+// payment_mint
+// payment_vault (mut)
+// payment_ata (mut)
 #[derive(Accounts)]
 pub struct JoinNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump)]
-    namespace: Account<'info, Namespace>,
+    namespace: Box<Account<'info, Namespace>>,
+
     #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
-    namespace_token: Account<'info, TokenAccount>,
+    namespace_token: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
+
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
+
     token_holder: UncheckedAccount<'info>,
+
+    #[account(address = Pubkey::from_str(RAIN_TOKEN_MINT).unwrap())]
+    rain_token_mint: Account<'info, Mint>,
+
+    #[account(mut, token::mint = rain_token_mint, token::authority = Pubkey::from_str(RAIN_TOKEN_VAULT_AUTHORITY).unwrap())]
+    rain_token_vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    rain_payer: Signer<'info>,
+
+    #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = rain_payer)]
+    rain_payer_ata: Account<'info, token::TokenAccount>,
+
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
+
     #[account(constraint=raindrops_program.key() == crate::id() ||
         raindrops_program.key() == raindrops_item::id() ||
         raindrops_program.key() == raindrops_player::id() ||
         raindrops_program.key() == raindrops_matches::id())]
     raindrops_program: UncheckedAccount<'info>,
+
+    token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -974,4 +1090,6 @@ pub enum ErrorCode {
     CannotCacheArtifact,
     #[msg("Artifact not configured for namespaces")]
     DesiredNamespacesNone,
+    #[msg("Invalid Remaining Accounts")]
+    InvalidRemainingAccounts,
 }
