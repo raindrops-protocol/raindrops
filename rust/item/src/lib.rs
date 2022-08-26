@@ -404,7 +404,7 @@ pub mod item {
         msg!("store_mint");
         if store_mint {
             item_class.mint = Some(item_mint.key());
-            item_class.index = class_index;
+            item_class.index = Some(class_index);
         }
 
         msg!("namespaces");
