@@ -445,6 +445,35 @@ describe("Staking Program", () => {
 
     // STEP 7: Joins to namespace
 
+    ixs = [];
+
+    const [itemPDA] = await Utils.PDA.getItemPDA(
+      itemMintKeypair.publicKey,
+      new anchor.BN(itemIndex)
+    );
+
+    accounts = {
+      namespaceMint: namespaceMintKeypair.publicKey,
+      artifact: itemPDA,
+      raindropsProgram: State.Namespace.RaindropsProgram.Item,
+    } as Instructions.Namespace.JoinNamespaceAccounts;
+
+    const joinNamespaceIxs = await namespaceProgram.instruction.joinNamespace(
+      accounts
+    );
+
+    ixs.push(...joinNamespaceIxs);
+
+    const { txid: joinNamespaceTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        [namespaceMintKeypair]
+      );
+
+    expect(joinNamespaceTxid).toBeDefined();
+
     // STEP 8: Begins artifact stake warmup
 
     ixs = [];
