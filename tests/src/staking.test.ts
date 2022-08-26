@@ -2,11 +2,14 @@ import * as anchor from "@project-serum/anchor";
 import { Transaction } from "@raindrop-studios/sol-kit";
 import {
   ItemProgram,
+  NamespaceProgram,
   StakingProgram,
   Instructions,
+  State,
   Utils,
 } from "@raindrops-protocol/raindrops";
 import { IDL as ItemProgramIDL } from "./types/item";
+import { IDL as NamespaceProgramIDL } from "./types/namespace";
 import { IDL as StakingProgramIDL } from "./types/staking";
 import {
   createMintNFTInstructions,
@@ -33,6 +36,15 @@ describe("Staking Program", () => {
       provider,
       idl: ItemProgramIDL,
     });
+
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider,
+        idl: NamespaceProgramIDL,
+      }
+    );
 
     const stakingProgram = await StakingProgram.getProgramWithConfig(
       StakingProgram,
@@ -377,6 +389,59 @@ describe("Staking Program", () => {
     expect(completeItemEscrowBuildPhaseTxid).toBeDefined();
 
     // STEP 6: Initializes a namespace
+
+    ixs = [];
+
+    const namespaceMintKeypair = anchor.web3.Keypair.generate();
+
+    const createNamespaceMintIxs = await createMintNFTInstructions(
+      provider,
+      namespaceMintKeypair.publicKey
+    );
+
+    const namespaceMintMetadataPDA = await Utils.PDA.getMetadata(
+      namespaceMintKeypair.publicKey
+    );
+
+    const namespaceMintMasterEditionPDA = await Utils.PDA.getEdition(
+      namespaceMintKeypair.publicKey
+    );
+
+    args = {
+      desiredNamespaceArraySize: new anchor.BN(2),
+      uuid: "e3e52d",
+      prettyName: "Trash with Frens",
+      permissivenessSettings: {
+        namespacePermissiveness: State.Namespace.Permissiveness.All,
+        itemPermissiveness: State.Namespace.Permissiveness.All,
+        playerPermissiveness: State.Namespace.Permissiveness.All,
+        matchPermissiveness: State.Namespace.Permissiveness.All,
+        missionPermissiveness: State.Namespace.Permissiveness.Namespace,
+        cachePermissiveness: State.Namespace.Permissiveness.All,
+      },
+      whitelistedStakingMints: [],
+    } as Instructions.Namespace.InitializeNamespaceArgs;
+
+    accounts = {
+      mint: namespaceMintKeypair.publicKey,
+      metadata: namespaceMintMetadataPDA,
+      masterEdition: namespaceMintMasterEditionPDA,
+    } as Instructions.Namespace.InitializeNamespaceAccounts;
+
+    const initializeNamespaceIxs =
+      await namespaceProgram.instruction.initializeNamespace(args, accounts);
+
+    ixs.push(...createNamespaceMintIxs, ...initializeNamespaceIxs);
+
+    const { txid: initializeNamespaceTxid } =
+      await Transaction.sendTransactionWithRetry(
+        provider.connection,
+        provider.wallet,
+        ixs,
+        [namespaceMintKeypair]
+      );
+
+    expect(initializeNamespaceTxid).toBeDefined();
 
     // STEP 7: Joins to namespace
 

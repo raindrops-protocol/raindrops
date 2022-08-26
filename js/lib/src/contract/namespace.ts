@@ -27,8 +27,10 @@ export class NamespaceProgram extends Program.Program {
     accounts: NamespaceInstruction.InitializeNamespaceAccounts,
     options?: SendOptions
   ): Promise<SendTransactionResult> {
-    const [instruction, namespacePDA] =
-      await this.instruction.initializeNamespace(args, accounts);
+    const instruction = await this.instruction.initializeNamespace(
+      args,
+      accounts
+    );
 
     return await this.sendWithRetry(instruction, [], options);
   }
@@ -69,8 +71,9 @@ export class NamespaceProgram extends Program.Program {
     accounts: NamespaceInstruction.CreateNamespaceGatekeeperAccounts,
     options?: SendOptions
   ): Promise<SendTransactionResult> {
-    const [instruction, gatekeeper] =
-      await this.instruction.createNamespaceGatekeeper(accounts);
+    const instruction = await this.instruction.createNamespaceGatekeeper(
+      accounts
+    );
 
     return this.sendWithRetry(instruction, [], options);
   }

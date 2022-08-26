@@ -100,7 +100,7 @@ export class Instruction extends SolKitInstruction {
   async initializeNamespace(
     args: InitializeNamespaceArgs,
     accounts: InitializeNamespaceAccounts
-  ): Promise<[[web3.TransactionInstruction], web3.PublicKey]> {
+  ) {
     const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
 
     const remainingAccounts = args.whitelistedStakingMints.map((mint) => {
@@ -138,8 +138,8 @@ export class Instruction extends SolKitInstruction {
       whitelistedStakingMints: args.whitelistedStakingMints,
     };
 
-    if (remainingAccounts.length > 0) {
-      ix = await this.program.client.methods
+    return [
+      await this.program.client.methods
         .initializeNamespace(formattedArgs)
         .accounts({
           namespace: namespacePDA,
@@ -153,25 +153,8 @@ export class Instruction extends SolKitInstruction {
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
         .remainingAccounts(remainingAccounts)
-        .instruction();
-    } else {
-      ix = await this.program.client.methods
-        .initializeNamespace(formattedArgs)
-        .accounts({
-          namespace: namespacePDA,
-          mint: accounts.mint,
-          metadata: accounts.metadata,
-          masterEdition: accounts.masterEdition,
-          payer: (this.program.client.provider as AnchorProvider).wallet
-            .publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-        })
-        .instruction();
-    }
-
-    return [[ix], namespacePDA];
+        .instruction(),
+    ];
   }
 
   async updateNamespace(
@@ -211,9 +194,7 @@ export class Instruction extends SolKitInstruction {
     ];
   }
 
-  async createNamespaceGatekeeper(
-    accounts: CreateNamespaceGatekeeperAccounts
-  ): Promise<[[web3.TransactionInstruction], web3.PublicKey]> {
+  async createNamespaceGatekeeper(accounts: CreateNamespaceGatekeeperAccounts) {
     const [namespacePDA, _namespacePDABump] = await getNamespacePDA(
       accounts.namespaceMint
     );
@@ -231,20 +212,20 @@ export class Instruction extends SolKitInstruction {
       payer
     );
 
-    const ix = await this.program.client.methods
-      .createNamespaceGatekeeper()
-      .accounts({
-        namespace: namespacePDA,
-        namespaceToken: nsTA,
-        namespaceGatekeeper: namespaceGatekeeperPDA,
-        tokenHolder: payer,
-        payer: payer,
-        systemProgram: SystemProgram.programId,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-      })
-      .instruction();
-
-    return [[ix], namespaceGatekeeperPDA];
+    return [
+      await this.program.client.methods
+        .createNamespaceGatekeeper()
+        .accounts({
+          namespace: namespacePDA,
+          namespaceToken: nsTA,
+          namespaceGatekeeper: namespaceGatekeeperPDA,
+          tokenHolder: payer,
+          payer: payer,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        })
+        .instruction(),
+    ];
   }
 
   async addToNamespaceGatekeeper(
@@ -352,7 +333,9 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -386,7 +369,9 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -439,7 +424,9 @@ export class Instruction extends SolKitInstruction {
           tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -477,7 +464,9 @@ export class Instruction extends SolKitInstruction {
           tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
