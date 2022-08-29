@@ -18,8 +18,8 @@ jobs:
           profile: minimal 
       
       - name: Clippy
-        uses: actions-rs/cargo@v1
         working-directory: ./rust
+        uses: actions-rs/cargo@v1
         with:
           command: clippy
   rustfmt:
@@ -35,8 +35,8 @@ jobs:
           profile: minimal 
       
       - name: Check Format
-        uses: actions-rs/cargo@v1
         working-directory: ./rust
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
