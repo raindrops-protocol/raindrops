@@ -63,16 +63,28 @@ jobs:
       
       - name: Install Anchor Dependencies
         run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
-
-      - name: Install AVM
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --git https://github.com/coral-xyz/anchor avm --locked --force
       
       - name: Install Anchor 0.24.2
-        run: avm install 0.24.2 && avm use 0.24.2
+        run: npm i -g @project-serum/anchor-cli@0.24.2
 
       - name: Build Raindrops Programs
         run: anchor build --skip-lint
         working-directory: ./rust
+  
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Check CLI
+        uses: creyD/prettier_action@v4.2
+        with:
+          dry: true
+          prettier_options: --check js/cli/src
+
+      - name: Check Lib
+        uses: creyD/prettier_action@v4.2
+        with:
+          dry: true
+          prettier_options: --check js/lib/src
