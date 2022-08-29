@@ -1,7 +1,6 @@
 name: Pull Request
 
 on:
-  #pull_request:
   push:
     branches: '**'
 
@@ -14,13 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Use Node.js
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16.14.2
-          cache: "npm"
-      - run: yarn build
-        working-directory: ./js/lib
+      #- name: Use Node.js
+      #- uses: actions/setup-node@v3
+      #  with:
+      #    node-version: 16.14.2
+      #    cache: "npm"
+      #- run: yarn build
+      #  working-directory: ./js/lib
       #- run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       #  shell: bash
       #- run: echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
