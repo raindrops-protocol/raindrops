@@ -47,7 +47,6 @@ jobs:
           args: --manifest-path rust/Cargo.toml --all -- --check
 
   build:
-    needs: [clippy, rustfmt]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
