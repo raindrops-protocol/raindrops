@@ -118,14 +118,14 @@ pub fn check_permissiveness_against_holder<'a>(
             msg!("Whitelist match");
             let deserialized: Account<'_, NamespaceGatekeeper> =
                 Account::try_from(&namespace_gatekeeper.to_account_info())?;
-            for filter in &deserialized.artifact_filters {
+            'filter_loop: for filter in &deserialized.artifact_filters {
                 match &filter.filter {
                     Filter::Namespace { namespaces } => {
                         for n in &art_namespaces {
                             for other_n in namespaces {
                                 if other_n == n {
                                     msg!("Whitelisted!");
-                                    continue;
+                                    continue 'filter_loop;
                                 }
                             }
                         }
@@ -136,7 +136,7 @@ pub fn check_permissiveness_against_holder<'a>(
                         for n in &art_namespaces {
                             if n == namespace {
                                 msg!("Whitelisted!");
-                                continue;
+                                continue 'filter_loop;
                             }
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
@@ -148,7 +148,7 @@ pub fn check_permissiveness_against_holder<'a>(
 
                         if as_token.mint == *mint {
                             msg!("Whitelisted!");
-                            continue;
+                            continue 'filter_loop;
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
