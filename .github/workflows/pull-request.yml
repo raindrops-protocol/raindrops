@@ -10,9 +10,6 @@ defaults:
 
 jobs:
   clippy:
-    defaults:
-      run:
-        working-directory: rust
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -28,11 +25,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
+          args: --manifest-path rust/Cargo.toml
 
   rustfmt:
-    defaults:
-      run:
-        working-directory: rust
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -48,12 +43,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --check
+          args: --manifest-path rust/Cargo.toml --all -- --check
 
   build:
-    defaults:
-      run:
-        working-directory: rust
+    needs: [clippy, rustfmt]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -67,7 +60,6 @@ jobs:
 
       - name: Install Solana
         run: curl -sSfL https://release.solana.com/stable/install | sh
-        shell: bash
 
       - name: Install AVM
         uses: actions-rs/cargo@v1
