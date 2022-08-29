@@ -23,9 +23,7 @@ import {
 } from "../utils/pda";
 import { PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
-import {
-  ContractCommon,
-} from "../contract/common";
+import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
 
 const {
@@ -70,7 +68,10 @@ export class Instruction extends SolKitInstruction {
       "desiredNamespaceArraySize",
       ...ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS,
     ]);
-    InstructionUtils.convertStringsToPublicKeys(args, ITEM_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS);
+    InstructionUtils.convertStringsToPublicKeys(
+      args,
+      ITEM_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS
+    );
 
     const remainingAccounts = await generateRemainingAccountsForCreateClass({
       permissivenessToUse: args.updatePermissivenessToUse,
@@ -130,8 +131,14 @@ export class Instruction extends SolKitInstruction {
             program: this.program.client,
           });
 
-    InstructionUtils.convertNumbersToBNs(args, ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS);
-    InstructionUtils.convertStringsToPublicKeys(args, ITEM_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS);
+    InstructionUtils.convertNumbersToBNs(
+      args,
+      ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS
+    );
+    InstructionUtils.convertStringsToPublicKeys(
+      args,
+      ITEM_CLASS_DATA_ARGS_CONVERT_TO_PUBKEYS
+    );
 
     const [itemClassKey, itemClassBump] = await getItemPDA(
       accounts.itemMint,
@@ -692,7 +699,9 @@ export class Instruction extends SolKitInstruction {
       )
     ) {
       if (!itemTransferAuthority) {
-        throw new Error("itemTransferAuthority must be specified if itemAccount is itemMint's ATA")
+        throw new Error(
+          "itemTransferAuthority must be specified if itemAccount is itemMint's ATA"
+        );
       }
       instructions.push(
         Token.createApproveInstruction(

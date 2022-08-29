@@ -1,4 +1,9 @@
-import { ObjectWrapper, Program, Transaction, SendOptions } from "@raindrop-studios/sol-kit";
+import {
+  ObjectWrapper,
+  Program,
+  Transaction,
+  SendOptions,
+} from "@raindrop-studios/sol-kit";
 import { web3, BN, AnchorProvider, Wallet } from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
@@ -128,7 +133,10 @@ export class ItemProgram extends Program.Program {
 
   async addCraftItemToEscrow(
     args: ItemInstruction.AddCraftItemToEscrowArgs,
-    accounts: Omit<ItemInstruction.AddCraftItemToEscrowAccounts,'craftItemTransferAuthority'>,
+    accounts: Omit<
+      ItemInstruction.AddCraftItemToEscrowAccounts,
+      "craftItemTransferAuthority"
+    >,
     additionalArgs: ItemInstruction.AddCraftItemToEscrowAdditionalArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
