@@ -21,14 +21,14 @@ jobs:
           cache: "npm"
       - run: yarn build
         working-directory: ./js/lib
-      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        shell: bash
-      - run: echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
-        shell: bash
-      - run: curl -sSfL https://release.solana.com/$SOLANA_VERSION/install | sh
-        shell: bash
-      - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-        shell: bash
-      - run: npm i -g @project-serum/anchor-cli@$ANCHOR_VERSION ts-mocha typescript
-      - run: anchor build --skip-lint
-        working-directory: ./rust
+      #- run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      #  shell: bash
+      #- run: echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
+      #  shell: bash
+      #- run: curl -sSfL https://release.solana.com/$SOLANA_VERSION/install | sh
+      #  shell: bash
+      #- run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+      #  shell: bash
+      #- run: npm i -g @project-serum/anchor-cli@$ANCHOR_VERSION ts-mocha typescript
+      #- run: anchor build --skip-lint
+      #  working-directory: ./rust
