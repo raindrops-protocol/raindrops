@@ -4,8 +4,15 @@ on:
   push:
     branches: '**'
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   clippy:
+    defaults:
+      run:
+        working-directory: rust
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -22,6 +29,9 @@ jobs:
         with:
           command: clippy
   rustfmt:
+    defaults:
+      run:
+        working-directory: rust
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -39,6 +49,9 @@ jobs:
           command: fmt
           args: --all -- --check
   build:
+    defaults:
+      run:
+        working-directory: rust
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
