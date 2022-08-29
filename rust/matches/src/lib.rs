@@ -1017,7 +1017,7 @@ pub struct Callback {
 }
 
 impl Callback {
-    pub const SPACE: usize = 32 + 8; 
+    pub const SPACE: usize = 32 + 8;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -1065,8 +1065,7 @@ pub struct Match {
 }
 
 impl Match {
-    pub const SPACE: usize =
-        8 // anchor discriminator
+    pub const SPACE: usize = 8 // anchor discriminator
         + (1 + 4 + (NamespaceAndIndex::SPACE * 10)) // max 10 namespaces
         + 32 // win_oracle
         + 8 // win_oracle_cooldown
@@ -1140,7 +1139,7 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub const SPACE: usize = 1 + 32; 
+    pub const SPACE: usize = 1 + 32;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
