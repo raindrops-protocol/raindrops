@@ -71,10 +71,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --git https://github.com/coral-xyz/anchor avm --locked --force --tag v0.24.2
+          args: --git https://github.com/coral-xyz/anchor avm --locked --force
       
-      - name: Set Anchor
-        run: avm use 0.24.2
+      - name: Install Anchor 0.24.2
+        run: avm install 0.24.2
 
       - name: Build Raindrops Programs
         run: anchor build --skip-lint
