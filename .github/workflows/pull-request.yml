@@ -13,11 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - uses: actions/setup-node@v3
         with:
           node-version: 16.14.2
           cache: "npm"
-      - run: yarn build
+      - run: yarn install && yarn build
         working-directory: ./js/lib
       #- run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       #  shell: bash
