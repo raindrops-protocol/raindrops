@@ -1,21 +1,34 @@
 name: Pull Request
 
-defaults:
-  run:
-    working-directory: ./rust
-
 on:
   pull_request:
   push:
     branches: [master]
 
+env:
+  SOLANA_VERSION: 1.10.31
+  ANCHOR_VERSION: 0.24.2
+
 jobs:
-  all_github_action_checks:
+  build:
     runs-on: ubuntu-latest
-    needs:
-      - rustfmt
-      - clippy
-      - cargo-build-test
     steps:
-      - run: echo "Done"
-        working-directory: ./
+      - uses: actions/checkout@v2
+      - name: Use Node.js
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.14.2
+          cache: "npm"
+      - run: yarn build
+        working-directory: ./js/lib
+      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        shell: bash
+      - run: echo "/home/runner/.cargo/bin" >> $GITHUB_PATH
+        shell: bash
+      - run: curl -sSfL https://release.solana.com/$SOLANA_VERSION/install | sh
+        shell: bash
+      - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        shell: bash
+      - run: npm i -g @project-serum/anchor-cli@$ANCHOR_VERSION ts-mocha typescript
+      - run: anchor build --skip-lint
+        working-directory: ./rust
