@@ -20,6 +20,7 @@ jobs:
         with:
           toolchain: stable 
           profile: minimal
+          components: clippy
  
       - name: Clippy
         uses: actions-rs/cargo@v1
