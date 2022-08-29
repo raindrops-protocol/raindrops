@@ -11,14 +11,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2 
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout Repository
+        uses: actions/checkout@v2 
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
-      - uses: actions-rs/cargo@v1
+          profile: minimal
+          components: rustfmt
+
+      - name: Install Solana
+        run: curl -sSfL https://release.solana.com/stable/install | sh
+        shell: bash
+
+      - name: Install AVM
+        uses: actions-rs/cargo@v1
         with:
           command: install
           args: --git https://github.com/coral-xyz/anchor avm --locked --force 
+
       #- run: avm install $ANCHOR_VERSION
       #- run: anchor build
       #  working-directory: ./rust
