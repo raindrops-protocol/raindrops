@@ -6,7 +6,12 @@ import BN from "bn.js";
 import { web3 } from "@project-serum/anchor";
 
 import { Wallet } from "@raindrop-studios/sol-command";
-import { getMatchesProgram, Utils, State, CreateMatchArgs } from "@raindrops-protocol/raindrops";
+import {
+  getMatchesProgram,
+  Utils,
+  State,
+  CreateMatchArgs,
+} from "@raindrops-protocol/raindrops";
 
 const { loadWalletKey } = Wallet;
 const { PDA } = Utils;
@@ -60,7 +65,9 @@ programCommand("create_match")
         : null,
     };
     if (config.desiredNamespaceArraySize) {
-      createMatchArgs.desiredNamespaceArraySize = new BN(config.desiredNamespaceArraySize);
+      createMatchArgs.desiredNamespaceArraySize = new BN(
+        config.desiredNamespaceArraySize
+      );
     }
 
     await anchorProgram.createMatch(createMatchArgs, {}, config.oracleState);
