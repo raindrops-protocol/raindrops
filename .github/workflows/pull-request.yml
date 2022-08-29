@@ -5,7 +5,7 @@ on:
     branches: '**'
 
 env:
-  ANCHOR_VERSION: 0.24.2
+  ANCHOR_VERSION: v0.24.2
 
 jobs:
   build:
@@ -19,7 +19,6 @@ jobs:
         with:
           toolchain: nightly
           profile: minimal
-          components: rustfmt
 
       - name: Install Solana
         run: curl -sSfL https://release.solana.com/stable/install | sh
@@ -29,8 +28,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --git https://github.com/coral-xyz/anchor avm --locked --force 
+          args: --git https://github.com/coral-xyz/anchor avm --locked --force --tag $ANCHOR_VERSION
 
-      #- run: avm install $ANCHOR_VERSION
-      #- run: anchor build
-      #  working-directory: ./rust
+      - name: Build Raindrops Programs
+        run: anchor build --skip-lint
+        working-directory: ./rust
