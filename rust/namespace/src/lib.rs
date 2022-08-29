@@ -19,7 +19,7 @@ use raindrops_item::{
 };
 use std::str::FromStr;
 anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
-pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
+pub const PLAYER_ID: &str = "p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1";
 pub const MATCH_ID: &str = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ";
 pub const ITEM_ID: &str = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6";
 

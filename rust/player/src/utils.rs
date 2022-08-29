@@ -25,7 +25,7 @@ use {
         },
         AnchorDeserialize, AnchorSerialize, Key, ToAccountInfo,
     },
-    anchor_spl::token::{Mint, TokenAccount},
+    anchor_spl::token::{Mint, Token, TokenAccount},
     raindrops_item::{
         utils::{
             assert_derivation, assert_is_ata, assert_keys_equal, assert_metadata_valid,
@@ -1381,7 +1381,6 @@ pub struct EndItemActivationArgs<'b, 'c, 'info> {
     pub item_class: &'b Account<'info, ItemClass>,
     pub item_activation_marker: &'b Account<'info, ItemActivationMarker>,
     pub receiver: &'c Signer<'info>,
-    pub remaining_accounts: &'c [AccountInfo<'info>],
     pub item_class_mint: &'c Pubkey,
     pub item_mint: &'c Pubkey,
     pub usage_permissiveness_to_use: Option<PermissivenessType>,
@@ -1394,6 +1393,8 @@ pub struct EndItemActivationArgs<'b, 'c, 'info> {
     pub item_usage: Option<Vec<u8>>,
     pub item_program: &'c UncheckedAccount<'info>,
     pub player: &'b Account<'info, Player>,
+    pub player_item_account: &'c UncheckedAccount<'info>,
+
     pub player_mint: &'c Pubkey,
     pub index: u64,
 }
@@ -1406,7 +1407,6 @@ pub fn end_item_activation<'b, 'c, 'info>(
         item_class,
         item_activation_marker,
         receiver,
-        remaining_accounts,
         item_class_mint,
         item_mint,
         usage_permissiveness_to_use,
@@ -1419,6 +1419,7 @@ pub fn end_item_activation<'b, 'c, 'info>(
         item_program,
         player,
         player_mint,
+        player_item_account,
         index,
     } = args;
 
@@ -1433,16 +1434,16 @@ pub fn end_item_activation<'b, 'c, 'info>(
         item_class.to_account_info(),
         item_activation_marker.to_account_info(),
         receiver.to_account_info(),
+        player.to_account_info(),
+        player_item_account.to_account_info(),
     ];
 
-    for key in remaining_accounts {
-        if key.is_writable {
-            keys.push(AccountMeta::new(key.key(), key.is_signer))
-        } else {
-            keys.push(AccountMeta::new_readonly(key.key(), key.is_signer))
-        }
-        account_infos.push(key.to_account_info())
-    }
+    // According to common remaining accounts rules for token holder,
+    // push
+    // token_account [readable]
+    // token_holder [signer]
+    keys.push(AccountMeta::new_readonly(player_item_account.key(), false));
+    keys.push(AccountMeta::new_readonly(player.key(), true));
 
     Ok(invoke_signed(
         &Instruction {
@@ -1484,9 +1485,9 @@ pub struct BeginItemActivationArgs<'b, 'c, 'info> {
     pub item_mint: &'c UncheckedAccount<'info>,
     pub player_item_account: &'c UncheckedAccount<'info>,
     pub payer: &'c Signer<'info>,
-    pub remaining_accounts: &'c [AccountInfo<'info>],
     pub item_program: &'c UncheckedAccount<'info>,
     pub system_program: &'c Program<'info, System>,
+    pub token_program: &'c Program<'info, Token>,
     pub clock: &'c Sysvar<'info, Clock>,
     pub rent: &'c Sysvar<'info, Rent>,
     pub validation_program: &'c UncheckedAccount<'info>,
@@ -1504,9 +1505,9 @@ pub fn begin_item_activation<'b, 'c, 'info>(
         item_mint,
         player_item_account,
         payer,
-        remaining_accounts,
         item_program,
         system_program,
+        token_program,
         clock,
         rent,
         validation_program,
@@ -1537,11 +1538,12 @@ pub fn begin_item_activation<'b, 'c, 'info>(
         AccountMeta::new(item_activation_marker.key(), false),
         AccountMeta::new(payer.key(), true),
         AccountMeta::new_readonly(system_program.key(), false),
+        AccountMeta::new_readonly(token_program.key(), false),
         AccountMeta::new_readonly(clock.key(), false),
         AccountMeta::new_readonly(rent.key(), false),
         AccountMeta::new_readonly(validation_program.key(), false),
     ];
-    let mut account_infos = vec![
+    let account_infos = vec![
         item_class.to_account_info(),
         item.to_account_info(),
         item_mint.to_account_info(),
@@ -1550,19 +1552,18 @@ pub fn begin_item_activation<'b, 'c, 'info>(
         item_activation_marker.to_account_info(),
         payer.to_account_info(),
         system_program.to_account_info(),
+        token_program.to_account_info(),
         clock.to_account_info(),
         rent.to_account_info(),
         validation_program.to_account_info(),
     ];
 
-    for key in remaining_accounts {
-        if key.is_writable {
-            keys.push(AccountMeta::new(key.key(), key.is_signer))
-        } else {
-            keys.push(AccountMeta::new_readonly(key.key(), key.is_signer))
-        }
-        account_infos.push(key.to_account_info())
-    }
+    // According to common remaining accounts rules for token holder,
+    // push
+    // token_account [readable]
+    // token_holder [signer]
+    keys.push(AccountMeta::new_readonly(player_item_account.key(), false));
+    keys.push(AccountMeta::new_readonly(player.key(), true));
 
     Ok(invoke_signed(
         &Instruction {

@@ -12,7 +12,7 @@ import { SystemProgram } from "@solana/web3.js";
 import InheritanceState = State;
 
 const { PDA } = Utils;
-const { getPlayerPDA, getAtaForMint } = PDA;
+const { getPlayerPDA, getAtaForMint, getItemPDA } = PDA;
 const { PublicKey } = web3;
 
 CLI.programCommandWithConfig(
@@ -521,6 +521,72 @@ CLI.programCommandWithConfig(
     ).rpc();
   }
 );
+
+CLI.programCommandWithConfig("use_items", async (config, options, _files) => {
+  const { keypair, env, rpcUrl } = options;
+  const wallet = await Wallet.loadWalletKey(keypair);
+  const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+    PlayerProgram,
+    wallet,
+    env,
+    rpcUrl
+  );
+
+  const itemProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+    ItemProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl
+  );
+
+  const playerMint = new PublicKey(
+    config.playerMint || config.newPlayerMint || config.mint
+  );
+  const playerIndex = new BN(
+    config.index || config.newPlayerIndex || config.playerIndex
+  );
+
+  for (let i = 0; i < config.items.length; i++) {
+    const itemConfig = config.items[i];
+    const itemIndex = new BN(itemConfig.itemIndex);
+    const itemMint = new PublicKey(itemConfig.itemMint);
+    const item = await itemProgram.client.account.item.fetch(
+      (
+        await getItemPDA(itemMint, itemIndex)
+      )[0]
+    );
+    await (
+      await playerProgram.useItem(
+        {
+          index: playerIndex,
+          useItemPermissivenessToUse:
+            config.useItemPermissivenessToUse ||
+            config.updatePermissivenessToUse,
+          playerMint,
+          amount: new BN(itemConfig.amount),
+          itemIndex,
+          itemClassMint: new PublicKey(itemConfig.itemClassMint),
+          itemUsageIndex: itemConfig.itemUsageIndex,
+          itemUsageInfo: null,
+          itemClassIndex: item.classIndex as BN,
+          itemMarkerSpace: 100,
+          target: (await getPlayerPDA(playerMint, playerIndex))[0],
+        },
+        {
+          metadataUpdateAuthority: config.metadataUpdateAuthority
+            ? new PublicKey(config.metadataUpdateAuthority)
+            : keypair.publicKey,
+          itemMint,
+        },
+        {
+          itemProgram,
+          classIndex: new BN(config.classIndex),
+          playerClassMint: new PublicKey(config.playerClassMint),
+        }
+      )
+    ).rpc();
+  }
+});
 
 CLI.programCommand("show_player")
   .option("-cp, --config-path <string>", "JSON file with player settings")

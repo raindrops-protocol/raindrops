@@ -4,7 +4,7 @@ use crate::{
     ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
     InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
     ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType,
-    Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
+    Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PLAYER_ID, PREFIX,
 };
 use anchor_lang::{
     error,
@@ -683,7 +683,23 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
 
                         assert_signer(token_holder)?;
 
-                        let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+                        let acct =
+                            if get_player_token_pda(&given_account.key(), &token_holder.key())?
+                                != *token_account.key
+                            {
+                                assert_is_ata(token_account, token_holder.key, &mint)?
+                            } else {
+                                // player uses pda, needs special treatment. Only happens
+                                // with token holder permission, and always happens with given account
+                                // is the item's key via begin and end item activation calls.
+                                // Avoids player contract needing to use ATAprogram and burn needless CPU.
+                                assert_is_player_pda(
+                                    token_account,
+                                    &given_account.key(),
+                                    &token_holder.key(),
+                                    &mint,
+                                )?
+                            };
 
                         if acct.amount == 0 {
                             return Err(error!(ErrorCode::InsufficientBalance));
@@ -1086,6 +1102,29 @@ pub fn assert_is_ata(
     assert_keys_equal(ata_account.owner, *wallet)?;
     assert_keys_equal(ata_account.mint, mint.key())?;
     assert_keys_equal(get_associated_token_address(wallet, mint), *ata.key)?;
+    require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+    Ok(ata_account)
+}
+
+pub fn get_player_token_pda(item: &Pubkey, player: &Pubkey) -> Result<Pubkey> {
+    let (key, _) = Pubkey::find_program_address(
+        &["player".as_bytes(), item.as_ref(), player.as_ref()],
+        &Pubkey::from_str(PLAYER_ID).unwrap(),
+    );
+    return Ok(key);
+}
+
+pub fn assert_is_player_pda(
+    ata: &AccountInfo,
+    item: &Pubkey,
+    player: &Pubkey,
+    mint: &Pubkey,
+) -> Result<spl_token::state::Account> {
+    assert_owned_by(ata, &spl_token::id())?;
+    let ata_account: spl_token::state::Account = assert_initialized(ata)?;
+    assert_keys_equal(ata_account.owner, *player)?;
+    assert_keys_equal(ata_account.mint, mint.key())?;
+    assert_keys_equal(get_player_token_pda(item, player)?, *ata.key)?;
     require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
     Ok(ata_account)
 }

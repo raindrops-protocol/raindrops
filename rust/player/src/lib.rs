@@ -851,6 +851,7 @@ pub mod player {
         let clock = &ctx.accounts.clock;
         let rent = &ctx.accounts.rent;
         let validation_program = &ctx.accounts.validation_program;
+        let token_program = &ctx.accounts.token_program;
         let remaining_accounts = &ctx.remaining_accounts;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
@@ -871,9 +872,9 @@ pub mod player {
             item_mint,
             player_item_account,
             payer,
-            remaining_accounts,
             item_program,
             system_program,
+            token_program,
             clock,
             rent,
             validation_program,
@@ -982,10 +983,10 @@ pub mod player {
         let item_activation_marker = &ctx.accounts.item_activation_marker;
         let item = &ctx.accounts.item;
         let item_class = &ctx.accounts.item_class;
+        let player_item_account = &ctx.accounts.player_item_account;
         let callback_program = &ctx.accounts.callback_program;
         let item_program = &ctx.accounts.item_program;
         let payer = &ctx.accounts.payer;
-        let remaining_accounts = &ctx.remaining_accounts;
 
         require!(item_activation_marker.valid_for_use, NotValidForUseYet);
 
@@ -1073,7 +1074,6 @@ pub mod player {
             item_class,
             item_activation_marker,
             receiver: payer,
-            remaining_accounts,
             item_class_mint: &item_class_mint,
             item_mint: &item_mint,
             usage_permissiveness_to_use: use_item_permissiveness_to_use,
@@ -1086,6 +1086,7 @@ pub mod player {
             item_program,
             player,
             player_mint: &player_mint,
+            player_item_account,
             index,
         })?;
 
@@ -1358,6 +1359,15 @@ pub struct AddItemEffect<'info> {
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
     #[account(
+        seeds=[
+            PREFIX.as_bytes(),
+            item.key().as_ref(),
+            player.key().as_ref()
+        ],
+        bump
+    )]
+    player_item_account: UncheckedAccount<'info>,
+    #[account(
         init,
         seeds=[
             PREFIX.as_bytes(),
@@ -1461,7 +1471,7 @@ pub struct UseItem<'info> {
     system_program: Program<'info, System>,
     #[account(constraint=item_program.key() == raindrops_item::id())]
     item_program: UncheckedAccount<'info>,
-    token_program: Program<'info, anchor_spl::token::Token>,
+    token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
     // System program if there is no validation to call

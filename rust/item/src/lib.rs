@@ -25,7 +25,7 @@ anchor_lang::declare_id!("56M2fQE8cy9v4q3LYxyDHSPz6BDHnWQJAucZZ49ybq9y");
 
 pub const PREFIX: &str = "item";
 pub const MARKER: &str = "marker";
-pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
+pub const PLAYER_ID: &str = "p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1";
 pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
 pub const STAKING_ID: &str = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4";
 
@@ -1349,7 +1349,6 @@ pub mod item {
         item_activation_marker.target = target;
 
         item_activation_marker.amount = amount;
-
         let (usage, usage_state) =
             verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
                 item,
@@ -1359,7 +1358,6 @@ pub mod item {
                 usage_info: &mut usage_info,
                 unix_timestamp: clock.unix_timestamp as u64,
             })?;
-
         if let Some(validation) = usage.validation {
             let item_class_info = item_class.to_account_info();
             let item_info = item.to_account_info();
@@ -1397,7 +1395,6 @@ pub mod item {
                 &accounts,
             )?;
         }
-
         let mut perm_array = vec![];
         for permissiveness in &usage.usage_permissiveness {
             perm_array.push(Permissiveness {
@@ -1405,7 +1402,6 @@ pub mod item {
                 permissiveness_type: permissiveness.clone(),
             })
         }
-
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item.to_account_info(),
@@ -1416,7 +1412,7 @@ pub mod item {
             index,
             account_mint: Some(&item_mint.key()),
         })?;
-
+        
         if let ItemClassType::Consumable {
             max_uses,
             item_usage_type,
@@ -1465,7 +1461,6 @@ pub mod item {
             ..
         } = args;
 
-        msg!("get_item_usage");
         let item_usage = get_item_usage(GetItemUsageArgs {
             item_class,
             usage_index,
@@ -1481,7 +1476,6 @@ pub mod item {
             })
         }
 
-        msg!("assert_permissiveness_access");
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &item.to_account_info(),

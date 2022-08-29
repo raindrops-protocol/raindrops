@@ -782,7 +782,6 @@ export class Instruction extends SolKitInstruction {
       "itemIndex",
       "itemClassIndex",
       "amount",
-      "itemMarkerSpace",
       "itemUsageIndex",
       "index",
     ]);
@@ -955,6 +954,9 @@ export class Instruction extends SolKitInstruction {
             item,
             itemClass: (
               await getItemPDA(args.itemClassMint, args.itemClassIndex)
+            )[0],
+            playerItemAccount: (
+              await getPlayerItemAccount({ item, player: playerKey })
             )[0],
             payer: (this.program.client.provider as AnchorProvider).wallet
               .publicKey,
