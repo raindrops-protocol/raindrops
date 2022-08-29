@@ -4,9 +4,6 @@ on:
   push:
     branches: '**'
 
-env:
-  ANCHOR_VERSION: v0.24.2
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,11 +21,11 @@ jobs:
         run: curl -sSfL https://release.solana.com/stable/install | sh
         shell: bash
 
-      - name: Install AVM
+      - name: Install AVM and Anchor Version 0.24.2
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --git https://github.com/coral-xyz/anchor avm --locked --force --tag $ANCHOR_VERSION
+          args: --git https://github.com/coral-xyz/anchor avm --locked --force --tag v0.24.2
 
       - name: Build Raindrops Programs
         run: anchor build --skip-lint
