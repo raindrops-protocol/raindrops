@@ -15,11 +15,11 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
-          profile: minimal 
-      
+          profile: minimal
+ 
       - name: Clippy
-        working-directory: ./rust
         uses: actions-rs/cargo@v1
+        working-directory: ./rust
         with:
           command: clippy
   rustfmt:
@@ -35,8 +35,8 @@ jobs:
           profile: minimal 
       
       - name: Check Format
-        working-directory: ./rust
         uses: actions-rs/cargo@v1
+        working-directory: ./rust
         with:
           command: fmt
           args: --all -- --check
