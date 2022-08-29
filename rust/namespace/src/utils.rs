@@ -154,7 +154,7 @@ pub fn check_permissiveness_against_holder<'a>(
                     }
                 }
             }
-            return Ok(())
+            return Ok(());
         }
         Permissiveness::Blacklist => {
             msg!("Blacklist match");
@@ -191,7 +191,7 @@ pub fn check_permissiveness_against_holder<'a>(
                     }
                 }
             }
-            return Ok(())
+            return Ok(());
         }
         Permissiveness::Namespace => {
             msg!("Namespace match");
