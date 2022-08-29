@@ -5,6 +5,41 @@ on:
     branches: '**'
 
 jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal 
+      
+      - name: Clippy
+        uses: actions-rs/cargo@v1
+        working-directory: ./rust
+        with:
+          command: clippy
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal 
+      
+      - name: Check Format
+        uses: actions-rs/cargo@v1
+        working-directory: ./rust
+        with:
+          command: fmt
+          args: --all -- --check
   build:
     runs-on: ubuntu-latest
     steps:
@@ -28,7 +63,7 @@ jobs:
           args: --git https://github.com/coral-xyz/anchor avm --locked --force --tag v0.24.2
       
       - name: Set Anchor
-        run: anchor use 0.24.2
+        run: avm use 0.24.2
 
       - name: Build Raindrops Programs
         run: anchor build --skip-lint
