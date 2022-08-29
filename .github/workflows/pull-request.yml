@@ -28,6 +28,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
+
   rustfmt:
     defaults:
       run:
@@ -48,6 +49,7 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
   build:
     defaults:
       run:
