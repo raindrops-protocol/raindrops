@@ -16,7 +16,7 @@ import {
   createMintTokensInstructions,
 } from "./utils/token";
 
-describe("Staking Program", () => {
+describe.skip("Staking Program", () => {
   it.concurrent("Item Staking", async () => {
     const walletKeypair = anchor.web3.Keypair.generate();
 

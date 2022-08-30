@@ -1,7 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { Transaction } from "@raindrop-studios/sol-kit";
-import { ItemProgram, Instructions } from "@raindrops-protocol/raindrops";
-import { IDL as ItemProgramIDL } from "./types/item";
+import { ItemProgram, Idls, Instructions } from "@raindrops-protocol/raindrops";
 import { createMintNFTInstructions } from "./utils/token";
 
 describe("Item Program", () => {
@@ -22,7 +21,7 @@ describe("Item Program", () => {
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
       asyncSigning: false,
       provider,
-      idl: ItemProgramIDL,
+      idl: Idls.ItemIDL,
     });
 
     let ixs, args, accounts, additionalArgs;
@@ -36,7 +35,7 @@ describe("Item Program", () => {
 
     const createItemClassMintIxs = await createMintNFTInstructions(
       provider,
-      itemClassMintKeypair.publicKey
+      itemClassMintKeypair
     );
 
     const itemClassData = {
@@ -154,7 +153,7 @@ describe("Item Program", () => {
 
     const createCraftItemMintIxs = await createMintNFTInstructions(
       provider,
-      craftItemMintKeypair.publicKey
+      craftItemMintKeypair
     );
 
     itemClassData.config.components = [
@@ -215,7 +214,7 @@ describe("Item Program", () => {
 
     const createItemMintIxs = await createMintNFTInstructions(
       provider,
-      itemMintKeypair.publicKey
+      itemMintKeypair
     );
 
     args = {
