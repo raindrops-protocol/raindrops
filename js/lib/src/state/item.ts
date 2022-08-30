@@ -192,6 +192,7 @@ export class ItemClass {
   namespaces: NamespaceAndIndex[] | null;
   parent: web3.PublicKey | null;
   mint: web3.PublicKey | null;
+  index: BN | null;
   metadata: web3.PublicKey | null;
   edition: web3.PublicKey | null;
   bump: number;
@@ -203,6 +204,7 @@ export class ItemClass {
     namespaces: NamespaceAndIndex[] | null;
     parent: web3.PublicKey | null;
     mint: web3.PublicKey | null;
+    index: BN | null;
     metadata: web3.PublicKey | null;
     edition: web3.PublicKey | null;
     bump: number;
@@ -213,6 +215,7 @@ export class ItemClass {
     this.namespaces = args.namespaces;
     this.parent = args.parent;
     this.mint = args.mint;
+    this.index = args.index;
     this.metadata = args.metadata;
     this.edition = args.edition;
     this.bump = args.bump;
@@ -324,6 +327,7 @@ export const ITEM_SCHEMA = new Map<any, any>([
         ["namespaces", { kind: "option", type: [NamespaceAndIndex] }],
         ["parent", { kind: "option", type: "pubkey" }],
         ["mint", { kind: "option", type: "pubkey" }],
+        ["index", { kind: "option", type: "u64" }],
         ["metadata", { kind: "option", type: "pubkey" }],
         ["edition", { kind: "option", type: "pubkey" }],
         ["bump", "u8"],
