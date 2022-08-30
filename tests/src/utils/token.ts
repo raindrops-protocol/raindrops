@@ -4,10 +4,11 @@ import {
   createCreateMetadataAccountV2Instruction,
   PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID,
 } from "@metaplex-foundation/mpl-token-metadata";
+import { Transaction } from "@raindrop-studios/sol-kit";
 
 const createMintNFTInstructions = async (
   provider: anchor.AnchorProvider,
-  mintPubkey: anchor.web3.PublicKey
+  mintKeypair: anchor.web3.Keypair
 ) => {
   const tokenProgram = anchor.Spl.token(provider);
   const associatedTokenProgram = anchor.Spl.associatedToken(provider);
@@ -18,7 +19,7 @@ const createMintNFTInstructions = async (
 
   const createAccountIx = anchor.web3.SystemProgram.createAccount({
     fromPubkey: provider.wallet.publicKey,
-    newAccountPubkey: mintPubkey,
+    newAccountPubkey: mintKeypair.publicKey,
     lamports: balanceNeeded,
     space: mintSpace,
     programId: tokenProgram.programId,
@@ -27,13 +28,13 @@ const createMintNFTInstructions = async (
   const createInitMintIx = await tokenProgram.methods
     .initializeMint(0, provider.wallet.publicKey, provider.wallet.publicKey)
     .accounts({
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
     })
     .instruction();
 
   const ata = await anchor.utils.token.associatedAddress({
-    mint: mintPubkey,
+    mint: mintKeypair.publicKey,
     owner: provider.wallet.publicKey,
   });
 
@@ -43,7 +44,7 @@ const createMintNFTInstructions = async (
       authority: provider.wallet.publicKey,
       associatedAccount: ata,
       owner: provider.wallet.publicKey,
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram: tokenProgram.programId,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -53,7 +54,7 @@ const createMintNFTInstructions = async (
   const createMintToIx = await tokenProgram.methods
     .mintTo(new anchor.BN(1))
     .accounts({
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       to: ata,
       authority: provider.wallet.publicKey,
     })
@@ -63,7 +64,7 @@ const createMintNFTInstructions = async (
     [
       Buffer.from("metadata"),
       TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-      mintPubkey.toBuffer(),
+      mintKeypair.publicKey.toBuffer(),
     ],
     TOKEN_METADATA_PROGRAM_ID
   );
@@ -71,7 +72,7 @@ const createMintNFTInstructions = async (
   const createMetadataAccountV2Ix = createCreateMetadataAccountV2Instruction(
     {
       metadata: metadataPDA,
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       mintAuthority: provider.wallet.publicKey,
       payer: provider.wallet.publicKey,
       updateAuthority: provider.wallet.publicKey,
@@ -96,7 +97,7 @@ const createMintNFTInstructions = async (
     [
       Buffer.from("metadata"),
       TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-      mintPubkey.toBuffer(),
+      mintKeypair.publicKey.toBuffer(),
       Buffer.from("edition"),
     ],
     TOKEN_METADATA_PROGRAM_ID
@@ -106,7 +107,7 @@ const createMintNFTInstructions = async (
     {
       metadata: metadataPDA,
       edition: masterEditionPDA,
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       updateAuthority: provider.wallet.publicKey,
       mintAuthority: provider.wallet.publicKey,
       payer: provider.wallet.publicKey,
@@ -130,7 +131,7 @@ const createMintNFTInstructions = async (
 
 const createMintTokensInstructions = async (
   provider: anchor.AnchorProvider,
-  mintPubkey: anchor.web3.PublicKey,
+  mintKeypair: anchor.web3.Keypair,
   amount: number,
   decimals: number
 ) => {
@@ -143,7 +144,7 @@ const createMintTokensInstructions = async (
 
   const createAccountIx = anchor.web3.SystemProgram.createAccount({
     fromPubkey: provider.wallet.publicKey,
-    newAccountPubkey: mintPubkey,
+    newAccountPubkey: mintKeypair.publicKey,
     lamports: balanceNeeded,
     space: mintSpace,
     programId: tokenProgram.programId,
@@ -156,13 +157,13 @@ const createMintTokensInstructions = async (
       provider.wallet.publicKey
     )
     .accounts({
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
     })
     .instruction();
 
   const ata = await anchor.utils.token.associatedAddress({
-    mint: mintPubkey,
+    mint: mintKeypair.publicKey,
     owner: provider.wallet.publicKey,
   });
 
@@ -172,7 +173,7 @@ const createMintTokensInstructions = async (
       authority: provider.wallet.publicKey,
       associatedAccount: ata,
       owner: provider.wallet.publicKey,
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram: tokenProgram.programId,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -182,7 +183,7 @@ const createMintTokensInstructions = async (
   const createMintToIx = await tokenProgram.methods
     .mintTo(new anchor.BN(amount))
     .accounts({
-      mint: mintPubkey,
+      mint: mintKeypair.publicKey,
       to: ata,
       authority: provider.wallet.publicKey,
     })
@@ -191,4 +192,46 @@ const createMintTokensInstructions = async (
   return [createAccountIx, createInitMintIx, createAtaIx, createMintToIx];
 };
 
-export { createMintNFTInstructions, createMintTokensInstructions };
+const mintNFT = async (
+  provider: anchor.AnchorProvider,
+  mintKeypair: anchor.web3.Keypair
+) => {
+  const ixs = await createMintNFTInstructions(provider, mintKeypair);
+
+  return await Transaction.sendTransactionWithRetry(
+    provider.connection,
+    provider.wallet,
+    ixs,
+    [mintKeypair],
+    "confirmed"
+  );
+};
+
+const mintTokens = async (
+  provider: anchor.AnchorProvider,
+  mintKeypair: anchor.web3.Keypair,
+  amount: number,
+  decimals: number
+) => {
+  const ixs = await createMintTokensInstructions(
+    provider,
+    mintKeypair,
+    amount,
+    decimals
+  );
+
+  return await Transaction.sendTransactionWithRetry(
+    provider.connection,
+    provider.wallet,
+    ixs,
+    [mintKeypair],
+    "confirmed"
+  );
+};
+
+export {
+  createMintNFTInstructions,
+  createMintTokensInstructions,
+  mintNFT,
+  mintTokens,
+};
