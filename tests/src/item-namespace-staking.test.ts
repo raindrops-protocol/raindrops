@@ -582,21 +582,9 @@ describe("Item-Namespace-Staking Flow", () => {
 
     await stakingProgram.beginArtifactStakeWarmup(args, accounts);
 
-    const [stakingEscrow] =
-      await Utils.PDA.getArtifactIntermediaryStakingAccount({
-        artifactClassMint: itemClassMintKeypair.publicKey,
-        artifactMint: itemMintKeypair.publicKey,
-        index: new anchor.BN(itemIndex),
-        stakingMint: stakingMintKeypair.publicKey,
-        stakingIndex: new anchor.BN(stakingIndex),
-      });
+    const accInfo = await itemProgram.client.account.item.fetch(artifactPDA);
 
-    const accInfo = await provider.connection.getTokenAccountBalance(
-      stakingEscrow,
-      "confirmed"
-    );
-
-    expect(accInfo.value.uiAmount).toBe(stakingAmount);
+    expect((accInfo.tokensStaked as anchor.BN).toNumber()).toBe(0);
   });
 
   it("Ends artifact stake warmup", async () => {
@@ -707,19 +695,8 @@ describe("Item-Namespace-Staking Flow", () => {
 
     await stakingProgram.endArtifactStakeCooldown(args, accounts);
 
-    const tokenAccounts =
-      await provider.connection.getParsedTokenAccountsByOwner(
-        walletKeypair.publicKey,
-        {
-          mint: stakingMintKeypair.publicKey,
-        },
-        "confirmed"
-      );
+    const accInfo = await itemProgram.client.account.item.fetch(artifactPDA);
 
-    expect(tokenAccounts.value.length).toBe(1);
-
-    expect(
-      tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount
-    ).toBe(stakingAmount);
+    expect((accInfo.tokensStaked as anchor.BN).toNumber()).toBe(0);
   });
 });
