@@ -11,7 +11,8 @@
       "itemMint": "E7VVX3RNiTihsddwvSEPtc24gP6StdYUunFLN7DvgtvE",
       "itemIndex": 1,
       "amount": 1,
-      "itemUsageIndex": 0
+      "itemUsageIndex": 0,
+      "playerItemActivationMarkerSpace": 200
     }
   ]
 }

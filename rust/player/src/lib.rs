@@ -852,7 +852,6 @@ pub mod player {
         let rent = &ctx.accounts.rent;
         let validation_program = &ctx.accounts.validation_program;
         let token_program = &ctx.accounts.token_program;
-        let remaining_accounts = &ctx.remaining_accounts;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
@@ -1347,6 +1346,7 @@ pub struct SubtractItemEffect<'info> {
 #[instruction(args: AddItemEffectArgs)]
 pub struct AddItemEffect<'info> {
     #[account(
+        mut,
         seeds=[
             PREFIX.as_bytes(),
             args.player_mint.key().as_ref(),

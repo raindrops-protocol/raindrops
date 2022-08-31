@@ -811,7 +811,7 @@ programCommand("show_item_class")
               log.info(
                 `--> ${
                   InheritanceState[u.inherited]
-                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+                } ${u.namespace.toBase58()} Indexed: ${u.index}`
               );
           })
         : "Not Set"

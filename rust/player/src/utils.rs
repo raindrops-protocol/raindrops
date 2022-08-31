@@ -1018,30 +1018,28 @@ pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<
         }
         BasicItemEffectType::IncrementPercent | BasicItemEffectType::DecrementPercent => {
             match bs.state {
-                BasicStatState::Integer {
-                    base, finalized, ..
-                } => rebalance_basic_stat(RebalanceBasicStatArgs {
-                    basic_stat: bs,
-                    basic_stat_template: bst,
-                    base_change: base
-                        .checked_add(
-                            finalized
-                                .checked_mul(
-                                    100i64
-                                        .checked_add(modded_amount)
-                                        .ok_or(ErrorCode::NumericalOverflowError)?,
-                                )
-                                .ok_or(ErrorCode::NumericalOverflowError)?
-                                .checked_div(100)
-                                .ok_or(ErrorCode::NumericalOverflowError)?,
-                        )
-                        .ok_or(ErrorCode::NumericalOverflowError)?,
-                    temp_change: 0,
-                    new_denominator: 1,
-                    new_numerator: 1,
-                    remove_numerator: None,
-                    remove_denominator: None,
-                })?,
+                BasicStatState::Integer { finalized, .. } => {
+                    rebalance_basic_stat(RebalanceBasicStatArgs {
+                        basic_stat: bs,
+                        basic_stat_template: bst,
+                        base_change: finalized
+                            .checked_mul(
+                                100i64
+                                    .checked_add(modded_amount)
+                                    .ok_or(ErrorCode::NumericalOverflowError)?,
+                            )
+                            .ok_or(ErrorCode::NumericalOverflowError)?
+                            .checked_div(100)
+                            .ok_or(ErrorCode::NumericalOverflowError)?
+                            .checked_sub(finalized)
+                            .ok_or(ErrorCode::NumericalOverflowError)?,
+                        temp_change: 0,
+                        new_denominator: 1,
+                        new_numerator: 1,
+                        remove_numerator: None,
+                        remove_denominator: None,
+                    })?
+                }
                 _ => return Err(ErrorCode::CannotAlterThisTypeNumerically.into()),
             }
         }
@@ -1050,10 +1048,16 @@ pub fn rebalance_stat_permanently(args: RebalanceStatPermanentlyArgs) -> Result<
             BasicStatState::Integer { base, .. } => rebalance_basic_stat(RebalanceBasicStatArgs {
                 basic_stat: bs,
                 basic_stat_template: bst,
-                base_change: modded_amount
-                    .checked_mul(base)
+                base_change: base
+                    .checked_mul(
+                        100i64
+                            .checked_add(modded_amount)
+                            .ok_or(ErrorCode::NumericalOverflowError)?,
+                    )
                     .ok_or(ErrorCode::NumericalOverflowError)?
                     .checked_div(100)
+                    .ok_or(ErrorCode::NumericalOverflowError)?
+                    .checked_sub(base)
                     .ok_or(ErrorCode::NumericalOverflowError)?,
                 temp_change: 0,
                 new_denominator: 1,
@@ -1249,6 +1253,7 @@ pub fn rebalance_basic_stat(args: RebalanceBasicStatArgs) -> Result<()> {
                         new_finalized = std::cmp::max(m, new_finalized);
                     }
 
+                    msg!("New base {:?}", new_base);
                     basic_stat.state = BasicStatState::Integer {
                         base: new_base,
                         with_temporary_changes: new_temp,
@@ -1429,7 +1434,7 @@ pub fn end_item_activation<'b, 'c, 'info>(
         AccountMeta::new(item_activation_marker.key(), false),
         AccountMeta::new(receiver.key(), true),
     ];
-    let mut account_infos = vec![
+    let account_infos = vec![
         item.to_account_info(),
         item_class.to_account_info(),
         item_activation_marker.to_account_info(),
