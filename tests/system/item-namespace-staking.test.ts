@@ -9,7 +9,7 @@ import {
   Utils,
   State,
 } from "@raindrops-protocol/raindrops";
-import { mintNFT, mintTokens } from "./utils/token";
+import { mintNFT, mintTokens } from "../test-helpers/token";
 
 describe("Item-Namespace-Staking Flow", () => {
   // Creates an anchor provider
