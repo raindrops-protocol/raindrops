@@ -868,7 +868,10 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const itemEscrow = await createItemEscrow(payer, anchor.getProvider().connection)
+    const itemEscrow = await createItemEscrow(
+      payer,
+      anchor.getProvider().connection
+    );
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -1001,7 +1004,10 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const item = await createItemEscrowAndCompleteBuild(payer, anchor.getProvider().connection)
+    const item = await createItemEscrowAndCompleteBuild(
+      payer,
+      anchor.getProvider().connection
+    );
     console.log("item: %s", item.toString());
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
@@ -1071,7 +1077,7 @@ describe("namespace", () => {
     assert(nsDataUpdated3.artifactsCached === 0);
   });
 
-  it.only("join item class, cache, uncache then leave ns", async () => {
+  it("join item class, cache, uncache then leave ns", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -2013,7 +2019,7 @@ async function createItemClasses(
 
 async function createItemEscrow(
   payer: anchor.web3.Keypair,
-  connection: anchor.web3.Connection,
+  connection: anchor.web3.Connection
 ): Promise<anchor.web3.PublicKey> {
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
@@ -2031,7 +2037,11 @@ async function createItemEscrow(
 
   // create item mints and metaplex accounts
   const [craftItemMint, _craftItemMetadata, _craftItemMasterEdition] =
-    await createMintMetadataAndMasterEditionAccounts("craftItem", connection, payer);
+    await createMintMetadataAndMasterEditionAccounts(
+      "craftItem",
+      connection,
+      payer
+    );
 
   const itemClassArgs: Instructions.Item.CreateItemClassArgs = {
     classIndex: new anchor.BN(0),
@@ -2172,7 +2182,10 @@ async function createItemEscrow(
     itemClassMint: itemClassMint,
     payer: payer.publicKey,
     newItemMint: craftItemMint,
-    newItemToken: await splToken.getAssociatedTokenAddress(craftItemMint, payer.publicKey),
+    newItemToken: await splToken.getAssociatedTokenAddress(
+      craftItemMint,
+      payer.publicKey
+    ),
     amountToMake: new anchor.BN(1),
     componentScope: "test",
     craftEscrowIndex: new anchor.BN(0),
@@ -2184,7 +2197,7 @@ async function createItemEscrow(
 
 async function createItemEscrowAndCompleteBuild(
   payer: anchor.web3.Keypair,
-  connection: anchor.web3.Connection,
+  connection: anchor.web3.Connection
 ): Promise<anchor.web3.PublicKey> {
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
@@ -2202,7 +2215,11 @@ async function createItemEscrowAndCompleteBuild(
 
   // create item mints and metaplex accounts
   const [craftItemMint, _craftItemMetadata, _craftItemMasterEdition] =
-    await createMintMetadataAndMasterEditionAccounts("craftItem", connection, payer);
+    await createMintMetadataAndMasterEditionAccounts(
+      "craftItem",
+      connection,
+      payer
+    );
 
   const itemClassArgs: Instructions.Item.CreateItemClassArgs = {
     classIndex: new anchor.BN(0),
@@ -2285,7 +2302,7 @@ async function createItemEscrowAndCompleteBuild(
             condition: { presence: true },
             inherited: { notInherited: true },
           },
-        ] 
+        ],
       },
     },
   };
@@ -2339,63 +2356,88 @@ async function createItemEscrowAndCompleteBuild(
   );
   console.log("createItemEscrowTxSig: %s", result.txid);
 
-  const startItemEscrowBuildPhaseArgs: Instructions.Item.StartItemEscrowBuildPhaseArgs = {
-    classIndex: new anchor.BN(0),
-    parentClassIndex: null,
-    craftEscrowIndex: new anchor.BN(0),
-    componentScope: "test",
-    amountToMake: new anchor.BN(1),
-    itemClassMint: itemClassMint,
-    originator: payer.publicKey,
-    newItemMint: craftItemMint,
-    buildPermissivenessToUse: { tokenHolder: true },
-    endNodeProof: null,
-    totalSteps: null,
-  };
-  const startItemEscrowBuildPhaseAccounts: Instructions.Item.StartItemEscrowBuildPhaseAccounts = {
-    itemClassMint: itemClassMint,
-    newItemToken: null,
-    newItemTokenHolder: payer.publicKey,
-    parentMint: null,
-    metadataUpdateAuthority: payer.publicKey,
-  };
-  const startItemEscrowBuildPhaseAdditionalArgs: Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs = {};
+  const startItemEscrowBuildPhaseArgs: Instructions.Item.StartItemEscrowBuildPhaseArgs =
+    {
+      classIndex: new anchor.BN(0),
+      parentClassIndex: null,
+      craftEscrowIndex: new anchor.BN(0),
+      componentScope: "test",
+      amountToMake: new anchor.BN(1),
+      itemClassMint: itemClassMint,
+      originator: payer.publicKey,
+      newItemMint: craftItemMint,
+      buildPermissivenessToUse: { tokenHolder: true },
+      endNodeProof: null,
+      totalSteps: null,
+    };
+  const startItemEscrowBuildPhaseAccounts: Instructions.Item.StartItemEscrowBuildPhaseAccounts =
+    {
+      itemClassMint: itemClassMint,
+      newItemToken: null,
+      newItemTokenHolder: payer.publicKey,
+      parentMint: null,
+      metadataUpdateAuthority: payer.publicKey,
+    };
+  const startItemEscrowBuildPhaseAdditionalArgs: Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs =
+    {};
 
-  const startItemEscrowBuildPhaseResult = await itemProgram.startItemEscrowBuildPhase(startItemEscrowBuildPhaseArgs, startItemEscrowBuildPhaseAccounts, startItemEscrowBuildPhaseAdditionalArgs);
+  const startItemEscrowBuildPhaseResult =
+    await itemProgram.startItemEscrowBuildPhase(
+      startItemEscrowBuildPhaseArgs,
+      startItemEscrowBuildPhaseAccounts,
+      startItemEscrowBuildPhaseAdditionalArgs
+    );
 
-  console.log("startItemEscrowBuildPhaseResult: %s", startItemEscrowBuildPhaseResult.txid);
-  const completeItemEscrowBuildPhaseArgs: Instructions.Item.CompleteItemEscrowBuildPhaseArgs = {
-    newItemIndex: new anchor.BN(0),
-    space: new anchor.BN(300),
-    storeMint: false,
-    storeMetadataFields: false,
-    classIndex: new anchor.BN(0),
-    parentClassIndex: null,
-    craftEscrowIndex: new anchor.BN(0),
-    componentScope: "test",
-    amountToMake: new anchor.BN(1),
-    itemClassMint: itemClassMint,
-    originator: payer.publicKey,
-    buildPermissivenessToUse: { tokenHolder: true },
-  };
+  console.log(
+    "startItemEscrowBuildPhaseResult: %s",
+    startItemEscrowBuildPhaseResult.txid
+  );
+  const completeItemEscrowBuildPhaseArgs: Instructions.Item.CompleteItemEscrowBuildPhaseArgs =
+    {
+      newItemIndex: new anchor.BN(0),
+      space: new anchor.BN(300),
+      storeMint: false,
+      storeMetadataFields: false,
+      classIndex: new anchor.BN(0),
+      parentClassIndex: null,
+      craftEscrowIndex: new anchor.BN(0),
+      componentScope: "test",
+      amountToMake: new anchor.BN(1),
+      itemClassMint: itemClassMint,
+      originator: payer.publicKey,
+      buildPermissivenessToUse: { tokenHolder: true },
+    };
 
-  const completeItemEscrowBuildPhaseAccounts: Instructions.Item.CompleteItemEscrowBuildPhaseAccounts = {
-    itemClassMint: itemClassMint,
-    newItemMint: craftItemMint,
-    newItemToken: null,
-    newItemTokenHolder: null,
-    parentMint: null,
-    metadataUpdateAuthority: payer.publicKey,
-  };
+  const completeItemEscrowBuildPhaseAccounts: Instructions.Item.CompleteItemEscrowBuildPhaseAccounts =
+    {
+      itemClassMint: itemClassMint,
+      newItemMint: craftItemMint,
+      newItemToken: null,
+      newItemTokenHolder: null,
+      parentMint: null,
+      metadataUpdateAuthority: payer.publicKey,
+    };
 
-  const completeItemEscrowBuildPhaseAdditionalArgs: Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs = {};
+  const completeItemEscrowBuildPhaseAdditionalArgs: Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs =
+    {};
 
-  const completeItemEscrowBuildPhaseResult = await itemProgram.completeItemEscrowBuildPhase(completeItemEscrowBuildPhaseArgs, completeItemEscrowBuildPhaseAccounts, completeItemEscrowBuildPhaseAdditionalArgs);
-  console.log("completeItemEscrowBuildPhaseResult: %s", completeItemEscrowBuildPhaseResult.txid);
+  const completeItemEscrowBuildPhaseResult =
+    await itemProgram.completeItemEscrowBuildPhase(
+      completeItemEscrowBuildPhaseArgs,
+      completeItemEscrowBuildPhaseAccounts,
+      completeItemEscrowBuildPhaseAdditionalArgs
+    );
+  console.log(
+    "completeItemEscrowBuildPhaseResult: %s",
+    completeItemEscrowBuildPhaseResult.txid
+  );
 
-  const [item, _itemBump] = await Utils.PDA.getItemPDA(craftItemMint, new anchor.BN(0));
+  const [item, _itemBump] = await Utils.PDA.getItemPDA(
+    craftItemMint,
+    new anchor.BN(0)
+  );
 
-  return item
+  return item;
 }
 
 async function createMatch(

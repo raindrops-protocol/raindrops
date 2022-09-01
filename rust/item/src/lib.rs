@@ -19,14 +19,14 @@ use anchor_lang::{
     },
     AnchorDeserialize, AnchorSerialize, Discriminator,
 };
-anchor_lang::declare_id!("GHkkJcxq6uJgCf4C1VQpXCGS4UJ2FtXXTGrB97VYMbYW");
+anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use arrayref::array_ref;
 use std::str::FromStr;
 pub const PREFIX: &str = "item";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const NAMESPACE_ID: &str = "EXsqFZocynGeiohHeMSBtCnsbKnP2RcaFnupak4WYsVC";
+pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
 pub const STAKING_ID: &str = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -2662,20 +2662,28 @@ pub struct EndItemActivation<'info> {
 
 #[derive(Accounts)]
 pub struct ItemArtifactJoinNamespace<'info> {
+    /// CHECK: deserialized inside instruction
     #[account(mut)]
-    item_artifact: UncheckedAccount<'info>,
+    pub item_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction
     #[account()]
-    namespace: UncheckedAccount<'info>,
+    pub namespace: UncheckedAccount<'info>,
+
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ItemArtifactLeaveNamespace<'info> {
+    /// CHECK: deserialized inside instruction
     #[account(mut)]
-    item_artifact: UncheckedAccount<'info>,
+    pub item_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction
     #[account()]
-    namespace: UncheckedAccount<'info>,
+    pub namespace: UncheckedAccount<'info>,
+
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2683,20 +2691,28 @@ pub struct ItemArtifactLeaveNamespace<'info> {
 #[derive(Accounts)]
 #[instruction(page: u64)]
 pub struct ItemArtifactCacheNamespace<'info> {
+    /// CHECK: deserialized inside instruction
     #[account(mut)]
-    item_artifact: UncheckedAccount<'info>,
+    pub item_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction
     #[account()]
-    namespace: UncheckedAccount<'info>,
+    pub namespace: UncheckedAccount<'info>,
+
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ItemArtifactUncacheNamespace<'info> {
+    /// CHECK: deserialized inside instruction
     #[account(mut)]
-    item_artifact: UncheckedAccount<'info>,
+    pub item_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction
     #[account()]
-    namespace: UncheckedAccount<'info>,
+    pub namespace: UncheckedAccount<'info>,
+
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }

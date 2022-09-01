@@ -22,7 +22,7 @@ use raindrops_matches::cpi::{
     match_cache_namespace, match_join_namespace, match_leave_namespace, match_uncache_namespace,
 };
 
-anchor_lang::declare_id!("EXsqFZocynGeiohHeMSBtCnsbKnP2RcaFnupak4WYsVC");
+anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
 
 pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
