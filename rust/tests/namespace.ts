@@ -937,7 +937,7 @@ describe("namespace", () => {
     assert(nsDataUpdated3.artifactsCached === 0);
   });
 
-  it.only("join item to namespace, cache, uncache then leave", async () => {
+  it("join item to namespace, cache, uncache then leave", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -1071,7 +1071,7 @@ describe("namespace", () => {
     assert(nsDataUpdated3.artifactsCached === 0);
   });
 
-  it("join item class, cache, uncache then leave ns", async () => {
+  it.only("join item class, cache, uncache then leave ns", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -1169,6 +1169,7 @@ describe("namespace", () => {
 
     const page = await getCachedItemClassPage(itemClass[0], namespace);
     assert(page !== null);
+    console.log("item cached at %d", page);
 
     // check item was index on the namespace side
     let [index, _indexBump] = await Utils.PDA.getIndexPDA(
