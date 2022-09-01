@@ -6,7 +6,7 @@ use anchor_lang::{
     Key, ToAccountInfo,
 };
 use arrayref::array_ref;
-use raindrops_item::ItemClass;
+use raindrops_item::{Item, ItemClass, ItemEscrow};
 use raindrops_matches::Match;
 
 pub fn assert_part_of_namespace<'a>(
@@ -68,6 +68,30 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
         }
 
         return Ok(namespaces);
+    } else if let Ok(item_escrow) = Account::<'_, ItemEscrow>::try_from(artifact) {
+        let artifact_namespaces = match item_escrow.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
+    } else if let Ok(item) = Account::<'_, Item>::try_from(artifact) {
+        let artifact_namespaces = match item.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
     } else if let Ok(match_state) = Account::<'_, Match>::try_from(artifact) {
         let artifact_namespaces = match match_state.namespaces.as_ref() {
             Some(artifact_namespaces) => artifact_namespaces,
@@ -118,14 +142,14 @@ pub fn check_permissiveness_against_holder<'a>(
             msg!("Whitelist match");
             let deserialized: Account<'_, NamespaceGatekeeper> =
                 Account::try_from(&namespace_gatekeeper.to_account_info())?;
-            for filter in &deserialized.artifact_filters {
+            'filter_loop: for filter in &deserialized.artifact_filters {
                 match &filter.filter {
                     Filter::Namespace { namespaces } => {
                         for n in &art_namespaces {
                             for other_n in namespaces {
                                 if other_n == n {
                                     msg!("Whitelisted!");
-                                    return Ok(());
+                                    continue 'filter_loop;
                                 }
                             }
                         }
@@ -136,7 +160,7 @@ pub fn check_permissiveness_against_holder<'a>(
                         for n in &art_namespaces {
                             if n == namespace {
                                 msg!("Whitelisted!");
-                                return Ok(());
+                                continue 'filter_loop;
                             }
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
@@ -148,13 +172,13 @@ pub fn check_permissiveness_against_holder<'a>(
 
                         if as_token.mint == *mint {
                             msg!("Whitelisted!");
-                            return Ok(());
+                            continue 'filter_loop;
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
                 }
             }
-            return Err(error!(ErrorCode::CannotJoinNamespace));
+            return Ok(());
         }
         Permissiveness::Blacklist => {
             msg!("Blacklist match");
@@ -171,16 +195,14 @@ pub fn check_permissiveness_against_holder<'a>(
                                 }
                             }
                         }
-                        return Ok(());
                     }
                     Filter::Category { namespace, .. } => {
-                        for n in art_namespaces {
-                            if n == *namespace {
+                        for n in &art_namespaces {
+                            if n == namespace {
                                 msg!("Blacklisted!");
                                 return Err(error!(ErrorCode::CannotJoinNamespace));
                             }
                         }
-                        return Ok(());
                     }
                     Filter::Key { mint, .. } => {
                         let as_token: spl_token::state::Account =
@@ -190,11 +212,10 @@ pub fn check_permissiveness_against_holder<'a>(
                             msg!("Blacklisted!");
                             return Err(error!(ErrorCode::CannotJoinNamespace));
                         }
-                        return Ok(());
                     }
                 }
             }
-            return Err(error!(ErrorCode::CannotJoinNamespace));
+            return Ok(());
         }
         Permissiveness::Namespace => {
             msg!("Namespace match");
