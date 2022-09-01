@@ -804,7 +804,7 @@ describe("namespace", () => {
     assert(nsDataUpdated.artifactsCached === 0);
   });
 
-  it.only("join item escrow to namespace then leave", async () => {
+  it.only("join item escrow to namespace, cache, uncache then leave", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -884,6 +884,43 @@ describe("namespace", () => {
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 0);
 
+    const cacheArtifactAccounts: Instructions.Namespace.CacheArtifactAccounts =
+      {
+        namespaceMint: nsMint,
+        artifact: itemEscrow,
+        raindropsProgram: State.Namespace.RaindropsProgram.Item,
+      };
+
+    const cacheArtifactResult = await namespaceProgram.cacheArtifact(
+      cacheArtifactAccounts
+    );
+    console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
+
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 1);
+    assert(nsDataUpdated.artifactsCached === 1);
+
+    const uncacheArtifactAccounts: Instructions.Namespace.UncacheArtifactAccounts =
+      {
+        namespaceMint: nsMint,
+        artifact: itemEscrow,
+        raindropsProgram: State.Namespace.RaindropsProgram.Item,
+      };
+
+    const uncacheArtifactArgs: Instructions.Namespace.UncacheArtifactArgs = {
+      page: new anchor.BN(0),
+    };
+
+    const uncacheArtifactResult = await namespaceProgram.uncacheArtifact(
+      uncacheArtifactArgs,
+      uncacheArtifactAccounts
+    );
+    console.log("uncacheArtifactTxSig: %s", uncacheArtifactResult.txid);
+
+    const nsDataUpdated2 = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated2.artifactsAdded === 1);
+    assert(nsDataUpdated2.artifactsCached === 0);
+
     const leaveNsAccounts: Instructions.Namespace.LeaveNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemEscrow,
@@ -895,9 +932,9 @@ describe("namespace", () => {
     );
     console.log("leaveNsTxSig: %s", leaveNsResult.txid);
 
-    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
-    assert(nsDataUpdated.artifactsAdded === 0);
-    assert(nsDataUpdated.artifactsCached === 0);
+    const nsDataUpdated3 = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated3.artifactsAdded === 0);
+    assert(nsDataUpdated3.artifactsCached === 0);
   });
 
   it("join item class, cache, uncache then leave ns", async () => {

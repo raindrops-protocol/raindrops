@@ -1869,3 +1869,42 @@ pub fn leave_namespace(
 
     Ok(new_namespaces)
 }
+
+pub fn cache_namespace(current_namespaces: Vec<NamespaceAndIndex>, namespace: Pubkey, page: u64) -> Result<Vec<NamespaceAndIndex>> {
+    let mut cached = false;
+    let mut new_namespaces = vec![];
+    for mut ns in current_namespaces {
+        if ns.namespace == namespace && !cached {
+            ns.index = Some(page);
+            cached = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !cached {
+        return Err(error!(ErrorCode::FailedToCache));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn uncache_namespace(current_namespaces: Vec<NamespaceAndIndex>, namespace: Pubkey) -> Result<Vec<NamespaceAndIndex>> {
+    
+    let mut uncached = false;
+    let mut new_namespaces = vec![];
+    for mut ns in current_namespaces {
+        if ns.namespace == namespace && !uncached {
+            ns.index = None;
+            uncached = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !uncached {
+        return Err(error!(ErrorCode::FailedToUncache));
+    } 
+
+    Ok(new_namespaces)
+}

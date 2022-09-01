@@ -284,7 +284,7 @@ pub mod item {
 
     use std::borrow::Borrow;
 
-    use crate::utils::{join_to_namespace, leave_namespace};
+    use crate::utils::{join_to_namespace, leave_namespace, cache_namespace, uncache_namespace};
 
     use super::*;
 
@@ -1762,69 +1762,86 @@ pub mod item {
         Ok(())
     }
 
-    pub fn item_class_cache_namespace<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, ItemClassCacheNamespace<'info>>,
+    pub fn item_artifact_cache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemArtifactCacheNamespace<'info>>,
         page: u64,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let item_class = &mut ctx.accounts.item_class;
-
-        let namespaces = match item_class.namespaces.clone() {
-            Some(namespaces) => namespaces,
-            None => return Err(error!(ErrorCode::FailedToCache)),
+        if let Ok(item_class) = &mut Account::<'_, ItemClass>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = cache_namespace(
+                item_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+                page,
+            )?;
+            item_class.namespaces = Some(new_namespaces);
+            item_class.exit(&crate::id())?;
         };
 
-        let mut cached = false;
-        let mut new_namespaces = vec![];
-        for mut ns in namespaces {
-            if ns.namespace == ctx.accounts.namespace.key() && !cached {
-                ns.index = Some(page);
-                cached = true;
-                new_namespaces.push(ns);
-            } else {
-                new_namespaces.push(ns);
-            }
-        }
-        if !cached {
-            return Err(error!(ErrorCode::FailedToCache));
-        }
-        item_class.namespaces = Some(new_namespaces);
+        if let Ok(item) = &mut Account::<'_, Item>::try_from(&ctx.accounts.item_artifact) {
+            let new_namespaces = cache_namespace(
+                item.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+                page,
+            )?;
+            item.namespaces = Some(new_namespaces);
+            item.exit(&crate::id())?;
+        };
+
+        if let Ok(item_escrow) =
+            &mut Account::<'_, ItemEscrow>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = cache_namespace(
+                item_escrow.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+                page,
+            )?;
+            item_escrow.namespaces = Some(new_namespaces);
+            item_escrow.exit(&crate::id())?;
+        };
 
         Ok(())
     }
 
-    pub fn item_class_uncache_namespace<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, ItemClassUncacheNamespace<'info>>,
+    pub fn item_artifact_uncache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemArtifactUncacheNamespace<'info>>,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let item_class = &mut ctx.accounts.item_class;
-
-        let namespaces = match item_class.namespaces.clone() {
-            Some(namespaces) => namespaces,
-            None => return Err(error!(ErrorCode::FailedToUncache)),
+        if let Ok(item_class) = &mut Account::<'_, ItemClass>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = uncache_namespace(
+                item_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item_class.namespaces = Some(new_namespaces);
+            item_class.exit(&crate::id())?;
         };
 
-        let mut uncached = false;
-        let mut new_namespaces = vec![];
-        for mut ns in namespaces {
-            if ns.namespace == ctx.accounts.namespace.key() && !uncached {
-                ns.index = None;
-                uncached = true;
-                new_namespaces.push(ns);
-            } else {
-                new_namespaces.push(ns);
-            }
-        }
-        if !uncached {
-            return Err(error!(ErrorCode::FailedToUncache));
-        }
-        item_class.namespaces = Some(new_namespaces);
+        if let Ok(item) = &mut Account::<'_, Item>::try_from(&ctx.accounts.item_artifact) {
+            let new_namespaces = uncache_namespace(
+                item.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item.namespaces = Some(new_namespaces);
+            item.exit(&crate::id())?;
+        };
+
+        if let Ok(item_escrow) =
+            &mut Account::<'_, ItemEscrow>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = uncache_namespace(
+                item_escrow.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item_escrow.namespaces = Some(new_namespaces);
+            item_escrow.exit(&crate::id())?;
+        };
 
         Ok(())
     }
@@ -2663,9 +2680,9 @@ pub struct ItemArtifactLeaveNamespace<'info> {
 
 #[derive(Accounts)]
 #[instruction(page: u64)]
-pub struct ItemClassCacheNamespace<'info> {
+pub struct ItemArtifactCacheNamespace<'info> {
     #[account(mut)]
-    item_class: Account<'info, ItemClass>,
+    item_artifact: UncheckedAccount<'info>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -2673,9 +2690,9 @@ pub struct ItemClassCacheNamespace<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ItemClassUncacheNamespace<'info> {
+pub struct ItemArtifactUncacheNamespace<'info> {
     #[account(mut)]
-    item_class: Account<'info, ItemClass>,
+    item_artifact: UncheckedAccount<'info>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]

@@ -806,10 +806,10 @@ export type Item = {
       "args": []
     },
     {
-      "name": "itemClassCacheNamespace",
+      "name": "itemArtifactCacheNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
@@ -832,10 +832,10 @@ export type Item = {
       ]
     },
     {
-      "name": "itemClassUncacheNamespace",
+      "name": "itemArtifactUncacheNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
@@ -4114,10 +4114,10 @@ export const IDL: Item = {
       "args": []
     },
     {
-      "name": "itemClassCacheNamespace",
+      "name": "itemArtifactCacheNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
@@ -4140,10 +4140,10 @@ export const IDL: Item = {
       ]
     },
     {
-      "name": "itemClassUncacheNamespace",
+      "name": "itemArtifactUncacheNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
