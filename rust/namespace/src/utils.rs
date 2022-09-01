@@ -80,8 +80,8 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
         }
 
         return Ok(namespaces);
-    } else if let Ok(item_escrow) = Account::<'_, Item>::try_from(artifact) {
-        let artifact_namespaces = match item_escrow.namespaces.as_ref() {
+    } else if let Ok(item) = Account::<'_, Item>::try_from(artifact) {
+        let artifact_namespaces = match item.namespaces.as_ref() {
             Some(artifact_namespaces) => artifact_namespaces,
             None => {
                 return Err(error!(ErrorCode::DesiredNamespacesNone));
