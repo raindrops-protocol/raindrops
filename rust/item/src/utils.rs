@@ -1870,7 +1870,11 @@ pub fn leave_namespace(
     Ok(new_namespaces)
 }
 
-pub fn cache_namespace(current_namespaces: Vec<NamespaceAndIndex>, namespace: Pubkey, page: u64) -> Result<Vec<NamespaceAndIndex>> {
+pub fn cache_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    namespace: Pubkey,
+    page: u64,
+) -> Result<Vec<NamespaceAndIndex>> {
     let mut cached = false;
     let mut new_namespaces = vec![];
     for mut ns in current_namespaces {
@@ -1889,8 +1893,10 @@ pub fn cache_namespace(current_namespaces: Vec<NamespaceAndIndex>, namespace: Pu
     Ok(new_namespaces)
 }
 
-pub fn uncache_namespace(current_namespaces: Vec<NamespaceAndIndex>, namespace: Pubkey) -> Result<Vec<NamespaceAndIndex>> {
-    
+pub fn uncache_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
     let mut uncached = false;
     let mut new_namespaces = vec![];
     for mut ns in current_namespaces {
@@ -1904,7 +1910,7 @@ pub fn uncache_namespace(current_namespaces: Vec<NamespaceAndIndex>, namespace: 
     }
     if !uncached {
         return Err(error!(ErrorCode::FailedToUncache));
-    } 
+    }
 
     Ok(new_namespaces)
 }

@@ -284,7 +284,7 @@ pub mod item {
 
     use std::borrow::Borrow;
 
-    use crate::utils::{join_to_namespace, leave_namespace, cache_namespace, uncache_namespace};
+    use crate::utils::{cache_namespace, join_to_namespace, leave_namespace, uncache_namespace};
 
     use super::*;
 
@@ -1117,6 +1117,8 @@ pub mod item {
         let metadata = &ctx.accounts.new_item_metadata;
         let edition = &ctx.accounts.new_item_edition;
         let ed = edition.to_account_info();
+
+        msg!("new_item: {}", new_item.key());
 
         let CompleteItemEscrowBuildPhaseArgs {
             class_index,
