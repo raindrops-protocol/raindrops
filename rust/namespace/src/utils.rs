@@ -6,7 +6,7 @@ use anchor_lang::{
     Key, ToAccountInfo,
 };
 use arrayref::array_ref;
-use raindrops_item::ItemClass;
+use raindrops_item::{ItemClass, ItemEscrow};
 use raindrops_matches::Match;
 
 pub fn assert_part_of_namespace<'a>(
@@ -58,6 +58,18 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
 
     if let Ok(item_class) = Account::<'_, ItemClass>::try_from(artifact) {
         let artifact_namespaces = match item_class.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
+    } else if let Ok(item_escrow) = Account::<'_, ItemEscrow>::try_from(artifact) {
+        let artifact_namespaces = match item_escrow.namespaces.as_ref() {
             Some(artifact_namespaces) => artifact_namespaces,
             None => {
                 return Err(error!(ErrorCode::DesiredNamespacesNone));

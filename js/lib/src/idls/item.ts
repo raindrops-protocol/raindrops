@@ -764,10 +764,10 @@ export type Item = {
       ]
     },
     {
-      "name": "itemClassJoinNamespace",
+      "name": "itemArtifactJoinNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
@@ -785,10 +785,10 @@ export type Item = {
       "args": []
     },
     {
-      "name": "itemClassLeaveNamespace",
+      "name": "itemArtifactLeaveNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
@@ -902,6 +902,12 @@ export type Item = {
             "name": "mint",
             "type": {
               "option": "publicKey"
+            }
+          },
+          {
+            "name": "index",
+            "type": {
+              "option": "u64"
             }
           },
           {
@@ -4066,10 +4072,10 @@ export const IDL: Item = {
       ]
     },
     {
-      "name": "itemClassJoinNamespace",
+      "name": "itemArtifactJoinNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
@@ -4087,10 +4093,10 @@ export const IDL: Item = {
       "args": []
     },
     {
-      "name": "itemClassLeaveNamespace",
+      "name": "itemArtifactLeaveNamespace",
       "accounts": [
         {
-          "name": "itemClass",
+          "name": "itemArtifact",
           "isMut": true,
           "isSigner": false
         },
@@ -4204,6 +4210,12 @@ export const IDL: Item = {
             "name": "mint",
             "type": {
               "option": "publicKey"
+            }
+          },
+          {
+            "name": "index",
+            "type": {
+              "option": "u64"
             }
           },
           {

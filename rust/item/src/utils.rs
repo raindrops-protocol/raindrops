@@ -4,7 +4,7 @@ use crate::{
     ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
     InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
     ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType,
-    Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
+    NamespaceAndIndex, Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
 };
 use anchor_lang::{
     error,
@@ -1815,4 +1815,57 @@ pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
     };
 
     return true;
+}
+
+pub fn join_to_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    new_namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut joined = false;
+    let mut new_namespaces = vec![];
+
+    for mut ns in current_namespaces {
+        if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+            ns.namespace = new_namespace.key();
+            ns.index = None;
+            ns.inherited = InheritanceState::NotInherited;
+            joined = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !joined {
+        return Err(error!(ErrorCode::FailedToJoinNamespace));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn leave_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    leave_namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut left = false;
+    let mut new_namespaces = vec![];
+
+    for mut ns in current_namespaces {
+        if ns.namespace == leave_namespace.key() && !left {
+            // if the artifact is still cached, error
+            if ns.index != None {
+                return Err(error!(ErrorCode::FailedToLeaveNamespace));
+            };
+            ns.namespace = anchor_lang::solana_program::system_program::id();
+            ns.inherited = InheritanceState::NotInherited;
+            left = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !left {
+        return Err(error!(ErrorCode::FailedToLeaveNamespace));
+    }
+
+    Ok(new_namespaces)
 }

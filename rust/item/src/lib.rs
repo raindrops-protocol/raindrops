@@ -19,14 +19,14 @@ use anchor_lang::{
     },
     AnchorDeserialize, AnchorSerialize, Discriminator,
 };
-anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
+anchor_lang::declare_id!("GHkkJcxq6uJgCf4C1VQpXCGS4UJ2FtXXTGrB97VYMbYW");
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use arrayref::array_ref;
 use std::str::FromStr;
 pub const PREFIX: &str = "item";
 pub const MARKER: &str = "marker";
 pub const PLAYER_ID: &str = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98";
-pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
+pub const NAMESPACE_ID: &str = "EXsqFZocynGeiohHeMSBtCnsbKnP2RcaFnupak4WYsVC";
 pub const STAKING_ID: &str = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -283,6 +283,8 @@ pub struct UpdateTokensStakedArgs {
 pub mod item {
 
     use std::borrow::Borrow;
+
+    use crate::utils::{join_to_namespace, leave_namespace};
 
     use super::*;
 
@@ -1680,75 +1682,82 @@ pub mod item {
         Ok(())
     }
 
-    pub fn item_class_join_namespace<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, ItemClassJoinNamespace<'info>>,
+    pub fn item_artifact_join_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemArtifactJoinNamespace<'info>>,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let item_class = &mut ctx.accounts.item_class;
-
-        let namespaces = match item_class.namespaces.clone() {
-            Some(namespaces) => namespaces,
-            None => return Err(error!(ErrorCode::FailedToJoinNamespace)),
+        if let Ok(item_class) = &mut Account::<'_, ItemClass>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = join_to_namespace(
+                item_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item_class.namespaces = Some(new_namespaces);
+            item_class.exit(&crate::id())?;
         };
 
-        let mut joined = false;
-        let mut new_namespaces = vec![];
-        for mut ns in namespaces {
-            if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
-                ns.namespace = ctx.accounts.namespace.key();
-                ns.index = None;
-                ns.inherited = InheritanceState::NotInherited;
-                joined = true;
-                new_namespaces.push(ns);
-            } else {
-                new_namespaces.push(ns);
-            }
-        }
-        if !joined {
-            return Err(error!(ErrorCode::FailedToJoinNamespace));
-        }
-        item_class.namespaces = Some(new_namespaces);
+        if let Ok(item) = &mut Account::<'_, Item>::try_from(&ctx.accounts.item_artifact) {
+            let new_namespaces = join_to_namespace(
+                item.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item.namespaces = Some(new_namespaces);
+            item.exit(&crate::id())?;
+        };
+
+        if let Ok(item_escrow) =
+            &mut Account::<'_, ItemEscrow>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = join_to_namespace(
+                item_escrow.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item_escrow.namespaces = Some(new_namespaces);
+            item_escrow.exit(&crate::id())?;
+        };
 
         Ok(())
     }
 
-    pub fn item_class_leave_namespace<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, ItemClassLeaveNamespace<'info>>,
+    pub fn item_artifact_leave_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ItemArtifactLeaveNamespace<'info>>,
     ) -> Result<()> {
         if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
             return Err(error!(ErrorCode::UnauthorizedCaller));
         }
 
-        let item_class = &mut ctx.accounts.item_class;
-
-        let namespaces = match item_class.namespaces.clone() {
-            Some(namespaces) => namespaces,
-            None => return Err(error!(ErrorCode::FailedToLeaveNamespace)),
+        if let Ok(item_class) = &mut Account::<'_, ItemClass>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = leave_namespace(
+                item_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item_class.namespaces = Some(new_namespaces);
+            item_class.exit(&crate::id())?;
         };
 
-        let mut left = false;
-        let mut new_namespaces = vec![];
-        for mut ns in namespaces {
-            if ns.namespace == ctx.accounts.namespace.key() && !left {
-                // if the artifact is still cached, error
-                if ns.index != None {
-                    return Err(error!(ErrorCode::FailedToLeaveNamespace));
-                };
-                ns.namespace = anchor_lang::solana_program::system_program::id();
-                ns.inherited = InheritanceState::NotInherited;
-                left = true;
-                new_namespaces.push(ns);
-            } else {
-                new_namespaces.push(ns);
-            }
-        }
-        if !left {
-            return Err(error!(ErrorCode::FailedToLeaveNamespace));
-        }
-        item_class.namespaces = Some(new_namespaces);
+        if let Ok(item) = &mut Account::<'_, Item>::try_from(&ctx.accounts.item_artifact) {
+            let new_namespaces = leave_namespace(
+                item.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item.namespaces = Some(new_namespaces);
+            item.exit(&crate::id())?;
+        };
+
+        if let Ok(item_escrow) =
+            &mut Account::<'_, ItemEscrow>::try_from(&ctx.accounts.item_artifact)
+        {
+            let new_namespaces = leave_namespace(
+                item_escrow.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            item_escrow.namespaces = Some(new_namespaces);
+            item_escrow.exit(&crate::id())?;
+        };
 
         Ok(())
     }
@@ -2633,9 +2642,9 @@ pub struct EndItemActivation<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ItemClassJoinNamespace<'info> {
+pub struct ItemArtifactJoinNamespace<'info> {
     #[account(mut)]
-    item_class: Account<'info, ItemClass>,
+    item_artifact: UncheckedAccount<'info>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -2643,9 +2652,9 @@ pub struct ItemClassJoinNamespace<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ItemClassLeaveNamespace<'info> {
+pub struct ItemArtifactLeaveNamespace<'info> {
     #[account(mut)]
-    item_class: Account<'info, ItemClass>,
+    item_artifact: UncheckedAccount<'info>,
     #[account()]
     namespace: UncheckedAccount<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]

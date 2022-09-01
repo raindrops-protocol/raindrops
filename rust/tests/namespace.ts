@@ -8,6 +8,7 @@ import {
   Utils,
   Constants,
   NamespaceProgram,
+  ItemProgram,
   Idls,
 } from "@raindrops-protocol/raindrops";
 import assert = require("assert");
@@ -690,6 +691,202 @@ describe("namespace", () => {
     const leaveNsAccounts: Instructions.Namespace.LeaveNamespaceAccounts = {
       namespaceMint: nsMint,
       artifact: itemClass[0],
+      raindropsProgram: State.Namespace.RaindropsProgram.Item,
+    };
+
+    const leaveNsResult = await namespaceProgram.leaveNamespace(
+      leaveNsAccounts
+    );
+    console.log("leaveNsTxSig: %s", leaveNsResult.txid);
+
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 0);
+    assert(nsDataUpdated.artifactsCached === 0);
+  });
+
+  it("join item to namespace then leave", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.NamespaceIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: State.Namespace.PermissivenessSettings = {
+      namespacePermissiveness: State.Namespace.Permissiveness.All,
+      itemPermissiveness: State.Namespace.Permissiveness.All,
+      playerPermissiveness: State.Namespace.Permissiveness.All,
+      matchPermissiveness: State.Namespace.Permissiveness.All,
+      missionPermissiveness: State.Namespace.Permissiveness.All,
+      cachePermissiveness: State.Namespace.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs =
+      {
+        desiredNamespaceArraySize: new anchor.BN(2),
+        uuid: "123456",
+        prettyName: "my-ns",
+        permissivenessSettings: permissivenessSettings,
+        whitelistedStakingMints: [],
+      };
+
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts =
+      {
+        mint: nsMint,
+        metadata: nsMetadata,
+        masterEdition: nsMasterEdition,
+      };
+
+    const initNsResult = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsResult.txid);
+
+    const createNsGKAccounts: Instructions.Namespace.CreateNamespaceGatekeeperAccounts =
+      {
+        namespaceMint: nsMint,
+      };
+
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
+
+    const itemClass = await createItemClasses(
+      payer,
+      anchor.getProvider().connection,
+      1
+    );
+
+    const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemClass[0],
+      raindropsProgram: State.Namespace.RaindropsProgram.Item,
+    };
+
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
+
+    const [namespace, _namespaceBump] = await Utils.PDA.getNamespacePDA(nsMint);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.artifactsAdded === 1);
+    assert(nsData.artifactsCached === 0);
+
+    const leaveNsAccounts: Instructions.Namespace.LeaveNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemClass[0],
+      raindropsProgram: State.Namespace.RaindropsProgram.Item,
+    };
+
+    const leaveNsResult = await namespaceProgram.leaveNamespace(
+      leaveNsAccounts
+    );
+    console.log("leaveNsTxSig: %s", leaveNsResult.txid);
+
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 0);
+    assert(nsDataUpdated.artifactsCached === 0);
+  });
+
+  it.only("join item escrow to namespace then leave", async () => {
+    const payer = await newPayer(anchor.getProvider().connection);
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          anchor.getProvider().connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.NamespaceIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        anchor.getProvider().connection,
+        payer
+      );
+
+    const permissivenessSettings: State.Namespace.PermissivenessSettings = {
+      namespacePermissiveness: State.Namespace.Permissiveness.All,
+      itemPermissiveness: State.Namespace.Permissiveness.All,
+      playerPermissiveness: State.Namespace.Permissiveness.All,
+      matchPermissiveness: State.Namespace.Permissiveness.All,
+      missionPermissiveness: State.Namespace.Permissiveness.All,
+      cachePermissiveness: State.Namespace.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs =
+      {
+        desiredNamespaceArraySize: new anchor.BN(2),
+        uuid: "123456",
+        prettyName: "my-ns",
+        permissivenessSettings: permissivenessSettings,
+        whitelistedStakingMints: [],
+      };
+
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts =
+      {
+        mint: nsMint,
+        metadata: nsMetadata,
+        masterEdition: nsMasterEdition,
+      };
+
+    const initNsResult = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsResult.txid);
+
+    const createNsGKAccounts: Instructions.Namespace.CreateNamespaceGatekeeperAccounts =
+      {
+        namespaceMint: nsMint,
+      };
+
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
+
+    const itemEscrow = await createItemEscrow(payer, anchor.getProvider().connection)
+
+    const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemEscrow,
+      raindropsProgram: State.Namespace.RaindropsProgram.Item,
+    };
+
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
+
+    const [namespace, _namespaceBump] = await Utils.PDA.getNamespacePDA(nsMint);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.artifactsAdded === 1);
+    assert(nsData.artifactsCached === 0);
+
+    const leaveNsAccounts: Instructions.Namespace.LeaveNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemEscrow,
       raindropsProgram: State.Namespace.RaindropsProgram.Item,
     };
 
@@ -1640,6 +1837,177 @@ async function createItemClasses(
   console.log("%d item classes created", items.length);
 
   return items;
+}
+
+async function createItemEscrow(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection,
+): Promise<anchor.web3.PublicKey> {
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(
+      anchor.getProvider().connection,
+      new anchor.Wallet(payer),
+      { commitment: "confirmed" }
+    ),
+    idl: Idls.ItemIDL,
+  });
+
+  // create item mints and metaplex accounts
+  const [itemClassMint, _itemClassMetadata, _itemClassMasterEdition] =
+    await createMintMetadataAndMasterEditionAccounts("item", connection, payer);
+
+  // create item mints and metaplex accounts
+  const [craftItemMint, _craftItemMetadata, _craftItemMasterEdition] =
+    await createMintMetadataAndMasterEditionAccounts("craftItem", connection, payer);
+
+  const itemClassArgs: Instructions.Item.CreateItemClassArgs = {
+    classIndex: new anchor.BN(0),
+    parentOfParentClassIndex: null,
+    parentClassIndex: null,
+    space: new anchor.BN(300),
+    desiredNamespaceArraySize: 2,
+    updatePermissivenessToUse: null,
+    storeMint: false,
+    storeMetadataFields: false,
+    itemClassData: {
+      settings: {
+        freeBuild: null,
+        childrenMustBeEditions: null,
+        builderMustBeHolder: null,
+        updatePermissiveness: [
+          {
+            permissivenessType: { tokenHolder: true },
+            inherited: { notInherited: true },
+          },
+        ],
+        buildPermissiveness: [
+          {
+            permissivenessType: { tokenHolder: true },
+            inherited: { notInherited: true },
+          },
+        ],
+        stakingWarmUpDuration: null,
+        stakingCooldownDuration: null,
+        stakingPermissiveness: null,
+        unstakingPermissiveness: null,
+        childUpdatePropagationPermissiveness: [
+          {
+            childUpdatePropagationPermissivenessType: { usages: true },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: { components: true },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              updatePermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              buildPermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              stakingPermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+          {
+            childUpdatePropagationPermissivenessType: {
+              freeBuildPermissiveness: true,
+            },
+            inherited: { notInherited: true },
+          },
+        ],
+      },
+      config: {
+        usageRoot: null,
+        usageStateRoot: null,
+        componentRoot: null,
+        usages: null,
+        components: [
+          {
+            mint: craftItemMint,
+            amount: new anchor.BN(1),
+            classIndex: new anchor.BN(0),
+            timeToBuild: null,
+            componentScope: "test",
+            useUsageIndex: 0,
+            condition: { presence: true },
+            inherited: { notInherited: true },
+          },
+        ],
+      },
+    },
+  };
+
+  const createItemClassAccounts: Instructions.Item.CreateItemClassAccounts = {
+    itemMint: itemClassMint,
+    parent: null,
+    parentMint: null,
+    parentOfParentClassMint: null,
+    metadataUpdateAuthority: payer.publicKey,
+    parentUpdateAuthority: null,
+  };
+
+  const createItemClassAdditionalArgs: Instructions.Item.CreateItemClassAdditionalArgs =
+    {};
+
+  const createItemClassResult = await itemProgram.createItemClass(
+    itemClassArgs,
+    createItemClassAccounts,
+    createItemClassAdditionalArgs
+  );
+  console.log("createItemClassTxSig: %s", createItemClassResult.txid);
+
+  const createItemEscrowArgs: Instructions.Item.CreateItemEscrowArgs = {
+    classIndex: new anchor.BN(0),
+    craftEscrowIndex: new anchor.BN(0),
+    parentClassIndex: null,
+    componentScope: "test",
+    amountToMake: new anchor.BN(1),
+    namespaceIndex: new anchor.BN(0),
+    buildPermissivenessToUse: { tokenHolder: true },
+    itemClassMint: itemClassMint,
+  };
+
+  const createItemEscrowAdditionalArgs: Instructions.Item.CreateItemEscrowAdditionalArgs =
+    {};
+
+  const createItemEscrowAccounts: Instructions.Item.CreateItemEscrowAccounts = {
+    newItemMint: craftItemMint,
+    newItemToken: null,
+    newItemTokenHolder: payer.publicKey,
+    parentMint: null,
+    itemClassMint: itemClassMint,
+    metadataUpdateAuthority: payer.publicKey,
+  };
+
+  const result = await itemProgram.createItemEscrow(
+    createItemEscrowArgs,
+    createItemEscrowAccounts,
+    createItemEscrowAdditionalArgs
+  );
+  console.log("createItemEscrowTxSig: %s", result.txid);
+
+  const [itemEscrow, _itemEscrowBump] = await Utils.PDA.getItemEscrow({
+    itemClassMint: itemClassMint,
+    payer: payer.publicKey,
+    newItemMint: craftItemMint,
+    newItemToken: await splToken.getAssociatedTokenAddress(craftItemMint, payer.publicKey),
+    amountToMake: new anchor.BN(1),
+    componentScope: "test",
+    craftEscrowIndex: new anchor.BN(0),
+    classIndex: new anchor.BN(0),
+  });
+
+  return itemEscrow;
 }
 
 async function createMatch(

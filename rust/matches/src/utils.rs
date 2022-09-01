@@ -21,7 +21,7 @@ use spl_associated_token_account::get_associated_token_address;
 use spl_token::instruction::close_account;
 use std::{convert::TryInto, str::FromStr};
 
-pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
+pub const NAMESPACE_ID: &str = "EXsqFZocynGeiohHeMSBtCnsbKnP2RcaFnupak4WYsVC";
 
 pub fn assert_is_ata(
     ata: &AccountInfo,
