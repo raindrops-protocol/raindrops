@@ -352,7 +352,9 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -386,7 +388,9 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -439,7 +443,9 @@ export class Instruction extends SolKitInstruction {
           tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),
@@ -477,7 +483,9 @@ export class Instruction extends SolKitInstruction {
           tokenHolder: payer,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
-          raindropsProgram: RaindropsProgram.getRaindropsProgram(accounts.raindropsProgram),
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .instruction(),

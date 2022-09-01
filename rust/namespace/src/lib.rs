@@ -159,7 +159,7 @@ pub mod namespace {
             if pn.len() > 32 {
                 return Err(error!(ErrorCode::PrettyNameTooLong));
             }
-            namespace.pretty_name = pn.to_string();
+            namespace.pretty_name = pn;
         }
 
         if let Some(permissiveness) = permissiveness_settings {

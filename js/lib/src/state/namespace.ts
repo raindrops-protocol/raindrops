@@ -294,8 +294,10 @@ export enum RaindropsProgram {
 }
 
 export namespace RaindropsProgram {
-  export function getRaindropsProgram(program: RaindropsProgram): web3.PublicKey {
-    switch(program) {
+  export function getRaindropsProgram(
+    program: RaindropsProgram
+  ): web3.PublicKey {
+    switch (program) {
       case RaindropsProgram.Item:
         return pids.ITEM_ID;
       case RaindropsProgram.Namespace:
@@ -308,6 +310,6 @@ export namespace RaindropsProgram {
         return pids.STAKING_ID;
       default:
         throw new Error(`Unknown RaindropsProgram: ${program}`);
-    };
+    }
   }
 }
