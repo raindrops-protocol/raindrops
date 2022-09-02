@@ -911,23 +911,6 @@ export type Namespace = {
             ]
           },
           {
-            "name": "Category",
-            "fields": [
-              {
-                "name": "namespace",
-                "type": "publicKey"
-              },
-              {
-                "name": "category",
-                "type": {
-                  "option": {
-                    "vec": "string"
-                  }
-                }
-              }
-            ]
-          },
-          {
             "name": "Key",
             "fields": [
               {
@@ -2049,23 +2032,6 @@ export const IDL: Namespace = {
                 "name": "namespaces",
                 "type": {
                   "vec": "publicKey"
-                }
-              }
-            ]
-          },
-          {
-            "name": "Category",
-            "fields": [
-              {
-                "name": "namespace",
-                "type": "publicKey"
-              },
-              {
-                "name": "category",
-                "type": {
-                  "option": {
-                    "vec": "string"
-                  }
                 }
               }
             ]

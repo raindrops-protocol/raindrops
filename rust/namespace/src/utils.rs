@@ -186,14 +186,6 @@ pub fn check_permissiveness_against_holder<'a>(
                             }
                         }
                     }
-                    Filter::Category { namespace, .. } => {
-                        for n in &art_namespaces {
-                            if n == namespace {
-                                msg!("Blacklisted!");
-                                return Err(error!(ErrorCode::CannotJoinNamespace));
-                            }
-                        }
-                    }
                     Filter::Key { mint, .. } => {
                         let as_token: spl_token::state::Account =
                             assert_initialized(&artifact.to_account_info())?;
