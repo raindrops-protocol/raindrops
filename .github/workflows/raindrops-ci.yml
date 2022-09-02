@@ -2,8 +2,9 @@ name: Raindrops CI
 
 on:
   pull_requests:
+    branches: [master]
   push:
-    branches: "master"
+    branches: [master]
 
 defaults:
   run:
