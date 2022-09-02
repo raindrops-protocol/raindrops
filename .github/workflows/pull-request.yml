@@ -2,7 +2,7 @@ name: Pull Request
 
 on:
   push:
-    branches: "**"
+    branches: "master"
 
 defaults:
   run:
