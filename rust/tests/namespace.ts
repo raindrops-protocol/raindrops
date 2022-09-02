@@ -17,6 +17,19 @@ describe("namespace", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
+  // Mint Authority for our mock $RAIN
+  const rainTokenAddress = new anchor.web3.PublicKey("rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL");
+  const mintAuthoritySecretKey = new Uint8Array([
+    100, 162,   5, 160, 251,   9, 105, 243,  77, 211, 169,
+    101, 169, 237,   4, 234,  35, 250, 235, 162,  55,  77,
+    144, 249, 220, 185, 242, 225,   8, 160, 200, 130,   1,
+    237, 169, 176,  82, 206, 183,  81, 233,  30, 153, 237,
+     13,  46, 130,  71,  22, 179, 133,   3, 170, 140, 225,
+     16,  11, 210,  69, 163, 102, 144, 242, 169
+  ]);
+  // address: 8XbgRBz8pHzCBy4mwgr4ViDhJWFc35cd7E5oo3t5FvY
+  const mintAuthority = anchor.web3.Keypair.fromSecretKey(mintAuthoritySecretKey);
+
   it("init namespace", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
@@ -604,7 +617,7 @@ describe("namespace", () => {
     console.log("artifact joined to namespace1: %s", joinNsResult2.txid);
   });
 
-  it("join item class to namespace then leave", async () => {
+  it.only("join item class to namespace then leave", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -1782,6 +1795,9 @@ describe("namespace", () => {
     };
 
     await assert.rejects(namespaceProgram.joinNamespace(joinNsAccounts));
+  });
+
+  it("pay $RAIN and $PAYMENT_TOKEN to join Item Class to a namespace", async () => {
   });
 });
 
