@@ -1,6 +1,7 @@
-name: Pull Request
+name: Raindrops CI
 
 on:
+  pull_requests:
   push:
     branches: "master"
 
