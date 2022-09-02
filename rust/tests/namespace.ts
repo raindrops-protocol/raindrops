@@ -30,7 +30,7 @@ describe("namespace", () => {
   // address: 8XbgRBz8pHzCBy4mwgr4ViDhJWFc35cd7E5oo3t5FvY
   const mintAuthority = anchor.web3.Keypair.fromSecretKey(mintAuthoritySecretKey);
 
-  it("init namespace", async () => {
+  it.only("init namespace", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -617,7 +617,7 @@ describe("namespace", () => {
     console.log("artifact joined to namespace1: %s", joinNsResult2.txid);
   });
 
-  it.only("join item class to namespace then leave", async () => {
+  it("join item class to namespace then leave", async () => {
     const payer = await newPayer(anchor.getProvider().connection);
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,

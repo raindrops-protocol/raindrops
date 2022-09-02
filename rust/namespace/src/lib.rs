@@ -800,11 +800,6 @@ pub struct InitializeNamespace<'info> {
     metadata: UncheckedAccount<'info>,
     master_edition: UncheckedAccount<'info>,
 
-    payment_token_mint: Account<'info, Mint>,
-
-    #[account(token::mint = payment_token_mint)]
-    payment_token_vault: Account<'info, token::TokenAccount>,
-
     #[account(mut)]
     payer: Signer<'info>,
 

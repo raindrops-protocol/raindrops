@@ -26,16 +26,6 @@ export type Namespace = {
           "isSigner": false
         },
         {
-          "name": "paymentTokenMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "paymentTokenVault",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "payer",
           "isMut": true,
           "isSigner": true
@@ -1229,16 +1219,6 @@ export const IDL: Namespace = {
         },
         {
           "name": "masterEdition",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "paymentTokenMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "paymentTokenVault",
           "isMut": false,
           "isSigner": false
         },

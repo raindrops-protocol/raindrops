@@ -138,23 +138,6 @@ export class Instruction extends SolKitInstruction {
       whitelistedStakingMints: args.whitelistedStakingMints,
     };
 
-    if (remainingAccounts.length > 0) {
-      ix = await this.program.client.methods
-        .initializeNamespace(formattedArgs)
-        .accounts({
-          namespace: namespacePDA,
-          mint: accounts.mint,
-          metadata: accounts.metadata,
-          masterEdition: accounts.masterEdition,
-          payer: (this.program.client.provider as AnchorProvider).wallet
-            .publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-        })
-        .remainingAccounts(remainingAccounts)
-        .instruction();
-    } else {
       ix = await this.program.client.methods
         .initializeNamespace(formattedArgs)
         .accounts({
@@ -169,7 +152,6 @@ export class Instruction extends SolKitInstruction {
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
         .instruction();
-    }
 
     return [[ix], namespacePDA];
   }
