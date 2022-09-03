@@ -103,8 +103,11 @@ pub mod namespace {
 
                 // first two accounts are the payment accounts
                 let payment_accounts = &remaining_accounts[..2];
-                namespace.payment_mint = Some(payment_accounts[0].key());
-                namespace.payment_vault = Some(payment_accounts[1].key());
+                let payment_mint = &mut Account::<'_, Mint>::try_from(&payment_accounts[0])?; 
+                let payment_vault = &mut Account::<'_, TokenAccount>::try_from(&payment_accounts[1])?; 
+
+                namespace.payment_mint = Some(payment_mint.key());
+                namespace.payment_vault = Some(payment_vault.key());
                 namespace.payment_amount = Some(payment_amount);
 
                 // grab the leftover accounts to set the whitelisted_staking_mints
@@ -201,6 +204,7 @@ pub mod namespace {
             namespace.permissiveness_settings = permissiveness;
         }
 
+       
         Ok(())
     }
 
@@ -784,6 +788,7 @@ pub const MIN_NAMESPACE_SIZE: usize = 8 + // key
 1 + 32 + // Namespace gatekeeper optional pubkey
 1 + 32 + // optional payment_token_mint
 1 + 32 + // optional payment_token_vault
+1 + 8 + // optional payment_token_amount
 200; // padding
 
 pub const ARTIFACT_FILTER_SIZE: usize = 8 + // key
@@ -824,6 +829,10 @@ pub struct InitializeNamespace<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
+// REMAINING_ACCOUNTS
+// Two optional accounts may be passed which will be set in the Namespace account, neither need to be mutable in this instruction
+// payment_mint
+// payment_vault
 #[derive(Accounts)]
 pub struct UpdateNamespace<'info> {
     #[account(
