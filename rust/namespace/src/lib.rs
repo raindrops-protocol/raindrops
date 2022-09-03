@@ -830,10 +830,6 @@ pub struct InitializeNamespace<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
-// REMAINING_ACCOUNTS
-// Two optional accounts may be passed which will be set in the Namespace account, neither need to be mutable in this instruction
-// payment_mint
-// payment_vault
 #[derive(Accounts)]
 pub struct UpdateNamespace<'info> {
     #[account(
