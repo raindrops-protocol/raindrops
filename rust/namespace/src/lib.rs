@@ -97,7 +97,6 @@ pub mod namespace {
         let mut remaining_accounts = ctx.remaining_accounts;
         match payment_amount {
             Some(payment_amount) => {
-
                 if remaining_accounts.len() < 2 {
                     return Err(error!(ErrorCode::InvalidRemainingAccounts));
                 }
@@ -107,15 +106,15 @@ pub mod namespace {
                 namespace.payment_mint = Some(payment_accounts[0].key());
                 namespace.payment_vault = Some(payment_accounts[1].key());
                 namespace.payment_amount = Some(payment_amount);
-                
+
                 // grab the leftover accounts to set the whitelisted_staking_mints
                 remaining_accounts = &remaining_accounts[2..];
-            },
+            }
             None => {
                 namespace.payment_mint = None;
                 namespace.payment_vault = None;
                 namespace.payment_amount = None;
-            },
+            }
         };
 
         if whitelisted_staking_mints.len() > 0 {
@@ -150,7 +149,6 @@ pub mod namespace {
             namespace.namespaces = None
         }
         msg!("{:?}", permissiveness_settings);
-
 
         namespace.bump = *ctx.bumps.get("namespace").unwrap();
         namespace.uuid = uuid;
@@ -839,7 +837,7 @@ pub struct UpdateNamespace<'info> {
     namespace: Account<'info, Namespace>,
     #[account(
         // Check to make sure the token owner is the signer, and that the token is an nft, decimals == 0
-        constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1
+        associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1
     )]
     namespace_token: Account<'info, TokenAccount>,
     token_holder: Signer<'info>,
@@ -849,7 +847,7 @@ pub struct UpdateNamespace<'info> {
 pub struct CreateNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(init, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, payer=payer, space=NamespaceGatekeeper::SPACE)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
@@ -864,7 +862,7 @@ pub struct CreateNamespaceGatekeeper<'info> {
 pub struct AddToNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
@@ -875,7 +873,7 @@ pub struct AddToNamespaceGatekeeper<'info> {
 pub struct RemoveFromNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
@@ -948,7 +946,7 @@ pub struct JoinNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump)]
     namespace: Box<Account<'info, Namespace>>,
 
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
@@ -962,7 +960,7 @@ pub struct JoinNamespace<'info> {
     #[account(address = Pubkey::from_str(RAIN_TOKEN_MINT).unwrap())]
     rain_token_mint: Account<'info, Mint>,
 
-    #[account(mut, token::mint = rain_token_mint, token::authority = Pubkey::from_str(RAIN_TOKEN_VAULT_AUTHORITY).unwrap())]
+    #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = Pubkey::from_str(RAIN_TOKEN_VAULT_AUTHORITY).unwrap())]
     rain_token_vault: Account<'info, TokenAccount>,
 
     #[account(mut)]
@@ -987,7 +985,7 @@ pub struct JoinNamespace<'info> {
 pub struct LeaveNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
@@ -1008,7 +1006,7 @@ pub struct LeaveNamespace<'info> {
 pub struct CacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(init_if_needed, payer = payer, space = NamespaceIndex::SPACE, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
     index: Account<'info, NamespaceIndex>,
@@ -1033,7 +1031,7 @@ pub struct CacheArtifact<'info> {
 pub struct UncacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump=index.bump)]
     index: Account<'info, NamespaceIndex>,
