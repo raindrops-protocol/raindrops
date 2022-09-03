@@ -103,8 +103,8 @@ pub mod namespace {
 
                 // first two accounts are the payment accounts
                 let payment_accounts = &remaining_accounts[..2];
-                let payment_mint = &mut Account::<'_, Mint>::try_from(&payment_accounts[0])?; 
-                let payment_vault = &mut Account::<'_, TokenAccount>::try_from(&payment_accounts[1])?; 
+                let payment_mint = Account::<'_, Mint>::try_from(&payment_accounts[0])?;
+                let payment_vault = Account::<'_, TokenAccount>::try_from(&payment_accounts[1])?;
 
                 namespace.payment_mint = Some(payment_mint.key());
                 namespace.payment_vault = Some(payment_vault.key());
@@ -204,7 +204,6 @@ pub mod namespace {
             namespace.permissiveness_settings = permissiveness;
         }
 
-       
         Ok(())
     }
 
@@ -592,7 +591,9 @@ pub mod namespace {
         // if payments is not configured, exit without error
         if ctx.accounts.namespace.payment_mint == None
             && ctx.accounts.namespace.payment_vault == None
+            && ctx.accounts.namespace.payment_amount == None
         {
+            msg!("optional payment unset");
             return Ok(());
         };
 
@@ -619,13 +620,13 @@ pub mod namespace {
             return Err(error!(ErrorCode::InvalidRemainingAccounts));
         };
 
-        // since we require $RAIN token payment regardless, make the rain_payer also authorize the optional payment transfer
         let payment_token_accounts = token::Transfer {
             from: payment_ata.to_account_info(),
             to: payment_vault.to_account_info(),
             authority: ctx.accounts.rain_payer.to_account_info(),
         };
 
+        // transfer tokens to namespace payment vault
         token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -802,10 +803,10 @@ FILTER_SIZE + //
 1 + // bump
 100; //padding
 
-// REMAINING_ACCOUNTS
-// Two optional accounts may be passed which will be set in the Namespace account, neither need to be mutable in this instruction
+// REMAINING_ACCOUNTS ORDERING
 // payment_mint
 // payment_vault
+// whitelist_staking_mint(s)
 #[derive(Accounts)]
 #[instruction(args: InitializeNamespaceArgs)]
 pub struct InitializeNamespace<'info> {
