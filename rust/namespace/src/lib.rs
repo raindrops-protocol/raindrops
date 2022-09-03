@@ -91,13 +91,42 @@ pub mod namespace {
             return Err(error!(ErrorCode::WhitelistStakeListTooLong));
         }
 
-        for n in 0..whitelisted_staking_mints.len() {
-            let mint_account = &ctx.remaining_accounts[n];
-            // Assert they are all real mints.
-            let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
+        let namespace = &mut ctx.accounts.namespace;
+
+        // if payment amount is set, we expect the first 2 remaining accounts to be `payment_mint` then `payment_vault`
+        let mut remaining_accounts = ctx.remaining_accounts;
+        match payment_amount {
+            Some(payment_amount) => {
+
+                if remaining_accounts.len() < 2 {
+                    return Err(error!(ErrorCode::InvalidRemainingAccounts));
+                }
+
+                // first two accounts are the payment accounts
+                let payment_accounts = &remaining_accounts[..2];
+                namespace.payment_mint = Some(payment_accounts[0].key());
+                namespace.payment_vault = Some(payment_accounts[1].key());
+                namespace.payment_amount = Some(payment_amount);
+                
+                // grab the leftover accounts to set the whitelisted_staking_mints
+                remaining_accounts = &remaining_accounts[2..];
+            },
+            None => {
+                namespace.payment_mint = None;
+                namespace.payment_vault = None;
+                namespace.payment_amount = None;
+            },
+        };
+
+        if whitelisted_staking_mints.len() > 0 {
+            for n in 0..whitelisted_staking_mints.len() {
+                let mint_account = &remaining_accounts[n];
+                // Assert they are all real mints.
+                let _mint: spl_token::state::Mint = assert_initialized(mint_account)?;
+            }
+            namespace.whitelisted_staking_mints = whitelisted_staking_mints;
         }
 
-        let namespace = &mut ctx.accounts.namespace;
         let metadata = &ctx.accounts.metadata;
         let mint = &ctx.accounts.mint;
         let master_edition = &ctx.accounts.master_edition;
@@ -122,20 +151,9 @@ pub mod namespace {
         }
         msg!("{:?}", permissiveness_settings);
 
-        // either 2 or no remaining accounts are allowed
-        if ctx.remaining_accounts.len() == 2 {
-            namespace.payment_mint = Some(ctx.remaining_accounts[0].key());
-            namespace.payment_vault = Some(ctx.remaining_accounts[1].key());
-            namespace.payment_amount = payment_amount;
-        } else {
-            namespace.payment_mint = None;
-            namespace.payment_vault = None;
-            namespace.payment_amount = None;
-        }
 
         namespace.bump = *ctx.bumps.get("namespace").unwrap();
         namespace.uuid = uuid;
-        namespace.whitelisted_staking_mints = whitelisted_staking_mints;
         namespace.pretty_name = pretty_name;
         namespace.permissiveness_settings = permissiveness_settings;
         namespace.mint = mint.key();

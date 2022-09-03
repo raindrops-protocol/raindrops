@@ -24,6 +24,8 @@ export interface InitializeNamespaceAccounts {
   mint: web3.PublicKey;
   metadata: web3.PublicKey;
   masterEdition: web3.PublicKey;
+  paymentMint?: web3.PublicKey;
+  paymentVault?: web3.PublicKey;
 }
 
 export interface InitializeNamespaceArgs {
@@ -32,6 +34,7 @@ export interface InitializeNamespaceArgs {
   prettyName: string;
   permissivenessSettings: PermissivenessSettings;
   whitelistedStakingMints: web3.PublicKey[];
+  paymentAmount?: BN;
 }
 
 export interface UpdateNamespaceArgs {
@@ -103,8 +106,20 @@ export class Instruction extends SolKitInstruction {
   ): Promise<[[web3.TransactionInstruction], web3.PublicKey]> {
     const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
 
-    const remainingAccounts = args.whitelistedStakingMints.map((mint) => {
-      return { pubkey: mint, isWritable: false, isSigner: false };
+    let remainingAccounts: web3.AccountMeta[] = [];
+
+    // add optional payment accounts first
+    if (args.paymentAmount) {
+      const paymentMint = { pubkey: accounts.paymentMint!, isWritable: false, isSigner: false };
+      const paymentVault = { pubkey: accounts.paymentVault!, isWritable: false, isSigner: false };
+      remainingAccounts.push(paymentMint, paymentVault);
+    } else {
+      args.paymentAmount = null;
+    }
+
+    // then add optional staking mints
+    args.whitelistedStakingMints.map((mint) => {
+      remainingAccounts.push({ pubkey: mint, isWritable: false, isSigner: false });
     });
 
     let ix: web3.TransactionInstruction;
@@ -136,8 +151,26 @@ export class Instruction extends SolKitInstruction {
       prettyName: args.prettyName,
       permissivenessSettings: permissivenessSettings,
       whitelistedStakingMints: args.whitelistedStakingMints,
+      paymentAmount: args.paymentAmount,
     };
 
+    if (remainingAccounts.length > 0) {
+      ix = await this.program.client.methods
+        .initializeNamespace(formattedArgs)
+        .accounts({
+          namespace: namespacePDA,
+          mint: accounts.mint,
+          metadata: accounts.metadata,
+          masterEdition: accounts.masterEdition,
+          payer: (this.program.client.provider as AnchorProvider).wallet
+            .publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        })
+        .remainingAccounts(remainingAccounts)
+        .instruction();
+    } else {
       ix = await this.program.client.methods
         .initializeNamespace(formattedArgs)
         .accounts({
@@ -152,6 +185,8 @@ export class Instruction extends SolKitInstruction {
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
         .instruction();
+    }
+      
 
     return [[ix], namespacePDA];
   }

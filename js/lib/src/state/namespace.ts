@@ -140,6 +140,9 @@ export class Namespace {
   bump: number;
   whitelistedStakingMints: web3.PublicKey[];
   gatekeeper: web3.PublicKey | null;
+  paymentAmount: number | null;
+  paymentMint: web3.PublicKey | null;
+  paymentVault: web3.PublicKey | null;
 
   constructor(key, data) {
     this.key = key;
@@ -157,6 +160,9 @@ export class Namespace {
     this.bump = data.bump;
     this.whitelistedStakingMints = data.whitelistedStakingMints;
     this.gatekeeper = data.gatekeeper;
+    this.paymentAmount = data.paymentAmount ? data.paymentAmount.toNumber() : null;
+    this.paymentMint = data.paymentMint;
+    this.paymentVault = data.paymentVault;
   }
 
   print(log) {
@@ -251,6 +257,15 @@ export class Namespace {
         log.info(`\t${wlStakingMint.toBase58()}`);
       });
       log.info("]");
+    };
+    if (this.paymentAmount) {
+      log.info(`Payment Amount: ${this.paymentAmount}`);
+    };
+    if (this.paymentMint) {
+      log.info(`Payment Mint: ${this.paymentMint.toString()}`);
+    };
+    if (this.paymentVault) {
+      log.info(`Payment Vault: ${this.paymentVault.toString()}`);
     }
   }
 }
