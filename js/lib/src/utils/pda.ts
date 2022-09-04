@@ -11,7 +11,10 @@ import {
 } from "../constants/programIds";
 import { PREFIX as ITEM_PREFIX, MARKER } from "../constants/item";
 import { PREFIX as MATCHES_PREFIX } from "../constants/matches";
-import { PREFIX as NAMESPACE_PREFIX, GATEKEEPER_PREFIX } from "../constants/namespace";
+import {
+  PREFIX as NAMESPACE_PREFIX,
+  GATEKEEPER_PREFIX,
+} from "../constants/namespace";
 import { PREFIX as PLAYER_PREFIX } from "../constants/player";
 import {
   PREFIX as STAKING_PREFIX,
@@ -76,16 +79,25 @@ export const getNamespaceGatekeeperPDA = async (
   namespace: web3.PublicKey
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
-    [Buffer.from(NAMESPACE_PREFIX), namespace.toBuffer(), Buffer.from(GATEKEEPER_PREFIX)],
+    [
+      Buffer.from(NAMESPACE_PREFIX),
+      namespace.toBuffer(),
+      Buffer.from(GATEKEEPER_PREFIX),
+    ],
     NAMESPACE_ID
   );
 };
 
 export const getIndexPDA = async (
-  namespace: web3.PublicKey, page: BN,
+  namespace: web3.PublicKey,
+  page: BN
 ): Promise<[web3.PublicKey, number]> => {
   return await web3.PublicKey.findProgramAddress(
-    [Buffer.from(NAMESPACE_PREFIX), namespace.toBuffer(), page.toArrayLike(Buffer, "le", 8)],
+    [
+      Buffer.from(NAMESPACE_PREFIX),
+      namespace.toBuffer(),
+      page.toArrayLike(Buffer, "le", 8),
+    ],
     NAMESPACE_ID
   );
 };
@@ -120,6 +132,7 @@ export const getPlayerPDA = async (
 
 export const getItemActivationMarker = async (args: {
   itemMint: web3.PublicKey;
+  itemAccount: web3.PublicKey;
   index: BN;
   usageIndex: BN;
   amount: BN;
@@ -128,6 +141,7 @@ export const getItemActivationMarker = async (args: {
     [
       Buffer.from(ITEM_PREFIX),
       args.itemMint.toBuffer(),
+      args.itemAccount.toBuffer(),
       args.index.toArrayLike(Buffer, "le", 8),
       args.usageIndex.toArrayLike(Buffer, "le", 8),
       args.amount.toArrayLike(Buffer, "le", 8),

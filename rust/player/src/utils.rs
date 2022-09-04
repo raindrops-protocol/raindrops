@@ -809,6 +809,7 @@ pub struct ToggleItemToBasicStatsArgs<'b, 'c, 'info> {
     pub stat_diff_type: StatDiffType,
     pub bie_bitmap: &'c mut Option<Vec<u8>>,
     pub unix_timestamp: i64,
+    pub activated_at: i64,
 }
 pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
     args: ToggleItemToBasicStatsArgs<'b, 'c, 'info>,
@@ -823,6 +824,7 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
         stat_diff_type,
         bie_bitmap,
         unix_timestamp,
+        activated_at,
     } = args;
     // for an item without active duration, is permanent increase
     // for an equipment, no active duration, is temporary until removal
@@ -878,6 +880,7 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
                                                 adding,
                                                 item,
                                                 i,
+                                                activated_at,
                                             },
                                         )?
                                 } else {
@@ -910,6 +913,7 @@ struct RebalanceStatForConsumableWithDurationArgs<'b, 'c, 'info> {
     pub adding: bool,
     pub item: &'b Account<'info, Item>,
     pub i: usize,
+    pub activated_at: i64,
 }
 
 fn rebalance_stat_for_consumable_with_duration<'b, 'c, 'info>(
@@ -925,30 +929,45 @@ fn rebalance_stat_for_consumable_with_duration<'b, 'c, 'info>(
         adding,
         item,
         i,
+        activated_at,
     } = args;
     if let Some(arr) = bie_bitmap {
         // check to see if we have removed already.
         let (index_in_bie, mask) = get_index_and_mask_for_bie(i)?;
-        let entry = arr[index_in_bie];
-        let applied_mask = entry & mask;
+        if arr.len() > index_in_bie {
+            let entry = arr[index_in_bie];
+            let applied_mask = entry & mask;
 
-        if applied_mask == 0 {
-            // ok it has not been taken, we can remove IF the date is right. do that next.
-            if let Some(active) = bie.active_duration {
-                let modded_duration = get_modded_duration(active, item, bie)?;
-                if unix_timestamp > modded_duration {
-                    arr[index_in_bie] = arr[index_in_bie] | mask;
-                    rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
-                        bie,
-                        bs,
-                        bst,
-                        modded_amount,
-                        adding,
-                    })?;
-                } else {
-                    return Ok(false);
+            if applied_mask == 0 {
+                // ok it has not been taken, we can remove IF the date is right. do that next.
+                if let Some(active) = bie.active_duration {
+                    let modded_duration = get_modded_duration(active, item, bie)?;
+                    msg!(
+                        "Unix ts is {:?}, act_at is {:?}, check is is {:?}",
+                        unix_timestamp,
+                        activated_at,
+                        activated_at + modded_duration
+                    );
+                    if unix_timestamp
+                        > activated_at
+                            .checked_add(modded_duration)
+                            .ok_or(ErrorCode::NumericalOverflowError)?
+                    {
+                        arr[index_in_bie] = arr[index_in_bie] | mask;
+                        rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
+                            bie,
+                            bs,
+                            bst,
+                            modded_amount,
+                            adding,
+                        })?;
+                    } else {
+                        return Ok(false);
+                    }
                 }
             }
+        } else {
+            return Ok(true);
         }
     }
 
@@ -1387,16 +1406,16 @@ pub struct EndItemActivationArgs<'b, 'c, 'info> {
     pub item_activation_marker: &'b Account<'info, ItemActivationMarker>,
     pub receiver: &'c Signer<'info>,
     pub item_class_mint: &'c Pubkey,
-    pub item_mint: &'c Pubkey,
+    pub item_mint: &'c UncheckedAccount<'info>,
     pub usage_permissiveness_to_use: Option<PermissivenessType>,
     pub item_usage_index: u16,
     pub item_index: u64,
     pub item_class_index: u64,
     pub amount: u64,
     // Required if using roots
-    pub item_usage_proof: Option<Vec<[u8; 32]>>,
-    pub item_usage: Option<Vec<u8>>,
+    pub usage_info: Option<raindrops_item::CraftUsageInfo>,
     pub item_program: &'c UncheckedAccount<'info>,
+    pub token_program: &'c Program<'info, Token>,
     pub player: &'b Account<'info, Player>,
     pub player_item_account: &'c UncheckedAccount<'info>,
 
@@ -1419,28 +1438,34 @@ pub fn end_item_activation<'b, 'c, 'info>(
         item_index,
         item_class_index,
         amount,
-        item_usage_proof,
-        item_usage,
+        usage_info,
         item_program,
         player,
         player_mint,
         player_item_account,
         index,
+        token_program,
     } = args;
 
     let mut keys = vec![
         AccountMeta::new(item.key(), false),
+        AccountMeta::new(item_mint.key(), false),
+        AccountMeta::new(player_item_account.key(), false),
+        AccountMeta::new_readonly(player.key(), true),
         AccountMeta::new_readonly(item_class.key(), false),
         AccountMeta::new(item_activation_marker.key(), false),
+        AccountMeta::new_readonly(token_program.key(), false),
         AccountMeta::new(receiver.key(), true),
     ];
     let account_infos = vec![
         item.to_account_info(),
+        item_mint.to_account_info(),
         item_class.to_account_info(),
         item_activation_marker.to_account_info(),
         receiver.to_account_info(),
         player.to_account_info(),
         player_item_account.to_account_info(),
+        token_program.to_account_info(),
     ];
 
     // According to common remaining accounts rules for token holder,
@@ -1458,18 +1483,12 @@ pub fn end_item_activation<'b, 'c, 'info>(
                 &CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
                     instruction: sighash("global", "end_item_activation"),
                     item_class_mint: *item_class_mint,
-                    item_mint: *item_mint,
                     usage_permissiveness_to_use,
                     usage_index: item_usage_index,
                     index: item_index,
                     class_index: item_class_index,
                     amount,
-                    usage_proof: item_usage_proof,
-                    usage: if let Some(v) = item_usage {
-                        Some(raindrops_item::ItemUsage::try_from_slice(&v)?)
-                    } else {
-                        None
-                    },
+                    usage_info,
                 },
             )?,
         },
@@ -1487,12 +1506,10 @@ pub struct BeginItemActivationArgs<'b, 'c, 'info> {
     pub item: &'c UncheckedAccount<'info>,
     pub item_class: &'c UncheckedAccount<'info>,
     pub item_activation_marker: &'c UncheckedAccount<'info>,
-    pub item_mint: &'c UncheckedAccount<'info>,
     pub player_item_account: &'c UncheckedAccount<'info>,
     pub payer: &'c Signer<'info>,
     pub item_program: &'c UncheckedAccount<'info>,
     pub system_program: &'c Program<'info, System>,
-    pub token_program: &'c Program<'info, Token>,
     pub clock: &'c Sysvar<'info, Clock>,
     pub rent: &'c Sysvar<'info, Rent>,
     pub validation_program: &'c UncheckedAccount<'info>,
@@ -1507,12 +1524,10 @@ pub fn begin_item_activation<'b, 'c, 'info>(
         item,
         item_class,
         item_activation_marker,
-        item_mint,
         player_item_account,
         payer,
         item_program,
         system_program,
-        token_program,
         clock,
         rent,
         validation_program,
@@ -1526,6 +1541,7 @@ pub fn begin_item_activation<'b, 'c, 'info>(
         item_usage_index,
         item_index,
         item_class_index,
+        item_mint,
         amount,
         player_mint,
         index,
@@ -1537,13 +1553,11 @@ pub fn begin_item_activation<'b, 'c, 'info>(
     let mut keys = vec![
         AccountMeta::new_readonly(item_class.key(), false),
         AccountMeta::new(item.key(), false),
-        AccountMeta::new_readonly(item_mint.key(), false),
         AccountMeta::new(player_item_account.key(), false),
         AccountMeta::new_readonly(player.key(), true),
         AccountMeta::new(item_activation_marker.key(), false),
         AccountMeta::new(payer.key(), true),
         AccountMeta::new_readonly(system_program.key(), false),
-        AccountMeta::new_readonly(token_program.key(), false),
         AccountMeta::new_readonly(clock.key(), false),
         AccountMeta::new_readonly(rent.key(), false),
         AccountMeta::new_readonly(validation_program.key(), false),
@@ -1551,13 +1565,11 @@ pub fn begin_item_activation<'b, 'c, 'info>(
     let account_infos = vec![
         item_class.to_account_info(),
         item.to_account_info(),
-        item_mint.to_account_info(),
         player_item_account.to_account_info(),
         player.to_account_info(),
         item_activation_marker.to_account_info(),
         payer.to_account_info(),
         system_program.to_account_info(),
-        token_program.to_account_info(),
         clock.to_account_info(),
         rent.to_account_info(),
         validation_program.to_account_info(),
@@ -1578,6 +1590,7 @@ pub fn begin_item_activation<'b, 'c, 'info>(
                 &CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
                     instruction: sighash("global", "begin_item_activation"),
                     item_class_mint: item_class_mint,
+                    item_mint: item_mint,
                     usage_permissiveness_to_use: use_item_permissiveness_to_use,
                     usage_index: item_usage_index,
                     index: item_index,
@@ -1812,7 +1825,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         };
                         assert_signer(token_holder)?;
 
-                        let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+                        let acct = assert_is_ata(token_account, token_holder.key, &mint, None)?;
 
                         if acct.amount == 0 {
                             return Err(error!(ErrorCode::InsufficientBalance));
@@ -1840,6 +1853,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                             class_token_account,
                             class_token_holder.key,
                             &class_mint,
+                            None,
                         )?;
 
                         if acct.amount == 0 {
@@ -1898,7 +1912,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
 
                 assert_signer(token_holder)?;
 
-                let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+                let acct = assert_is_ata(token_account, token_holder.key, &mint, None)?;
 
                 if acct.amount == 0 {
                     return Err(error!(ErrorCode::InsufficientBalance));

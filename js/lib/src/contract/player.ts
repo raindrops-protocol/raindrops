@@ -15,6 +15,7 @@ import {
 import * as PlayerInstruction from "../instructions/player";
 import * as Utils from "../utils";
 import { PLAYER_ID } from "../constants/programIds";
+import { getPlayerItemAccount } from "../utils/pda";
 const {
   PDA: {
     getAtaForMint,
@@ -301,10 +302,6 @@ export class PlayerProgram extends Program.Program {
       accounts.metadataUpdateAuthority = await this.getMetadataUpdateAuthority(
         args.playerMint
       );
-    }
-
-    if (!accounts.itemMint) {
-      throw new Error("Must pass itemMint!");
     }
 
     await this.setPlayerClassIndexIfNecessary(
@@ -599,6 +596,10 @@ export class PlayerProgram extends Program.Program {
       );
     }
 
+    if (!accounts.itemMint) {
+      throw new Error("Must pass itemMint!");
+    }
+
     await this.setPlayerClassIndexIfNecessary(
       args.playerMint,
       args.index,
@@ -606,9 +607,12 @@ export class PlayerProgram extends Program.Program {
     );
 
     if (!additionalArgs.amount) {
+      const item = (await getItemPDA(accounts.itemMint, args.itemIndex))[0];
+      const player = (await getPlayerPDA(args.playerMint, args.index))[0];
       const itemActivationMarkerPDA = (
         await getItemActivationMarker({
-          itemMint: args.itemMint,
+          itemMint: accounts.itemMint,
+          itemAccount: (await getPlayerItemAccount({ item, player }))[0],
           index: args.itemIndex,
           usageIndex: new BN(args.itemUsageIndex),
           amount: additionalArgs.amount,
@@ -629,7 +633,6 @@ export class PlayerProgram extends Program.Program {
       );
 
       const usage =
-        args.itemUsage ||
         itemClass.object.itemClassData.config.usages[args.itemUsageIndex];
 
       if (usage) {

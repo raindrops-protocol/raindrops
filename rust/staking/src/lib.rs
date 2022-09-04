@@ -110,6 +110,7 @@ pub mod staking {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
+            allowed_delegate: None,
         })?;
 
         for wl in &namespace.whitelisted_staking_mints {
@@ -297,6 +298,7 @@ pub mod staking {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
+            allowed_delegate: None,
         })?;
 
         let staking_mint_key = staking_mint.key();

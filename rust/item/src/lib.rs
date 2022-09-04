@@ -4,11 +4,12 @@ use crate::utils::{
     assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
     assert_mint_authority_matches_mint, assert_permissiveness_access,
     assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
-    is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
-    spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
-    update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
-    verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
-    GetItemUsageArgs, TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
+    get_item_usage_and_item_usage_state, is_namespace_program_caller,
+    propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
+    spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
+    verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
+    AssertPermissivenessAccessArgs, GetItemUsageAndItemUsageStateArgs, GetItemUsageArgs,
+    TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
     VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
 };
 use anchor_lang::{
@@ -194,6 +195,7 @@ pub struct BeginItemActivationArgs {
     pub class_index: u64,
     pub index: u64,
     pub item_class_mint: Pubkey,
+    pub item_mint: Pubkey,
     // How much space to use for the item marker
     pub item_marker_space: u8,
     pub usage_permissiveness_to_use: Option<PermissivenessType>,
@@ -261,15 +263,13 @@ pub struct UpdateValidForUseIfWarmupPassedArgs {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EndItemActivationArgs {
     pub item_class_mint: Pubkey,
-    pub item_mint: Pubkey,
     pub usage_permissiveness_to_use: Option<PermissivenessType>,
     pub usage_index: u16,
     pub index: u64,
     pub class_index: u64,
     pub amount: u64,
     // Required if using roots
-    pub usage_proof: Option<Vec<[u8; 32]>>,
-    pub usage: Option<ItemUsage>,
+    pub usage_info: Option<CraftUsageInfo>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -378,6 +378,7 @@ pub mod item {
                 class_index: parent_of_parent_class_index,
                 index: parent_class_index.unwrap(),
                 account_mint: None,
+                allowed_delegate: None,
             })?;
 
             item_class.parent = Some(parent.key());
@@ -408,6 +409,7 @@ pub mod item {
                 class_index: parent_of_parent_class_index,
                 index: class_index,
                 account_mint: Some(&item_mint.key()),
+                allowed_delegate: None,
             })?;
         }
 
@@ -480,6 +482,7 @@ pub mod item {
                 index: class_index,
                 class_index: parent_class_index,
                 account_mint: Some(&item_mint.key()),
+                allowed_delegate: None,
             })?;
 
             icd
@@ -537,6 +540,7 @@ pub mod item {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&item_class_mint.key()),
+            allowed_delegate: None,
         })?;
 
         require!(item_class.existing_children == 0, ChildrenStillExist);
@@ -592,6 +596,7 @@ pub mod item {
             index,
             class_index: Some(class_index),
             account_mint: Some(&item_mint.key()),
+            allowed_delegate: None,
         })?;
 
         require!(item.tokens_staked == 0, UnstakeTokensFirst);
@@ -652,6 +657,7 @@ pub mod item {
             &new_item_token.to_account_info(),
             &new_item_token_holder.key(),
             &new_item_mint.key(),
+            None,
         )?;
         msg!("edition");
         let edition_option = if new_item_edition.data_len() > 0 {
@@ -721,6 +727,7 @@ pub mod item {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
+            allowed_delegate: None,
         })?;
         msg!("success");
 
@@ -778,6 +785,7 @@ pub mod item {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
+            allowed_delegate: None,
         })?;
         require!(!item_escrow.deactivated, DeactivatedItemEscrow);
 
@@ -924,6 +932,7 @@ pub mod item {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
+            allowed_delegate: None,
         })?;
         msg!("not item_escrow_deactivated and verify_component");
         require!(item_escrow.deactivated, NotDeactivated);
@@ -1045,6 +1054,7 @@ pub mod item {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
+            allowed_delegate: None,
         })?;
 
         require!(!item_escrow.deactivated, DeactivatedItemEscrow);
@@ -1181,6 +1191,7 @@ pub mod item {
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&item_class_mint),
+            allowed_delegate: None,
         })?;
 
         require!(!item_escrow.deactivated, DeactivatedItemEscrow);
@@ -1323,11 +1334,8 @@ pub mod item {
         let item_class = &ctx.accounts.item_class;
         let item = &mut ctx.accounts.item;
         let item_account = &ctx.accounts.item_account;
-        let item_mint = &ctx.accounts.item_mint;
-        let item_transfer_authority = &ctx.accounts.item_transfer_authority;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
         let clock = &ctx.accounts.clock;
-        let token_program = &ctx.accounts.token_program;
         let validation_program = &ctx.accounts.validation_program;
 
         let BeginItemActivationArgs {
@@ -1337,6 +1345,7 @@ pub mod item {
             usage_index,
             class_index,
             item_class_mint,
+            item_mint,
             amount,
             target,
             ..
@@ -1344,20 +1353,20 @@ pub mod item {
 
         require!(amount > 0, MustBeGreaterThanZero);
         require!(item_account.amount >= amount, InsufficientBalance);
+        require!(item_account.delegate.is_none(), AtaShouldNotHaveDelegate);
 
         item_activation_marker.bump = *ctx.bumps.get("item_activation_marker").unwrap();
         item_activation_marker.target = target;
 
         item_activation_marker.amount = amount;
-        let (usage, usage_state) =
-            verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
-                item,
-                item_class,
-                item_activation_marker,
-                usage_index,
-                usage_info: &mut usage_info,
-                unix_timestamp: clock.unix_timestamp as u64,
-            })?;
+        let usage = verify_and_affect_item_state_update(VerifyAndAffectItemStateUpdateArgs {
+            item,
+            item_class,
+            item_activation_marker,
+            usage_index,
+            usage_info: &mut usage_info,
+            unix_timestamp: clock.unix_timestamp as u64,
+        })?;
         if let Some(validation) = usage.validation {
             let item_class_info = item_class.to_account_info();
             let item_info = item.to_account_info();
@@ -1411,27 +1420,8 @@ pub mod item {
             class_index: Some(class_index),
             index,
             account_mint: Some(&item_mint.key()),
+            allowed_delegate: None,
         })?;
-        
-        if let ItemClassType::Consumable {
-            max_uses,
-            item_usage_type,
-            ..
-        } = &usage.item_class_type
-        {
-            if let Some(max) = max_uses {
-                if max <= &usage_state.uses && item_usage_type == &ItemUsageType::Destruction {
-                    spl_token_burn(TokenBurnParams {
-                        mint: item_mint.to_account_info(),
-                        source: item_account.to_account_info(),
-                        amount,
-                        authority: item_transfer_authority.to_account_info(),
-                        authority_signer_seeds: None,
-                        token_program: token_program.to_account_info(),
-                    })?;
-                }
-            }
-        };
 
         Ok(())
     }
@@ -1442,7 +1432,11 @@ pub mod item {
     ) -> Result<()> {
         let item_class = &ctx.accounts.item_class;
         let item = &mut ctx.accounts.item;
+        let item_mint = &mut ctx.accounts.item_mint;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
+        let item_account = &ctx.accounts.item_account;
+        let item_transfer_authority = &ctx.accounts.item_transfer_authority;
+        let token_program = &ctx.accounts.token_program;
         let receiver = &mut ctx.accounts.receiver;
 
         require!(
@@ -1454,19 +1448,18 @@ pub mod item {
             usage_permissiveness_to_use,
             index,
             usage_index,
-            usage_proof,
-            usage,
+            usage_info,
             class_index,
-            item_mint,
             ..
         } = args;
 
-        let item_usage = get_item_usage(GetItemUsageArgs {
-            item_class,
-            usage_index,
-            usage_proof,
-            usage,
-        })?;
+        let (item_usage, usage_state) =
+            get_item_usage_and_item_usage_state(GetItemUsageAndItemUsageStateArgs {
+                item,
+                item_class,
+                usage_index,
+                usage_info: &usage_info,
+            })?;
 
         let mut perm_array = vec![];
         for permissiveness in &item_usage.usage_permissiveness {
@@ -1485,7 +1478,30 @@ pub mod item {
             index,
             class_index: Some(class_index),
             account_mint: Some(&item_mint.key()),
+            allowed_delegate: Some(&item_transfer_authority.key()),
         })?;
+
+        if let ItemClassType::Consumable {
+            max_uses,
+            item_usage_type,
+            ..
+        } = &item_usage.item_class_type
+        {
+            if let Some(max) = max_uses {
+                if max <= &usage_state.uses && item_usage_type == &ItemUsageType::Destruction {
+                    msg!("1");
+                    spl_token_burn(TokenBurnParams {
+                        mint: item_mint.to_account_info(),
+                        source: item_account.to_account_info(),
+                        amount: item_activation_marker.amount,
+                        authority: item_transfer_authority.to_account_info(),
+                        authority_signer_seeds: None,
+                        token_program: token_program.to_account_info(),
+                    })?;
+                    msg!("2");
+                }
+            }
+        };
 
         let item_activation_marker_info = item_activation_marker.to_account_info();
         let snapshot: u64 = item_activation_marker_info.lamports();
@@ -2441,25 +2457,24 @@ pub struct BeginItemActivation<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            item_mint.key().as_ref(),
+            args.item_mint.as_ref(),
             &args.index.to_le_bytes()
         ],
         bump=item.bump
     )]
     item: Box<Account<'info, Item>>,
-    item_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
-        constraint=item_mint.key() == item_account.mint
+        constraint=args.item_mint == item_account.mint
     )]
     item_account: Box<Account<'info, TokenAccount>>,
-    item_transfer_authority: Signer<'info>,
     // Size needs to be >= 20 and <= 66
     #[account(
         init,
         seeds=[
             PREFIX.as_bytes(),
-            item_mint.key().as_ref(),
+            args.item_mint.as_ref(),
+            item_account.key().as_ref(),
             &args.index.to_le_bytes(),
             &(args.usage_index as u64).to_le_bytes(),
             &args.amount.to_le_bytes(),
@@ -2476,7 +2491,6 @@ pub struct BeginItemActivation<'info> {
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
-    token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
     // System program if there is no validation to call
@@ -2509,9 +2523,15 @@ pub struct ProveNewStateValid<'info> {
     item_class: Account<'info, ItemClass>,
     #[account(
         mut,
+        constraint=args.item_mint == item_account.mint
+    )]
+    item_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
         seeds=[
             PREFIX.as_bytes(),
             args.item_mint.as_ref(),
+            item_account.key().as_ref(),
             &args.index.to_le_bytes(),
             &(args.usage_index as u64).to_le_bytes(),
             &args.amount.to_le_bytes(),
@@ -2547,9 +2567,15 @@ pub struct ResetStateValidationForActivation<'info> {
     item_class: Account<'info, ItemClass>,
     #[account(
         mut,
+        constraint=args.item_mint == item_account.mint
+    )]
+    item_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
         seeds=[
             PREFIX.as_bytes(),
             args.item_mint.as_ref(),
+            item_account.key().as_ref(),
             &args.index.to_le_bytes(),
             &(args.usage_index as u64).to_le_bytes(),
             &args.amount.to_le_bytes(),
@@ -2584,9 +2610,15 @@ pub struct UpdateValidForUseIfWarmupPassed<'info> {
     item_class: Account<'info, ItemClass>,
     #[account(
         mut,
+        constraint=args.item_mint == item_account.mint
+    )]
+    item_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
         seeds=[
             PREFIX.as_bytes(),
             args.item_mint.as_ref(),
+            item_account.key().as_ref(),
             &args.index.to_le_bytes(),
             &(args.usage_index as u64).to_le_bytes(),
             &args.amount.to_le_bytes(),
@@ -2605,12 +2637,20 @@ pub struct EndItemActivation<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            args.item_mint.key().as_ref(),
+            item_mint.key().as_ref(),
             &args.index.to_le_bytes()
         ],
         bump=item.bump
     )]
     item: Account<'info, Item>,
+    #[account(mut)]
+    item_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        constraint=item_mint.key() == item_account.mint
+    )]
+    item_account: Box<Account<'info, TokenAccount>>,
+    item_transfer_authority: Signer<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -2626,7 +2666,8 @@ pub struct EndItemActivation<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            args.item_mint.as_ref(),
+            item_mint.key().as_ref(),
+            item_account.key().as_ref(),
             &args.index.to_le_bytes(),
             &(args.usage_index as u64).to_le_bytes(),
             &args.amount.to_le_bytes(),
@@ -2635,6 +2676,7 @@ pub struct EndItemActivation<'info> {
         bump=item_activation_marker.bump
     )]
     item_activation_marker: Account<'info, ItemActivationMarker>,
+    token_program: Program<'info, Token>,
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -3254,4 +3296,6 @@ pub enum ErrorCode {
     UnauthorizedCaller,
     #[msg("Must be called by staking program")]
     MustBeCalledByStakingProgram,
+    #[msg("Expected delegate to match provided")]
+    ExpectedDelegateToMatchProvided,
 }

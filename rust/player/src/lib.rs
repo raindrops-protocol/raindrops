@@ -21,15 +21,13 @@ pub const PREFIX: &str = "player";
 pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],
     pub item_class_mint: Pubkey,
-    pub item_mint: Pubkey,
     pub usage_permissiveness_to_use: Option<PermissivenessType>,
     pub usage_index: u16,
     pub index: u64,
     pub class_index: u64,
     pub amount: u64,
     // Required if using roots
-    pub usage_proof: Option<Vec<[u8; 32]>>,
-    pub usage: Option<raindrops_item::ItemUsage>,
+    pub usage_info: Option<raindrops_item::CraftUsageInfo>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -38,6 +36,7 @@ pub struct CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
     pub class_index: u64,
     pub index: u64,
     pub item_class_mint: Pubkey,
+    pub item_mint: Pubkey,
     // How much space to use for the item marker
     pub item_marker_space: u8,
     pub usage_permissiveness_to_use: Option<PermissivenessType>,
@@ -87,14 +86,21 @@ pub struct AddItemEffectArgs {
     pub item_class_index: u64,
     pub index: u64,
     pub player_mint: Pubkey,
-    pub item_mint: Pubkey,
     pub item_class_mint: Pubkey,
     pub item_usage_index: u16,
     pub use_item_permissiveness_to_use: Option<PermissivenessType>,
     pub space: u64,
     // Use this if using roots
-    pub item_usage_proof: Option<Vec<[u8; 32]>>,
-    pub item_usage: Option<Vec<u8>>,
+    pub usage_info: Option<UsageInfo>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct UsageInfo {
+    // a specific usage state that is in the cooldown phase if the component condition is "Cooldown"
+    pub usage_state_proof: Vec<[u8; 32]>,
+    pub usage_state: Vec<u8>,
+    pub usage_proof: Vec<[u8; 32]>,
+    pub usage: Vec<u8>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -204,6 +210,7 @@ pub struct UseItemArgs {
     pub item_class_index: u64,
     pub item_index: u64,
     pub item_class_mint: Pubkey,
+    pub item_mint: Pubkey,
     // How much space to use for the item marker
     pub item_marker_space: u8,
     pub use_item_permissiveness_to_use: Option<PermissivenessType>,
@@ -843,7 +850,6 @@ pub mod player {
         let item = &ctx.accounts.item;
         let item_class = &ctx.accounts.item_class;
         let item_activation_marker = &ctx.accounts.item_activation_marker;
-        let item_mint = &ctx.accounts.item_mint;
         let player_item_account = &ctx.accounts.player_item_account;
         let payer = &ctx.accounts.payer;
         let item_program = &ctx.accounts.item_program;
@@ -851,7 +857,6 @@ pub mod player {
         let clock = &ctx.accounts.clock;
         let rent = &ctx.accounts.rent;
         let validation_program = &ctx.accounts.validation_program;
-        let token_program = &ctx.accounts.token_program;
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
@@ -868,12 +873,10 @@ pub mod player {
             item,
             item_class,
             item_activation_marker,
-            item_mint,
             player_item_account,
             payer,
             item_program,
             system_program,
-            token_program,
             clock,
             rent,
             validation_program,
@@ -930,6 +933,8 @@ pub mod player {
         let receiver = &ctx.accounts.receiver;
         let clock = &ctx.accounts.clock;
 
+        let act_at = player_item_activation_marker.activated_at.clone() as i64;
+
         // how do we know if item should have effect removed yet? we have it on the item act
         // marker and duration on the item usage...check and throw error.
         let no_more_waiting = toggle_item_to_basic_stats(ToggleItemToBasicStatsArgs {
@@ -942,6 +947,7 @@ pub mod player {
             stat_diff_type: StatDiffType::Consumable,
             bie_bitmap: &mut player_item_activation_marker.removed_bie_bitmap,
             unix_timestamp: clock.unix_timestamp,
+            activated_at: act_at,
         })?;
 
         if no_more_waiting {
@@ -966,11 +972,9 @@ pub mod player {
             index,
             player_mint,
             item_usage_index,
-            item_usage,
-            item_usage_proof,
+            usage_info,
             use_item_permissiveness_to_use,
             item_index,
-            item_mint,
             item_class_mint,
             item_class_index,
             ..
@@ -981,11 +985,13 @@ pub mod player {
         let player_item_activation_marker = &mut ctx.accounts.player_item_activation_marker;
         let item_activation_marker = &ctx.accounts.item_activation_marker;
         let item = &ctx.accounts.item;
+        let item_mint = &ctx.accounts.item_mint;
         let item_class = &ctx.accounts.item_class;
         let player_item_account = &ctx.accounts.player_item_account;
         let callback_program = &ctx.accounts.callback_program;
         let item_program = &ctx.accounts.item_program;
         let payer = &ctx.accounts.payer;
+        let token_program = &ctx.accounts.token_program;
 
         require!(item_activation_marker.valid_for_use, NotValidForUseYet);
 
@@ -1015,9 +1021,13 @@ pub mod player {
         let item_usage_to_use = get_item_usage(GetItemUsageArgs {
             item_class,
             usage_index: item_usage_index,
-            usage_proof: item_usage_proof.clone(),
-            usage: if let Some(v) = &item_usage {
-                Some(raindrops_item::ItemUsage::try_from_slice(&v)?)
+            usage_proof: if let Some(u) = &usage_info {
+                Some(u.usage_proof.clone())
+            } else {
+                None
+            },
+            usage: if let Some(u2) = &usage_info {
+                Some(raindrops_item::ItemUsage::try_from_slice(&u2.usage)?)
             } else {
                 None
             },
@@ -1039,11 +1049,13 @@ pub mod player {
                 None
             };
         if let Some(bie) = &item_usage_to_use.basic_item_effects {
-            let bie_size = bie
-                .len()
-                .checked_div(8)
-                .ok_or(ErrorCode::NumericalOverflowError)?;
-            player_item_activation_marker.removed_bie_bitmap = Some(vec![0u8; bie_size]);
+            if bie.len() > 0 {
+                let bie_size = 1 + bie
+                    .len()
+                    .checked_div(8)
+                    .ok_or(ErrorCode::NumericalOverflowError)?;
+                player_item_activation_marker.removed_bie_bitmap = Some(vec![0u8; bie_size]);
+            }
         }
 
         run_item_callback(RunItemCallbackArgs {
@@ -1066,6 +1078,7 @@ pub mod player {
             stat_diff_type: StatDiffType::Consumable,
             bie_bitmap: &mut player_item_activation_marker.removed_bie_bitmap,
             unix_timestamp: 0,
+            activated_at: 0,
         })?;
 
         end_item_activation(EndItemActivationArgs {
@@ -1074,19 +1087,30 @@ pub mod player {
             item_activation_marker,
             receiver: payer,
             item_class_mint: &item_class_mint,
-            item_mint: &item_mint,
+            item_mint,
             usage_permissiveness_to_use: use_item_permissiveness_to_use,
             item_usage_index,
             item_index,
             item_class_index,
             amount: player_item_activation_marker.amount,
-            item_usage_proof,
-            item_usage,
+            usage_info: if let Some(u3) = &usage_info {
+                Some(raindrops_item::CraftUsageInfo {
+                    craft_usage_state_proof: u3.usage_state_proof.clone(),
+                    craft_usage_state: raindrops_item::ItemUsageState::try_from_slice(
+                        &u3.usage_state,
+                    )?,
+                    craft_usage_proof: u3.usage_proof.clone(),
+                    craft_usage: raindrops_item::ItemUsage::try_from_slice(&u3.usage)?,
+                })
+            } else {
+                None
+            },
             item_program,
             player,
             player_mint: &player_mint,
             player_item_account,
             index,
+            token_program,
         })?;
 
         Ok(())
@@ -1204,6 +1228,7 @@ pub mod player {
             stat_diff_type: StatDiffType::Wearable,
             bie_bitmap: &mut None,
             unix_timestamp: 0,
+            activated_at: 0,
         })?;
 
         Ok(())
@@ -1367,6 +1392,9 @@ pub struct AddItemEffect<'info> {
         bump
     )]
     player_item_account: UncheckedAccount<'info>,
+    // Will be checked by item contract
+    #[account(mut)]
+    item_mint: UncheckedAccount<'info>,
     #[account(
         init,
         seeds=[
@@ -1387,7 +1415,8 @@ pub struct AddItemEffect<'info> {
         mut,
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
-            args.item_mint.as_ref(),
+            item_mint.key().as_ref(),
+            player_item_account.key().as_ref(),
             &args.item_index.to_le_bytes(),
             &(args.item_usage_index as u64).to_le_bytes(),
             &item_activation_marker.amount.to_le_bytes(),
@@ -1401,7 +1430,7 @@ pub struct AddItemEffect<'info> {
         mut,
         seeds=[
             raindrops_item::PREFIX.as_bytes(),
-            args.item_mint.as_ref(),
+            item_mint.key().as_ref(),
             &args.item_index.to_le_bytes(),
         ],
         seeds::program=raindrops_item::id(),
@@ -1426,6 +1455,7 @@ pub struct AddItemEffect<'info> {
     system_program: Program<'info, System>,
     #[account(constraint=item_program.key() == raindrops_item::id())]
     item_program: UncheckedAccount<'info>,
+    token_program: Program<'info, Token>,
     // System program if there is no callback to call
     // if there is, pass up the callback program
     callback_program: UncheckedAccount<'info>,
@@ -1450,7 +1480,6 @@ pub struct UseItem<'info> {
     #[account(mut)]
     item: UncheckedAccount<'info>,
     item_class: UncheckedAccount<'info>,
-    item_mint: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds=[
@@ -1471,7 +1500,6 @@ pub struct UseItem<'info> {
     system_program: Program<'info, System>,
     #[account(constraint=item_program.key() == raindrops_item::id())]
     item_program: UncheckedAccount<'info>,
-    token_program: Program<'info, Token>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
     // System program if there is no validation to call

@@ -571,12 +571,12 @@ CLI.programCommandWithConfig("use_items", async (config, options, _files) => {
           itemClassIndex: item.classIndex as BN,
           itemMarkerSpace: 100,
           target: (await getPlayerPDA(playerMint, playerIndex))[0],
+          itemMint,
         },
         {
           metadataUpdateAuthority: config.metadataUpdateAuthority
             ? new PublicKey(config.metadataUpdateAuthority)
             : keypair.publicKey,
-          itemMint,
         },
         {
           itemProgram,
@@ -588,6 +588,73 @@ CLI.programCommandWithConfig("use_items", async (config, options, _files) => {
   }
 });
 
+CLI.programCommandWithConfig(
+  "update_valid_for_use",
+  async (config, options, _files) => {
+    const { keypair, env, rpcUrl } = options;
+    const wallet = await Wallet.loadWalletKey(keypair);
+    const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      wallet,
+      env,
+      rpcUrl
+    );
+
+    const itemProgram = await PlayerProgram.getProgramWithWalletKeyPair(
+      ItemProgram,
+      await Wallet.loadWalletKey(keypair),
+      env,
+      rpcUrl
+    );
+
+    const playerMint = new PublicKey(
+      config.playerMint || config.newPlayerMint || config.mint
+    );
+    const playerIndex = new BN(
+      config.index || config.newPlayerIndex || config.playerIndex
+    );
+
+    for (let i = 0; i < config.items.length; i++) {
+      const itemConfig = config.items[i];
+      const itemIndex = new BN(itemConfig.itemIndex);
+      const itemMint = new PublicKey(itemConfig.itemMint);
+      const item = await itemProgram.client.account.item.fetch(
+        (
+          await getItemPDA(itemMint, itemIndex)
+        )[0]
+      );
+      await (
+        await playerProgram.updateValidForUseIfWarmupPassedOnItem(
+          {
+            index: playerIndex,
+            usagePermissivenessToUse:
+              config.useItemPermissivenessToUse ||
+              config.usagePermissivenessToUse ||
+              config.updatePermissivenessToUse,
+            playerMint,
+            amount: new BN(itemConfig.amount),
+            itemIndex,
+            itemClassMint: new PublicKey(itemConfig.itemClassMint),
+            itemUsageIndex: itemConfig.itemUsageIndex,
+            itemClassIndex: item.classIndex as BN,
+            itemMint,
+            itemUsageProof: null,
+            itemUsage: null,
+          },
+          {
+            metadataUpdateAuthority: config.metadataUpdateAuthority
+              ? new PublicKey(config.metadataUpdateAuthority)
+              : keypair.publicKey,
+          },
+          {
+            classIndex: new BN(config.classIndex),
+            playerClassMint: new PublicKey(config.playerClassMint),
+          }
+        )
+      ).rpc();
+    }
+  }
+);
 CLI.programCommandWithConfig(
   "add_item_effects",
   async (config, options, _files) => {
@@ -635,15 +702,14 @@ CLI.programCommandWithConfig(
             itemClassMint: new PublicKey(itemConfig.itemClassMint),
             itemUsageIndex: itemConfig.itemUsageIndex,
             itemClassIndex: item.classIndex as BN,
-            itemMint,
             space: new BN(itemConfig.playerItemActivationMarkerSpace || 101),
-            itemUsageProof: null,
-            itemUsage: null,
+            usageInfo: null,
           },
           {
             metadataUpdateAuthority: config.metadataUpdateAuthority
               ? new PublicKey(config.metadataUpdateAuthority)
               : keypair.publicKey,
+            itemMint,
           },
           {
             itemProgram,
@@ -665,13 +731,6 @@ CLI.programCommandWithConfig(
     const playerProgram = await PlayerProgram.getProgramWithWalletKeyPair(
       PlayerProgram,
       wallet,
-      env,
-      rpcUrl
-    );
-
-    const itemProgram = await PlayerProgram.getProgramWithWalletKeyPair(
-      ItemProgram,
-      await Wallet.loadWalletKey(keypair),
       env,
       rpcUrl
     );

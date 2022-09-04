@@ -119,7 +119,7 @@ export class ItemProgram extends Program.Program {
 
   async updateValidForUseIfWarmupPassed(
     args: ItemInstruction.UpdateValidForUseIfWarmupPassedArgs,
-    accounts: ItemInstruction.UpdateValidForUseIfWarmupPassedAccounts = {},
+    accounts: ItemInstruction.UpdateValidForUseIfWarmupPassedAccounts,
     additionalArgs: ItemInstruction.UpdateValidForUseIfWarmupPassedAdditionalArgs = {},
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
@@ -176,22 +176,6 @@ export class ItemProgram extends Program.Program {
     additionalArgs: ItemInstruction.BeginItemActivationAdditionalArgs = {},
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const signers = [];
-    const itemTransferAuthority =
-      accounts.itemTransferAuthority || web3.Keypair.generate();
-    if (
-      accounts.itemAccount &&
-      accounts.itemAccount.equals(
-        (
-          await getAtaForMint(
-            accounts.itemMint,
-            (this.client.provider as AnchorProvider).wallet.publicKey
-          )
-        )[0]
-      )
-    ) {
-      signers.push(itemTransferAuthority);
-    }
     const itemClass = await this.fetchItemClass(
       args.itemClassMint,
       args.classIndex
@@ -204,10 +188,10 @@ export class ItemProgram extends Program.Program {
 
     const instruction = await this.instruction.beginItemActivation(
       { ...args, itemClass },
-      { ...accounts, itemTransferAuthority },
+      accounts,
       additionalArgs
     );
-    return this.sendWithRetry(instruction, signers, options);
+    return this.sendWithRetry(instruction, [], options);
   }
 
   async endItemActivation(
@@ -216,12 +200,31 @@ export class ItemProgram extends Program.Program {
     additionalArgs: ItemInstruction.EndItemActivationAdditionalArgs = {},
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
+    const signers = [];
+
+    let itemTransferAuthority = accounts.itemTransferAuthority;
+    if (
+      !itemTransferAuthority &&
+      accounts.itemAccount &&
+      accounts.itemAccount.equals(
+        (
+          await getAtaForMint(
+            accounts.itemMint,
+            (this.client.provider as AnchorProvider).wallet.publicKey
+          )
+        )[0]
+      )
+    ) {
+      itemTransferAuthority = web3.Keypair.generate();
+      signers.push(itemTransferAuthority);
+    }
+
     const instruction = await this.instruction.endItemActivation(
       args,
-      accounts,
+      { ...accounts, itemTransferAuthority },
       additionalArgs
     );
-    return this.sendWithRetry(instruction, [], options);
+    return this.sendWithRetry(instruction, signers, options);
   }
 
   async drainItemEscrow(

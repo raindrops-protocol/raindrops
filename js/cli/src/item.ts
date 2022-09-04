@@ -529,20 +529,20 @@ programCommand("begin_item_activation")
         usageInfo: null,
         usageIndex: config.usageIndex,
         usagePermissivenessToUse: config.usagePermissivenessToUse,
+        itemMint: new web3.PublicKey(config.itemMint),
+        target: config.target ? new web3.PublicKey(config.target) : null,
       },
       {
-        itemMint: new web3.PublicKey(config.itemMint),
         itemAccount: config.itemAccount
           ? new web3.PublicKey(config.itemAccount)
           : (
               await PDA.getAtaForMint(
                 new web3.PublicKey(config.itemMint),
-                walletKeyPair.publicKey
+                config.originator
+                  ? new web3.PublicKey(config.originator)
+                  : walletKeyPair.publicKey
               )
             )[0],
-        itemTransferAuthority: transferAuthority
-          ? loadWalletKey(transferAuthority)
-          : null,
         metadataUpdateAuthority: new web3.PublicKey(
           config.metadataUpdateAuthority
         ),
@@ -576,13 +576,27 @@ programCommand("end_item_activation")
         amount: new BN(config.amount || 1),
         index: new BN(config.index),
         usageIndex: config.usageIndex,
-        itemMint: new web3.PublicKey(config.itemMint),
-        usageProof: null,
-        usage: null,
+        usageInfo: null,
         usagePermissivenessToUse: config.usagePermissivenessToUse,
       },
       {
-        originator: config.originator || walletKeyPair.publicKey,
+        originator: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
+        itemTransferAuthority: transferAuthority
+          ? loadWalletKey(transferAuthority)
+          : null,
+        itemAccount: config.itemAccount
+          ? new web3.PublicKey(config.itemAccount)
+          : (
+              await PDA.getAtaForMint(
+                new web3.PublicKey(config.itemMint),
+                config.originator
+                  ? new web3.PublicKey(config.originator)
+                  : walletKeyPair.publicKey
+              )
+            )[0],
+        itemMint: new web3.PublicKey(config.itemMint),
         metadataUpdateAuthority: new web3.PublicKey(
           config.metadataUpdateAuthority
         ),
@@ -609,16 +623,30 @@ programCommand("update_valid_for_use_if_warmup_passed")
     //@ts-ignore
     const config = JSON.parse(configString);
 
-    await anchorProgram.updateValidForUseIfWarmupPassed({
-      classIndex: new BN(config.classIndex || 0),
-      itemClassMint: new web3.PublicKey(config.itemClassMint),
-      amount: new BN(config.amount || 1),
-      index: new BN(config.index),
-      usageIndex: config.usageIndex,
-      itemMint: new web3.PublicKey(config.itemMint),
-      usageProof: null,
-      usage: null,
-    });
+    await anchorProgram.updateValidForUseIfWarmupPassed(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amount: new BN(config.amount || 1),
+        index: new BN(config.index),
+        usageIndex: config.usageIndex,
+        itemMint: new web3.PublicKey(config.itemMint),
+        usageProof: null,
+        usage: null,
+      },
+      {
+        itemAccount: config.itemAccount
+          ? new web3.PublicKey(config.itemAccount)
+          : (
+              await PDA.getAtaForMint(
+                new web3.PublicKey(config.itemMint),
+                config.originator
+                  ? new web3.PublicKey(config.originator)
+                  : walletKeyPair.publicKey
+              )
+            )[0],
+      }
+    );
   });
 
 programCommand("show_item_build")
@@ -755,7 +783,7 @@ programCommand("show_item")
     if (item.data.usageStates)
       item.data.usageStates.map((u) => {
         log.info("----> Index:", u.index);
-        log.info("----> # Times Used:", u.uses);
+        log.info("----> # Times Used:", u.uses.toNumber());
         log.info(
           "----> Activated At:",
           u.activatedAt

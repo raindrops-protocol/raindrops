@@ -86,7 +86,7 @@ export interface UpdateValidForUseIfWarmupPassedOnItemArgs {
   itemClassIndex: BN;
   amount: BN;
   itemClassMint: PublicKey;
-  useItemPermissivenessToUse: null | AnchorPermissivenessType;
+  usagePermissivenessToUse: null | AnchorPermissivenessType;
   index: BN;
   playerMint: PublicKey;
   // not implemented yet sdk-side
@@ -105,6 +105,7 @@ export interface UpdateValidForUseIfWarmupPassedOnItemAdditionalArgs {
 
 export interface UseItemArgs {
   itemIndex: BN;
+  itemMint: PublicKey;
   itemClassIndex: BN;
   itemClassMint: PublicKey;
   itemMarkerSpace: number;
@@ -119,7 +120,6 @@ export interface UseItemArgs {
 }
 
 export interface UseItemAccounts {
-  itemMint: PublicKey;
   validationProgram: PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
@@ -135,14 +135,12 @@ export interface AddItemEffectArgs {
   itemClassIndex: BN;
   index: BN;
   playerMint: PublicKey;
-  itemMint: PublicKey;
   itemClassMint: PublicKey;
   itemUsageIndex: number;
   useItemPermissivenessToUse: null | AnchorPermissivenessType;
   space: BN;
   // TODO not implemented yet in this sdk
-  itemUsageProof: null;
-  itemUsage: null;
+  usageInfo: null;
 }
 
 export interface AddItemArgs {
@@ -225,6 +223,7 @@ export interface CreatePlayerClassAccounts {
 }
 
 export interface AddItemEffectAccounts {
+  itemMint: web3.PublicKey;
   callbackProgram: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
@@ -788,7 +787,7 @@ export class Instruction extends SolKitInstruction {
 
     const playerKey = (await getPlayerPDA(args.playerMint, args.index))[0];
 
-    const item = (await getItemPDA(accounts.itemMint, args.itemIndex))[0];
+    const item = (await getItemPDA(args.itemMint, args.itemIndex))[0];
 
     return {
       instructions: [
@@ -801,13 +800,15 @@ export class Instruction extends SolKitInstruction {
             itemClass: (
               await getItemPDA(args.itemClassMint, args.itemClassIndex)
             )[0],
-            itemMint: accounts.itemMint,
             playerItemAccount: (
               await getPlayerItemAccount({ item, player: playerKey })
             )[0],
             itemActivationMarker: (
               await getItemActivationMarker({
-                itemMint: accounts.itemMint,
+                itemMint: args.itemMint,
+                itemAccount: (
+                  await getPlayerItemAccount({ item, player: playerKey })
+                )[0],
                 index: args.itemIndex,
                 usageIndex: new BN(args.itemUsageIndex),
                 amount: args.amount,
@@ -843,7 +844,7 @@ export class Instruction extends SolKitInstruction {
     )[0];
     const remainingAccounts =
       await generateRemainingAccountsGivenPermissivenessToUse({
-        permissivenessToUse: args.useItemPermissivenessToUse,
+        permissivenessToUse: args.usagePermissivenessToUse,
         tokenMint: args.playerMint,
         parentMint: additionalArgs.playerClassMint,
         parentIndex: additionalArgs.classIndex,
@@ -879,6 +880,9 @@ export class Instruction extends SolKitInstruction {
             itemActivationMarker: (
               await getItemActivationMarker({
                 itemMint: args.itemMint,
+                itemAccount: (
+                  await getPlayerItemAccount({ item, player: playerKey })
+                )[0],
                 index: args.itemIndex,
                 usageIndex: new BN(args.itemUsageIndex),
                 amount: args.amount,
@@ -926,7 +930,7 @@ export class Instruction extends SolKitInstruction {
 
     const playerKey = (await getPlayerPDA(args.playerMint, args.index))[0];
 
-    const item = (await getItemPDA(args.itemMint, args.itemIndex))[0];
+    const item = (await getItemPDA(accounts.itemMint, args.itemIndex))[0];
 
     return {
       instructions: [
@@ -943,9 +947,13 @@ export class Instruction extends SolKitInstruction {
                 itemUsageIndex: new BN(args.itemUsageIndex),
               })
             )[0],
+            itemMint: accounts.itemMint,
             itemActivationMarker: (
               await getItemActivationMarker({
-                itemMint: args.itemMint,
+                itemMint: accounts.itemMint,
+                itemAccount: (
+                  await getPlayerItemAccount({ item, player: playerKey })
+                )[0],
                 index: args.itemIndex,
                 usageIndex: new BN(args.itemUsageIndex),
                 amount: additionalArgs.amount,
@@ -961,6 +969,7 @@ export class Instruction extends SolKitInstruction {
             payer: (this.program.client.provider as AnchorProvider).wallet
               .publicKey,
             systemProgram: SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
             itemProgram: ITEM_ID,
             callbackProgram:
               accounts.callbackProgram || SystemProgram.programId,
