@@ -428,7 +428,6 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
-          rainPayer: payer,
           rainPayerAta: rainPayerAta,
           rainTokenVault: rainTokenVault,
           rainTokenMint: Common.RAIN_TOKEN_MINT,

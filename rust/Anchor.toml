@@ -31,7 +31,7 @@ members = ["item", "namespace", "matches", "staking"]
 types = "../js/lib/src/idls/"
 
 [test.validator]
-url = "https://devnet.genesysgo.net"
+url = "https://solana-api.projectserum.com"
 
 # metaplex
 [[test.validator.clone]]

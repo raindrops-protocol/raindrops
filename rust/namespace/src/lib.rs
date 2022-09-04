@@ -434,7 +434,7 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.item_permissiveness,
             )?;
@@ -450,7 +450,7 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.match_permissiveness,
             )?;
@@ -509,7 +509,7 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.item_permissiveness,
             )?;
@@ -526,7 +526,7 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.match_permissiveness,
             )?;
@@ -543,7 +543,7 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.namespace_permissiveness,
             )?;
@@ -577,7 +577,7 @@ pub mod namespace {
         let payment_token_accounts = token::Transfer {
             from: ctx.accounts.rain_payer_ata.to_account_info(),
             to: ctx.accounts.rain_token_vault.to_account_info(),
-            authority: ctx.accounts.rain_payer.to_account_info(),
+            authority: ctx.accounts.token_holder.to_account_info(),
         };
 
         token::transfer(
@@ -623,7 +623,7 @@ pub mod namespace {
         let payment_token_accounts = token::Transfer {
             from: payment_ata.to_account_info(),
             to: payment_vault.to_account_info(),
-            authority: ctx.accounts.rain_payer.to_account_info(),
+            authority: ctx.accounts.token_holder.to_account_info(),
         };
 
         // transfer tokens to namespace payment vault
@@ -961,7 +961,8 @@ pub struct JoinNamespace<'info> {
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
 
-    token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
+    token_holder: Signer<'info>,
 
     #[account(address = Pubkey::from_str(RAIN_TOKEN_MINT).unwrap())]
     rain_token_mint: Account<'info, Mint>,
@@ -969,10 +970,7 @@ pub struct JoinNamespace<'info> {
     #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = Pubkey::from_str(RAIN_TOKEN_VAULT_AUTHORITY).unwrap())]
     rain_token_vault: Account<'info, TokenAccount>,
 
-    #[account(mut)]
-    rain_payer: Signer<'info>,
-
-    #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = rain_payer)]
+    #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = token_holder)]
     rain_payer_ata: Account<'info, token::TokenAccount>,
 
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -997,7 +995,7 @@ pub struct LeaveNamespace<'info> {
     artifact: UncheckedAccount<'info>,
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
-    token_holder: UncheckedAccount<'info>,
+    token_holder: Signer<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
     #[account(constraint=raindrops_program.key() == crate::id() ||
@@ -1014,15 +1012,14 @@ pub struct CacheArtifact<'info> {
     namespace: Account<'info, Namespace>,
     #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(init_if_needed, payer = payer, space = NamespaceIndex::SPACE, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
+    #[account(init_if_needed, payer = token_holder, space = NamespaceIndex::SPACE, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
+    token_holder: Signer<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    #[account(mut)]
-    payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
     #[account(constraint=raindrops_program.key() == crate::id() ||
@@ -1043,7 +1040,8 @@ pub struct UncacheArtifact<'info> {
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
+    token_holder: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
