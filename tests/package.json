@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@metaplex-foundation/mpl-token-metadata": "^2.2.2",
-    "@project-serum/anchor": "^0.25.0",
+    "@project-serum/anchor": "^0.24.2",
     "@raindrop-studios/sol-kit": "^0.1.78",
     "@raindrops-protocol/raindrops": "workspace:^"
   },
