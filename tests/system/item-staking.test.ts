@@ -9,13 +9,14 @@ import {
   Utils,
   State,
 } from "@raindrops-protocol/raindrops";
+import { expect } from "chai";
 import { mintNFT, mintTokens } from "../test-helpers/token";
 
-describe("Item-Namespace-Staking Flow", () => {
+describe("Item-Staking", () => {
   // Creates an anchor provider
 
-  // const RPC_URL = "http://localhost:8899";
-  const RPC_URL = "https://api.devnet.solana.com";
+  const RPC_URL = "http://localhost:8899";
+  // const RPC_URL = "https://api.devnet.solana.com";
   const walletKeypair = anchor.web3.Keypair.generate();
 
   const provider = new anchor.AnchorProvider(
@@ -58,7 +59,7 @@ describe("Item-Namespace-Staking Flow", () => {
       { commitment: "confirmed" }
     );
 
-    expect(lamports).toBe(amount * anchor.web3.LAMPORTS_PER_SOL);
+    expect(lamports).to.be.eq(amount * anchor.web3.LAMPORTS_PER_SOL);
   });
 
   it("Gets programs", async () => {
@@ -68,7 +69,7 @@ describe("Item-Namespace-Staking Flow", () => {
       idl: Idls.ItemIDL,
     });
 
-    expect(itemProgram.id).toBe(Constants.ProgramIds.ITEM_ID);
+    expect(itemProgram.id).to.be.eq(Constants.ProgramIds.ITEM_ID);
 
     namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
@@ -79,7 +80,7 @@ describe("Item-Namespace-Staking Flow", () => {
       }
     );
 
-    expect(namespaceProgram.id).toBe(Constants.ProgramIds.NAMESPACE_ID);
+    expect(namespaceProgram.id).to.be.eq(Constants.ProgramIds.NAMESPACE_ID);
 
     stakingProgram = await StakingProgram.getProgramWithConfig(StakingProgram, {
       asyncSigning: false,
@@ -87,7 +88,7 @@ describe("Item-Namespace-Staking Flow", () => {
       idl: Idls.StakingIDL,
     });
 
-    expect(stakingProgram.id).toBe(Constants.ProgramIds.STAKING_ID);
+    expect(stakingProgram.id).to.be.eq(Constants.ProgramIds.STAKING_ID);
   });
 
   it("Mints item class NFT", async () => {
@@ -102,7 +103,7 @@ describe("Item-Namespace-Staking Flow", () => {
         "confirmed"
       );
 
-    expect(tokenAccounts.value.length).toBe(1);
+    expect(tokenAccounts.value.length).to.be.eq(1);
   });
 
   it("Creates an item class", async () => {
@@ -182,7 +183,7 @@ describe("Item-Namespace-Staking Flow", () => {
       },
     };
 
-    const args = {
+    const args: Instructions.Item.CreateItemClassArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       parentClassIndex: null,
       space: new anchor.BN(300),
@@ -192,19 +193,19 @@ describe("Item-Namespace-Staking Flow", () => {
       storeMetadataFields: false,
       itemClassData,
       parentOfParentClassIndex: null,
-    } as Instructions.Item.CreateItemClassArgs;
+    };
 
-    const accounts = {
+    const accounts: Instructions.Item.CreateItemClassAccounts = {
       itemMint: itemClassMintKeypair.publicKey,
       parent: null,
       parentMint: null,
+      parentOfParentClass: null,
       parentOfParentClassMint: null,
       metadataUpdateAuthority: walletKeypair.publicKey,
       parentUpdateAuthority: null,
-    } as Instructions.Item.CreateItemClassAccounts;
+    };
 
-    const additionalArgs =
-      {} as Instructions.Item.CreateItemClassAdditionalArgs;
+    const additionalArgs: Instructions.Item.CreateItemClassAdditionalArgs = {};
 
     await itemProgram.createItemClass(args, accounts, additionalArgs);
 
@@ -218,7 +219,7 @@ describe("Item-Namespace-Staking Flow", () => {
       "confirmed"
     );
 
-    expect(accInfo).toBeDefined();
+    expect(accInfo).to.exist;
   });
 
   it("Mints craft item NFT", async () => {
@@ -233,7 +234,7 @@ describe("Item-Namespace-Staking Flow", () => {
         "confirmed"
       );
 
-    expect(tokenAccounts.value.length).toBe(1);
+    expect(tokenAccounts.value.length).to.be.eq(1);
   });
 
   it("Mints item NFT", async () => {
@@ -248,11 +249,11 @@ describe("Item-Namespace-Staking Flow", () => {
         "confirmed"
       );
 
-    expect(tokenAccounts.value.length).toBe(1);
+    expect(tokenAccounts.value.length).to.be.eq(1);
   });
 
   it("Creates an item escrow", async () => {
-    const args = {
+    const args: Instructions.Item.CreateItemEscrowArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       craftEscrowIndex: new anchor.BN(craftItemEscrowIndex),
       componentScope,
@@ -261,18 +262,18 @@ describe("Item-Namespace-Staking Flow", () => {
       itemClassMint: itemClassMintKeypair.publicKey,
       amountToMake: new anchor.BN(1),
       parentClassIndex: null,
-    } as Instructions.Item.CreateItemEscrowArgs;
+    };
 
-    const accounts = {
+    const accounts: Instructions.Item.CreateItemEscrowAccounts = {
       newItemMint: itemMintKeypair.publicKey,
       newItemToken: null, // item ATA
       newItemTokenHolder: walletKeypair.publicKey, // wallet
       parentMint: null,
       itemClassMint: itemClassMintKeypair.publicKey,
       metadataUpdateAuthority: walletKeypair.publicKey,
-    } as Instructions.Item.CreateItemEscrowAccounts;
+    };
 
-    const additionalArgs = {};
+    const additionalArgs: Instructions.Item.CreateItemEscrowAdditionalArgs = {};
 
     await itemProgram.createItemEscrow(args, accounts, additionalArgs);
 
@@ -297,13 +298,13 @@ describe("Item-Namespace-Staking Flow", () => {
       "confirmed"
     );
 
-    expect(accInfo).toBeDefined();
+    expect(accInfo).to.exist;
 
-    expect(accInfo.buildBegan).toBeNull();
+    expect(accInfo.buildBegan).to.be.null;
   });
 
   it("Starts item escrow build phase", async () => {
-    const args = {
+    const args: Instructions.Item.StartItemEscrowBuildPhaseArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       parentClassIndex: null,
       craftEscrowIndex: new anchor.BN(craftItemEscrowIndex),
@@ -315,18 +316,18 @@ describe("Item-Namespace-Staking Flow", () => {
       buildPermissivenessToUse: { tokenHolder: true },
       endNodeProof: null,
       totalSteps: null,
-    } as Instructions.Item.StartItemEscrowBuildPhaseArgs;
+    };
 
-    const accounts = {
+    const accounts: Instructions.Item.StartItemEscrowBuildPhaseAccounts = {
       itemClassMint: itemClassMintKeypair.publicKey,
       newItemToken: null,
       newItemTokenHolder: walletKeypair.publicKey,
       parentMint: null,
       metadataUpdateAuthority: walletKeypair.publicKey,
-    } as Instructions.Item.StartItemEscrowBuildPhaseAccounts;
+    };
 
-    const additionalArgs =
-      {} as Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs;
+    const additionalArgs: Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs =
+      {};
 
     await itemProgram.startItemEscrowBuildPhase(args, accounts, additionalArgs);
 
@@ -351,13 +352,13 @@ describe("Item-Namespace-Staking Flow", () => {
       "confirmed"
     );
 
-    expect(accInfo).toBeDefined();
+    expect(accInfo).to.exist;
 
-    expect(accInfo.buildBegan).toBeDefined();
+    expect(accInfo.buildBegan).to.exist;
   });
 
   it("Completes item escrow build phase", async () => {
-    const args = {
+    const args: Instructions.Item.CompleteItemEscrowBuildPhaseArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       newItemIndex: new anchor.BN(itemIndex),
       parentClassIndex: null,
@@ -370,19 +371,19 @@ describe("Item-Namespace-Staking Flow", () => {
       buildPermissivenessToUse: { tokenHolder: true },
       storeMint: false,
       storeMetadataFields: false,
-    } as Instructions.Item.CompleteItemEscrowBuildPhaseArgs;
+    };
 
-    const accounts = {
+    const accounts: Instructions.Item.CompleteItemEscrowBuildPhaseAccounts = {
       itemClassMint: itemClassMintKeypair.publicKey,
       newItemMint: itemMintKeypair.publicKey,
       newItemToken: null,
       newItemTokenHolder: walletKeypair.publicKey,
       parentMint: null,
       metadataUpdateAuthority: walletKeypair.publicKey,
-    } as Instructions.Item.CompleteItemEscrowBuildPhaseAccounts;
+    };
 
-    const additionalArgs =
-      {} as Instructions.Item.CompleteItemEscrowBuildPhaseAdditionalArgs;
+    const additionalArgs: Instructions.Item.CompleteItemEscrowBuildPhaseAdditionalArgs =
+      {};
 
     await itemProgram.completeItemEscrowBuildPhase(
       args,
@@ -400,9 +401,11 @@ describe("Item-Namespace-Staking Flow", () => {
       "confirmed"
     );
 
-    expect(accInfo).toBeDefined();
+    expect(accInfo).to.exist;
 
-    expect((accInfo.classIndex as anchor.BN).toNumber()).toBe(itemClassIndex);
+    expect((accInfo.classIndex as anchor.BN).toNumber()).to.be.eq(
+      itemClassIndex
+    );
   });
 
   it("Mints namespace NFT", async () => {
@@ -417,7 +420,7 @@ describe("Item-Namespace-Staking Flow", () => {
         "confirmed"
       );
 
-    expect(tokenAccounts.value.length).toBe(1);
+    expect(tokenAccounts.value.length).to.be.eq(1);
   });
 
   it("Mints staking tokens", async () => {
@@ -432,11 +435,11 @@ describe("Item-Namespace-Staking Flow", () => {
         "confirmed"
       );
 
-    expect(tokenAccounts.value.length).toBe(1);
+    expect(tokenAccounts.value.length).to.be.eq(1);
 
     expect(
       tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount
-    ).toBe(stakingAmount);
+    ).to.be.eq(stakingAmount);
   });
 
   it("Initializes a namespace", async () => {
@@ -448,7 +451,7 @@ describe("Item-Namespace-Staking Flow", () => {
       namespaceMintKeypair.publicKey
     );
 
-    const args = {
+    const args: Instructions.Namespace.InitializeNamespaceArgs = {
       desiredNamespaceArraySize: new anchor.BN(2),
       uuid: "e3e52d",
       prettyName: "Trash with Frens",
@@ -461,13 +464,13 @@ describe("Item-Namespace-Staking Flow", () => {
         cachePermissiveness: State.Namespace.Permissiveness.All,
       },
       whitelistedStakingMints: [stakingMintKeypair.publicKey],
-    } as Instructions.Namespace.InitializeNamespaceArgs;
+    };
 
-    const accounts = {
+    const accounts: Instructions.Namespace.InitializeNamespaceAccounts = {
       mint: namespaceMintKeypair.publicKey,
       metadata: namespaceMintMetadataPDA,
       masterEdition: namespaceMintMasterEditionPDA,
-    } as Instructions.Namespace.InitializeNamespaceAccounts;
+    };
 
     await namespaceProgram.initializeNamespace(args, accounts);
 
@@ -480,17 +483,17 @@ describe("Item-Namespace-Staking Flow", () => {
       "confirmed"
     );
 
-    expect(accInfo).toBeDefined();
+    expect(accInfo).to.exist;
 
-    expect((accInfo.mint as anchor.web3.PublicKey).toBase58()).toBe(
+    expect((accInfo.mint as anchor.web3.PublicKey).toBase58()).to.be.eq(
       namespaceMintKeypair.publicKey.toBase58()
     );
   });
 
   it("Creates namespace gatekeeper", async () => {
-    const accounts = {
+    const accounts: Instructions.Namespace.CreateNamespaceGatekeeperAccounts = {
       namespaceMint: namespaceMintKeypair.publicKey,
-    } as Instructions.Namespace.CreateNamespaceGatekeeperAccounts;
+    };
 
     await namespaceProgram.createNamespaceGatekeeper(accounts);
 
@@ -508,7 +511,7 @@ describe("Item-Namespace-Staking Flow", () => {
         "confirmed"
       );
 
-    expect(accInfo).toBeDefined();
+    expect(accInfo).to.exist;
   });
 
   it("Joins to namespace", async () => {
@@ -517,11 +520,11 @@ describe("Item-Namespace-Staking Flow", () => {
       new anchor.BN(itemIndex)
     );
 
-    const accounts = {
+    const accounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: namespaceMintKeypair.publicKey,
       artifact: itemPDA,
       raindropsProgram: State.Namespace.RaindropsProgram.Item,
-    } as Instructions.Namespace.JoinNamespaceAccounts;
+    };
 
     await namespaceProgram.joinNamespace(accounts);
 
@@ -534,7 +537,7 @@ describe("Item-Namespace-Staking Flow", () => {
       "confirmed"
     );
 
-    expect((accInfo.artifactsAdded as anchor.BN).toNumber()).toBe(1);
+    expect((accInfo.artifactsAdded as anchor.BN).toNumber()).to.be.eq(1);
   });
 
   it("Begins artifact stake warmup", async () => {
@@ -557,7 +560,7 @@ describe("Item-Namespace-Staking Flow", () => {
       new anchor.BN(itemIndex)
     );
 
-    const args = {
+    const args: Instructions.Staking.BeginArtifactStakeWarmupArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       parentClassIndex: null,
       index: new anchor.BN(itemIndex),
@@ -565,10 +568,10 @@ describe("Item-Namespace-Staking Flow", () => {
       artifactClassMint: itemClassMintKeypair.publicKey,
       artifactMint: itemMintKeypair.publicKey,
       stakingAmount: new anchor.BN(stakingAmount),
-      stakingPermissivenessToUse: { tokenHolder: true },
-    } as Instructions.Staking.BeginArtifactStakeWarmupArgs;
+      stakingPermissivenessToUse: { updateAuthority: true },
+    };
 
-    const accounts = {
+    const accounts: Instructions.Staking.BeginArtifactStakeWarmupAccounts = {
       artifactClass: artifactClassPDA,
       artifact: artifactPDA,
       stakingAccount: stakingMintAta,
@@ -578,13 +581,16 @@ describe("Item-Namespace-Staking Flow", () => {
       parentClass: null,
       metadataUpdateAuthority: walletKeypair.publicKey,
       namespace: namespacePDA,
-    } as Instructions.Staking.BeginArtifactStakeWarmupAccounts;
+    };
 
     await stakingProgram.beginArtifactStakeWarmup(args, accounts);
 
-    const accInfo = await itemProgram.client.account.item.fetch(artifactPDA);
+    const accInfo = await itemProgram.client.account.item.fetch(
+      artifactPDA,
+      "confirmed"
+    );
 
-    expect((accInfo.tokensStaked as anchor.BN).toNumber()).toBe(0);
+    expect((accInfo.tokensStaked as anchor.BN).toNumber()).to.be.eq(0);
   });
 
   it("Ends artifact stake warmup", async () => {
@@ -598,25 +604,30 @@ describe("Item-Namespace-Staking Flow", () => {
       new anchor.BN(itemIndex)
     );
 
-    const args = {
+    const args: Instructions.Staking.EndArtifactStakeWarmupArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       index: new anchor.BN(itemIndex),
       stakingIndex: new anchor.BN(stakingIndex),
       artifactClassMint: itemClassMintKeypair.publicKey,
       artifactMint: itemMintKeypair.publicKey,
-    } as Instructions.Staking.EndArtifactStakeWarmupArgs;
+    };
 
-    const accounts = {
+    const accounts: Instructions.Staking.EndArtifactStakeWarmupAccounts = {
       artifactClass: artifactClassPDA,
       artifact: artifactPDA,
       stakingMint: stakingMintKeypair.publicKey,
-    } as Instructions.Staking.EndArtifactStakeWarmupAccounts;
+    };
 
     await stakingProgram.endArtifactStakeWarmup(args, accounts);
 
-    const accInfo = await itemProgram.client.account.item.fetch(artifactPDA);
+    const accInfo = await itemProgram.client.account.item.fetch(
+      artifactPDA,
+      "confirmed"
+    );
 
-    expect((accInfo.tokensStaked as anchor.BN).toNumber()).toBe(stakingAmount);
+    expect((accInfo.tokensStaked as anchor.BN).toNumber()).to.be.eq(
+      stakingAmount
+    );
   });
 
   it("Begins artifact stake cooldown", async () => {
@@ -635,31 +646,35 @@ describe("Item-Namespace-Staking Flow", () => {
       new anchor.BN(itemIndex)
     );
 
-    const args = {
+    const args: Instructions.Staking.BeginArtifactStakeCooldownArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       parentClassIndex: null,
       index: new anchor.BN(itemIndex),
       stakingIndex: new anchor.BN(stakingIndex),
       artifactClassMint: itemClassMintKeypair.publicKey,
       artifactMint: itemMintKeypair.publicKey,
-      stakingPermissivenessToUse: { tokenHolder: true },
-    } as Instructions.Staking.BeginArtifactStakeCooldownArgs;
+      stakingPermissivenessToUse: { updateAuthority: true },
+    };
 
-    const accounts = {
+    const accounts: Instructions.Staking.BeginArtifactStakeCooldownAccounts = {
       artifactClass: artifactClassPDA,
       artifact: artifactPDA,
       stakingAccount: stakingMintAta,
+      stakingMint: stakingMintKeypair.publicKey,
       parentClassAccount: null,
       parentClassMint: null,
       parentClass: null,
       metadataUpdateAuthority: walletKeypair.publicKey,
-    } as Instructions.Staking.BeginArtifactStakeCooldownAccounts;
+    };
 
     await stakingProgram.beginArtifactStakeCooldown(args, accounts);
 
-    const accInfo = await itemProgram.client.account.item.fetch(artifactPDA);
+    const accInfo = await itemProgram.client.account.item.fetch(
+      artifactPDA,
+      "confirmed"
+    );
 
-    expect((accInfo.tokensStaked as anchor.BN).toNumber()).toBe(0);
+    expect((accInfo.tokensStaked as anchor.BN).toNumber()).to.be.eq(0);
   });
 
   it("Ends artifact stake cooldown", async () => {
@@ -678,25 +693,28 @@ describe("Item-Namespace-Staking Flow", () => {
       new anchor.BN(itemIndex)
     );
 
-    const args = {
+    const args: Instructions.Staking.EndArtifactStakeCooldownArgs = {
       classIndex: new anchor.BN(itemClassIndex),
       index: new anchor.BN(itemIndex),
       stakingIndex: new anchor.BN(stakingIndex),
       artifactClassMint: itemClassMintKeypair.publicKey,
       artifactMint: itemMintKeypair.publicKey,
-    } as Instructions.Staking.EndArtifactStakeCooldownArgs;
+    };
 
-    const accounts = {
+    const accounts: Instructions.Staking.EndArtifactStakeCooldownAccounts = {
       artifactClass: artifactClassPDA,
       artifact: artifactPDA,
       stakingAccount: stakingMintAta,
       stakingMint: stakingMintKeypair.publicKey,
-    } as Instructions.Staking.EndArtifactStakeCooldownAccounts;
+    };
 
     await stakingProgram.endArtifactStakeCooldown(args, accounts);
 
-    const accInfo = await itemProgram.client.account.item.fetch(artifactPDA);
+    const accInfo = await itemProgram.client.account.item.fetch(
+      artifactPDA,
+      "confirmed"
+    );
 
-    expect((accInfo.tokensStaked as anchor.BN).toNumber()).toBe(0);
+    expect((accInfo.tokensStaked as anchor.BN).toNumber()).to.be.eq(0);
   });
 });
