@@ -285,7 +285,7 @@ export namespace ContractCommon {
     } else if (
       permissivenessToUse?.parentTokenHolder &&
       parentOfParentClassMint &&
-      parentOfParentClassIndex
+      (parentOfParentClass || parentOfParentClassIndex)
     ) {
       const parentToken = (
         await getAtaForMint(

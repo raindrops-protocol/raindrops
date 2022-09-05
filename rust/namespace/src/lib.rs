@@ -8,11 +8,11 @@ use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::cpi::{
     accounts::{
-        ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-        ItemClassUncacheNamespace,
+        ItemArtifactCacheNamespace, ItemArtifactJoinNamespace, ItemArtifactLeaveNamespace,
+        ItemArtifactUncacheNamespace,
     },
-    item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
-    item_class_uncache_namespace,
+    item_artifact_cache_namespace, item_artifact_join_namespace, item_artifact_leave_namespace,
+    item_artifact_uncache_namespace,
 };
 
 use raindrops_matches::cpi::{
@@ -159,7 +159,7 @@ pub mod namespace {
             if pn.len() > 32 {
                 return Err(error!(ErrorCode::PrettyNameTooLong));
             }
-            namespace.pretty_name = pn.to_string();
+            namespace.pretty_name = pn;
         }
 
         if let Some(permissiveness) = permissiveness_settings {
@@ -238,13 +238,13 @@ pub mod namespace {
         let rd_program = ctx.accounts.raindrops_program.to_account_info();
 
         if raindrops_item::check_id(&rd_program.key()) {
-            let accounts = ItemClassCacheNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactCacheNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
+            item_artifact_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
         } else if raindrops_matches::check_id(&rd_program.key()) {
             let accounts = MatchCacheNamespace {
                 match_instance: ctx.accounts.artifact.to_account_info(),
@@ -294,13 +294,13 @@ pub mod namespace {
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         if raindrops_item::check_id(&rd_program.key()) {
-            let accounts = ItemClassUncacheNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactUncacheNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_uncache_namespace(CpiContext::new(rd_program, accounts))?;
+            item_artifact_uncache_namespace(CpiContext::new(rd_program, accounts))?;
         } else if raindrops_matches::check_id(&rd_program.key()) {
             let accounts = MatchUncacheNamespace {
                 match_instance: ctx.accounts.artifact.to_account_info(),
@@ -401,13 +401,13 @@ pub mod namespace {
                 &namespace.permissiveness_settings.item_permissiveness,
             )?;
 
-            let accounts = ItemClassLeaveNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactLeaveNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_leave_namespace(CpiContext::new(rd_program, accounts))
+            item_artifact_leave_namespace(CpiContext::new(rd_program, accounts))
         } else if raindrops_matches::check_id(&rd_program.key()) {
             check_permissiveness_against_holder(
                 &rd_program.key(),
@@ -476,13 +476,13 @@ pub mod namespace {
                 &namespace.permissiveness_settings.item_permissiveness,
             )?;
 
-            let accounts = ItemClassJoinNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactJoinNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_join_namespace(CpiContext::new(rd_program, accounts))?;
+            item_artifact_join_namespace(CpiContext::new(rd_program, accounts))?;
         } else if raindrops_matches::check_id(&rd_program.key()) {
             msg!("joining match to namespace");
             check_permissiveness_against_holder(

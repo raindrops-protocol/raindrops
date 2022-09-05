@@ -81,14 +81,15 @@ export class Instruction extends SolKitInstruction {
       parentOfParentClassMint: accounts.parentOfParentClassMint,
       parentOfParentClassIndex: args.parentOfParentClassIndex,
       parentOfParentClass:
-        args.parentOfParentClassIndex && accounts.parentOfParentClassMint
+        accounts.parentOfParentClass ||
+        (args.parentOfParentClassIndex && accounts.parentOfParentClassMint
           ? (
               await getItemPDA(
                 accounts.parentOfParentClassMint,
                 args.parentOfParentClassIndex
               )
             )[0]
-          : null,
+          : null),
       metadataUpdateAuthority: accounts.metadataUpdateAuthority,
       parentUpdateAuthority: accounts.parentUpdateAuthority,
       program: this.program,
@@ -973,6 +974,7 @@ export interface CreateItemClassAccounts {
   itemMint: web3.PublicKey;
   parent: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
+  parentOfParentClass: web3.PublicKey | null;
   parentOfParentClassMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
   parentUpdateAuthority: web3.PublicKey | null;
