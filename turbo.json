@@ -7,6 +7,12 @@
     "lint:check": {
       "outputs": ["^lint:check"]
     },
+    "format": {
+      "outputs": []
+    },
+    "format:check": {
+      "outputs": []
+    },
     "build:lint": {
       "dependsOn": ["lint:check"],
       "outputs": ["dist/**", "build/**", "target/**"]
