@@ -1,17 +1,19 @@
+// TODO: Remove it after @raindrop-studios/sol-kit upgrade
+
 import * as anchor from "@project-serum/anchor";
+import { Utils } from "@raindrops-protocol/raindrops";
+import { Transaction } from "@raindrop-studios/sol-kit";
 import {
   createCreateMasterEditionV3Instruction,
   createCreateMetadataAccountV2Instruction,
   PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID,
 } from "@metaplex-foundation/mpl-token-metadata";
-import { Transaction } from "@raindrop-studios/sol-kit";
 
 const createMintNFTInstructions = async (
   provider: anchor.AnchorProvider,
   mintKeypair: anchor.web3.Keypair
 ) => {
   const tokenProgram = anchor.Spl.token(provider);
-  const associatedTokenProgram = anchor.Spl.associatedToken(provider);
 
   const mintSpace = tokenProgram.account.mint.size;
   const balanceNeeded =
@@ -38,18 +40,12 @@ const createMintNFTInstructions = async (
     owner: provider.wallet.publicKey,
   });
 
-  const createAtaIx = await associatedTokenProgram.methods
-    .create()
-    .accounts({
-      authority: provider.wallet.publicKey,
-      associatedAccount: ata,
-      owner: provider.wallet.publicKey,
-      mint: mintKeypair.publicKey,
-      systemProgram: anchor.web3.SystemProgram.programId,
-      tokenProgram: tokenProgram.programId,
-      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    })
-    .instruction();
+  const createAtaIx = Utils.ATA.createAssociatedTokenAccountInstruction(
+    provider.wallet.publicKey,
+    ata,
+    provider.wallet.publicKey,
+    mintKeypair.publicKey
+  );
 
   const createMintToIx = await tokenProgram.methods
     .mintTo(new anchor.BN(1))
@@ -136,7 +132,6 @@ const createMintTokensInstructions = async (
   decimals: number
 ) => {
   const tokenProgram = anchor.Spl.token(provider);
-  const associatedTokenProgram = anchor.Spl.associatedToken(provider);
 
   const mintSpace = tokenProgram.account.mint.size;
   const balanceNeeded =
@@ -167,18 +162,12 @@ const createMintTokensInstructions = async (
     owner: provider.wallet.publicKey,
   });
 
-  const createAtaIx = await associatedTokenProgram.methods
-    .create()
-    .accounts({
-      authority: provider.wallet.publicKey,
-      associatedAccount: ata,
-      owner: provider.wallet.publicKey,
-      mint: mintKeypair.publicKey,
-      systemProgram: anchor.web3.SystemProgram.programId,
-      tokenProgram: tokenProgram.programId,
-      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    })
-    .instruction();
+  const createAtaIx = Utils.ATA.createAssociatedTokenAccountInstruction(
+    provider.wallet.publicKey,
+    ata,
+    provider.wallet.publicKey,
+    mintKeypair.publicKey
+  );
 
   const createMintToIx = await tokenProgram.methods
     .mintTo(new anchor.BN(amount))
