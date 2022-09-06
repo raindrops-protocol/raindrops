@@ -1991,17 +1991,18 @@ pub fn propagate_parent_array<T: Inherited>(args: PropagateParentArrayArgs<T>) -
             match &child_items {
                 Some(c_items) => {
                     let mut new_items: Vec<T> = vec![];
-                    for item in c_items {
-                        if item.get_inherited() == &InheritanceState::NotInherited {
-                            new_items.push(item.clone())
-                        }
-                    }
 
                     add_to_new_array_from_parent(
                         InheritanceState::Inherited,
                         p_items,
                         &mut new_items,
                     );
+
+                    for item in c_items {
+                        if item.get_inherited() == &InheritanceState::NotInherited {
+                            new_items.push(item.clone())
+                        }
+                    }
                     return Some(new_items);
                 }
                 None => {
