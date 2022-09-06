@@ -636,7 +636,7 @@ export class PlayerProgram extends Program.Program {
         itemClass.object.itemClassData.config.usages[args.itemUsageIndex];
 
       if (usage) {
-        accounts.callbackProgram = usage.validation?.key;
+        accounts.callbackProgram = usage.callback?.key;
       }
     }
 

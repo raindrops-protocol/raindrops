@@ -2464,7 +2464,6 @@ pub struct BeginItemActivation<'info> {
     )]
     item: Box<Account<'info, Item>>,
     #[account(
-        mut,
         constraint=args.item_mint == item_account.mint
     )]
     item_account: Box<Account<'info, TokenAccount>>,
@@ -2609,7 +2608,6 @@ pub struct UpdateValidForUseIfWarmupPassed<'info> {
     )]
     item_class: Account<'info, ItemClass>,
     #[account(
-        mut,
         constraint=args.item_mint == item_account.mint
     )]
     item_account: Box<Account<'info, TokenAccount>>,

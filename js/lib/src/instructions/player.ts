@@ -873,6 +873,9 @@ export class Instruction extends SolKitInstruction {
             player: playerKey,
             playerClass: parent,
             item,
+            playerItemAccount: (
+              await getPlayerItemAccount({ item, player: playerKey })
+            )[0],
             itemClass: (
               await getItemPDA(args.itemClassMint, args.itemClassIndex)
             )[0],

@@ -18,6 +18,20 @@ anchor_lang::declare_id!("p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1");
 pub const PREFIX: &str = "player";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ItemCallbackArgs {
+    pub instruction: [u8; 8],
+    pub extra_identifier: u64,
+    pub class_index: u64,
+    pub index: u64,
+    pub item_class_mint: Pubkey,
+    pub amount: u64,
+    pub usage_permissiveness_to_use: Option<PermissivenessType>,
+    pub usage_index: u16,
+    // Use this if using roots
+    pub usage_info: Option<u8>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],
     pub item_class_mint: Pubkey,
@@ -69,15 +83,6 @@ pub struct AddOrRemoveItemValidationArgs {
     pub amount: u64,
     pub player_mint: Pubkey,
     pub item_permissiveness_to_use: Option<PermissivenessType>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct UseItemCallbackArgs {
-    // For enum detection on the other end.
-    pub instruction: [u8; 8],
-    pub extra_identifier: u64,
-    pub amount: u64,
-    pub item_usage: raindrops_item::ItemUsage,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -895,6 +900,7 @@ pub mod player {
         let player = &ctx.accounts.player;
         let item = &ctx.accounts.item;
         let item_class = &ctx.accounts.item_class;
+        let item_account = &ctx.accounts.player_item_account;
         let item_activation_marker = &ctx.accounts.item_activation_marker;
         let item_program = &ctx.accounts.item_program;
         let clock = &ctx.accounts.clock;
@@ -914,6 +920,7 @@ pub mod player {
             item,
             item_class,
             item_activation_marker,
+            item_account,
             item_program,
             clock,
             player,
@@ -1066,6 +1073,11 @@ pub mod player {
             callback_program,
             item_usage: &item_usage_to_use,
             amount: player_item_activation_marker.amount,
+            class_index: item_class_index,
+            index: item_index,
+            item_class_mint,
+            usage_permissiveness_to_use: use_item_permissiveness_to_use.clone(),
+            usage_index: item_usage_index,
         })?;
 
         toggle_item_to_basic_stats(ToggleItemToBasicStatsArgs {
@@ -1384,6 +1396,7 @@ pub struct AddItemEffect<'info> {
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
     #[account(
+        mut,
         seeds=[
             PREFIX.as_bytes(),
             item.key().as_ref(),
@@ -1481,7 +1494,6 @@ pub struct UseItem<'info> {
     item: UncheckedAccount<'info>,
     item_class: UncheckedAccount<'info>,
     #[account(
-        mut,
         seeds=[
             PREFIX.as_bytes(),
             item.key().as_ref(),
@@ -1522,6 +1534,15 @@ pub struct UpdateValidForUseIfWarmupPassedOnItem<'info> {
     player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
+    #[account(
+        seeds=[
+            PREFIX.as_bytes(),
+            item.key().as_ref(),
+            player.key().as_ref()
+        ],
+        bump
+    )]
+    player_item_account: UncheckedAccount<'info>,
     #[account(mut)]
     item: UncheckedAccount<'info>,
     item_class: UncheckedAccount<'info>,

@@ -8,9 +8,9 @@ use {
         CopyBeginItemActivationBecauseAnchorSucksSometimesArgs,
         CopyEndItemActivationBecauseAnchorSucksSometimesArgs,
         CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs, EquippedItem,
-        ErrorCode, InheritanceState, Inherited, Permissiveness, PermissivenessType, Player,
-        PlayerClass, PlayerClassData, StatDiffType, UpdateValidForUseIfWarmupPassedOnItemArgs,
-        UseItemArgs, UseItemCallbackArgs, PREFIX,
+        ErrorCode, InheritanceState, Inherited, ItemCallbackArgs, Permissiveness,
+        PermissivenessType, Player, PlayerClass, PlayerClassData, StatDiffType,
+        UpdateValidForUseIfWarmupPassedOnItemArgs, UseItemArgs, PREFIX,
     },
     anchor_lang::{
         error,
@@ -209,6 +209,11 @@ pub struct RunItemCallbackArgs<'b, 'c, 'info> {
     pub callback_program: &'c UncheckedAccount<'info>,
     pub item_usage: &'b raindrops_item::ItemUsage,
     pub amount: u64,
+    pub class_index: u64,
+    pub index: u64,
+    pub item_class_mint: Pubkey,
+    pub usage_permissiveness_to_use: Option<PermissivenessType>,
+    pub usage_index: u16,
 }
 
 pub fn run_item_callback<'b, 'c, 'info>(args: RunItemCallbackArgs<'b, 'c, 'info>) -> Result<()> {
@@ -220,9 +225,14 @@ pub fn run_item_callback<'b, 'c, 'info>(args: RunItemCallbackArgs<'b, 'c, 'info>
         amount,
         callback_program,
         item_usage,
+        class_index,
+        index,
+        item_class_mint,
+        usage_permissiveness_to_use,
+        usage_index,
     } = args;
 
-    if let Some(callback) = &player_class.data.config.add_to_pack_validation {
+    if let Some(callback) = &item_usage.callback {
         let item_class_info = item_class.to_account_info();
         let item_info = item.to_account_info();
         let player_info = player.to_account_info();
@@ -237,8 +247,8 @@ pub fn run_item_callback<'b, 'c, 'info>(args: RunItemCallbackArgs<'b, 'c, 'info>
         assert_keys_equal(callback_program.key(), callback.key)?;
 
         let keys = vec![
-            AccountMeta::new_readonly(item.key(), false),
             AccountMeta::new_readonly(item_class.key(), false),
+            AccountMeta::new_readonly(item.key(), false),
             AccountMeta::new_readonly(player.key(), false),
             AccountMeta::new_readonly(player_class.key(), false),
         ];
@@ -247,11 +257,16 @@ pub fn run_item_callback<'b, 'c, 'info>(args: RunItemCallbackArgs<'b, 'c, 'info>
             &Instruction {
                 program_id: callback.key,
                 accounts: keys,
-                data: AnchorSerialize::try_to_vec(&UseItemCallbackArgs {
+                data: AnchorSerialize::try_to_vec(&ItemCallbackArgs {
                     instruction: raindrops_item::utils::sighash("global", "use_item_callback"),
                     extra_identifier: callback.code,
                     amount,
-                    item_usage: item_usage.clone(),
+                    class_index,
+                    index,
+                    item_class_mint,
+                    usage_permissiveness_to_use,
+                    usage_index,
+                    usage_info: None,
                 })?,
             },
             &accounts,
@@ -1553,8 +1568,7 @@ pub fn begin_item_activation<'b, 'c, 'info>(
     let mut keys = vec![
         AccountMeta::new_readonly(item_class.key(), false),
         AccountMeta::new(item.key(), false),
-        AccountMeta::new(player_item_account.key(), false),
-        AccountMeta::new_readonly(player.key(), true),
+        AccountMeta::new_readonly(player_item_account.key(), false),
         AccountMeta::new(item_activation_marker.key(), false),
         AccountMeta::new(payer.key(), true),
         AccountMeta::new_readonly(system_program.key(), false),
@@ -1620,6 +1634,7 @@ pub struct UpdateValidForUseIfWarmupPassedArgs<'b, 'c, 'info> {
     pub item: &'c UncheckedAccount<'info>,
     pub item_class: &'c UncheckedAccount<'info>,
     pub item_activation_marker: &'c UncheckedAccount<'info>,
+    pub item_account: &'c UncheckedAccount<'info>,
     pub item_program: &'c UncheckedAccount<'info>,
     pub clock: &'c Sysvar<'info, Clock>,
     pub player: &'b Account<'info, Player>,
@@ -1633,6 +1648,7 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
         item,
         item_class,
         item_activation_marker,
+        item_account,
         item_program,
         clock,
         player,
@@ -1656,12 +1672,14 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
     let keys = vec![
         AccountMeta::new_readonly(item.key(), false),
         AccountMeta::new_readonly(item_class.key(), false),
+        AccountMeta::new_readonly(item_account.key(), false),
         AccountMeta::new(item_activation_marker.key(), false),
         AccountMeta::new_readonly(clock.key(), false),
     ];
     let account_infos = vec![
         item.to_account_info(),
         item_class.to_account_info(),
+        item_account.to_account_info(),
         item_activation_marker.to_account_info(),
         clock.to_account_info(),
     ];

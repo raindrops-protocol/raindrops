@@ -573,7 +573,7 @@ export type Item = {
         },
         {
           "name": "itemAccount",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -717,7 +717,7 @@ export type Item = {
         },
         {
           "name": "itemAccount",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -3764,7 +3764,7 @@ export const IDL: Item = {
         },
         {
           "name": "itemAccount",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -3908,7 +3908,7 @@ export const IDL: Item = {
         },
         {
           "name": "itemAccount",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
