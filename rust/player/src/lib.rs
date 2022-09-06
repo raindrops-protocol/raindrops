@@ -1184,7 +1184,8 @@ pub mod player {
             },
         )?;
 
-        let used_body_part = find_used_body_part_from_index(player_class, body_part_index)?;
+        let used_body_part =
+            find_used_body_part_from_index(player_class, body_part_index, equipping)?;
 
         let item_usage = verify_item_usage_appropriate_for_body_part(
             VerifyItemUsageAppropriateForBodyPartArgs {

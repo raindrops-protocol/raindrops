@@ -567,7 +567,7 @@ pub fn verify_item_usage_appropriate_for_body_part<'a, 'b, 'info>(
                     break;
                 }
             }
-            if !found {
+            if !found && equipping {
                 return Err(ErrorCode::BodyPartNotEligible.into());
             }
         }
@@ -789,10 +789,20 @@ pub fn build_new_equipped_items_and_provide_counts<'b, 'info>(
 pub fn find_used_body_part_from_index(
     player_class: &Account<PlayerClass>,
     body_part_index: u16,
+    equipping: bool,
 ) -> Result<BodyPart> {
     if let Some(bp) = &player_class.data.config.body_parts {
         if bp.is_empty() {
-            return Err(ErrorCode::NoBodyPartsToEquip.into());
+            if !equipping {
+                return Ok(BodyPart {
+                    index: body_part_index,
+                    body_part: "".to_owned(),
+                    total_item_spots: None,
+                    inherited: InheritanceState::NotInherited,
+                });
+            } else {
+                return Err(ErrorCode::NoBodyPartsToEquip.into());
+            }
         } else {
             let mut body_part = &bp[0];
             let mut found = false;
@@ -805,7 +815,17 @@ pub fn find_used_body_part_from_index(
             }
 
             if !found {
-                return Err(ErrorCode::UnableToFindBodyPartByIndex.into());
+                if !equipping {
+                    // So you can unequip even if bp has been removed.
+                    return Ok(BodyPart {
+                        index: body_part_index,
+                        body_part: "".to_owned(),
+                        total_item_spots: None,
+                        inherited: InheritanceState::NotInherited,
+                    });
+                } else {
+                    return Err(ErrorCode::NoBodyPartsToEquip.into());
+                }
             }
 
             return Ok(body_part.clone());
