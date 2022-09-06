@@ -6,7 +6,10 @@
   "index": 3,
   "metadataUpdateAuthority": null,
   "updates": {
-    "statsUri": null,
+    "statsUri": {
+      "statsUri": "www.aol2.com",
+      "inherited": { "notInherited": true }
+    },
     "category": null,
     "basicStats": [
       {

@@ -572,7 +572,6 @@ pub mod player {
         } = args;
 
         if let Some(data) = new_data {
-            // let data: PlayerData = AnchorDeserialize::try_from_slice(&new_data)?;
             assert_permissiveness_access(AssertPermissivenessAccessArgs {
                 program_id: ctx.program_id,
                 given_account: &player.to_account_info(),
@@ -585,7 +584,6 @@ pub mod player {
             })?;
 
             map_new_stats_into_player(player_class, player, &data.basic_stats)?;
-            msg!("Now player is {:?}", player.data.basic_stats);
             player.data.stats_uri = data.stats_uri;
             player.data.category = data.category;
         }
