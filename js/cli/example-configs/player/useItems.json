@@ -1,0 +1,18 @@
+{
+  "playerMint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "playerClassMint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
+  "useItemPermissivenessToUse": { "tokenHolder": true },
+  "classIndex": 3,
+  "index": 3,
+  "metadataUpdateAuthority": null,
+  "items": [
+    {
+      "itemClassMint": "EK6BFy4Db64qxF39NYfC8Gug4TeqGHz2FPLZG9eFR1dr",
+      "itemMint": "EK6BFy4Db64qxF39NYfC8Gug4TeqGHz2FPLZG9eFR1dr",
+      "itemIndex": 1,
+      "amount": 1,
+      "itemUsageIndex": 0,
+      "playerItemActivationMarkerSpace": 200
+    }
+  ]
+}

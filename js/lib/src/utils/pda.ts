@@ -132,6 +132,7 @@ export const getPlayerPDA = async (
 
 export const getItemActivationMarker = async (args: {
   itemMint: web3.PublicKey;
+  itemAccount: web3.PublicKey;
   index: BN;
   usageIndex: BN;
   amount: BN;
@@ -140,12 +141,42 @@ export const getItemActivationMarker = async (args: {
     [
       Buffer.from(ITEM_PREFIX),
       args.itemMint.toBuffer(),
+      args.itemAccount.toBuffer(),
       args.index.toArrayLike(Buffer, "le", 8),
       args.usageIndex.toArrayLike(Buffer, "le", 8),
       args.amount.toArrayLike(Buffer, "le", 8),
       Buffer.from(MARKER),
     ],
     ITEM_ID
+  );
+};
+
+export const getPlayerItemAccount = async (args: {
+  item: web3.PublicKey;
+  player: web3.PublicKey;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [Buffer.from(PLAYER_PREFIX), args.item.toBuffer(), args.player.toBuffer()],
+    PLAYER_ID
+  );
+};
+
+export const getPlayerItemActivationMarker = async (args: {
+  item: web3.PublicKey;
+  player: web3.PublicKey;
+  itemUsageIndex: BN;
+  amount: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(PLAYER_PREFIX),
+      args.item.toBuffer(),
+      args.player.toBuffer(),
+      args.itemUsageIndex.toArrayLike(Buffer, "le", 8),
+      args.amount.toArrayLike(Buffer, "le", 8),
+      Buffer.from(MARKER),
+    ],
+    PLAYER_ID
   );
 };
 

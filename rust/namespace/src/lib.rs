@@ -25,7 +25,6 @@ use raindrops_matches::cpi::{
 };
 
 anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
-
 pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
 const MAX_WHITELIST: usize = 5;

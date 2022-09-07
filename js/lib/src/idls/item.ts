@@ -572,19 +572,9 @@ export type Item = {
           "isSigner": false
         },
         {
-          "name": "itemMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemTransferAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "itemActivationMarker",
@@ -597,17 +587,7 @@ export type Item = {
           "isSigner": true
         },
         {
-          "name": "playerProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -645,6 +625,21 @@ export type Item = {
           "isSigner": false
         },
         {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemTransferAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
           "name": "itemClass",
           "isMut": false,
           "isSigner": false
@@ -652,6 +647,11 @@ export type Item = {
         {
           "name": "itemActivationMarker",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -683,6 +683,11 @@ export type Item = {
           "isSigner": false
         },
         {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "itemActivationMarker",
           "isMut": true,
           "isSigner": false
@@ -707,6 +712,11 @@ export type Item = {
         },
         {
           "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
           "isMut": false,
           "isSigner": false
         },
@@ -741,6 +751,11 @@ export type Item = {
         {
           "name": "itemClass",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1002,9 +1017,7 @@ export type Item = {
           },
           {
             "name": "amount",
-            "type": {
-              "option": "u64"
-            }
+            "type": "u64"
           },
           {
             "name": "unixTimestamp",
@@ -1016,6 +1029,12 @@ export type Item = {
               "option": {
                 "defined": "ItemActivationMarkerProofCounter"
               }
+            }
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
             }
           }
         ]
@@ -1726,6 +1745,10 @@ export type Item = {
             "type": "publicKey"
           },
           {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
             "name": "itemMarkerSpace",
             "type": "u8"
           },
@@ -1744,6 +1767,12 @@ export type Item = {
           {
             "name": "usageIndex",
             "type": "u16"
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
+            }
           },
           {
             "name": "usageInfo",
@@ -2003,10 +2032,6 @@ export type Item = {
             "type": "publicKey"
           },
           {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
             "name": "usagePermissivenessToUse",
             "type": {
               "option": {
@@ -2031,23 +2056,10 @@ export type Item = {
             "type": "u64"
           },
           {
-            "name": "usageProof",
+            "name": "usageInfo",
             "type": {
               "option": {
-                "vec": {
-                  "array": [
-                    "u8",
-                    32
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "name": "usage",
-            "type": {
-              "option": {
-                "defined": "ItemUsage"
+                "defined": "CraftUsageInfo"
               }
             }
           }
@@ -2970,338 +2982,218 @@ export type Item = {
           }
         ]
       }
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "IncorrectOwner",
-      "msg": "Account does not have correct owner!"
-    },
-    {
-      "code": 6001,
-      "name": "Uninitialized",
-      "msg": "Account is not initialized!"
-    },
-    {
-      "code": 6002,
-      "name": "MintMismatch",
-      "msg": "Mint Mismatch!"
-    },
-    {
-      "code": 6003,
-      "name": "TokenTransferFailed",
-      "msg": "Token transfer failed"
-    },
-    {
-      "code": 6004,
-      "name": "NumericalOverflowError",
-      "msg": "Numerical overflow error"
-    },
-    {
-      "code": 6005,
-      "name": "TokenMintToFailed",
-      "msg": "Token mint to failed"
-    },
-    {
-      "code": 6006,
-      "name": "TokenBurnFailed",
-      "msg": "TokenBurnFailed"
-    },
-    {
-      "code": 6007,
-      "name": "DerivedKeyInvalid",
-      "msg": "Derived key is invalid"
-    },
-    {
-      "code": 6008,
-      "name": "MustSpecifyPermissivenessType",
-      "msg": "Must specify permissiveness type"
-    },
-    {
-      "code": 6009,
-      "name": "PermissivenessNotFound",
-      "msg": "Permissiveness not found in array"
-    },
-    {
-      "code": 6010,
-      "name": "PublicKeyMismatch",
-      "msg": "Public key mismatch"
-    },
-    {
-      "code": 6011,
-      "name": "InsufficientBalance",
-      "msg": "Insufficient Balance"
-    },
-    {
-      "code": 6012,
-      "name": "MetadataDoesntExist",
-      "msg": "Metadata doesn't exist"
-    },
-    {
-      "code": 6013,
-      "name": "EditionDoesntExist",
-      "msg": "Edition doesn't exist"
-    },
-    {
-      "code": 6014,
-      "name": "NoParentPresent",
-      "msg": "No parent present"
-    },
-    {
-      "code": 6015,
-      "name": "ExpectedParent",
-      "msg": "Expected parent"
-    },
-    {
-      "code": 6016,
-      "name": "InvalidMintAuthority",
-      "msg": "Invalid mint authority"
-    },
-    {
-      "code": 6017,
-      "name": "NotMintAuthority",
-      "msg": "Not mint authority"
-    },
-    {
-      "code": 6018,
-      "name": "CannotMakeZero",
-      "msg": "Cannot make zero of an item"
-    },
-    {
-      "code": 6019,
-      "name": "MustBeHolderToBuild",
-      "msg": "Must be token holder to build against it"
-    },
-    {
-      "code": 6020,
-      "name": "InvalidConfigForFungibleMints",
-      "msg": "This config is invalid for fungible mints"
-    },
-    {
-      "code": 6021,
-      "name": "MissingMerkleInfo",
-      "msg": "Missing the merkle fields"
-    },
-    {
-      "code": 6022,
-      "name": "InvalidProof",
-      "msg": "Invalid proof"
-    },
-    {
-      "code": 6023,
-      "name": "ItemReadyForCompletion",
-      "msg": "Item ready for completion"
-    },
-    {
-      "code": 6024,
-      "name": "MustUseMerkleOrComponentList",
-      "msg": "In order for crafting to work there must be either a component list or a component merkle root"
-    },
-    {
-      "code": 6025,
-      "name": "MustUseMerkleOrUsageState",
-      "msg": "In order for crafting to work there must be either a usage state list on the craft component or a usage merkle root"
-    },
-    {
-      "code": 6026,
-      "name": "UnableToFindValidCooldownState",
-      "msg": "Unable to find a valid cooldown state"
-    },
-    {
-      "code": 6027,
-      "name": "BalanceNeedsToBeZero",
-      "msg": "Balance needs to be zero"
-    },
-    {
-      "code": 6028,
-      "name": "NotPartOfComponentScope",
-      "msg": "This component is not part of this escrow's component scope"
-    },
-    {
-      "code": 6029,
-      "name": "TimeToBuildMismatch",
-      "msg": "The time to build on two disparate components in the same scope is different. Either unset one or make them both the same."
-    },
-    {
-      "code": 6030,
-      "name": "StakingMintNotWhitelisted",
-      "msg": "This staking mint has not been whitelisted in this namespace"
-    },
-    {
-      "code": 6031,
-      "name": "BuildPhaseNotStarted",
-      "msg": "Build phase not started"
-    },
-    {
-      "code": 6032,
-      "name": "BuildPhaseNotFinished",
-      "msg": "Build phase not finished"
-    },
-    {
-      "code": 6033,
-      "name": "DeactivatedItemEscrow",
-      "msg": "Item escrow has been deactivated"
-    },
-    {
-      "code": 6034,
-      "name": "BuildPhaseAlreadyStarted",
-      "msg": "Build phase already started"
-    },
-    {
-      "code": 6035,
-      "name": "StillMissingComponents",
-      "msg": "You havent added all components to the escrow"
-    },
-    {
-      "code": 6036,
-      "name": "ChildrenStillExist",
-      "msg": "You cannot delete this class until all children are deleted"
-    },
-    {
-      "code": 6037,
-      "name": "UnstakeTokensFirst",
-      "msg": "An item cannot be destroyed until all its staked tokens are unstaked"
-    },
-    {
-      "code": 6038,
-      "name": "AlreadyDeactivated",
-      "msg": "Already deactivated"
-    },
-    {
-      "code": 6039,
-      "name": "NotDeactivated",
-      "msg": "Escrow not deactivated"
-    },
-    {
-      "code": 6040,
-      "name": "NotEmptied",
-      "msg": "Item escrow not emptied"
-    },
-    {
-      "code": 6041,
-      "name": "GivingTooMuch",
-      "msg": "You do not need to provide this many of this component to make your recipe"
-    },
-    {
-      "code": 6042,
-      "name": "MustProvideUsageIndex",
-      "msg": "Must provide usage index"
-    },
-    {
-      "code": 6043,
-      "name": "CannotUseItemWithoutUsageOrMerkle",
-      "msg": "An item and item class must either use usage roots or merkles, if neither are present, item is unusable"
-    },
-    {
-      "code": 6044,
-      "name": "MaxUsesReached",
-      "msg": "Max uses reached"
-    },
-    {
-      "code": 6045,
-      "name": "CooldownNotOver",
-      "msg": "Cooldown not finished"
-    },
-    {
-      "code": 6046,
-      "name": "CannotUseWearable",
-      "msg": "Cannot use wearable"
-    },
-    {
-      "code": 6047,
-      "name": "UsageIndexMismatch",
-      "msg": "Usage index mismatch"
-    },
-    {
-      "code": 6048,
-      "name": "ProvingNewStateNotRequired",
-      "msg": "Proving new state not required"
-    },
-    {
-      "code": 6049,
-      "name": "MustSubmitStatesInOrder",
-      "msg": "You must submit proofs in order to revalidate the new state."
-    },
-    {
-      "code": 6050,
-      "name": "ItemActivationNotValidYet",
-      "msg": "Item activation marker not valid yet"
-    },
-    {
-      "code": 6051,
-      "name": "WarmupNotFinished",
-      "msg": "Warmup not finished"
-    },
-    {
-      "code": 6052,
-      "name": "MustBeChild",
-      "msg": "Must be a child edition"
-    },
-    {
-      "code": 6053,
-      "name": "MustUseRealScope",
-      "msg": "Must use real scope to build"
-    },
-    {
-      "code": 6054,
-      "name": "CraftClassIndexMismatch",
-      "msg": "The class index passed up does not match that on the component"
-    },
-    {
-      "code": 6055,
-      "name": "MustBeGreaterThanZero",
-      "msg": "Must use at least one of this item"
-    },
-    {
-      "code": 6056,
-      "name": "AtaShouldNotHaveDelegate",
-      "msg": "To use an ata in this contract, please remove its delegate first"
-    },
-    {
-      "code": 6057,
-      "name": "ReinitializationDetected",
-      "msg": "Reinitialization hack detected"
-    },
-    {
-      "code": 6058,
-      "name": "FailedToJoinNamespace",
-      "msg": "Failed to join namespace"
-    },
-    {
-      "code": 6059,
-      "name": "FailedToLeaveNamespace",
-      "msg": "Failed to leave namespace"
-    },
-    {
-      "code": 6060,
-      "name": "FailedToCache",
-      "msg": "Failed to cache"
-    },
-    {
-      "code": 6061,
-      "name": "FailedToUncache",
-      "msg": "Failed to uncache"
-    },
-    {
-      "code": 6062,
-      "name": "AlreadyCached",
-      "msg": "Already cached"
-    },
-    {
-      "code": 6063,
-      "name": "NotCached",
-      "msg": "Not cached"
-    },
-    {
-      "code": 6064,
-      "name": "UnauthorizedCaller",
-      "msg": "Unauthorized Caller"
     },
     {
-      "code": 6065,
-      "name": "MustBeCalledByStakingProgram",
-      "msg": "Must be called by staking program"
+      "name": "ErrorCode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "IncorrectOwner"
+          },
+          {
+            "name": "Uninitialized"
+          },
+          {
+            "name": "MintMismatch"
+          },
+          {
+            "name": "TokenTransferFailed"
+          },
+          {
+            "name": "NumericalOverflowError"
+          },
+          {
+            "name": "TokenMintToFailed"
+          },
+          {
+            "name": "TokenBurnFailed"
+          },
+          {
+            "name": "DerivedKeyInvalid"
+          },
+          {
+            "name": "MustSpecifyPermissivenessType"
+          },
+          {
+            "name": "PermissivenessNotFound"
+          },
+          {
+            "name": "PublicKeyMismatch"
+          },
+          {
+            "name": "InsufficientBalance"
+          },
+          {
+            "name": "MetadataDoesntExist"
+          },
+          {
+            "name": "EditionDoesntExist"
+          },
+          {
+            "name": "NoParentPresent"
+          },
+          {
+            "name": "ExpectedParent"
+          },
+          {
+            "name": "InvalidMintAuthority"
+          },
+          {
+            "name": "NotMintAuthority"
+          },
+          {
+            "name": "CannotMakeZero"
+          },
+          {
+            "name": "MustBeHolderToBuild"
+          },
+          {
+            "name": "InvalidConfigForFungibleMints"
+          },
+          {
+            "name": "MissingMerkleInfo"
+          },
+          {
+            "name": "InvalidProof"
+          },
+          {
+            "name": "ItemReadyForCompletion"
+          },
+          {
+            "name": "MustUseMerkleOrComponentList"
+          },
+          {
+            "name": "MustUseMerkleOrUsageState"
+          },
+          {
+            "name": "UnableToFindValidCooldownState"
+          },
+          {
+            "name": "BalanceNeedsToBeZero"
+          },
+          {
+            "name": "NotPartOfComponentScope"
+          },
+          {
+            "name": "TimeToBuildMismatch"
+          },
+          {
+            "name": "StakingMintNotWhitelisted"
+          },
+          {
+            "name": "BuildPhaseNotStarted"
+          },
+          {
+            "name": "BuildPhaseNotFinished"
+          },
+          {
+            "name": "DeactivatedItemEscrow"
+          },
+          {
+            "name": "BuildPhaseAlreadyStarted"
+          },
+          {
+            "name": "StillMissingComponents"
+          },
+          {
+            "name": "ChildrenStillExist"
+          },
+          {
+            "name": "UnstakeTokensFirst"
+          },
+          {
+            "name": "AlreadyDeactivated"
+          },
+          {
+            "name": "NotDeactivated"
+          },
+          {
+            "name": "NotEmptied"
+          },
+          {
+            "name": "GivingTooMuch"
+          },
+          {
+            "name": "MustProvideUsageIndex"
+          },
+          {
+            "name": "CannotUseItemWithoutUsageOrMerkle"
+          },
+          {
+            "name": "MaxUsesReached"
+          },
+          {
+            "name": "CooldownNotOver"
+          },
+          {
+            "name": "CannotUseWearable"
+          },
+          {
+            "name": "UsageIndexMismatch"
+          },
+          {
+            "name": "ProvingNewStateNotRequired"
+          },
+          {
+            "name": "MustSubmitStatesInOrder"
+          },
+          {
+            "name": "ItemActivationNotValidYet"
+          },
+          {
+            "name": "WarmupNotFinished"
+          },
+          {
+            "name": "MustBeChild"
+          },
+          {
+            "name": "MustUseRealScope"
+          },
+          {
+            "name": "CraftClassIndexMismatch"
+          },
+          {
+            "name": "MustBeGreaterThanZero"
+          },
+          {
+            "name": "AtaShouldNotHaveDelegate"
+          },
+          {
+            "name": "ReinitializationDetected"
+          },
+          {
+            "name": "FailedToJoinNamespace"
+          },
+          {
+            "name": "FailedToLeaveNamespace"
+          },
+          {
+            "name": "FailedToCache"
+          },
+          {
+            "name": "FailedToUncache"
+          },
+          {
+            "name": "AlreadyCached"
+          },
+          {
+            "name": "NotCached"
+          },
+          {
+            "name": "UnauthorizedCaller"
+          },
+          {
+            "name": "MustBeCalledByStakingProgram"
+          },
+          {
+            "name": "ExpectedDelegateToMatchProvided"
+          },
+          {
+            "name": "CannotEffectTheSameStatTwice"
+          }
+        ]
+      }
     }
   ]
 };
@@ -3880,19 +3772,9 @@ export const IDL: Item = {
           "isSigner": false
         },
         {
-          "name": "itemMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemTransferAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "itemActivationMarker",
@@ -3905,17 +3787,7 @@ export const IDL: Item = {
           "isSigner": true
         },
         {
-          "name": "playerProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -3953,6 +3825,21 @@ export const IDL: Item = {
           "isSigner": false
         },
         {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemTransferAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
           "name": "itemClass",
           "isMut": false,
           "isSigner": false
@@ -3960,6 +3847,11 @@ export const IDL: Item = {
         {
           "name": "itemActivationMarker",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -3991,6 +3883,11 @@ export const IDL: Item = {
           "isSigner": false
         },
         {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "itemActivationMarker",
           "isMut": true,
           "isSigner": false
@@ -4015,6 +3912,11 @@ export const IDL: Item = {
         },
         {
           "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
           "isMut": false,
           "isSigner": false
         },
@@ -4049,6 +3951,11 @@ export const IDL: Item = {
         {
           "name": "itemClass",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -4310,9 +4217,7 @@ export const IDL: Item = {
           },
           {
             "name": "amount",
-            "type": {
-              "option": "u64"
-            }
+            "type": "u64"
           },
           {
             "name": "unixTimestamp",
@@ -4324,6 +4229,12 @@ export const IDL: Item = {
               "option": {
                 "defined": "ItemActivationMarkerProofCounter"
               }
+            }
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
             }
           }
         ]
@@ -5034,6 +4945,10 @@ export const IDL: Item = {
             "type": "publicKey"
           },
           {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
             "name": "itemMarkerSpace",
             "type": "u8"
           },
@@ -5052,6 +4967,12 @@ export const IDL: Item = {
           {
             "name": "usageIndex",
             "type": "u16"
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
+            }
           },
           {
             "name": "usageInfo",
@@ -5311,10 +5232,6 @@ export const IDL: Item = {
             "type": "publicKey"
           },
           {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
             "name": "usagePermissivenessToUse",
             "type": {
               "option": {
@@ -5339,23 +5256,10 @@ export const IDL: Item = {
             "type": "u64"
           },
           {
-            "name": "usageProof",
+            "name": "usageInfo",
             "type": {
               "option": {
-                "vec": {
-                  "array": [
-                    "u8",
-                    32
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "name": "usage",
-            "type": {
-              "option": {
-                "defined": "ItemUsage"
+                "defined": "CraftUsageInfo"
               }
             }
           }
@@ -6278,338 +6182,218 @@ export const IDL: Item = {
           }
         ]
       }
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "IncorrectOwner",
-      "msg": "Account does not have correct owner!"
-    },
-    {
-      "code": 6001,
-      "name": "Uninitialized",
-      "msg": "Account is not initialized!"
-    },
-    {
-      "code": 6002,
-      "name": "MintMismatch",
-      "msg": "Mint Mismatch!"
-    },
-    {
-      "code": 6003,
-      "name": "TokenTransferFailed",
-      "msg": "Token transfer failed"
-    },
-    {
-      "code": 6004,
-      "name": "NumericalOverflowError",
-      "msg": "Numerical overflow error"
-    },
-    {
-      "code": 6005,
-      "name": "TokenMintToFailed",
-      "msg": "Token mint to failed"
-    },
-    {
-      "code": 6006,
-      "name": "TokenBurnFailed",
-      "msg": "TokenBurnFailed"
-    },
-    {
-      "code": 6007,
-      "name": "DerivedKeyInvalid",
-      "msg": "Derived key is invalid"
-    },
-    {
-      "code": 6008,
-      "name": "MustSpecifyPermissivenessType",
-      "msg": "Must specify permissiveness type"
-    },
-    {
-      "code": 6009,
-      "name": "PermissivenessNotFound",
-      "msg": "Permissiveness not found in array"
-    },
-    {
-      "code": 6010,
-      "name": "PublicKeyMismatch",
-      "msg": "Public key mismatch"
-    },
-    {
-      "code": 6011,
-      "name": "InsufficientBalance",
-      "msg": "Insufficient Balance"
-    },
-    {
-      "code": 6012,
-      "name": "MetadataDoesntExist",
-      "msg": "Metadata doesn't exist"
-    },
-    {
-      "code": 6013,
-      "name": "EditionDoesntExist",
-      "msg": "Edition doesn't exist"
-    },
-    {
-      "code": 6014,
-      "name": "NoParentPresent",
-      "msg": "No parent present"
-    },
-    {
-      "code": 6015,
-      "name": "ExpectedParent",
-      "msg": "Expected parent"
-    },
-    {
-      "code": 6016,
-      "name": "InvalidMintAuthority",
-      "msg": "Invalid mint authority"
-    },
-    {
-      "code": 6017,
-      "name": "NotMintAuthority",
-      "msg": "Not mint authority"
-    },
-    {
-      "code": 6018,
-      "name": "CannotMakeZero",
-      "msg": "Cannot make zero of an item"
-    },
-    {
-      "code": 6019,
-      "name": "MustBeHolderToBuild",
-      "msg": "Must be token holder to build against it"
-    },
-    {
-      "code": 6020,
-      "name": "InvalidConfigForFungibleMints",
-      "msg": "This config is invalid for fungible mints"
-    },
-    {
-      "code": 6021,
-      "name": "MissingMerkleInfo",
-      "msg": "Missing the merkle fields"
-    },
-    {
-      "code": 6022,
-      "name": "InvalidProof",
-      "msg": "Invalid proof"
-    },
-    {
-      "code": 6023,
-      "name": "ItemReadyForCompletion",
-      "msg": "Item ready for completion"
-    },
-    {
-      "code": 6024,
-      "name": "MustUseMerkleOrComponentList",
-      "msg": "In order for crafting to work there must be either a component list or a component merkle root"
-    },
-    {
-      "code": 6025,
-      "name": "MustUseMerkleOrUsageState",
-      "msg": "In order for crafting to work there must be either a usage state list on the craft component or a usage merkle root"
-    },
-    {
-      "code": 6026,
-      "name": "UnableToFindValidCooldownState",
-      "msg": "Unable to find a valid cooldown state"
-    },
-    {
-      "code": 6027,
-      "name": "BalanceNeedsToBeZero",
-      "msg": "Balance needs to be zero"
-    },
-    {
-      "code": 6028,
-      "name": "NotPartOfComponentScope",
-      "msg": "This component is not part of this escrow's component scope"
-    },
-    {
-      "code": 6029,
-      "name": "TimeToBuildMismatch",
-      "msg": "The time to build on two disparate components in the same scope is different. Either unset one or make them both the same."
-    },
-    {
-      "code": 6030,
-      "name": "StakingMintNotWhitelisted",
-      "msg": "This staking mint has not been whitelisted in this namespace"
-    },
-    {
-      "code": 6031,
-      "name": "BuildPhaseNotStarted",
-      "msg": "Build phase not started"
-    },
-    {
-      "code": 6032,
-      "name": "BuildPhaseNotFinished",
-      "msg": "Build phase not finished"
-    },
-    {
-      "code": 6033,
-      "name": "DeactivatedItemEscrow",
-      "msg": "Item escrow has been deactivated"
-    },
-    {
-      "code": 6034,
-      "name": "BuildPhaseAlreadyStarted",
-      "msg": "Build phase already started"
-    },
-    {
-      "code": 6035,
-      "name": "StillMissingComponents",
-      "msg": "You havent added all components to the escrow"
-    },
-    {
-      "code": 6036,
-      "name": "ChildrenStillExist",
-      "msg": "You cannot delete this class until all children are deleted"
-    },
-    {
-      "code": 6037,
-      "name": "UnstakeTokensFirst",
-      "msg": "An item cannot be destroyed until all its staked tokens are unstaked"
-    },
-    {
-      "code": 6038,
-      "name": "AlreadyDeactivated",
-      "msg": "Already deactivated"
-    },
-    {
-      "code": 6039,
-      "name": "NotDeactivated",
-      "msg": "Escrow not deactivated"
-    },
-    {
-      "code": 6040,
-      "name": "NotEmptied",
-      "msg": "Item escrow not emptied"
-    },
-    {
-      "code": 6041,
-      "name": "GivingTooMuch",
-      "msg": "You do not need to provide this many of this component to make your recipe"
-    },
-    {
-      "code": 6042,
-      "name": "MustProvideUsageIndex",
-      "msg": "Must provide usage index"
-    },
-    {
-      "code": 6043,
-      "name": "CannotUseItemWithoutUsageOrMerkle",
-      "msg": "An item and item class must either use usage roots or merkles, if neither are present, item is unusable"
-    },
-    {
-      "code": 6044,
-      "name": "MaxUsesReached",
-      "msg": "Max uses reached"
-    },
-    {
-      "code": 6045,
-      "name": "CooldownNotOver",
-      "msg": "Cooldown not finished"
-    },
-    {
-      "code": 6046,
-      "name": "CannotUseWearable",
-      "msg": "Cannot use wearable"
-    },
-    {
-      "code": 6047,
-      "name": "UsageIndexMismatch",
-      "msg": "Usage index mismatch"
-    },
-    {
-      "code": 6048,
-      "name": "ProvingNewStateNotRequired",
-      "msg": "Proving new state not required"
-    },
-    {
-      "code": 6049,
-      "name": "MustSubmitStatesInOrder",
-      "msg": "You must submit proofs in order to revalidate the new state."
-    },
-    {
-      "code": 6050,
-      "name": "ItemActivationNotValidYet",
-      "msg": "Item activation marker not valid yet"
-    },
-    {
-      "code": 6051,
-      "name": "WarmupNotFinished",
-      "msg": "Warmup not finished"
-    },
-    {
-      "code": 6052,
-      "name": "MustBeChild",
-      "msg": "Must be a child edition"
-    },
-    {
-      "code": 6053,
-      "name": "MustUseRealScope",
-      "msg": "Must use real scope to build"
-    },
-    {
-      "code": 6054,
-      "name": "CraftClassIndexMismatch",
-      "msg": "The class index passed up does not match that on the component"
-    },
-    {
-      "code": 6055,
-      "name": "MustBeGreaterThanZero",
-      "msg": "Must use at least one of this item"
-    },
-    {
-      "code": 6056,
-      "name": "AtaShouldNotHaveDelegate",
-      "msg": "To use an ata in this contract, please remove its delegate first"
-    },
-    {
-      "code": 6057,
-      "name": "ReinitializationDetected",
-      "msg": "Reinitialization hack detected"
-    },
-    {
-      "code": 6058,
-      "name": "FailedToJoinNamespace",
-      "msg": "Failed to join namespace"
-    },
-    {
-      "code": 6059,
-      "name": "FailedToLeaveNamespace",
-      "msg": "Failed to leave namespace"
-    },
-    {
-      "code": 6060,
-      "name": "FailedToCache",
-      "msg": "Failed to cache"
-    },
-    {
-      "code": 6061,
-      "name": "FailedToUncache",
-      "msg": "Failed to uncache"
-    },
-    {
-      "code": 6062,
-      "name": "AlreadyCached",
-      "msg": "Already cached"
-    },
-    {
-      "code": 6063,
-      "name": "NotCached",
-      "msg": "Not cached"
-    },
-    {
-      "code": 6064,
-      "name": "UnauthorizedCaller",
-      "msg": "Unauthorized Caller"
     },
     {
-      "code": 6065,
-      "name": "MustBeCalledByStakingProgram",
-      "msg": "Must be called by staking program"
+      "name": "ErrorCode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "IncorrectOwner"
+          },
+          {
+            "name": "Uninitialized"
+          },
+          {
+            "name": "MintMismatch"
+          },
+          {
+            "name": "TokenTransferFailed"
+          },
+          {
+            "name": "NumericalOverflowError"
+          },
+          {
+            "name": "TokenMintToFailed"
+          },
+          {
+            "name": "TokenBurnFailed"
+          },
+          {
+            "name": "DerivedKeyInvalid"
+          },
+          {
+            "name": "MustSpecifyPermissivenessType"
+          },
+          {
+            "name": "PermissivenessNotFound"
+          },
+          {
+            "name": "PublicKeyMismatch"
+          },
+          {
+            "name": "InsufficientBalance"
+          },
+          {
+            "name": "MetadataDoesntExist"
+          },
+          {
+            "name": "EditionDoesntExist"
+          },
+          {
+            "name": "NoParentPresent"
+          },
+          {
+            "name": "ExpectedParent"
+          },
+          {
+            "name": "InvalidMintAuthority"
+          },
+          {
+            "name": "NotMintAuthority"
+          },
+          {
+            "name": "CannotMakeZero"
+          },
+          {
+            "name": "MustBeHolderToBuild"
+          },
+          {
+            "name": "InvalidConfigForFungibleMints"
+          },
+          {
+            "name": "MissingMerkleInfo"
+          },
+          {
+            "name": "InvalidProof"
+          },
+          {
+            "name": "ItemReadyForCompletion"
+          },
+          {
+            "name": "MustUseMerkleOrComponentList"
+          },
+          {
+            "name": "MustUseMerkleOrUsageState"
+          },
+          {
+            "name": "UnableToFindValidCooldownState"
+          },
+          {
+            "name": "BalanceNeedsToBeZero"
+          },
+          {
+            "name": "NotPartOfComponentScope"
+          },
+          {
+            "name": "TimeToBuildMismatch"
+          },
+          {
+            "name": "StakingMintNotWhitelisted"
+          },
+          {
+            "name": "BuildPhaseNotStarted"
+          },
+          {
+            "name": "BuildPhaseNotFinished"
+          },
+          {
+            "name": "DeactivatedItemEscrow"
+          },
+          {
+            "name": "BuildPhaseAlreadyStarted"
+          },
+          {
+            "name": "StillMissingComponents"
+          },
+          {
+            "name": "ChildrenStillExist"
+          },
+          {
+            "name": "UnstakeTokensFirst"
+          },
+          {
+            "name": "AlreadyDeactivated"
+          },
+          {
+            "name": "NotDeactivated"
+          },
+          {
+            "name": "NotEmptied"
+          },
+          {
+            "name": "GivingTooMuch"
+          },
+          {
+            "name": "MustProvideUsageIndex"
+          },
+          {
+            "name": "CannotUseItemWithoutUsageOrMerkle"
+          },
+          {
+            "name": "MaxUsesReached"
+          },
+          {
+            "name": "CooldownNotOver"
+          },
+          {
+            "name": "CannotUseWearable"
+          },
+          {
+            "name": "UsageIndexMismatch"
+          },
+          {
+            "name": "ProvingNewStateNotRequired"
+          },
+          {
+            "name": "MustSubmitStatesInOrder"
+          },
+          {
+            "name": "ItemActivationNotValidYet"
+          },
+          {
+            "name": "WarmupNotFinished"
+          },
+          {
+            "name": "MustBeChild"
+          },
+          {
+            "name": "MustUseRealScope"
+          },
+          {
+            "name": "CraftClassIndexMismatch"
+          },
+          {
+            "name": "MustBeGreaterThanZero"
+          },
+          {
+            "name": "AtaShouldNotHaveDelegate"
+          },
+          {
+            "name": "ReinitializationDetected"
+          },
+          {
+            "name": "FailedToJoinNamespace"
+          },
+          {
+            "name": "FailedToLeaveNamespace"
+          },
+          {
+            "name": "FailedToCache"
+          },
+          {
+            "name": "FailedToUncache"
+          },
+          {
+            "name": "AlreadyCached"
+          },
+          {
+            "name": "NotCached"
+          },
+          {
+            "name": "UnauthorizedCaller"
+          },
+          {
+            "name": "MustBeCalledByStakingProgram"
+          },
+          {
+            "name": "ExpectedDelegateToMatchProvided"
+          },
+          {
+            "name": "CannotEffectTheSameStatTwice"
+          }
+        ]
+      }
     }
   ]
 };

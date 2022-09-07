@@ -9,7 +9,7 @@ export const ITEM_ID = new web3.PublicKey(
 );
 
 export const PLAYER_ID = new web3.PublicKey(
-  "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
+  "p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1"
 );
 
 export const MATCHES_ID = new web3.PublicKey(

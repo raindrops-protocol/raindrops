@@ -1,0 +1,116 @@
+{
+  "data": {
+    "settings": {
+      "defaultCategory": {
+        "category": "Abstract Warrior",
+        "inherited": { "notInherited": true }
+      },
+      "childrenMustBeEditions": {
+        "boolean": false,
+        "inherited": { "notInherited": true }
+      },
+      "builderMustBeHolder": {
+        "boolean": true,
+        "inherited": { "notInherited": true }
+      },
+      "updatePermissiveness": [
+        {
+          "permissivenessType": { "tokenHolder": true },
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "instanceUpdatePermissiveness": null,
+      "buildPermissiveness": null,
+      "equipItemPermissiveness": null,
+      "addItemPermissiveness": null,
+      "useItemPermissiveness": null,
+      "unequipItemPermissiveness": null,
+      "removeItemPermissiveness": null,
+      "stakingWarmUpDuration": 10,
+      "stakingCooldownDuration": 10,
+      "stakingPermissiveness": null,
+      "unstakingPermissiveness": null,
+      "childUpdatePropagationPermissiveness": [
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "updatePermissiveness": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "childUpdatePropagationPermissiveness": true
+          },
+          "overridable": true,
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "basicStatTemplates": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "bodyParts": true
+          },
+          "inherited": { "notInherited": true }
+        },
+        {
+          "childUpdatePropagationPermissivenessType": {
+            "defaultCategory": true
+          },
+          "overridable": true,
+          "inherited": { "notInherited": true }
+        }
+      ]
+    },
+    "config": {
+      "startingStatsUri": null,
+      "basicStats": [
+        {
+          "index": 0,
+          "name": "str",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "integer": {
+              "min": 1,
+              "max": 10,
+              "starting": 3,
+              "stakingAmountScaler": 1,
+              "stakingDurationScaler": 2
+            }
+          }
+        },
+        {
+          "index": 1,
+          "name": "name",
+          "inherited": { "notInherited": true },
+          "statType": {
+            "string": {
+              "starting": "billy"
+            }
+          }
+        }
+      ],
+      "bodyParts": [
+        {
+          "index": 0,
+          "bodyPart": "Arm",
+          "totalItemSpots": 1,
+          "inherited": { "notInherited": true }
+        }
+      ],
+      "equipValidation": null,
+      "addToPackValidation": null
+    }
+  },
+  "metadataUpdateAuthority": null,
+  "storeMint": true,
+  "storeMetadataFields": true,
+  "mint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
+  "index": 2,
+  "updatePermissivenessToUse": { "tokenHolder": true },
+  "namespaceRequirement": 1,
+  "totalSpaceBytes": 400
+}
