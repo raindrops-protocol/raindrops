@@ -21,13 +21,14 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: "yarn"
+          cache: yarn
           cache-dependency-path: ./yarn.lock
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
+          override: true
           profile: minimal
           components: rustfmt, clippy
 
