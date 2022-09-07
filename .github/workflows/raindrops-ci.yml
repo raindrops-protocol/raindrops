@@ -52,7 +52,7 @@ jobs:
         shell: bash
 
       - name: Install Node.js dependencies
-        run: yarn install
+        run: yarn install --immutable
 
       - name: Format, Lint, Build and Test
         run: yarn run test
