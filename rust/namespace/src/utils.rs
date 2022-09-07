@@ -45,7 +45,7 @@ pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u
     Ok(bump)
 }
 
-pub fn assert_signer(account: &UncheckedAccount) -> Result<()> {
+pub fn assert_signer(account: &AccountInfo) -> Result<()> {
     if !account.is_signer {
         Err(ProgramError::MissingRequiredSignature.into())
     } else {
@@ -124,7 +124,7 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
 pub fn check_permissiveness_against_holder<'a>(
     program_id: &Pubkey,
     artifact: &UncheckedAccount<'a>,
-    token_holder: &UncheckedAccount<'a>,
+    token_holder: &AccountInfo<'a>,
     namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
     permissiveness: &Permissiveness,
 ) -> Result<()> {
@@ -151,16 +151,6 @@ pub fn check_permissiveness_against_holder<'a>(
                                     msg!("Whitelisted!");
                                     continue 'filter_loop;
                                 }
-                            }
-                        }
-                        return Err(error!(ErrorCode::CannotJoinNamespace));
-                    }
-                    Filter::Category { namespace, .. } => {
-                        msg!("category filter");
-                        for n in &art_namespaces {
-                            if n == namespace {
-                                msg!("Whitelisted!");
-                                continue 'filter_loop;
                             }
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
@@ -193,14 +183,6 @@ pub fn check_permissiveness_against_holder<'a>(
                                     msg!("Blacklisted!");
                                     return Err(error!(ErrorCode::CannotJoinNamespace));
                                 }
-                            }
-                        }
-                    }
-                    Filter::Category { namespace, .. } => {
-                        for n in &art_namespaces {
-                            if n == namespace {
-                                msg!("Blacklisted!");
-                                return Err(error!(ErrorCode::CannotJoinNamespace));
                             }
                         }
                     }

@@ -6,25 +6,25 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.localnet]
-item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
-player = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
-namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
-matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
-staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
+raindrops_item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
+raindrops_player = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
+raindrops_namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
+raindrops_matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+raindrops_staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 
 [programs.devnet]
-item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
-player = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
-namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
-matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
-staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
+raindrops_item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
+raindrops_player = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
+raindrops_namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
+raindrops_matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+raindrops_staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 
 [programs.mainnet]
-item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
-player = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
-namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
-matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
-staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
+raindrops_item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
+raindrops_player = "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98"
+raindrops_namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
+raindrops_matches = "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+raindrops_staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
@@ -34,8 +34,13 @@ members = ["item", "player", "namespace", "matches", "staking"]
 types = "../js/lib/src/idls/"
 
 [test.validator]
-url = "https://devnet.genesysgo.net/"
+url = "https://solana-api.projectserum.com"
 
 # metaplex
 [[test.validator.clone]]
 address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+
+# mock $RAIN Mint with our own Mint Authority
+[[test.validator.account]]
+address = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL"
+filename = "tests/scripts/rain-mock.json"

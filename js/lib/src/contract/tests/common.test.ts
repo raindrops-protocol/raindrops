@@ -2,10 +2,7 @@ import { jest } from "@jest/globals";
 
 import { BN, web3, Program as AnchorProgram } from "@project-serum/anchor";
 import { Keypair, TransactionInstruction } from "@solana/web3.js";
-import {
-  getAtaForMint,
-  getItemPDA,
-} from "../../utils/pda";
+import { getAtaForMint, getItemPDA } from "../../utils/pda";
 import { ContractCommon } from "../common";
 import { ItemProgram } from "../item";
 
