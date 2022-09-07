@@ -47,14 +47,5 @@ jobs:
       - name: Install Node.js dependencies
         run: yarn install --immutable
 
-      - name: Format
-        run: yarn run format:check
-
-      - name: Lint
-        run: yarn run lint:check
-
-      - name: Build
-        run: yarn run build:lint
-
-      - name: Test
+      - name: Format, Lint, Build and Test
         run: yarn run test
