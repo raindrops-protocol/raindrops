@@ -9,6 +9,7 @@ import {
   Instructions,
   NamespaceProgram,
 } from "@raindrops-protocol/raindrops";
+import { RaindropsProgram } from "@raindrops-protocol/raindrops/build/state/namespace";
 
 CLI.programCommandWithConfig(
   "initialize_namespace",
@@ -174,7 +175,7 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: new web3.PublicKey(config.artifact),
-      raindropsProgram: config.raindropsProgram,
+      raindropsProgram: RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram)
     };
 
     await namespaceProgram.joinNamespace(accounts);
@@ -193,7 +194,7 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.LeaveNamespaceAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: new web3.PublicKey(config.artifact),
-      raindropsProgram: config.raindropsProgram,
+      raindropsProgram: RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram)
     };
 
     await namespaceProgram.leaveNamespace(accounts);
@@ -212,7 +213,7 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.CacheArtifactAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: config.artifact,
-      raindropsProgram: config.raindropsProgram,
+      raindropsProgram: RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram)
     };
 
     await namespaceProgram.cacheArtifact(accounts);
@@ -231,7 +232,7 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.UncacheArtifactAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: config.artifact,
-      raindropsProgram: config.raindropsProgram,
+      raindropsProgram: RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram)
     };
 
     const args: Instructions.Namespace.UncacheArtifactArgs = {
