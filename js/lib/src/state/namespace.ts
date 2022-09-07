@@ -315,4 +315,20 @@ export namespace RaindropsProgram {
         throw new Error(`Unknown RaindropsProgram: ${program}`);
     }
   }
+
+  export function getRaindropsProgramFromAddress(address: web3.PublicKey): RaindropsProgram {
+    if (address.equals(pids.ITEM_ID)) {
+      return RaindropsProgram.Item
+    } else if (address.equals(pids.NAMESPACE_ID)) {
+      return RaindropsProgram.Namespace
+    } else if (address.equals(pids.MATCHES_ID)) {
+      return RaindropsProgram.Matches
+    } else if (address.equals(pids.PLAYER_ID)) {
+      return RaindropsProgram.Player
+    } else if (address.equals(pids.STAKING_ID)) {
+      return RaindropsProgram.Staking
+    }
+
+    throw new Error(`Unknown RaindropsProgram: ${address}`);
+  }
 }
