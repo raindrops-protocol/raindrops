@@ -6,8 +6,8 @@
     "items-cli": "./src/item.ts",
     "matches-cli": "./src/matches.ts",
     "namespace-cli": "./src/namespace.ts",
-    "staking-cli": "./src/staking.ts",
-    "player-cli": "./src/player.ts"
+    "player-cli": "./src/player.ts",
+    "staking-cli": "./src/staking.ts"
   },
   "scripts": {
     "build": "tsc -p .",
