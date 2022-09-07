@@ -19,6 +19,11 @@ module.exports = {
         deployPath: localDeployPath("raindrops-protocol-item"),
       },
       {
+        label: "Raindrops protocol Player Program",
+        programId: "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98",
+        deployPath: localDeployPath("raindrops-protocol-player"),
+      },
+      {
         label: "Raindrops protocol Namespace Program",
         programId: "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV",
         deployPath: localDeployPath("raindrops-protocol-namespace"),
@@ -59,6 +64,8 @@ function localDeployPath(program) {
       return "../metaplex-program-library/target/deploy/mpl_token_metadata.so";
     case "raindrops-protocol-item":
       return "rust/target/deploy/raindrops_item.so";
+    case "raindrops-protocol-player":
+      return "rust/target/deploy/raindrops_player.so";
     case "raindrops-protocol-namespace":
       return "rust/target/deploy/raindrops_namespace.so";
     case "raindrops-protocol-staking":
