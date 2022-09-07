@@ -35,12 +35,18 @@ jobs:
       - name: Install Solana
         run: curl -sSfL https://release.solana.com/stable/install | sh
 
-      - name: Create local keypair
+      - name: Add Solana to PATH
+        run: |
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
         shell: bash
+
+      - name: Create local keypair
         run: |
           solana --version
           echo "Generating keypair..."
           solana-keygen new -o "$HOME/.config/solana/id.json" --no-passphrase --silent --force
+        shell: bash
 
       - name: Install Anchor Dependencies
         run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
