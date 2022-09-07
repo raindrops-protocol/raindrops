@@ -476,7 +476,7 @@ export class Instruction extends SolKitInstruction {
     const craftItemObj = await this.program.client.account.item.fetch(
       craftItem
     );
-    let instructions = [];
+    const instructions = [];
 
     instructions.push(
       Token.createApproveInstruction(
@@ -721,7 +721,7 @@ export class Instruction extends SolKitInstruction {
     const validationKey =
       args.itemClass.object.itemClassData.config.usages?.[args.usageIndex]
         .validation?.key;
-    const validationProgram: PublicKey = !!validationKey
+    const validationProgram: PublicKey = validationKey
       ? new web3.PublicKey(validationKey)
       : SystemProgram.programId;
 
@@ -1004,7 +1004,7 @@ export interface CreateItemEscrowArgs {
   classIndex: BN;
   parentClassIndex: null | BN;
   craftEscrowIndex: BN;
-  componentScope: String;
+  componentScope: string;
   amountToMake: BN;
   namespaceIndex: BN | null;
   buildPermissivenessToUse: null | AnchorPermissivenessType;
@@ -1027,7 +1027,7 @@ export interface CompleteItemEscrowBuildPhaseArgs {
   newItemIndex: BN;
   parentClassIndex: null | BN;
   craftEscrowIndex: BN;
-  componentScope: String;
+  componentScope: string;
   amountToMake: BN;
   space: BN;
   itemClassMint: web3.PublicKey;
@@ -1052,7 +1052,7 @@ export interface DeactivateItemEscrowArgs {
   classIndex: BN;
   parentClassIndex: null | BN;
   craftEscrowIndex: BN;
-  componentScope: String;
+  componentScope: string;
   amountToMake: BN;
   itemClassMint: web3.PublicKey;
   newItemMint: web3.PublicKey;
@@ -1085,7 +1085,7 @@ export interface AddCraftItemToEscrowArgs {
   craftEscrowIndex: BN;
   craftItemClassIndex: BN;
   craftItemClassMint: web3.PublicKey;
-  componentScope: String;
+  componentScope: string;
   amountToMake: BN;
   amountToContributeFromThisContributor: BN;
   newItemMint: web3.PublicKey;
@@ -1131,7 +1131,7 @@ export interface RemoveCraftItemFromEscrowArgs {
   craftEscrowIndex: BN;
   craftItemClassIndex: BN;
   craftItemClassMint: web3.PublicKey;
-  componentScope: String;
+  componentScope: string;
   amountToMake: BN;
   amountContributedFromThisContributor: BN;
   newItemMint: web3.PublicKey;
@@ -1200,7 +1200,7 @@ export interface DrainItemEscrowArgs {
   classIndex: BN;
   parentClassIndex: null | BN;
   craftEscrowIndex: BN;
-  componentScope: String;
+  componentScope: string;
   amountToMake: BN;
   itemClassMint: web3.PublicKey;
   newItemMint: web3.PublicKey;
@@ -1217,7 +1217,7 @@ export interface StartItemEscrowBuildPhaseArgs {
   classIndex: BN;
   parentClassIndex: null | BN;
   craftEscrowIndex: BN;
-  componentScope: String;
+  componentScope: string;
   amountToMake: BN;
   itemClassMint: web3.PublicKey;
   originator: web3.PublicKey;

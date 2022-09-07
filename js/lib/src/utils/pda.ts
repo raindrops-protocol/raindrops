@@ -153,7 +153,7 @@ export const getCraftItemCounter = async (args: {
   itemClassMint: web3.PublicKey;
   newItemMint: web3.PublicKey;
   craftItemMint: web3.PublicKey;
-  componentScope: String;
+  componentScope: string;
   craftItemIndex: BN;
   craftEscrowIndex: BN;
   classIndex: BN;
@@ -181,7 +181,7 @@ export const getCraftItemEscrow = async (args: {
   craftItemMint: web3.PublicKey;
   amountToMake: BN;
   amountToContributeFromThisContributor: BN;
-  componentScope: String;
+  componentScope: string;
   craftIndex: BN;
   classIndex: BN;
   craftEscrowIndex: BN;
@@ -211,7 +211,7 @@ export const getItemEscrow = async (args: {
   newItemMint: web3.PublicKey;
   newItemToken: web3.PublicKey;
   amountToMake: BN;
-  componentScope: String;
+  componentScope: string;
   craftEscrowIndex: BN;
   classIndex: BN;
 }): Promise<[web3.PublicKey, number]> => {

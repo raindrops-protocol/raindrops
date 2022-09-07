@@ -36,7 +36,7 @@ programCommand("create_match")
     //@ts-ignore
     const config = JSON.parse(configString);
 
-    let createMatchArgs: CreateMatchArgs = {
+    const createMatchArgs: CreateMatchArgs = {
       winOracle: config.winOracle
         ? new web3.PublicKey(config.winOracle)
         : (

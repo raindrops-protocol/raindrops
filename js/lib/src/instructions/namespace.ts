@@ -108,7 +108,7 @@ export class Instruction extends SolKitInstruction {
   ): Promise<[[web3.TransactionInstruction], web3.PublicKey]> {
     const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
 
-    let remainingAccounts: web3.AccountMeta[] = [];
+    const remainingAccounts: web3.AccountMeta[] = [];
 
     // add optional payment accounts first
     if (args.paymentAmount) {
@@ -138,7 +138,7 @@ export class Instruction extends SolKitInstruction {
 
     let ix: web3.TransactionInstruction;
 
-    let permissivenessSettings = {
+    const permissivenessSettings = {
       namespacePermissiveness: convertPermissiveness(
         args.permissivenessSettings.namespacePermissiveness
       ),
@@ -159,7 +159,7 @@ export class Instruction extends SolKitInstruction {
       ),
     };
 
-    let formattedArgs = {
+    const formattedArgs = {
       desiredNamespaceArraySize: args.desiredNamespaceArraySize,
       uuid: args.uuid,
       prettyName: args.prettyName,
