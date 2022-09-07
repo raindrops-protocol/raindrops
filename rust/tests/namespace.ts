@@ -17,14 +17,48 @@ describe("namespace", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
+  // Mint Authority for our mock $RAIN
+  const rainTokenMint = Constants.Common.RAIN_TOKEN_MINT;
+  const rainVaultAuthority = Constants.Common.RAIN_TOKEN_VAULT_AUTHORITY;
+  const mintAuthoritySecretKey = new Uint8Array([
+    100, 162, 5, 160, 251, 9, 105, 243, 77, 211, 169, 101, 169, 237, 4, 234, 35,
+    250, 235, 162, 55, 77, 144, 249, 220, 185, 242, 225, 8, 160, 200, 130, 1,
+    237, 169, 176, 82, 206, 183, 81, 233, 30, 153, 237, 13, 46, 130, 71, 22,
+    179, 133, 3, 170, 140, 225, 16, 11, 210, 69, 163, 102, 144, 242, 169,
+  ]);
+  // address: 8XbgRBz8pHzCBy4mwgr4ViDhJWFc35cd7E5oo3t5FvY
+  const rainTokenMintAuthority = anchor.web3.Keypair.fromSecretKey(
+    mintAuthoritySecretKey
+  );
+
+  const connection = anchor.getProvider().connection;
+
+  before("create rain token vault", async () => {
+    const tokenVaultPayer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
+    await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
+      tokenVaultPayer,
+      rainTokenMint,
+      Constants.Common.RAIN_TOKEN_VAULT_AUTHORITY
+    );
+  });
+
   it("init namespace", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -35,7 +69,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -75,16 +109,23 @@ describe("namespace", () => {
     const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.permissivenessSettings !== null);
     assert(nsData.uuid === "123456");
+    assert(nsData.paymentAmount === null);
+    assert(nsData.paymentMint === null);
+    assert(nsData.paymentVault === null);
   });
 
-  it("init namespace with wl staking mint", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+  it("init namespace with payment accounts", async () => {
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -95,12 +136,88 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
+        payer
+      );
+
+    const [paymentMint, paymentVault] = await createPaymentAccounts(
+      connection,
+      payer
+    );
+
+    const permissivenessSettings: State.Namespace.PermissivenessSettings = {
+      namespacePermissiveness: State.Namespace.Permissiveness.Whitelist,
+      itemPermissiveness: State.Namespace.Permissiveness.All,
+      playerPermissiveness: State.Namespace.Permissiveness.All,
+      matchPermissiveness: State.Namespace.Permissiveness.Blacklist,
+      missionPermissiveness: State.Namespace.Permissiveness.All,
+      cachePermissiveness: State.Namespace.Permissiveness.All,
+    };
+
+    const paymentAmount = new anchor.BN(1_000_000_000);
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs =
+      {
+        desiredNamespaceArraySize: new anchor.BN(2),
+        uuid: "123456",
+        prettyName: "my-ns",
+        permissivenessSettings: permissivenessSettings,
+        whitelistedStakingMints: [],
+        paymentAmount: paymentAmount,
+      };
+
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts =
+      {
+        mint: nsMint,
+        metadata: nsMetadata,
+        masterEdition: nsMasterEdition,
+        paymentMint: paymentMint,
+        paymentVault: paymentVault,
+      };
+
+    const result = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+    console.log("initNsTxSig: %s", result.txid);
+
+    const [namespace, _namespaceBump] = await Utils.PDA.getNamespacePDA(nsMint);
+
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.permissivenessSettings !== null);
+    assert(nsData.uuid === "123456");
+    assert(nsData.paymentAmount === paymentAmount.toNumber());
+    assert(nsData.paymentMint.equals(paymentMint));
+    assert(nsData.paymentVault.equals(paymentVault));
+  });
+
+  it("init namespace with wl staking mint", async () => {
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.NamespaceIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        connection,
         payer
       );
 
     const wlStakingMint = await splToken.createMint(
-      anchor.getProvider().connection,
+      connection,
       payer,
       payer.publicKey,
       payer.publicKey,
@@ -142,16 +259,23 @@ describe("namespace", () => {
 
     const nsData = await namespaceProgram.fetchNamespace(namespace);
     assert(nsData.whitelistedStakingMints.length === 1);
+    assert(nsData.paymentAmount === null);
+    assert(nsData.paymentMint === null);
+    assert(nsData.paymentVault === null);
   });
 
-  it("update namespace with new name and wl mints", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+  it("init namespace with wl staking mint and payment accounts", async () => {
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -162,7 +286,90 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
+        payer
+      );
+
+    const wlStakingMint = await splToken.createMint(
+      connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      9
+    );
+
+    const [paymentMint, paymentVault] = await createPaymentAccounts(
+      connection,
+      payer
+    );
+
+    const permissivenessSettings: State.Namespace.PermissivenessSettings = {
+      namespacePermissiveness: State.Namespace.Permissiveness.All,
+      itemPermissiveness: State.Namespace.Permissiveness.All,
+      playerPermissiveness: State.Namespace.Permissiveness.All,
+      matchPermissiveness: State.Namespace.Permissiveness.All,
+      missionPermissiveness: State.Namespace.Permissiveness.All,
+      cachePermissiveness: State.Namespace.Permissiveness.All,
+    };
+
+    const paymentAmount = new anchor.BN(1_000_000_000);
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs =
+      {
+        desiredNamespaceArraySize: new anchor.BN(2),
+        uuid: "123456",
+        prettyName: "my-ns",
+        permissivenessSettings: permissivenessSettings,
+        whitelistedStakingMints: [wlStakingMint],
+        paymentAmount: paymentAmount,
+      };
+
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts =
+      {
+        mint: nsMint,
+        metadata: nsMetadata,
+        masterEdition: nsMasterEdition,
+        paymentMint: paymentMint,
+        paymentVault: paymentVault,
+      };
+
+    const result = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", result.txid);
+    const [namespace, _namespaceBump] = await Utils.PDA.getNamespacePDA(nsMint);
+
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.whitelistedStakingMints.length === 1);
+    assert(nsData.paymentAmount === paymentAmount.toNumber());
+    assert(nsData.paymentMint.equals(paymentMint));
+    assert(nsData.paymentVault.equals(paymentVault));
+  });
+
+  it("update namespace with new name and wl mints", async () => {
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.NamespaceIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        connection,
         payer
       );
 
@@ -176,7 +383,7 @@ describe("namespace", () => {
     };
 
     const wlStakingMint1 = await splToken.createMint(
-      anchor.getProvider().connection,
+      connection,
       payer,
       payer.publicKey,
       payer.publicKey,
@@ -213,7 +420,7 @@ describe("namespace", () => {
     assert(nsData.whitelistedStakingMints[0].equals(wlStakingMint1));
 
     const wlStakingMint2 = await splToken.createMint(
-      anchor.getProvider().connection,
+      connection,
       payer,
       payer.publicKey,
       payer.publicKey,
@@ -243,13 +450,17 @@ describe("namespace", () => {
   });
 
   it("create ns gatekeeper", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -260,7 +471,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -315,13 +526,17 @@ describe("namespace", () => {
   });
 
   it("Add filter to ns gatekeeper, then remove it", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -332,7 +547,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -439,13 +654,17 @@ describe("namespace", () => {
   });
 
   it("Only allow items that are part of the whitelisted namespace to join", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -460,7 +679,7 @@ describe("namespace", () => {
     const [ns1Mint, ns1Metadata, ns1MasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -499,7 +718,7 @@ describe("namespace", () => {
     const [ns2Mint, ns2Metadata, ns2MasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -581,11 +800,7 @@ describe("namespace", () => {
     );
     console.log("addToNsGkTxSig: %s", addResult.txid);
 
-    const itemClass = await createItemClasses(
-      payer,
-      anchor.getProvider().connection,
-      1
-    );
+    const itemClass = await createItemClasses(payer, connection, 1);
 
     // join to namespace which allows any artifact to join it
     const joinNsResult = await namespaceProgram.joinNamespace({
@@ -605,13 +820,17 @@ describe("namespace", () => {
   });
 
   it("join item class to namespace then leave", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -622,7 +841,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -668,11 +887,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const itemClass = await createItemClasses(
-      payer,
-      anchor.getProvider().connection,
-      1
-    );
+    const itemClass = await createItemClasses(payer, connection, 1);
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -705,13 +920,17 @@ describe("namespace", () => {
   });
 
   it("join item to namespace then leave", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -722,7 +941,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -768,11 +987,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const itemClass = await createItemClasses(
-      payer,
-      anchor.getProvider().connection,
-      1
-    );
+    const itemClass = await createItemClasses(payer, connection, 1);
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -804,14 +1019,18 @@ describe("namespace", () => {
     assert(nsDataUpdated.artifactsCached === 0);
   });
 
-  it("join item escrow to namespace, cache, uncache then leave", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+  it("pay with arbitrary token to join item to namespace then leave", async () => {
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -822,7 +1041,127 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
+        payer
+      );
+
+    const [paymentMint, paymentVault] = await createPaymentAccounts(
+      connection,
+      payer
+    );
+
+    const permissivenessSettings: State.Namespace.PermissivenessSettings = {
+      namespacePermissiveness: State.Namespace.Permissiveness.All,
+      itemPermissiveness: State.Namespace.Permissiveness.All,
+      playerPermissiveness: State.Namespace.Permissiveness.All,
+      matchPermissiveness: State.Namespace.Permissiveness.All,
+      missionPermissiveness: State.Namespace.Permissiveness.All,
+      cachePermissiveness: State.Namespace.Permissiveness.All,
+    };
+
+    const paymentAmount = new anchor.BN(1_000_000_000);
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs =
+      {
+        desiredNamespaceArraySize: new anchor.BN(2),
+        uuid: "123456",
+        prettyName: "my-ns",
+        permissivenessSettings: permissivenessSettings,
+        whitelistedStakingMints: [],
+        paymentAmount: paymentAmount,
+      };
+
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts =
+      {
+        mint: nsMint,
+        metadata: nsMetadata,
+        masterEdition: nsMasterEdition,
+        paymentMint: paymentMint,
+        paymentVault: paymentVault,
+      };
+
+    const initNsResult = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+    const [namespace, _namespaceBump] = await Utils.PDA.getNamespacePDA(nsMint);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.paymentAmount === paymentAmount.toNumber());
+    assert(nsData.paymentMint.equals(paymentMint));
+    assert(nsData.paymentVault.equals(paymentVault));
+
+    console.log("initNsTxSig: %s", initNsResult.txid);
+
+    const createNsGKAccounts: Instructions.Namespace.CreateNamespaceGatekeeperAccounts =
+      {
+        namespaceMint: nsMint,
+      };
+
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
+
+    const itemClass = await createItemClasses(payer, connection, 1);
+
+    const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemClass[0],
+      raindropsProgram: State.Namespace.RaindropsProgram.Item,
+    };
+
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
+
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 1);
+    assert(nsDataUpdated.artifactsCached === 0);
+
+    // check arbitrary token payment was made
+    const paymentResponse = await connection.getTokenAccountBalance(
+      paymentVault,
+      "confirmed"
+    );
+    assert(paymentResponse.value.uiAmount === 100);
+
+    const leaveNsAccounts: Instructions.Namespace.LeaveNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: itemClass[0],
+      raindropsProgram: State.Namespace.RaindropsProgram.Item,
+    };
+
+    const leaveNsResult = await namespaceProgram.leaveNamespace(
+      leaveNsAccounts
+    );
+    console.log("leaveNsTxSig: %s", leaveNsResult.txid);
+
+    const nsDataUpdated2 = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated2.artifactsAdded === 0);
+    assert(nsDataUpdated2.artifactsCached === 0);
+  });
+
+  it("join item escrow to namespace, cache, uncache then leave", async () => {
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.NamespaceIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        connection,
         payer
       );
 
@@ -868,10 +1207,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const itemEscrow = await createItemEscrow(
-      payer,
-      anchor.getProvider().connection
-    );
+    const itemEscrow = await createItemEscrow(payer, connection);
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -941,13 +1277,17 @@ describe("namespace", () => {
   });
 
   it("join item to namespace, cache, uncache then leave", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -958,7 +1298,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -1004,10 +1344,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const item = await createItemEscrowAndCompleteBuild(
-      payer,
-      anchor.getProvider().connection
-    );
+    const item = await createItemEscrowAndCompleteBuild(payer, connection);
     console.log("item: %s", item.toString());
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
@@ -1078,13 +1415,17 @@ describe("namespace", () => {
   });
 
   it("join item class, cache, uncache then leave ns", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -1095,7 +1436,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -1141,11 +1482,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const itemClass = await createItemClasses(
-      payer,
-      anchor.getProvider().connection,
-      1
-    );
+    const itemClass = await createItemClasses(payer, connection, 1);
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -1173,7 +1510,11 @@ describe("namespace", () => {
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 1);
 
-    const page = await getCachedItemClassPage(itemClass[0], namespace);
+    const page = await getCachedItemClassPage(
+      connection,
+      itemClass[0],
+      namespace
+    );
     assert(page !== null);
     console.log("item cached at %d", page);
 
@@ -1211,13 +1552,17 @@ describe("namespace", () => {
   });
 
   it("join match, cache, uncache then leave ns", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -1228,7 +1573,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -1274,7 +1619,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const match = await createMatch(payer, 2);
+    const match = await createMatch(connection, payer, 2);
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -1302,7 +1647,7 @@ describe("namespace", () => {
     assert(nsData.artifactsAdded === 1);
     assert(nsData.artifactsCached === 1);
 
-    const page = await getCachedMatchPage(match, namespace);
+    const page = await getCachedMatchPage(connection, match, namespace);
     assert(page !== null);
 
     // check item was index on the namespace side
@@ -1352,13 +1697,17 @@ describe("namespace", () => {
   });
 
   it("join namespace, cache, uncache then leave ns", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -1369,7 +1718,7 @@ describe("namespace", () => {
     const [ns1Mint, ns1Metadata, ns1MasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -1408,7 +1757,7 @@ describe("namespace", () => {
     const [ns2Mint, ns2Metadata, ns2MasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -1551,13 +1900,17 @@ describe("namespace", () => {
   });
 
   it("cache 101 items to namespace, tests cache pagination, then uncache them all", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -1568,7 +1921,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -1614,11 +1967,7 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const itemClasses = await createItemClasses(
-      payer,
-      anchor.getProvider().connection,
-      101
-    );
+    const itemClasses = await createItemClasses(payer, connection, 101);
 
     for (let i = 0; i < itemClasses.length; i++) {
       const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
@@ -1651,6 +2000,7 @@ describe("namespace", () => {
 
     // check last item is cached on second page, from item pov
     const page = await getCachedItemClassPage(
+      connection,
       itemClasses[itemClasses.length - 1],
       namespace
     );
@@ -1670,7 +2020,11 @@ describe("namespace", () => {
 
     let uncacheArtifactPromises = [];
     for (let i = 0; i < itemClasses.length; i++) {
-      const page = await getCachedItemClassPage(itemClasses[i], namespace);
+      const page = await getCachedItemClassPage(
+        connection,
+        itemClasses[i],
+        namespace
+      );
       assert(page !== null);
 
       const uncacheArtifactAccounts: Instructions.Namespace.UncacheArtifactAccounts =
@@ -1709,13 +2063,17 @@ describe("namespace", () => {
   });
 
   it("join match to namespace without any space allocated for namespaces in the match account", async () => {
-    const payer = await newPayer(anchor.getProvider().connection);
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
     const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
       NamespaceProgram,
       {
         asyncSigning: false,
         provider: new anchor.AnchorProvider(
-          anchor.getProvider().connection,
+          connection,
           new anchor.Wallet(payer),
           { commitment: "confirmed" }
         ),
@@ -1726,7 +2084,7 @@ describe("namespace", () => {
     const [nsMint, nsMetadata, nsMasterEdition] =
       await createMintMetadataAndMasterEditionAccounts(
         "namespace",
-        anchor.getProvider().connection,
+        connection,
         payer
       );
 
@@ -1773,7 +2131,7 @@ describe("namespace", () => {
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
     // create match without any space allocated for namespaces
-    const match = await createMatch(payer, 0);
+    const match = await createMatch(connection, payer, 0);
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -1923,7 +2281,7 @@ async function createItemClasses(
   count: number
 ): Promise<anchor.web3.PublicKey[]> {
   const provider = new anchor.AnchorProvider(
-    anchor.getProvider().connection,
+    connection,
     new anchor.Wallet(payer),
     { commitment: "confirmed" }
   );
@@ -2023,11 +2381,9 @@ async function createItemEscrow(
 ): Promise<anchor.web3.PublicKey> {
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
-    provider: new anchor.AnchorProvider(
-      anchor.getProvider().connection,
-      new anchor.Wallet(payer),
-      { commitment: "confirmed" }
-    ),
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(payer), {
+      commitment: "confirmed",
+    }),
     idl: Idls.ItemIDL,
   });
 
@@ -2201,11 +2557,9 @@ async function createItemEscrowAndCompleteBuild(
 ): Promise<anchor.web3.PublicKey> {
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
-    provider: new anchor.AnchorProvider(
-      anchor.getProvider().connection,
-      new anchor.Wallet(payer),
-      { commitment: "confirmed" }
-    ),
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(payer), {
+      commitment: "confirmed",
+    }),
     idl: Idls.ItemIDL,
   });
 
@@ -2441,11 +2795,12 @@ async function createItemEscrowAndCompleteBuild(
 }
 
 async function createMatch(
+  connection: anchor.web3.Connection,
   payer: anchor.web3.Keypair,
   desiredNamespaceArraySize: number
 ): Promise<anchor.web3.PublicKey> {
   const provider = new anchor.AnchorProvider(
-    anchor.getProvider().connection,
+    connection,
     new anchor.Wallet(payer),
     { commitment: "confirmed" }
   );
@@ -2514,11 +2869,12 @@ async function createMatch(
 
 // for a given item class and namespace, find the index of the cached item, return null if not found (probably means not cached)
 async function getCachedItemClassPage(
+  connection: anchor.web3.Connection,
   itemClass: anchor.web3.PublicKey,
   namespace: anchor.web3.PublicKey
 ): Promise<number | null> {
   const provider = new anchor.AnchorProvider(
-    anchor.getProvider().connection,
+    connection,
     new anchor.Wallet(anchor.web3.Keypair.generate()),
     { commitment: "confirmed" }
   );
@@ -2541,11 +2897,12 @@ async function getCachedItemClassPage(
 
 // for a given item class and namespace, find the index of the cached item, return null if not found (probably means not cached)
 async function getCachedMatchPage(
+  connection: anchor.web3.Connection,
   match: anchor.web3.PublicKey,
   namespace: anchor.web3.PublicKey
 ): Promise<number | null> {
   const provider = new anchor.AnchorProvider(
-    anchor.getProvider().connection,
+    connection,
     new anchor.Wallet(anchor.web3.Keypair.generate()),
     { commitment: "confirmed" }
   );
@@ -2566,8 +2923,40 @@ async function getCachedMatchPage(
   return null;
 }
 
+async function createPaymentAccounts(
+  connection: anchor.web3.Connection,
+  payer: anchor.web3.Keypair
+): Promise<[anchor.web3.PublicKey, anchor.web3.PublicKey]> {
+  const paymentMint = await splToken.createMint(
+    connection,
+    payer,
+    payer.publicKey,
+    payer.publicKey,
+    9
+  );
+  const paymentVault = await splToken.getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    paymentMint,
+    payer.publicKey
+  );
+
+  await splToken.mintTo(
+    connection,
+    payer,
+    paymentMint,
+    paymentVault.address,
+    payer,
+    100_000_000_000
+  );
+
+  return [paymentMint, paymentVault.address];
+}
+
 async function newPayer(
-  connection: anchor.web3.Connection
+  connection: anchor.web3.Connection,
+  rainTokenMint?: anchor.web3.PublicKey,
+  rainTokenMintAuthority?: anchor.web3.Keypair
 ): Promise<anchor.web3.Keypair> {
   const payer = anchor.web3.Keypair.generate();
 
@@ -2576,6 +2965,23 @@ async function newPayer(
     10 * anchor.web3.LAMPORTS_PER_SOL
   );
   await connection.confirmTransaction(txSig);
+
+  if (rainTokenMint && rainTokenMintAuthority) {
+    const payerRainTokenAta = await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
+      payer,
+      rainTokenMint,
+      payer.publicKey
+    );
+    await splToken.mintTo(
+      connection,
+      payer,
+      rainTokenMint,
+      payerRainTokenAta.address,
+      rainTokenMintAuthority,
+      100_000_000_000
+    );
+  }
 
   return payer;
 }
