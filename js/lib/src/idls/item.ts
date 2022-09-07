@@ -3182,6 +3182,9 @@ export type Item = {
           },
           {
             "name": "ExpectedDelegateToMatchProvided"
+          },
+          {
+            "name": "CannotEffectTheSameStatTwice"
           }
         ]
       }
@@ -6373,6 +6376,9 @@ export const IDL: Item = {
           },
           {
             "name": "ExpectedDelegateToMatchProvided"
+          },
+          {
+            "name": "CannotEffectTheSameStatTwice"
           }
         ]
       }

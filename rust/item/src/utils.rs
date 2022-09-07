@@ -406,6 +406,27 @@ pub fn get_class_write_offsets(
     (ctr as u64, end_ctr as u64)
 }
 
+pub fn check_data_for_duplicate_item_effects(item_class_data: &ItemClassData) -> Result<()> {
+    if let Some(usages) = &item_class_data.config.usages {
+        for usage in usages {
+            if let Some(bie) = &usage.basic_item_effects {
+                let mut i1 = 0;
+                for b in bie {
+                    let mut i2 = 0;
+                    for b2 in bie {
+                        if i1 != i2 && b.stat == b2.stat {
+                            return Err(ErrorCode::CannotEffectTheSameStatTwice.into());
+                        }
+                        i2 += 1;
+                    }
+                    i1 += 1;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn write_data(
     item_class: &mut Account<ItemClass>,
     item_class_data: &ItemClassData,

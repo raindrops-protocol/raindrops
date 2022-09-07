@@ -3,14 +3,15 @@ pub mod utils;
 use crate::utils::{
     assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
     assert_mint_authority_matches_mint, assert_permissiveness_access,
-    assert_valid_item_settings_for_edition_type, close_token_account, get_item_usage,
-    get_item_usage_and_item_usage_state, is_namespace_program_caller,
-    propagate_item_class_data_fields_to_item_data, sighash, spl_token_burn, spl_token_mint_to,
-    spl_token_transfer, transfer_mint_authority, update_item_class_with_inherited_information,
-    verify, verify_and_affect_item_state_update, verify_component, verify_cooldown, write_data,
-    AssertPermissivenessAccessArgs, GetItemUsageAndItemUsageStateArgs, GetItemUsageArgs,
-    TokenBurnParams, TokenTransferParams, TransferMintAuthorityArgs,
-    VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs, VerifyCooldownArgs,
+    assert_valid_item_settings_for_edition_type, check_data_for_duplicate_item_effects,
+    close_token_account, get_item_usage, get_item_usage_and_item_usage_state,
+    is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
+    spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+    update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
+    verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
+    GetItemUsageAndItemUsageStateArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
+    TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
+    VerifyCooldownArgs,
 };
 use anchor_lang::{
     prelude::*,
@@ -446,6 +447,8 @@ pub mod item {
             item_class.namespaces = None
         }
 
+        msg!("check_data_for_duplicate_item_effects");
+        check_data_for_duplicate_item_effects(&item_class_data)?;
         msg!("write_data");
         write_data(item_class, &item_class_data)?;
 
@@ -510,6 +513,8 @@ pub mod item {
             return Err(error!(ErrorCode::ExpectedParent));
         }
 
+        msg!("check_data_for_duplicate_item_effects");
+        check_data_for_duplicate_item_effects(&new_item_class_data)?;
         write_data(item_class, &new_item_class_data)?;
         Ok(())
     }
@@ -3296,4 +3301,6 @@ pub enum ErrorCode {
     MustBeCalledByStakingProgram,
     #[msg("Expected delegate to match provided")]
     ExpectedDelegateToMatchProvided,
+    #[msg("Cannot affect the same stat twice")]
+    CannotEffectTheSameStatTwice,
 }
