@@ -678,10 +678,6 @@ pub enum Filter {
     Namespace {
         namespaces: Vec<Pubkey>,
     },
-    Category {
-        namespace: Pubkey,
-        category: Option<Vec<String>>,
-    },
     Key {
         key: Pubkey,
         mint: Pubkey,

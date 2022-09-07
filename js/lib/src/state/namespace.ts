@@ -44,21 +44,12 @@ export class Filter {
 
   constructor(
     filterType: FilterType,
-    filterData: FilterNamespaces | FilterCategories | FilterKey
+    filterData: FilterNamespaces | FilterKey
   ) {
     switch (filterType) {
       case FilterType.FilterNamespaces:
         const filterNs = filterData as FilterNamespaces;
         this.filter = { namespace: { namespaces: filterNs.namespaces } };
-        break;
-      case FilterType.FilterCategories:
-        const filterCategories = filterData as FilterCategories;
-        this.filter = {
-          category: {
-            namespace: filterCategories.namespace,
-            category: filterCategories.category,
-          },
-        };
         break;
       case FilterType.FilterKey:
         const filterKeys = filterData as FilterKey;
@@ -87,11 +78,6 @@ export class FilterNamespaces {
   constructor(namespaces: Array<web3.PublicKey>) {
     this.namespaces = namespaces;
   }
-}
-
-export interface FilterCategories {
-  namespace: web3.PublicKey;
-  category: Array<string> | null;
 }
 
 export interface FilterKey {

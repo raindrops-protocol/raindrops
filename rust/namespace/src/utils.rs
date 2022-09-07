@@ -155,16 +155,6 @@ pub fn check_permissiveness_against_holder<'a>(
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
                     }
-                    Filter::Category { namespace, .. } => {
-                        msg!("category filter");
-                        for n in &art_namespaces {
-                            if n == namespace {
-                                msg!("Whitelisted!");
-                                continue 'filter_loop;
-                            }
-                        }
-                        return Err(error!(ErrorCode::CannotJoinNamespace));
-                    }
                     Filter::Key { mint, .. } => {
                         msg!("key filter");
                         let as_token: spl_token::state::Account =
@@ -193,14 +183,6 @@ pub fn check_permissiveness_against_holder<'a>(
                                     msg!("Blacklisted!");
                                     return Err(error!(ErrorCode::CannotJoinNamespace));
                                 }
-                            }
-                        }
-                    }
-                    Filter::Category { namespace, .. } => {
-                        for n in &art_namespaces {
-                            if n == namespace {
-                                msg!("Blacklisted!");
-                                return Err(error!(ErrorCode::CannotJoinNamespace));
                             }
                         }
                     }
