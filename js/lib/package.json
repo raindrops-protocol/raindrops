@@ -14,7 +14,6 @@
     "format:check": "prettier --loglevel warn --check \"**/*.{ts,js,json,yaml}\"",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "lint:check": "eslint \"src/**/*.ts\"",
-    "test": "jest",
     "prepublishOnly": "yarn build"
   },
   "pkg": {
