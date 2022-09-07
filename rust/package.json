@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "anchor build",
-    "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts",
+    "test": "anchor test --skip-build",
     "format": "cargo fmt --all",
     "format:check": "cargo fmt --all --check",
     "lint": "cargo clippy --fix",
