@@ -1,18 +1,20 @@
 pub mod utils;
 
+use std::str::FromStr;
+
 use crate::utils::{
     assert_initialized, assert_metadata_valid, check_permissiveness_against_holder,
     lowest_available_page, pull_namespaces,
 };
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, Token, TokenAccount};
 use raindrops_item::cpi::{
     accounts::{
-        ItemClassCacheNamespace, ItemClassJoinNamespace, ItemClassLeaveNamespace,
-        ItemClassUncacheNamespace,
+        ItemArtifactCacheNamespace, ItemArtifactJoinNamespace, ItemArtifactLeaveNamespace,
+        ItemArtifactUncacheNamespace,
     },
-    item_class_cache_namespace, item_class_join_namespace, item_class_leave_namespace,
-    item_class_uncache_namespace,
+    item_artifact_cache_namespace, item_artifact_join_namespace, item_artifact_leave_namespace,
+    item_artifact_uncache_namespace,
 };
 
 use raindrops_matches::cpi::{
@@ -28,6 +30,10 @@ const GATEKEEPER: &str = "gatekeeper";
 const MAX_WHITELIST: usize = 5;
 const MAX_CACHED_ITEMS_PER_INDEX: usize = 100;
 
+const RAIN_TOKEN_MINT: &str = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL";
+const RAIN_TOKEN_VAULT_AUTHORITY: &str = "EPDp2shtSt6c7D3AhAzVzuYvv7PgwSTDQSHuLoLsqZKy";
+const RAIN_PAYMENT_AMOUNT: u64 = 100_000; // 1 token with 5 decimals
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct InitializeNamespaceArgs {
     desired_namespace_array_size: u64,
@@ -35,6 +41,7 @@ pub struct InitializeNamespaceArgs {
     pretty_name: String,
     permissiveness_settings: PermissivenessSettings,
     whitelisted_staking_mints: Vec<Pubkey>,
+    payment_amount: Option<u64>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -68,6 +75,7 @@ pub mod namespace {
             pretty_name,
             permissiveness_settings,
             whitelisted_staking_mints,
+            payment_amount,
         } = args;
 
         if uuid.len() > 6 {
@@ -82,13 +90,44 @@ pub mod namespace {
             return Err(error!(ErrorCode::WhitelistStakeListTooLong));
         }
 
-        for n in 0..whitelisted_staking_mints.len() {
-            let mint_account = &ctx.remaining_accounts[n];
-            // Assert they are all real mints.
-            let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
+        let namespace = &mut ctx.accounts.namespace;
+
+        // if payment amount is set, we expect the first 2 remaining accounts to be `payment_mint` then `payment_vault`
+        let mut remaining_accounts = ctx.remaining_accounts;
+        match payment_amount {
+            Some(payment_amount) => {
+                if remaining_accounts.len() < 2 {
+                    return Err(error!(ErrorCode::InvalidRemainingAccounts));
+                }
+
+                // first two accounts are the payment accounts
+                let payment_accounts = &remaining_accounts[..2];
+                let payment_mint = Account::<'_, Mint>::try_from(&payment_accounts[0])?;
+                let payment_vault = Account::<'_, TokenAccount>::try_from(&payment_accounts[1])?;
+
+                namespace.payment_mint = Some(payment_mint.key());
+                namespace.payment_vault = Some(payment_vault.key());
+                namespace.payment_amount = Some(payment_amount);
+
+                // grab the leftover accounts to set the whitelisted_staking_mints
+                remaining_accounts = &remaining_accounts[2..];
+            }
+            None => {
+                namespace.payment_mint = None;
+                namespace.payment_vault = None;
+                namespace.payment_amount = None;
+            }
+        };
+
+        if whitelisted_staking_mints.len() > 0 {
+            for n in 0..whitelisted_staking_mints.len() {
+                let mint_account = &remaining_accounts[n];
+                // Assert they are all real mints.
+                let _mint: spl_token::state::Mint = assert_initialized(mint_account)?;
+            }
+            namespace.whitelisted_staking_mints = whitelisted_staking_mints;
         }
 
-        let namespace = &mut ctx.accounts.namespace;
         let metadata = &ctx.accounts.metadata;
         let mint = &ctx.accounts.mint;
         let master_edition = &ctx.accounts.master_edition;
@@ -115,7 +154,6 @@ pub mod namespace {
 
         namespace.bump = *ctx.bumps.get("namespace").unwrap();
         namespace.uuid = uuid;
-        namespace.whitelisted_staking_mints = whitelisted_staking_mints;
         namespace.pretty_name = pretty_name;
         namespace.permissiveness_settings = permissiveness_settings;
         namespace.mint = mint.key();
@@ -158,7 +196,7 @@ pub mod namespace {
             if pn.len() > 32 {
                 return Err(error!(ErrorCode::PrettyNameTooLong));
             }
-            namespace.pretty_name = pn.to_string();
+            namespace.pretty_name = pn;
         }
 
         if let Some(permissiveness) = permissiveness_settings {
@@ -237,13 +275,13 @@ pub mod namespace {
         let rd_program = ctx.accounts.raindrops_program.to_account_info();
 
         if raindrops_item::check_id(&rd_program.key()) {
-            let accounts = ItemClassCacheNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactCacheNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
+            item_artifact_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
         } else if raindrops_matches::check_id(&rd_program.key()) {
             let accounts = MatchCacheNamespace {
                 match_instance: ctx.accounts.artifact.to_account_info(),
@@ -293,13 +331,13 @@ pub mod namespace {
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
         if raindrops_item::check_id(&rd_program.key()) {
-            let accounts = ItemClassUncacheNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactUncacheNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_uncache_namespace(CpiContext::new(rd_program, accounts))?;
+            item_artifact_uncache_namespace(CpiContext::new(rd_program, accounts))?;
         } else if raindrops_matches::check_id(&rd_program.key()) {
             let accounts = MatchUncacheNamespace {
                 match_instance: ctx.accounts.artifact.to_account_info(),
@@ -395,23 +433,23 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.item_permissiveness,
             )?;
 
-            let accounts = ItemClassLeaveNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactLeaveNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_leave_namespace(CpiContext::new(rd_program, accounts))
+            item_artifact_leave_namespace(CpiContext::new(rd_program, accounts))
         } else if raindrops_matches::check_id(&rd_program.key()) {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.match_permissiveness,
             )?;
@@ -470,24 +508,24 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.item_permissiveness,
             )?;
 
-            let accounts = ItemClassJoinNamespace {
-                item_class: ctx.accounts.artifact.to_account_info(),
+            let accounts = ItemArtifactJoinNamespace {
+                item_artifact: ctx.accounts.artifact.to_account_info(),
                 namespace: namespace.to_account_info(),
                 instructions: ctx.accounts.instructions.to_account_info(),
             };
 
-            item_class_join_namespace(CpiContext::new(rd_program, accounts))?;
+            item_artifact_join_namespace(CpiContext::new(rd_program, accounts))?;
         } else if raindrops_matches::check_id(&rd_program.key()) {
             msg!("joining match to namespace");
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.match_permissiveness,
             )?;
@@ -504,7 +542,7 @@ pub mod namespace {
             check_permissiveness_against_holder(
                 &rd_program.key(),
                 &ctx.accounts.artifact,
-                &ctx.accounts.token_holder,
+                &ctx.accounts.token_holder.to_account_info(),
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.namespace_permissiveness,
             )?;
@@ -534,7 +572,67 @@ pub mod namespace {
             return Err(error!(ErrorCode::CannotJoinNamespace));
         }
 
-        Ok(())
+        // payment of $RAIN to vault
+        let payment_token_accounts = token::Transfer {
+            from: ctx.accounts.rain_payer_ata.to_account_info(),
+            to: ctx.accounts.rain_token_vault.to_account_info(),
+            authority: ctx.accounts.token_holder.to_account_info(),
+        };
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                payment_token_accounts,
+            ),
+            RAIN_PAYMENT_AMOUNT,
+        )?;
+
+        // if payments is not configured, exit without error
+        if ctx.accounts.namespace.payment_mint == None
+            && ctx.accounts.namespace.payment_vault == None
+            && ctx.accounts.namespace.payment_amount == None
+        {
+            msg!("optional payment unset");
+            return Ok(());
+        };
+
+        // require that payments be passed in
+        if ctx.remaining_accounts.len() != 3 {
+            return Err(error!(ErrorCode::InvalidRemainingAccounts));
+        }
+
+        let payment_mint = Account::<'_, Mint>::try_from(&ctx.remaining_accounts[0])?;
+        let payment_vault =
+            &mut Account::<'_, token::TokenAccount>::try_from(&ctx.remaining_accounts[1])?;
+        let payment_ata =
+            &mut Account::<'_, token::TokenAccount>::try_from(&ctx.remaining_accounts[2])?;
+
+        // check the mint matches for all accounts
+        if payment_ata.mint != payment_mint.key() || payment_vault.mint != payment_mint.key() {
+            return Err(error!(ErrorCode::InvalidRemainingAccounts));
+        }
+
+        // check mint and vault is what is written in the Namespace account
+        if payment_mint.key() != ctx.accounts.namespace.payment_mint.unwrap()
+            || payment_vault.key() != ctx.accounts.namespace.payment_vault.unwrap()
+        {
+            return Err(error!(ErrorCode::InvalidRemainingAccounts));
+        };
+
+        let payment_token_accounts = token::Transfer {
+            from: payment_ata.to_account_info(),
+            to: payment_vault.to_account_info(),
+            authority: ctx.accounts.token_holder.to_account_info(),
+        };
+
+        // transfer tokens to namespace payment vault
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                payment_token_accounts,
+            ),
+            ctx.accounts.namespace.payment_amount.unwrap(),
+        )
     }
 
     // FOR TESTING ONLY
@@ -578,10 +676,6 @@ pub const MAX_FILTER_SLOTS: usize = 5;
 pub enum Filter {
     Namespace {
         namespaces: Vec<Pubkey>,
-    },
-    Category {
-        namespace: Pubkey,
-        category: Option<Vec<String>>,
     },
     Key {
         key: Pubkey,
@@ -638,6 +732,9 @@ pub struct Namespace {
     pub bump: u8,
     pub whitelisted_staking_mints: Vec<Pubkey>,
     pub gatekeeper: Option<Pubkey>,
+    pub payment_mint: Option<Pubkey>,
+    pub payment_vault: Option<Pubkey>,
+    pub payment_amount: Option<u64>,
 }
 
 /// seed ['namespace', namespace program, mint, page number]
@@ -685,6 +782,9 @@ pub const MIN_NAMESPACE_SIZE: usize = 8 + // key
 1 + // bump
 5 + // whitelist staking mints
 1 + 32 + // Namespace gatekeeper optional pubkey
+1 + 32 + // optional payment_token_mint
+1 + 32 + // optional payment_token_vault
+1 + 8 + // optional payment_token_amount
 200; // padding
 
 pub const ARTIFACT_FILTER_SIZE: usize = 8 + // key
@@ -698,6 +798,10 @@ FILTER_SIZE + //
 1 + // bump
 100; //padding
 
+// REMAINING_ACCOUNTS ORDERING
+// payment_mint
+// payment_vault
+// whitelist_staking_mint(s)
 #[derive(Accounts)]
 #[instruction(args: InitializeNamespaceArgs)]
 pub struct InitializeNamespace<'info> {
@@ -734,7 +838,7 @@ pub struct UpdateNamespace<'info> {
     namespace: Account<'info, Namespace>,
     #[account(
         // Check to make sure the token owner is the signer, and that the token is an nft, decimals == 0
-        constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1
+        associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1
     )]
     namespace_token: Account<'info, TokenAccount>,
     token_holder: Signer<'info>,
@@ -744,7 +848,7 @@ pub struct UpdateNamespace<'info> {
 pub struct CreateNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(init, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, payer=payer, space=NamespaceGatekeeper::SPACE)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
@@ -759,7 +863,7 @@ pub struct CreateNamespaceGatekeeper<'info> {
 pub struct AddToNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
@@ -770,7 +874,7 @@ pub struct AddToNamespaceGatekeeper<'info> {
 pub struct RemoveFromNamespaceGatekeeper<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump=namespace_gatekeeper.bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
@@ -833,37 +937,60 @@ pub struct MatchValidation<'info> {
     mint: UncheckedAccount<'info>,
 }
 
+// REMAINING_ACCOUNTS
+// Three optional accounts may be passed in if the Namespace was configured for optional payments
+// payment_mint
+// payment_vault (mut)
+// payment_ata (mut)
 #[derive(Accounts)]
 pub struct JoinNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump)]
-    namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
-    namespace_token: Account<'info, TokenAccount>,
+    namespace: Box<Account<'info, Namespace>>,
+
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
+    namespace_token: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
+
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
-    token_holder: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    token_holder: Signer<'info>,
+
+    #[account(address = Pubkey::from_str(RAIN_TOKEN_MINT).unwrap())]
+    rain_token_mint: Account<'info, Mint>,
+
+    #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = Pubkey::from_str(RAIN_TOKEN_VAULT_AUTHORITY).unwrap())]
+    rain_token_vault: Account<'info, TokenAccount>,
+
+    #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = token_holder)]
+    rain_payer_ata: Account<'info, token::TokenAccount>,
+
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
+
     #[account(constraint=raindrops_program.key() == crate::id() ||
         raindrops_program.key() == raindrops_item::id() ||
         raindrops_program.key() == raindrops_player::id() ||
         raindrops_program.key() == raindrops_matches::id())]
     raindrops_program: UncheckedAccount<'info>,
+
+    token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
 pub struct LeaveNamespace<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
-    token_holder: UncheckedAccount<'info>,
+    token_holder: Signer<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
     #[account(constraint=raindrops_program.key() == crate::id() ||
@@ -878,17 +1005,16 @@ pub struct LeaveNamespace<'info> {
 pub struct CacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
-    #[account(init_if_needed, payer = payer, space = NamespaceIndex::SPACE, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
+    #[account(init_if_needed, payer = token_holder, space = NamespaceIndex::SPACE, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
+    token_holder: Signer<'info>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
-    #[account(mut)]
-    payer: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
     #[account(constraint=raindrops_program.key() == crate::id() ||
@@ -903,13 +1029,14 @@ pub struct CacheArtifact<'info> {
 pub struct UncacheArtifact<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace_token.mint.as_ref()], bump=namespace.bump)]
     namespace: Account<'info, Namespace>,
-    #[account(constraint=namespace_token.owner == token_holder.key() && namespace_token.amount == 1)]
+    #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump=index.bump)]
     index: Account<'info, NamespaceIndex>,
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
-    token_holder: UncheckedAccount<'info>,
+    #[account(mut)]
+    token_holder: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
@@ -973,4 +1100,6 @@ pub enum ErrorCode {
     CannotCacheArtifact,
     #[msg("Artifact not configured for namespaces")]
     DesiredNamespacesNone,
+    #[msg("Invalid Remaining Accounts")]
+    InvalidRemainingAccounts,
 }

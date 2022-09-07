@@ -19,7 +19,8 @@
   "scripts": {
     "build": "anchor build",
     "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts",
-    "format": "cargo fmt",
+    "format": "cargo fmt --all",
+    "format:check": "cargo fmt --all --check",
     "lint": "cargo clippy --fix",
     "lint:check": "cargo clippy"
   },

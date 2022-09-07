@@ -1,12 +1,17 @@
 {
   "$schema": "https://turborepo.org/schema.json",
-  "baseBranch": "origin/master",
   "pipeline": {
     "lint": {
       "outputs": []
     },
     "lint:check": {
       "outputs": ["^lint:check"]
+    },
+    "format": {
+      "outputs": []
+    },
+    "format:check": {
+      "outputs": []
     },
     "build:lint": {
       "dependsOn": ["lint:check"],
@@ -17,7 +22,7 @@
       "outputs": ["dist/**", "build/**", "target/**"]
     },
     "test": {
-      "dependsOn": ["build"],
+      "dependsOn": ["build:lint"],
       "outputs": [],
       "inputs": ["tests/**/*.ts"]
     }

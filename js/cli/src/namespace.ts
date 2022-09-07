@@ -4,7 +4,11 @@ import * as anchor from "@project-serum/anchor";
 import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
 import fs from "fs";
-import { State, Instructions, NamespaceProgram } from "@raindrops-protocol/raindrops";
+import {
+  State,
+  Instructions,
+  NamespaceProgram,
+} from "@raindrops-protocol/raindrops";
 
 CLI.programCommandWithConfig(
   "initialize_namespace",
@@ -17,19 +21,21 @@ CLI.programCommandWithConfig(
       (mint) => new web3.PublicKey(mint)
     );
 
-    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs = {
-      desiredNamespaceArraySize: new anchor.BN(2),
-      uuid: config.uuid,
-      prettyName: config.prettyName,
-      permissivenessSettings: config.permissivenessSettings,
-      whitelistedStakingMints: whitelistedStakingMints,
-    };
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs =
+      {
+        desiredNamespaceArraySize: new anchor.BN(2),
+        uuid: config.uuid,
+        prettyName: config.prettyName,
+        permissivenessSettings: config.permissivenessSettings,
+        whitelistedStakingMints: whitelistedStakingMints,
+      };
 
-    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts = {
-      mint: new web3.PublicKey(config.mint),
-      metadata: new web3.PublicKey(config.metadata),
-      masterEdition: new web3.PublicKey(config.masterEdition),
-    };
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts =
+      {
+        mint: new web3.PublicKey(config.mint),
+        metadata: new web3.PublicKey(config.metadata),
+        masterEdition: new web3.PublicKey(config.masterEdition),
+      };
 
     await namespaceProgram.initializeNamespace(
       initializeNamespaceArgs,
@@ -113,7 +119,10 @@ CLI.programCommandWithConfig(
 
     const args: Instructions.Namespace.AddToNamespaceGatekeeperArgs = {
       artifactFilter: {
-        filter: new State.Namespace.Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
+        filter: new State.Namespace.Filter(
+          config.artifactFilter.filterType,
+          config.artifactFilter.filterData
+        ),
         tokenType: config.artifactFilter.tokenType,
       },
     };
@@ -137,13 +146,17 @@ CLI.programCommandWithConfig(
 
     const args: Instructions.Namespace.RemoveFromNamespaceGatekeeperArgs = {
       artifactFilter: {
-        filter: new State.Namespace.Filter(config.artifactFilter.filterType, config.artifactFilter.filterData),
+        filter: new State.Namespace.Filter(
+          config.artifactFilter.filterType,
+          config.artifactFilter.filterData
+        ),
         tokenType: config.artifactFilter.tokenType,
       },
     };
-    const accounts: Instructions.Namespace.RemoveFromNamespaceGatekeeperAccounts = {
-      namespaceMint: new web3.PublicKey(config.mint),
-    };
+    const accounts: Instructions.Namespace.RemoveFromNamespaceGatekeeperAccounts =
+      {
+        namespaceMint: new web3.PublicKey(config.mint),
+      };
 
     await namespaceProgram.removeFromNamespaceGatekeeper(args, accounts);
 
@@ -232,17 +245,20 @@ CLI.Program.parseAsync(process.argv);
 async function initNsProgram(
   rpcUrl: string,
   env: string,
-  keypairPath: string,
+  keypairPath: string
 ): Promise<NamespaceProgram> {
   const connection = new anchor.web3.Connection(rpcUrl, "confirmed");
 
-  const keypair = web3.Keypair.fromSecretKey(new Uint8Array(
-    JSON.parse(fs.readFileSync(keypairPath, "utf8"))
-  ));
+  const keypair = web3.Keypair.fromSecretKey(
+    new Uint8Array(JSON.parse(fs.readFileSync(keypairPath, "utf8")))
+  );
 
   const namespaceProgram = await NamespaceProgram.getProgramWithWalletKeyPair(
-    NamespaceProgram, keypair, env, rpcUrl
-  )
+    NamespaceProgram,
+    keypair,
+    env,
+    rpcUrl
+  );
 
   return namespaceProgram;
 }

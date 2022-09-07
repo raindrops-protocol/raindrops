@@ -314,8 +314,8 @@ pub fn verify(proof: &Vec<[u8; 32]>, root: &[u8; 32], leaf: [u8; 32]) -> bool {
 
 pub fn is_part_of_namespace<'a>(artifact: &AccountInfo<'a>, namespace: &Pubkey) -> bool {
     let data = artifact.data.borrow_mut();
-    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
-    let offset = 12 as usize;
+    let number = u32::from_le_bytes(*array_ref![data, 9, 4]) as usize;
+    let offset = 13 as usize;
     for i in 0..number {
         let key_bytes = array_ref![data, offset + i * 33, 32];
         let key = Pubkey::new_from_array(*key_bytes);

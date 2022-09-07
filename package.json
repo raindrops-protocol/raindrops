@@ -13,7 +13,9 @@
     "build:lint": "turbo run build:lint",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "lint:check": "turbo run lint:check"
+    "lint:check": "turbo run lint:check",
+    "format": "turbo run format",
+    "format:check": "turbo run format:check"
   },
   "devDependencies": {
     "@metaplex-foundation/amman": "^0.10.0",

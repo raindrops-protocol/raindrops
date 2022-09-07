@@ -108,18 +108,13 @@ export type Namespace = {
         },
         {
           "name": "tokenHolder",
-          "isMut": false,
-          "isSigner": false
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "instructions",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -171,8 +166,8 @@ export type Namespace = {
         },
         {
           "name": "tokenHolder",
-          "isMut": false,
-          "isSigner": false
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -337,7 +332,7 @@ export type Namespace = {
         {
           "name": "tokenHolder",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "instructions",
@@ -377,7 +372,22 @@ export type Namespace = {
         },
         {
           "name": "tokenHolder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rainTokenMint",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rainTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rainPayerAta",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -387,6 +397,11 @@ export type Namespace = {
         },
         {
           "name": "raindropsProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -544,6 +559,24 @@ export type Namespace = {
             "type": {
               "option": "publicKey"
             }
+          },
+          {
+            "name": "paymentMint",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "paymentVault",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "paymentAmount",
+            "type": {
+              "option": "u64"
+            }
           }
         ]
       }
@@ -603,6 +636,12 @@ export type Namespace = {
             "name": "whitelistedStakingMints",
             "type": {
               "vec": "publicKey"
+            }
+          },
+          {
+            "name": "paymentAmount",
+            "type": {
+              "option": "u64"
             }
           }
         ]
@@ -911,23 +950,6 @@ export type Namespace = {
             ]
           },
           {
-            "name": "Category",
-            "fields": [
-              {
-                "name": "namespace",
-                "type": "publicKey"
-              },
-              {
-                "name": "category",
-                "type": {
-                  "option": {
-                    "vec": "string"
-                  }
-                }
-              }
-            ]
-          },
-          {
             "name": "Key",
             "fields": [
               {
@@ -1137,6 +1159,11 @@ export type Namespace = {
       "code": 6024,
       "name": "DesiredNamespacesNone",
       "msg": "Artifact not configured for namespaces"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidRemainingAccounts",
+      "msg": "Invalid Remaining Accounts"
     }
   ]
 };
@@ -1251,18 +1278,13 @@ export const IDL: Namespace = {
         },
         {
           "name": "tokenHolder",
-          "isMut": false,
-          "isSigner": false
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "instructions",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -1314,8 +1336,8 @@ export const IDL: Namespace = {
         },
         {
           "name": "tokenHolder",
-          "isMut": false,
-          "isSigner": false
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -1480,7 +1502,7 @@ export const IDL: Namespace = {
         {
           "name": "tokenHolder",
           "isMut": false,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "instructions",
@@ -1520,7 +1542,22 @@ export const IDL: Namespace = {
         },
         {
           "name": "tokenHolder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rainTokenMint",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rainTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rainPayerAta",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1530,6 +1567,11 @@ export const IDL: Namespace = {
         },
         {
           "name": "raindropsProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1687,6 +1729,24 @@ export const IDL: Namespace = {
             "type": {
               "option": "publicKey"
             }
+          },
+          {
+            "name": "paymentMint",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "paymentVault",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "paymentAmount",
+            "type": {
+              "option": "u64"
+            }
           }
         ]
       }
@@ -1746,6 +1806,12 @@ export const IDL: Namespace = {
             "name": "whitelistedStakingMints",
             "type": {
               "vec": "publicKey"
+            }
+          },
+          {
+            "name": "paymentAmount",
+            "type": {
+              "option": "u64"
             }
           }
         ]
@@ -2054,23 +2120,6 @@ export const IDL: Namespace = {
             ]
           },
           {
-            "name": "Category",
-            "fields": [
-              {
-                "name": "namespace",
-                "type": "publicKey"
-              },
-              {
-                "name": "category",
-                "type": {
-                  "option": {
-                    "vec": "string"
-                  }
-                }
-              }
-            ]
-          },
-          {
             "name": "Key",
             "fields": [
               {
@@ -2280,6 +2329,11 @@ export const IDL: Namespace = {
       "code": 6024,
       "name": "DesiredNamespacesNone",
       "msg": "Artifact not configured for namespaces"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidRemainingAccounts",
+      "msg": "Invalid Remaining Accounts"
     }
   ]
 };
