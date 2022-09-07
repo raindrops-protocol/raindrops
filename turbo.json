@@ -13,6 +13,10 @@
     "lint:check": {
       "outputs": ["format:check"]
     },
+    "build": {
+      "dependsOn": ["lint:check"],
+      "outputs": ["dist/**", "build/**", "target/**"]
+    },
     "build:lib": {
       "dependsOn": ["lint:check"],
       "outputs": ["dist/**", "build/**", "target/**"]
@@ -26,7 +30,7 @@
       "outputs": ["dist/**", "build/**", "target/**"]
     },
     "test": {
-      "dependsOn": ["build:cli"],
+      "dependsOn": ["build:cli", "build:lib", "build:program"],
       "outputs": [],
       "inputs": ["tests/**/*.ts"]
     }
