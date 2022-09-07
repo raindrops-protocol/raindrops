@@ -4,8 +4,7 @@ import log from "loglevel";
 import { program } from "commander";
 import { programCommand } from "./utils";
 import { SystemProgram } from "@solana/web3.js";
-import BN from "bn.js";
-import { web3 } from "@project-serum/anchor";
+import { web3, BN } from "@project-serum/anchor";
 
 import { Wallet } from "@raindrop-studios/sol-command";
 import { getItemProgram, State, Utils } from "@raindrops-protocol/raindrops";
