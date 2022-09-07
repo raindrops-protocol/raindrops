@@ -17,12 +17,16 @@
       "dependsOn": ["lint:check"],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
-    "build": {
+    "build:program": {
       "dependsOn": ["build:lib"],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
+    "build:cli": {
+      "dependsOn": ["build:program"],
+      "outputs": ["dist/**", "build/**", "target/**"]
+    },
     "test": {
-      "dependsOn": ["build"],
+      "dependsOn": ["build:cli"],
       "outputs": [],
       "inputs": ["tests/**/*.ts"]
     }
