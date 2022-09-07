@@ -2069,6 +2069,7 @@ __metadata:
     items-cli: ./src/item.ts
     matches-cli: ./src/matches.ts
     namespace-cli: ./src/namespace.ts
+    player-cli: ./src/player.ts
     staking-cli: ./src/staking.ts
   languageName: unknown
   linkType: soft
