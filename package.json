@@ -9,12 +9,15 @@
     "rust"
   ],
   "scripts": {
-    "build": "turbo run build",
-    "test": "turbo run test",
+    "format": "turbo run format",
+    "format:check": "turbo run format:check",
     "lint": "turbo run lint",
     "lint:check": "turbo run lint:check",
-    "format": "turbo run format",
-    "format:check": "turbo run format:check"
+    "build": "turbo run build",
+    "build:cli": "turbo run build --filter @raindrops-protocol/raindrops-cli",
+    "build:lib": "turbo run build --filter @raindrops-protocol/raindrops",
+    "build:program": "turbo rn build --filter @raindrops-protocol/raindrops-programs",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "@metaplex-foundation/amman": "^0.10.0",

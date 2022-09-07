@@ -13,8 +13,12 @@
     "lint:check": {
       "outputs": ["format:check"]
     },
-    "build": {
+    "build:lib": {
       "dependsOn": ["lint:check"],
+      "outputs": ["dist/**", "build/**", "target/**"]
+    },
+    "build": {
+      "dependsOn": ["build:lib"],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
     "test": {
