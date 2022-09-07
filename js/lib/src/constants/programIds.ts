@@ -5,7 +5,7 @@ export const NAMESPACE_ID = new web3.PublicKey(
 );
 
 export const ITEM_ID = new web3.PublicKey(
-  "56M2fQE8cy9v4q3LYxyDHSPz6BDHnWQJAucZZ49ybq9y"
+  "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 );
 
 export const PLAYER_ID = new web3.PublicKey(

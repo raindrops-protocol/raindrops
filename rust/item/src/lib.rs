@@ -23,7 +23,7 @@ use anchor_lang::{
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use arrayref::array_ref;
 use std::str::FromStr;
-anchor_lang::declare_id!("56M2fQE8cy9v4q3LYxyDHSPz6BDHnWQJAucZZ49ybq9y");
+anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
 
 pub const PREFIX: &str = "item";
 pub const MARKER: &str = "marker";
