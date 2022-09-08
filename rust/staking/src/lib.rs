@@ -102,7 +102,7 @@ pub mod raindrops_staking {
         let namespace = assert_part_of_namespace(&artifact_unchecked.to_account_info(), namespace)?;
 
         let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
-            Some(p) => Some(p.convert_to_item_permissiveness()),
+            Some(p) => Some(p.to_item_permissiveness()),
             None => None,
         };
 
@@ -291,7 +291,7 @@ pub mod raindrops_staking {
         )?;
 
         let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
-            Some(p) => Some(p.convert_to_item_permissiveness()),
+            Some(p) => Some(p.to_item_permissiveness()),
             None => None,
         };
 
@@ -771,12 +771,12 @@ pub enum PermissivenessType {
 }
 
 impl PermissivenessType {
-    pub fn convert_to_item_permissiveness(&self) -> ItemPermissivenessType {
+    pub fn to_item_permissiveness(&self) -> ItemPermissivenessType {
         match self {
-            PermissivenessType::TokenHolder => return ItemPermissivenessType::TokenHolder,
-            PermissivenessType::ParentTokenHolder => return ItemPermissivenessType::ParentTokenHolder,
-            PermissivenessType::UpdateAuthority => return ItemPermissivenessType::UpdateAuthority,
-            PermissivenessType::Anybody => return  ItemPermissivenessType::Anybody,
+            PermissivenessType::TokenHolder => ItemPermissivenessType::TokenHolder,
+            PermissivenessType::ParentTokenHolder => ItemPermissivenessType::ParentTokenHolder,
+            PermissivenessType::UpdateAuthority => ItemPermissivenessType::UpdateAuthority,
+            PermissivenessType::Anybody => ItemPermissivenessType::Anybody,
         }
     }
 }
