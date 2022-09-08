@@ -6,7 +6,8 @@
   "workspaces": [
     "js/cli",
     "js/lib",
-    "rust"
+    "rust",
+    "tests"
   ],
   "scripts": {
     "format": "turbo run format",

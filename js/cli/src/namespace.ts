@@ -3,7 +3,7 @@ import { CLI } from "@raindrop-studios/sol-command";
 import * as anchor from "@project-serum/anchor";
 import { web3 } from "@project-serum/anchor";
 import log from "loglevel";
-import fs from "fs";
+import * as fs from "fs";
 import {
   State,
   Instructions,

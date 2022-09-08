@@ -2,8 +2,7 @@
 import * as fs from "fs";
 import { program } from "commander";
 import log from "loglevel";
-import BN from "bn.js";
-import { web3 } from "@project-serum/anchor";
+import { web3, BN } from "@project-serum/anchor";
 
 import { Wallet } from "@raindrop-studios/sol-command";
 import {
