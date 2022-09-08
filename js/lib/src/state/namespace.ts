@@ -1,4 +1,4 @@
-import { AnchorError, web3 } from "@project-serum/anchor";
+import { web3 } from "@project-serum/anchor";
 import { NamespaceAndIndex } from "./common";
 import * as pids from "../constants/programIds";
 
