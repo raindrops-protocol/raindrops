@@ -12,7 +12,7 @@ import {
 } from "@raindrops-protocol/raindrops";
 import assert = require("assert");
 
-describe("namespace", () => {
+describe("staking", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
