@@ -330,110 +330,6 @@ export type RaindropsStaking = {
           }
         ]
       }
-    },
-    {
-      "name": "artifactClass",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "existingChildren",
-            "type": "u64"
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": "ArtifactClassData"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "artifact",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": "publicKey"
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "tokensStaked",
-            "type": "u64"
-          }
-        ]
-      }
     }
   ],
   "types": [
@@ -663,6 +559,26 @@ export type RaindropsStaking = {
                 }
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PermissivenessType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TokenHolder"
+          },
+          {
+            "name": "ParentTokenHolder"
+          },
+          {
+            "name": "UpdateAuthority"
+          },
+          {
+            "name": "Anybody"
           }
         ]
       }
@@ -1159,110 +1075,6 @@ export const IDL: RaindropsStaking = {
           }
         ]
       }
-    },
-    {
-      "name": "artifactClass",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "existingChildren",
-            "type": "u64"
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": "ArtifactClassData"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "artifact",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": "publicKey"
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "tokensStaked",
-            "type": "u64"
-          }
-        ]
-      }
     }
   ],
   "types": [
@@ -1492,6 +1304,26 @@ export const IDL: RaindropsStaking = {
                 }
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PermissivenessType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TokenHolder"
+          },
+          {
+            "name": "ParentTokenHolder"
+          },
+          {
+            "name": "UpdateAuthority"
+          },
+          {
+            "name": "Anybody"
           }
         ]
       }

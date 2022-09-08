@@ -10,7 +10,7 @@ use raindrops_item::{
         AssertPermissivenessAccessArgs, TokenTransferParams,
     },
     Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
-    PermissivenessType,
+    PermissivenessType as ItemPermissivenessType,
 };
 use raindrops_player::program::RaindropsPlayer;
 anchor_lang::declare_id!("stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4");
@@ -101,11 +101,16 @@ pub mod raindrops_staking {
 
         let namespace = assert_part_of_namespace(&artifact_unchecked.to_account_info(), namespace)?;
 
+        let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
+            Some(p) => Some(p.convert_to_item_permissiveness()),
+            None => None,
+        };
+
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &staking_permissiveness_to_use,
+            permissiveness_to_use: &permissiveness,
             permissiveness_array: &artifact_class.data.staking_permissiveness,
             index: class_index,
             class_index: parent_class_index,
@@ -285,11 +290,16 @@ pub mod raindrops_staking {
             index,
         )?;
 
+        let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
+            Some(p) => Some(p.convert_to_item_permissiveness()),
+            None => None,
+        };
+
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &staking_permissiveness_to_use,
+            permissiveness_to_use: &permissiveness,
             permissiveness_array: if artifact_class.data.unstaking_permissiveness.is_some() {
                 &artifact_class.data.unstaking_permissiveness
             } else {
@@ -725,7 +735,6 @@ pub struct ArtifactClassData {
     pub child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
 }
 
-#[account]
 pub struct ArtifactClass {
     pub namespaces: Option<Vec<NamespaceAndIndex>>,
     pub parent: Option<Pubkey>,
@@ -740,7 +749,6 @@ pub struct ArtifactClass {
     pub data: ArtifactClassData,
 }
 
-#[account]
 pub struct Artifact {
     pub namespaces: Option<Vec<NamespaceAndIndex>>,
     pub parent: Pubkey,
@@ -752,6 +760,25 @@ pub struct Artifact {
     pub edition: Option<Pubkey>,
     pub bump: u8,
     pub tokens_staked: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+pub enum PermissivenessType {
+    TokenHolder,
+    ParentTokenHolder,
+    UpdateAuthority,
+    Anybody,
+}
+
+impl PermissivenessType {
+    pub fn convert_to_item_permissiveness(&self) -> ItemPermissivenessType {
+        match self {
+            PermissivenessType::TokenHolder => return ItemPermissivenessType::TokenHolder,
+            PermissivenessType::ParentTokenHolder => return ItemPermissivenessType::ParentTokenHolder,
+            PermissivenessType::UpdateAuthority => return ItemPermissivenessType::UpdateAuthority,
+            PermissivenessType::Anybody => return  ItemPermissivenessType::Anybody,
+        }
+    }
 }
 
 #[error_code]
