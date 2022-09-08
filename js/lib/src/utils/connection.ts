@@ -17,6 +17,10 @@ export const CLUSTERS: Cluster[] = [
     name: "devnet",
     url: clusterApiUrl("devnet"),
   },
+  {
+    name: "localnet",
+    url: "http://localhost:8899"
+  },
 ];
 export const DEFAULT_CLUSTER = CLUSTERS[2];
 export function getCluster(name: string): string {

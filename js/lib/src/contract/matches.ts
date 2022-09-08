@@ -764,8 +764,6 @@ export async function getMatchesProgram(
     preflightCommitment: "recent",
   });
 
-  const idl = await Program.fetchIdl(MATCHES_ID, provider);
-
   const program = new Program(idl, MATCHES_ID, provider);
 
   return new MatchesProgram({
