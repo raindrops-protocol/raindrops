@@ -243,7 +243,7 @@ pub struct UpdateValidForUseIfWarmupPassedOnItemArgs {
 }
 
 #[program]
-pub mod player {
+pub mod raindrops_player {
 
     use super::*;
 
@@ -2100,7 +2100,7 @@ pub const MIN_PLAYER_SIZE: usize = 8 + // key
 1 + // stats uri
 1 + //bump
 8 + // tokens staked
-8 + // active items 
+8 + // active items
 8 + // item types in backpack
 1 + // category
 4 + // equipped items

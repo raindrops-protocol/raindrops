@@ -1,6 +1,6 @@
-export type Namespace = {
+export type RaindropsNamespace = {
   "version": "0.1.0",
-  "name": "namespace",
+  "name": "raindrops_namespace",
   "instructions": [
     {
       "name": "initializeNamespace",
@@ -1168,9 +1168,9 @@ export type Namespace = {
   ]
 };
 
-export const IDL: Namespace = {
+export const IDL: RaindropsNamespace = {
   "version": "0.1.0",
-  "name": "namespace",
+  "name": "raindrops_namespace",
   "instructions": [
     {
       "name": "initializeNamespace",
