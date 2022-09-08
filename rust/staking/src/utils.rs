@@ -92,7 +92,7 @@ pub fn assert_is_proper_instance<'info>(
     artifact_class: &Pubkey,
     mint: &Pubkey,
     index: u64,
-) -> Result<Artifact> {
+) -> Result<()> {
     require!(
         artifact.owner == &raindrops_player::id() || artifact.owner == &raindrops_item::id(),
         InvalidProgramOwner
@@ -160,7 +160,7 @@ pub fn assert_is_proper_instance<'info>(
         PublicKeyMismatch
     );
 
-    Ok(instance_deserialized)
+    Ok(())
 }
 
 pub fn assert_part_of_namespace<'a, 'b>(
