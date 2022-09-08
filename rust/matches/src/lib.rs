@@ -20,6 +20,10 @@ pub struct CreateOrUpdateOracleArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ResizeOracleArgs {
+    resize: u64,
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DrainOracleArgs {
     seed: Pubkey,
 }
@@ -106,9 +110,41 @@ pub mod matches {
 
         win_oracle.finalized = finalized;
         win_oracle.token_transfer_root = token_transfer_root.clone();
+
         win_oracle.token_transfers = token_transfers.clone();
 
         return Ok(());
+    }
+
+    pub fn resize_oracle<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ResizeOracle<'info>>,
+        args: ResizeOracleArgs,
+    ) -> Result<()> {
+          
+        let win_oracle_account = &mut ctx.accounts.win_oracle.to_account_info();
+
+        let system_program = &ctx.accounts.system_program;
+        let payer_account = &ctx.accounts.payer.to_account_info();
+        let new_size = args.resize as usize;
+        if new_size > win_oracle_account.data.borrow().len() {
+            
+
+            let rent = Rent::get()?;
+            let new_minimum_balance = rent.minimum_balance(new_size);
+
+            let lamports_diff = new_minimum_balance.saturating_sub(win_oracle_account.lamports());
+            invoke(
+                &system_instruction::transfer(payer_account.key, win_oracle_account.key, lamports_diff),
+                &[
+                    payer_account.clone(),
+                    win_oracle_account.clone(),
+                    system_program.to_account_info().clone(),
+                ],
+            )?;
+            win_oracle_account.realloc(new_size, false)?;
+        }
+       
+        Ok(())
     }
 
     pub fn create_match<'a, 'b, 'c, 'info>(
@@ -907,6 +943,18 @@ pub struct LeaveMatch<'info> {
     token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+#[instruction(args: ResizeOracleArgs)]
+pub struct ResizeOracle<'info> {
+    #[account(address == match_instance.win_oracle)]
+    win_oracle: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    match_instance: Account<'info, Match>,
+    #[account(mut)]
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
 /// While not required to be an account owned by this program, we provide an easy
 /// set of endpoitns to create oracles using the program if you don't want to do it yourself.
 #[derive(Accounts)]

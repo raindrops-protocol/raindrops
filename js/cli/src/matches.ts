@@ -405,6 +405,37 @@ programCommand("drain_oracle")
     );
   });
 
+  programCommand("resize_oracle")
+  .requiredOption(
+    "-cp, --config-path <string>",
+    "JSON file with match settings"
+  )
+  .action(async (files: string[], cmd) => {
+    const { keypair, env, configPath, rpcUrl } = cmd.opts();
+
+    const walletKeyPair = loadWalletKey(keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+
+    if (configPath === undefined) {
+      throw new Error("The configPath is undefined");
+    }
+    const configString = fs.readFileSync(configPath);
+
+    //@ts-ignore
+    const config = JSON.parse(configString);
+
+    if (!config.resize) {
+      throw new Error("Must specify a new size");
+    }
+    await anchorProgram.resizeOracle({
+      authority: config.oracleState.authority
+        ? new web3.PublicKey(config.oracleState.authority)
+        : walletKeyPair.publicKey,
+      seed: config.oracleState.seed,
+      resize: new BN(config.resize),
+    });
+  });
+
 programCommand("create_or_update_oracle")
   .requiredOption(
     "-cp, --config-path <string>",
