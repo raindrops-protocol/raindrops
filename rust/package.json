@@ -17,7 +17,7 @@
     "typescript": "^4.3.5"
   },
   "scripts": {
-    "build": "anchor build",
+    "build": "anchor build --skip-lint",
     "test": "anchor test --skip-build",
     "format": "cargo fmt --all",
     "format:check": "cargo fmt --all --check",
