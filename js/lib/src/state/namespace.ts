@@ -1,4 +1,4 @@
-import { web3 } from "@project-serum/anchor";
+import { AnchorError, web3 } from "@project-serum/anchor";
 import { NamespaceAndIndex } from "./common";
 import * as pids from "../constants/programIds";
 
@@ -318,8 +318,10 @@ export namespace RaindropsProgram {
   }
 
   export function getRaindropsProgramFromAddress(
-    address: web3.PublicKey
+    addressStr: string
   ): RaindropsProgram {
+    const address = new web3.PublicKey(addressStr);
+
     if (address.equals(pids.ITEM_ID)) {
       return RaindropsProgram.Item;
     } else if (address.equals(pids.NAMESPACE_ID)) {
