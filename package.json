@@ -16,7 +16,7 @@
     "build": "turbo run build",
     "build:cli": "turbo run build --filter @raindrops-protocol/raindrops-cli",
     "build:lib": "turbo run build --filter @raindrops-protocol/raindrops",
-    "build:program": "turbo rn build --filter @raindrops-protocol/raindrops-programs",
+    "build:program": "turbo run build --filter @raindrops-protocol/raindrops-programs",
     "test": "turbo run test"
   },
   "devDependencies": {
