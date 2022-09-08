@@ -785,7 +785,7 @@ describe("ItemProgram", () => {
     const classIndex = new BN(0);
     const index = new BN(4);
     const amount = new BN(8);
-    let args = {
+    const args = {
       classIndex,
       index,
       usageIndex: 32,

@@ -282,7 +282,7 @@ pub struct UpdateTokensStakedArgs {
 }
 
 #[program]
-pub mod item {
+pub mod raindrops_item {
 
     use std::borrow::Borrow;
 

@@ -1,6 +1,6 @@
-export type Matches = {
+export type RaindropsMatches = {
   "version": "0.1.0",
-  "name": "matches",
+  "name": "raindrops_matches",
   "instructions": [
     {
       "name": "createOrUpdateOracle",
@@ -1339,9 +1339,9 @@ export type Matches = {
   ]
 };
 
-export const IDL: Matches = {
+export const IDL: RaindropsMatches = {
   "version": "0.1.0",
-  "name": "matches",
+  "name": "raindrops_matches",
   "instructions": [
     {
       "name": "createOrUpdateOracle",

@@ -1,6 +1,6 @@
-export type Staking = {
+export type RaindropsStaking = {
   "version": "0.1.0",
-  "name": "staking",
+  "name": "raindrops_staking",
   "instructions": [
     {
       "name": "beginArtifactStakeWarmup",
@@ -330,110 +330,6 @@ export type Staking = {
           }
         ]
       }
-    },
-    {
-      "name": "artifactClass",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "existingChildren",
-            "type": "u64"
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": "ArtifactClassData"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "artifact",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": "publicKey"
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "tokensStaked",
-            "type": "u64"
-          }
-        ]
-      }
     }
   ],
   "types": [
@@ -663,6 +559,26 @@ export type Staking = {
                 }
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PermissivenessType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TokenHolder"
+          },
+          {
+            "name": "ParentTokenHolder"
+          },
+          {
+            "name": "UpdateAuthority"
+          },
+          {
+            "name": "Anybody"
           }
         ]
       }
@@ -827,9 +743,9 @@ export type Staking = {
   ]
 };
 
-export const IDL: Staking = {
+export const IDL: RaindropsStaking = {
   "version": "0.1.0",
-  "name": "staking",
+  "name": "raindrops_staking",
   "instructions": [
     {
       "name": "beginArtifactStakeWarmup",
@@ -1159,110 +1075,6 @@ export const IDL: Staking = {
           }
         ]
       }
-    },
-    {
-      "name": "artifactClass",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "existingChildren",
-            "type": "u64"
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": "ArtifactClassData"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "artifact",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "namespaces",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": "NamespaceAndIndex"
-                }
-              }
-            }
-          },
-          {
-            "name": "parent",
-            "type": "publicKey"
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "edition",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "tokensStaked",
-            "type": "u64"
-          }
-        ]
-      }
     }
   ],
   "types": [
@@ -1492,6 +1304,26 @@ export const IDL: Staking = {
                 }
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PermissivenessType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TokenHolder"
+          },
+          {
+            "name": "ParentTokenHolder"
+          },
+          {
+            "name": "UpdateAuthority"
+          },
+          {
+            "name": "Anybody"
           }
         ]
       }

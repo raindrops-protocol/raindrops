@@ -4,15 +4,15 @@ use crate::utils::{assert_is_proper_class, assert_is_proper_instance, assert_par
 use anchor_lang::{prelude::*, solana_program::sysvar, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::{
-    program::Item,
+    program::RaindropsItem,
     utils::{
         assert_permissiveness_access, close_token_account, spl_token_transfer,
         AssertPermissivenessAccessArgs, TokenTransferParams,
     },
     Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
-    PermissivenessType,
+    PermissivenessType as ItemPermissivenessType,
 };
-use raindrops_player::program::Player;
+use raindrops_player::program::RaindropsPlayer;
 anchor_lang::declare_id!("stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4");
 pub const PREFIX: &str = "staking";
 pub const STAKING_COUNTER: &str = "counter";
@@ -59,7 +59,7 @@ pub struct EndArtifactStakeCooldownArgs {
 }
 
 #[program]
-pub mod staking {
+pub mod raindrops_staking {
 
     use super::*;
 
@@ -101,11 +101,16 @@ pub mod staking {
 
         let namespace = assert_part_of_namespace(&artifact_unchecked.to_account_info(), namespace)?;
 
+        let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
+            Some(p) => Some(p.to_item_permissiveness()),
+            None => None,
+        };
+
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &staking_permissiveness_to_use,
+            permissiveness_to_use: &permissiveness,
             permissiveness_array: &artifact_class.data.staking_permissiveness,
             index: class_index,
             class_index: parent_class_index,
@@ -225,7 +230,7 @@ pub mod staking {
             &signer_seeds,
         )?;
 
-        if *artifact_unchecked.owner == raindrops_item::program::Item::id() {
+        if *artifact_unchecked.owner == raindrops_item::program::RaindropsItem::id() {
             let cpi_accounts = raindrops_item::cpi::accounts::UpdateTokensStaked {
                 item: artifact_unchecked.to_account_info(),
                 instruction_sysvar_account: ctx
@@ -285,11 +290,16 @@ pub mod staking {
             index,
         )?;
 
+        let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
+            Some(p) => Some(p.to_item_permissiveness()),
+            None => None,
+        };
+
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
-            permissiveness_to_use: &staking_permissiveness_to_use,
+            permissiveness_to_use: &permissiveness,
             permissiveness_array: if artifact_class.data.unstaking_permissiveness.is_some() {
                 &artifact_class.data.unstaking_permissiveness
             } else {
@@ -327,7 +337,7 @@ pub mod staking {
             token_program: token_program.to_account_info(),
         })?;
 
-        if *artifact_unchecked.owner == raindrops_item::program::Item::id() {
+        if *artifact_unchecked.owner == raindrops_item::program::RaindropsItem::id() {
             let cpi_accounts = raindrops_item::cpi::accounts::UpdateTokensStaked {
                 item: artifact_unchecked.to_account_info(),
                 instruction_sysvar_account: ctx
@@ -574,8 +584,8 @@ pub struct EndArtifactStakeWarmup<'info> {
     staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
-    item_program: Program<'info, Item>,
-    player_program: Program<'info, Player>,
+    item_program: Program<'info, RaindropsItem>,
+    player_program: Program<'info, RaindropsPlayer>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
@@ -649,8 +659,8 @@ pub struct BeginArtifactStakeCooldown<'info> {
     staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
-    item_program: Program<'info, Item>,
-    player_program: Program<'info, Player>,
+    item_program: Program<'info, RaindropsItem>,
+    player_program: Program<'info, RaindropsPlayer>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
@@ -725,7 +735,6 @@ pub struct ArtifactClassData {
     pub child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
 }
 
-#[account]
 pub struct ArtifactClass {
     pub namespaces: Option<Vec<NamespaceAndIndex>>,
     pub parent: Option<Pubkey>,
@@ -740,7 +749,6 @@ pub struct ArtifactClass {
     pub data: ArtifactClassData,
 }
 
-#[account]
 pub struct Artifact {
     pub namespaces: Option<Vec<NamespaceAndIndex>>,
     pub parent: Pubkey,
@@ -752,6 +760,25 @@ pub struct Artifact {
     pub edition: Option<Pubkey>,
     pub bump: u8,
     pub tokens_staked: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+pub enum PermissivenessType {
+    TokenHolder,
+    ParentTokenHolder,
+    UpdateAuthority,
+    Anybody,
+}
+
+impl PermissivenessType {
+    pub fn to_item_permissiveness(&self) -> ItemPermissivenessType {
+        match self {
+            PermissivenessType::TokenHolder => ItemPermissivenessType::TokenHolder,
+            PermissivenessType::ParentTokenHolder => ItemPermissivenessType::ParentTokenHolder,
+            PermissivenessType::UpdateAuthority => ItemPermissivenessType::UpdateAuthority,
+            PermissivenessType::Anybody => ItemPermissivenessType::Anybody,
+        }
+    }
 }
 
 #[error_code]
