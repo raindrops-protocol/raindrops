@@ -17,20 +17,8 @@
       "dependsOn": ["lint:check"],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
-    "build:lib": {
-      "dependsOn": ["lint:check"],
-      "outputs": ["dist/**", "build/**", "target/**"]
-    },
-    "build:program": {
-      "dependsOn": ["build:lib"],
-      "outputs": ["dist/**", "build/**", "target/**"]
-    },
-    "build:cli": {
-      "dependsOn": ["build:program"],
-      "outputs": ["dist/**", "build/**", "target/**"]
-    },
     "test": {
-      "dependsOn": ["build:cli", "build:lib", "build:program"],
+      "dependsOn": ["build"],
       "outputs": [],
       "inputs": ["tests/**/*.ts"]
     }
