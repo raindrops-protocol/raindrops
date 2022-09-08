@@ -41,9 +41,6 @@ jobs:
       - name: Install Anchor 0.24.2
         run: npm i -g @project-serum/anchor-cli@0.24.2
 
-      - name: Install ts-mocha
-        run: npm i -g ts-mocha
-
       - name: Set Environment
         run: echo "/home/runner/.cargo/bin" >> $GITHUB_PATH && echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
@@ -57,5 +54,20 @@ jobs:
       - name: Install Node.js dependencies
         run: yarn install --immutable
 
-      - name: Format, Lint, Build and Test
+      - name: Format
+        run: yarn run format:check
+
+      - name: Lint
+        run: yarn run lint:check
+
+      - name: Build lib
+        run: yarn run build:lib
+
+      - name: Build program
+        run: yarn run build:program
+
+      - name: Build cli
+        run: yarn run build:cli
+
+      - name: Test
         run: yarn run test
