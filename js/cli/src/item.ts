@@ -722,10 +722,8 @@ programCommand("show_item")
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
 
-    let actualMint: web3.PublicKey, actualIndex: BN;
-
-    actualMint = new web3.PublicKey(mint);
-    actualIndex = new BN(index);
+    const actualMint = new web3.PublicKey(mint);
+    const actualIndex = new BN(index);
 
     const itemKey = (await PDA.getItemPDA(actualMint, actualIndex))[0];
 

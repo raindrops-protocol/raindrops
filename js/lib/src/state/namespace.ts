@@ -46,13 +46,14 @@ export class Filter {
     filterType: FilterType,
     filterData: FilterNamespaces | FilterKey
   ) {
+    const filterNs = filterData as FilterNamespaces;
+    const filterKeys = filterData as FilterKey;
+
     switch (filterType) {
       case FilterType.FilterNamespaces:
-        const filterNs = filterData as FilterNamespaces;
         this.filter = { namespace: { namespaces: filterNs.namespaces } };
         break;
       case FilterType.FilterKey:
-        const filterKeys = filterData as FilterKey;
         this.filter = {
           key: {
             key: filterKeys.key,
@@ -316,17 +317,19 @@ export namespace RaindropsProgram {
     }
   }
 
-  export function getRaindropsProgramFromAddress(address: web3.PublicKey): RaindropsProgram {
+  export function getRaindropsProgramFromAddress(
+    address: web3.PublicKey
+  ): RaindropsProgram {
     if (address.equals(pids.ITEM_ID)) {
-      return RaindropsProgram.Item
+      return RaindropsProgram.Item;
     } else if (address.equals(pids.NAMESPACE_ID)) {
-      return RaindropsProgram.Namespace
+      return RaindropsProgram.Namespace;
     } else if (address.equals(pids.MATCHES_ID)) {
-      return RaindropsProgram.Matches
+      return RaindropsProgram.Matches;
     } else if (address.equals(pids.PLAYER_ID)) {
-      return RaindropsProgram.Player
+      return RaindropsProgram.Player;
     } else if (address.equals(pids.STAKING_ID)) {
-      return RaindropsProgram.Staking
+      return RaindropsProgram.Staking;
     }
 
     throw new Error(`Unknown RaindropsProgram: ${address}`);
