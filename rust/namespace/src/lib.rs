@@ -31,7 +31,7 @@ const MAX_WHITELIST: usize = 5;
 const MAX_CACHED_ITEMS_PER_INDEX: usize = 100;
 
 const RAIN_TOKEN_MINT: &str = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL";
-const RAIN_TOKEN_VAULT_AUTHORITY: &str = "EPDp2shtSt6c7D3AhAzVzuYvv7PgwSTDQSHuLoLsqZKy";
+const RAIN_TOKEN_VAULT_AUTHORITY: &str = "D1ZCwPPkGNJabsP8GPshmaVTNHxYwQ9bp1fcE22gftLN";
 const RAIN_PAYMENT_AMOUNT: u64 = 100_000; // 1 token with 5 decimals
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
