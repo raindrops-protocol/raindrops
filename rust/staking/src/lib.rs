@@ -4,7 +4,7 @@ use crate::utils::{assert_is_proper_class, assert_is_proper_instance, assert_par
 use anchor_lang::{prelude::*, solana_program::sysvar, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::{
-    program::Item,
+    program::RaindropsItem,
     utils::{
         assert_permissiveness_access, close_token_account, spl_token_transfer,
         AssertPermissivenessAccessArgs, TokenTransferParams,
@@ -12,7 +12,7 @@ use raindrops_item::{
     Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
     PermissivenessType,
 };
-use raindrops_player::program::Player;
+use raindrops_player::program::RaindropsPlayer;
 anchor_lang::declare_id!("stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4");
 pub const PREFIX: &str = "staking";
 pub const STAKING_COUNTER: &str = "counter";
@@ -59,7 +59,7 @@ pub struct EndArtifactStakeCooldownArgs {
 }
 
 #[program]
-pub mod staking {
+pub mod raindrops_staking {
 
     use super::*;
 
@@ -225,7 +225,7 @@ pub mod staking {
             &signer_seeds,
         )?;
 
-        if *artifact_unchecked.owner == raindrops_item::program::Item::id() {
+        if *artifact_unchecked.owner == raindrops_item::program::RaindropsItem::id() {
             let cpi_accounts = raindrops_item::cpi::accounts::UpdateTokensStaked {
                 item: artifact_unchecked.to_account_info(),
                 instruction_sysvar_account: ctx
@@ -327,7 +327,7 @@ pub mod staking {
             token_program: token_program.to_account_info(),
         })?;
 
-        if *artifact_unchecked.owner == raindrops_item::program::Item::id() {
+        if *artifact_unchecked.owner == raindrops_item::program::RaindropsItem::id() {
             let cpi_accounts = raindrops_item::cpi::accounts::UpdateTokensStaked {
                 item: artifact_unchecked.to_account_info(),
                 instruction_sysvar_account: ctx
@@ -574,8 +574,8 @@ pub struct EndArtifactStakeWarmup<'info> {
     staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
-    item_program: Program<'info, Item>,
-    player_program: Program<'info, Player>,
+    item_program: Program<'info, RaindropsItem>,
+    player_program: Program<'info, RaindropsPlayer>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
@@ -649,8 +649,8 @@ pub struct BeginArtifactStakeCooldown<'info> {
     staking_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     payer: Signer<'info>,
-    item_program: Program<'info, Item>,
-    player_program: Program<'info, Player>,
+    item_program: Program<'info, RaindropsItem>,
+    player_program: Program<'info, RaindropsPlayer>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,

@@ -1,6 +1,6 @@
-export type Staking = {
+export type RaindropsStaking = {
   "version": "0.1.0",
-  "name": "staking",
+  "name": "raindrops_staking",
   "instructions": [
     {
       "name": "beginArtifactStakeWarmup",
@@ -827,9 +827,9 @@ export type Staking = {
   ]
 };
 
-export const IDL: Staking = {
+export const IDL: RaindropsStaking = {
   "version": "0.1.0",
-  "name": "staking",
+  "name": "raindrops_staking",
   "instructions": [
     {
       "name": "beginArtifactStakeWarmup",
