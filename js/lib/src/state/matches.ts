@@ -33,6 +33,23 @@ export enum MatchState {
   Deactivated,
 }
 
+export function convertMatchState(ms: MatchState): {} {
+  switch(ms) {
+    case MatchState.Draft:
+      return { draft: {} }
+    case MatchState.Initialized:
+      return { initialized: {} }
+    case MatchState.Started:
+      return { started: {} }
+    case MatchState.Finalized:
+      return { paidOut: {} }
+    case MatchState.Deactivated:
+      return { deactivated: {} }
+    default:
+      throw new Error(`Invalid MatchState: ${ms}`)
+  }
+}
+
 export enum TokenTransferType {
   PlayerToPlayer,
   PlayerToEntrant,

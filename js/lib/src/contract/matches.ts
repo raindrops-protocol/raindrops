@@ -25,10 +25,14 @@ import {
   AnchorMatchState,
   AnchorTokenDelta,
   AnchorTokenEntryValidation,
+  convertMatchState,
+  MatchState,
   TokenType,
 } from "../state/matches";
 import { Token } from "@solana/spl-token";
 import { createAssociatedTokenAccountInstruction } from "../utils/ata";
+import { Matches, MatchesIDL } from "../idls";
+import { Idls } from "../main";
 
 export function transformTokenValidations(args: {
   tokenEntryValidation: AnchorTokenEntryValidation[] | null;
@@ -66,17 +70,15 @@ export class MatchWrapper implements ObjectWrapper<any, MatchesProgram> {
     program: MatchesProgram;
     key: web3.PublicKey;
     object: any;
-    data: Buffer;
   }) {
     this.program = args.program;
     this.key = args.key;
     this.object = args.object;
-    this.data = args.data;
   }
 }
 
 export interface CreateMatchArgs {
-  matchState: AnchorMatchState;
+  matchState: MatchState;
   tokenEntryValidationRoot: null;
   tokenEntryValidation: null | AnchorTokenEntryValidation[];
   winOracle: web3.PublicKey;
@@ -86,7 +88,7 @@ export interface CreateMatchArgs {
   leaveAllowed: boolean;
   joinAllowedDuringStart: boolean;
   minimumAllowedEntryTime: BN | null;
-  desiredNamespaceArraySize?: BN;
+  desiredNamespaceArraySize: BN;
 }
 
 export interface UpdateMatchArgs {
@@ -189,9 +191,9 @@ export interface DisburseTokensByOracleAdditionalArgs {
 
 export class MatchesInstruction {
   id: web3.PublicKey;
-  program: Program;
+  program: Program<any>;
 
-  constructor(args: { id: web3.PublicKey; program: Program }) {
+  constructor(args: { id: web3.PublicKey; program: Program<any> }) {
     this.id = args.id;
     this.program = args.program;
   }
@@ -204,6 +206,7 @@ export class MatchesInstruction {
     const [match, _matchBump] = await getMatch(args.winOracle);
 
     transformTokenValidations(args);
+
     return {
       instructions: [
         await this.program.methods
@@ -543,10 +546,10 @@ export class MatchesInstruction {
 
 export class MatchesProgram {
   id: web3.PublicKey;
-  program: Program;
+  program: Program<Matches>;
   instruction: MatchesInstruction;
 
-  constructor(args: { id: web3.PublicKey; program: Program }) {
+  constructor(args: { id: web3.PublicKey; program: Program<Matches> }) {
     this.id = args.id;
     this.program = args.program;
     this.instruction = new MatchesInstruction({
@@ -563,7 +566,6 @@ export class MatchesProgram {
     return new MatchWrapper({
       program: this,
       key: matchPda,
-      data: match.data as Buffer,
       object: match,
     });
   }
@@ -582,7 +584,6 @@ export class MatchesProgram {
     return new MatchWrapper({
       program: this,
       key: oracle,
-      data: oracleAcct.data,
       object: oracleInstance,
     });
   }
@@ -764,7 +765,7 @@ export async function getMatchesProgram(
     preflightCommitment: "recent",
   });
 
-  const program = new Program(idl, MATCHES_ID, provider);
+  const program = new Program(MatchesIDL, MATCHES_ID, provider);
 
   return new MatchesProgram({
     id: MATCHES_ID,

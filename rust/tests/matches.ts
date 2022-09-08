@@ -27,7 +27,6 @@ describe.only("matches", () => {
     const payer = await newPayer(connection);
 
     const matchesProgram = await getMatchesProgram(payer, "localnet", "http://localhost:8899");
-    console.log("matches program loaded");
 
     const oracleSeed = anchor.web3.Keypair.generate();
 
