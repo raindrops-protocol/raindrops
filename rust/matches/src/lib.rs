@@ -76,7 +76,7 @@ pub struct TokenDeltaProofInfo {
 }
 
 #[program]
-pub mod raindrops_matches {
+pub mod matches {
 
     use super::*;
 

@@ -61,7 +61,7 @@ pub struct UncacheArtifactArgs {
 }
 
 #[program]
-pub mod raindrops_namespace {
+pub mod namespace {
 
     use super::*;
     pub fn initialize_namespace<'info>(
