@@ -2063,11 +2063,13 @@ __metadata:
     loglevel: ^1.7.1
     node-fetch: ^2.6.1
     pkg: ^5.3.1
+    prettier: ^2.7.1
     typescript: ^4.3.5
   bin:
     items-cli: ./src/item.ts
     matches-cli: ./src/matches.ts
     namespace-cli: ./src/namespace.ts
+    player-cli: ./src/player.ts
     staking-cli: ./src/staking.ts
   languageName: unknown
   linkType: soft
@@ -2108,6 +2110,7 @@ __metadata:
     chai: ^4.3.6
     eslint: latest
     mocha: ^9.0.3
+    prettier: ^2.7.1
     ts-mocha: ^10.0.0
     typescript: ^4.3.5
   languageName: unknown
@@ -2133,6 +2136,7 @@ __metadata:
     jsonschema: ^1.4.0
     node-fetch: ^2.6.1
     pkg: ^5.3.1
+    prettier: ^2.7.1
     ts-jest: ^28.0.5
     typescript: ^4.3.5
   languageName: unknown

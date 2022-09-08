@@ -20,7 +20,7 @@
     "lib": ["dom", "es2019"],
     "types": ["jest", "node"]
   },
-  "include": ["system/**/*"],
+  "include": ["system/**/*", "test-helpers/**/*"],
   "exclude": ["node_modules"],
   "atom": {
     "rewriteTsconfig": false

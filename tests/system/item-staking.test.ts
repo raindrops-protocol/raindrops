@@ -12,11 +12,12 @@ import {
 import { expect } from "chai";
 import { mintNFT, mintTokens } from "../test-helpers/token";
 
-describe("Item-Staking", () => {
+// TODO: Add $RAIN token joining namespace when the $RAIN token is ready for devnet
+describe.skip("Item-Staking", () => {
   // Creates an anchor provider
 
-  const RPC_URL = "http://localhost:8899";
-  // const RPC_URL = "https://api.devnet.solana.com";
+  // const RPC_URL = "http://localhost:8899";
+  const RPC_URL = "https://api.devnet.solana.com";
   const walletKeypair = anchor.web3.Keypair.generate();
 
   const provider = new anchor.AnchorProvider(

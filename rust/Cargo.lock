@@ -936,6 +936,7 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
+ "raindrops-item",
  "spl-associated-token-account",
  "spl-token",
 ]

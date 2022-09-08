@@ -4,7 +4,8 @@ use crate::{
     ChildUpdatePropagationPermissivenessType, Component, CraftUsageInfo, ErrorCode,
     InheritanceState, Inherited, Item, ItemActivationMarker, ItemActivationMarkerProofCounter,
     ItemClass, ItemClassData, ItemClassType, ItemEscrow, ItemUsage, ItemUsageState, ItemUsageType,
-    NamespaceAndIndex, Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PREFIX,
+    NamespaceAndIndex, Permissiveness, PermissivenessType, UsageInfo, NAMESPACE_ID, PLAYER_ID,
+    PREFIX,
 };
 use anchor_lang::{
     error,
@@ -108,7 +109,7 @@ pub fn get_class_write_offsets(
         ctr += 1;
     }
 
-    ctr += 9; // bump and existing childern (1 + 8)
+    ctr += 9; // bump and existing children (1 + 8)
 
     let mut end_ctr = ctr;
 
@@ -291,8 +292,9 @@ pub fn get_class_write_offsets(
 
             // item_class_type
             if data[end_ctr] == 0 {
+                end_ctr += 1;
                 // wearable
-                let sub = &data[end_ctr + 1..end_ctr + 5];
+                let sub = &data[end_ctr..end_ctr + 4];
                 let num_of_body_parts = u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]]);
                 end_ctr += 4;
                 for _ in 0..num_of_body_parts {
@@ -403,6 +405,27 @@ pub fn get_class_write_offsets(
     }
 
     (ctr as u64, end_ctr as u64)
+}
+
+pub fn check_data_for_duplicate_item_effects(item_class_data: &ItemClassData) -> Result<()> {
+    if let Some(usages) = &item_class_data.config.usages {
+        for usage in usages {
+            if let Some(bie) = &usage.basic_item_effects {
+                let mut i1 = 0;
+                for b in bie {
+                    let mut i2 = 0;
+                    for b2 in bie {
+                        if i1 != i2 && b.stat == b2.stat {
+                            return Err(ErrorCode::CannotEffectTheSameStatTwice.into());
+                        }
+                        i2 += 1;
+                    }
+                    i1 += 1;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn write_data(
@@ -625,6 +648,7 @@ pub struct AssertPermissivenessAccessArgs<'a, 'b, 'c, 'info> {
     pub class_index: Option<u64>,
     pub index: u64,
     pub account_mint: Option<&'b Pubkey>,
+    pub allowed_delegate: Option<&'b Pubkey>,
 }
 
 pub fn assert_builder_must_be_holder_check(
@@ -650,6 +674,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
         index,
         class_index,
         account_mint,
+        allowed_delegate,
     } = args;
 
     match permissiveness_to_use {
@@ -672,6 +697,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         //  token_account [readable]
                         //  token_holder [signer]
                         //  mint [readable] OR none if already present in the main array
+                        msg!("Doing token holder");
                         let token_account = &remaining_accounts[0];
                         let token_holder = &remaining_accounts[1];
                         let mint = if let Some(m) = account_mint {
@@ -679,15 +705,40 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         } else {
                             remaining_accounts[2].key()
                         };
-
+                        msg!("Asserting signer is token holder");
                         assert_signer(token_holder)?;
 
-                        let acct = assert_is_ata(token_account, token_holder.key, &mint)?;
+                        let acct =
+                            if get_player_token_pda(&given_account.key(), &token_holder.key())?
+                                != *token_account.key
+                            {
+                                msg!("Asserting ata on token account");
+                                assert_is_ata(
+                                    token_account,
+                                    token_holder.key,
+                                    &mint,
+                                    allowed_delegate,
+                                )?
+                            } else {
+                                // player uses pda, needs special treatment. Only happens
+                                // with token holder permission, and always happens with given account
+                                // is the item's key via begin and end item activation calls.
+                                // Avoids player contract needing to use ATAprogram and burn needless CPU.
+                                msg!("Asserting player pda on token account");
+                                assert_is_player_pda(
+                                    token_account,
+                                    &given_account.key(),
+                                    &token_holder.key(),
+                                    &mint,
+                                )?
+                            };
 
+                        msg!("Checking account has tokens in it");
                         if acct.amount == 0 {
                             return Err(error!(ErrorCode::InsufficientBalance));
                         }
 
+                        msg!("Checking the given account has proper derivation");
                         assert_derivation(
                             program_id,
                             given_account,
@@ -711,6 +762,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                             class_token_account,
                             class_token_holder.key,
                             &class_mint,
+                            allowed_delegate,
                         )?;
 
                         if acct.amount == 0 {
@@ -755,25 +807,34 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                     }
                 }
             } else {
-                // Default is metadata update authority.
-                // metadata_update_authority [signer]
-                // metadata [readable]
-                // mint [readable] OR none if already present in the main array
-                let metadata_update_authority = &remaining_accounts[0];
-                let metadata = &remaining_accounts[1];
+                //  default is token holder. most common usecase.
+                //  token_account [readable]
+                //  token_holder [signer]
+                //  mint [readable] OR none if already present in the main array
+                let token_account = &remaining_accounts[0];
+                let token_holder = &remaining_accounts[1];
                 let mint = if let Some(m) = account_mint {
                     *m
                 } else {
                     remaining_accounts[2].key()
                 };
+                msg!("Fell into default which is token holder, asserting signer of token holder");
+                assert_signer(token_holder)?;
 
-                assert_signer(metadata_update_authority)?;
+                msg!("Asserting ata");
+                let acct = assert_is_ata(token_account, token_holder.key, &mint, allowed_delegate)?;
 
-                assert_metadata_valid(metadata, None, &mint)?;
+                msg!("Asserting amount is 0");
+                if acct.amount == 0 {
+                    return Err(error!(ErrorCode::InsufficientBalance));
+                }
 
-                let update_authority = grab_update_authority(metadata)?;
-
-                assert_keys_equal(update_authority, *metadata_update_authority.key)?;
+                msg!("Asserting derivation of given account is correct");
+                assert_derivation(
+                    program_id,
+                    given_account,
+                    &[PREFIX.as_bytes(), mint.as_ref(), &index.to_le_bytes()],
+                )?;
             }
         }
         None => return Err(error!(ErrorCode::MustSpecifyPermissivenessType)),
@@ -816,17 +877,18 @@ pub fn propagate_parent_array<T: Inherited>(args: PropagateParentArrayArgs<T>) -
             match &child_items {
                 Some(c_items) => {
                     let mut new_items: Vec<T> = vec![];
+                    add_to_new_array_from_parent(
+                        InheritanceState::Inherited,
+                        p_items,
+                        &mut new_items,
+                    );
+
                     for item in c_items {
                         if item.get_inherited() == &InheritanceState::NotInherited {
                             new_items.push(item.clone())
                         }
                     }
 
-                    add_to_new_array_from_parent(
-                        InheritanceState::Inherited,
-                        p_items,
-                        &mut new_items,
-                    );
                     return Some(new_items);
                 }
                 None => {
@@ -1073,12 +1135,43 @@ pub fn assert_is_ata(
     ata: &AccountInfo,
     wallet: &Pubkey,
     mint: &Pubkey,
+    allowed_delegate: Option<&Pubkey>,
 ) -> Result<spl_token::state::Account> {
     assert_owned_by(ata, &spl_token::id())?;
     let ata_account: spl_token::state::Account = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet)?;
     assert_keys_equal(ata_account.mint, mint.key())?;
     assert_keys_equal(get_associated_token_address(wallet, mint), *ata.key)?;
+    if let Some(p) = allowed_delegate {
+        require!(
+            ata_account.delegate.unwrap() == *p,
+            ExpectedDelegateToMatchProvided
+        );
+    } else {
+        require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+    }
+    Ok(ata_account)
+}
+
+pub fn get_player_token_pda(item: &Pubkey, player: &Pubkey) -> Result<Pubkey> {
+    let (key, _) = Pubkey::find_program_address(
+        &["player".as_bytes(), item.as_ref(), player.as_ref()],
+        &Pubkey::from_str(PLAYER_ID).unwrap(),
+    );
+    return Ok(key);
+}
+
+pub fn assert_is_player_pda(
+    ata: &AccountInfo,
+    item: &Pubkey,
+    player: &Pubkey,
+    mint: &Pubkey,
+) -> Result<spl_token::state::Account> {
+    assert_owned_by(ata, &spl_token::id())?;
+    let ata_account: spl_token::state::Account = assert_initialized(ata)?;
+    assert_keys_equal(ata_account.owner, *player)?;
+    assert_keys_equal(ata_account.mint, mint.key())?;
+    assert_keys_equal(get_player_token_pda(item, player)?, *ata.key)?;
     require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
     Ok(ata_account)
 }
@@ -1620,7 +1713,7 @@ pub struct VerifyAndAffectItemStateUpdateArgs<'a, 'info> {
 
 pub fn verify_and_affect_item_state_update(
     args: VerifyAndAffectItemStateUpdateArgs,
-) -> Result<(ItemUsage, ItemUsageState)> {
+) -> Result<ItemUsage> {
     let VerifyAndAffectItemStateUpdateArgs {
         item,
         item_class,
@@ -1656,7 +1749,7 @@ pub fn verify_and_affect_item_state_update(
         }
     };
 
-    let usage_state = if let Some(usage_state_root) = &item.data.usage_state_root {
+    if let Some(usage_state_root) = &item.data.usage_state_root {
         if let Some(us_info) = &usage_info {
             let UsageInfo {
                 usage_state_proof,
@@ -1748,7 +1841,7 @@ pub fn verify_and_affect_item_state_update(
         return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
     };
 
-    Ok((item_usage.clone(), usage_state.clone()))
+    Ok(item_usage.clone())
 }
 
 pub struct GetItemUsageArgs<'a, 'info> {
@@ -1815,6 +1908,93 @@ pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
     };
 
     return true;
+}
+
+pub struct GetItemUsageAndItemUsageStateArgs<'a, 'info> {
+    pub item: &'a mut Account<'info, Item>,
+    pub item_class: &'a Account<'info, ItemClass>,
+    pub usage_index: u16,
+    pub usage_info: &'a Option<CraftUsageInfo>,
+}
+
+pub fn get_item_usage_and_item_usage_state(
+    args: GetItemUsageAndItemUsageStateArgs,
+) -> Result<(ItemUsage, ItemUsageState)> {
+    let GetItemUsageAndItemUsageStateArgs {
+        item,
+        item_class,
+        usage_index,
+        usage_info,
+    } = args;
+
+    let mut get_item_args = GetItemUsageArgs {
+        item_class,
+        usage_index,
+        usage: None,
+        usage_proof: None,
+    };
+
+    if let Some(us_info) = usage_info {
+        get_item_args.usage = Some(us_info.craft_usage.clone());
+        get_item_args.usage_proof = Some(us_info.craft_usage_proof.clone())
+    }
+
+    let item_usage = get_item_usage(get_item_args)?;
+
+    let usage_state = if let Some(usage_state_root) = &item.data.usage_state_root {
+        if let Some(us_info) = &usage_info {
+            let CraftUsageInfo {
+                craft_usage_state_proof,
+                craft_usage_state,
+                ..
+            } = us_info;
+
+            // Verify the new state and old state are both part of their respective trees
+            let chief_node = anchor_lang::solana_program::keccak::hashv(&[
+                &[0x00],
+                &AnchorSerialize::try_to_vec(craft_usage_state)?,
+            ]);
+            require!(
+                verify(
+                    craft_usage_state_proof,
+                    &usage_state_root.root,
+                    chief_node.0
+                ),
+                InvalidProof
+            );
+
+            // Require that the index matches up to what you sent
+
+            require!(craft_usage_state.index == usage_index, UsageIndexMismatch);
+
+            craft_usage_state
+        } else {
+            return Err(error!(ErrorCode::MissingMerkleInfo));
+        }
+    } else if let Some(usage_states) = &mut item.data.usage_states {
+        if usage_states.is_empty() {
+            return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
+        } else {
+            let mut usage_state: Option<&mut ItemUsageState> = None;
+            for n_usage_state in usage_states {
+                if n_usage_state.index == usage_index {
+                    let unwrapped_usage_state = n_usage_state;
+                    usage_state = Some(unwrapped_usage_state);
+                    break;
+                }
+            }
+
+            if let Some(usage_state) = usage_state {
+                usage_state
+            } else {
+                return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
+            }
+        }
+    } else {
+        return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
+    };
+
+    Ok((item_usage.clone(), usage_state.clone()))
 }
 
 pub fn join_to_namespace(

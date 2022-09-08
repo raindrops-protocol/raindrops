@@ -14,8 +14,8 @@ pub fn assert_part_of_namespace<'a>(
     namespace: &Account<'a, Namespace>,
 ) -> Result<()> {
     let data = artifact.data.borrow_mut();
-    let number = u32::from_le_bytes(*array_ref![data, 8, 4]) as usize;
-    let offset = 12 as usize;
+    let number = u32::from_le_bytes(*array_ref![data, 9, 4]) as usize;
+    let offset = 13 as usize;
     msg!("number: {}, offset: {}", number, offset);
     for i in 0..number {
         let key_bytes = array_ref![data, offset + i * 33, 32];
@@ -45,7 +45,7 @@ pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u
     Ok(bump)
 }
 
-pub fn assert_signer(account: &UncheckedAccount) -> Result<()> {
+pub fn assert_signer(account: &AccountInfo) -> Result<()> {
     if !account.is_signer {
         Err(ProgramError::MissingRequiredSignature.into())
     } else {
@@ -124,7 +124,7 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
 pub fn check_permissiveness_against_holder<'a>(
     program_id: &Pubkey,
     artifact: &UncheckedAccount<'a>,
-    token_holder: &UncheckedAccount<'a>,
+    token_holder: &AccountInfo<'a>,
     namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
     permissiveness: &Permissiveness,
 ) -> Result<()> {
@@ -151,16 +151,6 @@ pub fn check_permissiveness_against_holder<'a>(
                                     msg!("Whitelisted!");
                                     continue 'filter_loop;
                                 }
-                            }
-                        }
-                        return Err(error!(ErrorCode::CannotJoinNamespace));
-                    }
-                    Filter::Category { namespace, .. } => {
-                        msg!("category filter");
-                        for n in &art_namespaces {
-                            if n == namespace {
-                                msg!("Whitelisted!");
-                                continue 'filter_loop;
                             }
                         }
                         return Err(error!(ErrorCode::CannotJoinNamespace));
@@ -193,14 +183,6 @@ pub fn check_permissiveness_against_holder<'a>(
                                     msg!("Blacklisted!");
                                     return Err(error!(ErrorCode::CannotJoinNamespace));
                                 }
-                            }
-                        }
-                    }
-                    Filter::Category { namespace, .. } => {
-                        for n in &art_namespaces {
-                            if n == namespace {
-                                msg!("Blacklisted!");
-                                return Err(error!(ErrorCode::CannotJoinNamespace));
                             }
                         }
                     }

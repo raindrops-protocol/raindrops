@@ -1,0 +1,53 @@
+{
+  "playerMint": "edo3DzeqXsFzoaEhGHVn1GRCcFf4CWTaUSU4DDDVpJY",
+  "playerClassMint": "GwB8ZtjDXYNR4iheuSS2uLa7EYC9J7b8yaRY9YmXXqUh",
+  "updatePermissivenessToUse": { "tokenHolder": true },
+  "classIndex": 3,
+  "index": 3,
+  "metadataUpdateAuthority": null,
+  "updates": {
+    "statsUri": {
+      "statsUri": "www.aol2.com",
+      "inherited": { "notInherited": true }
+    },
+    "category": null,
+    "basicStats": [
+      {
+        "index": 0,
+        "state": {
+          "integer": {
+            "base": 6,
+            "withTemporaryChanges": 0,
+            "temporaryNumerator": 0,
+            "temporaryDivisor": 0,
+            "finalized": 0
+          }
+        }
+      },
+      {
+        "index": 2,
+        "state": {
+          "bool": {
+            "current": true
+          }
+        }
+      },
+      {
+        "index": 3,
+        "state": {
+          "enum": {
+            "current": 1
+          }
+        }
+      },
+      {
+        "index": 1,
+        "state": {
+          "string": {
+            "current": "bobby"
+          }
+        }
+      }
+    ]
+  }
+}

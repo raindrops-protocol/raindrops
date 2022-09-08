@@ -21,7 +21,7 @@ import {
   getItemPDA,
   getMetadata,
 } from "../utils/pda";
-import { PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
+import { TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
@@ -37,6 +37,12 @@ const ITEM_CLASS_DATA_ARGS_CONVERT_TO_BNS = [
   "itemClassData.config.components.[].timeToBuild",
   "itemClassData.config.usages.[].validation.code",
   "itemClassData.config.usages.[].callback.code",
+  "itemClassData.config.usages.[].basicItemEffects.[].amount",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingAmountNumerator",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingAmountDivisor",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingDurationDivisor",
+  "itemClassData.config.usages.[].basicItemEffects.[].stakingDurationDivisor",
+  "itemClassData.config.usages.[].basicItemEffects.[].activeDuration",
   "itemClassData.config.usages.[].itemClassType.consumable.maxUses",
   "itemClassData.config.usages.[].itemClassType.consumable.maxPlayersPerUse",
   "itemClassData.config.usages.[].itemClassType.consumable.warmupDuration",
@@ -365,13 +371,14 @@ export class Instruction extends SolKitInstruction {
 
   async updateValidForUseIfWarmupPassed(
     args: UpdateValidForUseIfWarmupPassedArgs,
-    accounts: UpdateValidForUseIfWarmupPassedAccounts = {},
+    accounts: UpdateValidForUseIfWarmupPassedAccounts,
     additionalArgs: UpdateValidForUseIfWarmupPassedAdditionalArgs = {}
   ) {
     const itemActivationMarker = (
       await getItemActivationMarker({
         itemMint: args.itemMint,
         index: args.index,
+        itemAccount: accounts.itemAccount,
         usageIndex: new BN(args.usageIndex),
         amount: args.amount,
       })
@@ -382,6 +389,15 @@ export class Instruction extends SolKitInstruction {
         .updateValidForUseIfWarmupPassed(args)
         .accounts({
           item: (await getItemPDA(args.itemMint, args.index))[0],
+          itemAccount:
+            accounts.itemAccount ||
+            (
+              await getAtaForMint(
+                args.itemMint,
+                (this.program.client.provider as AnchorProvider).wallet
+                  .publicKey
+              )
+            )[0],
           itemClass: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
           itemActivationMarker,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
@@ -476,7 +492,7 @@ export class Instruction extends SolKitInstruction {
     const craftItemObj = await this.program.client.account.item.fetch(
       craftItem
     );
-    let instructions = [];
+    const instructions = [];
 
     instructions.push(
       Token.createApproveInstruction(
@@ -665,7 +681,7 @@ export class Instruction extends SolKitInstruction {
     const remainingAccounts =
       await generateRemainingAccountsGivenPermissivenessToUse({
         permissivenessToUse: args.usagePermissivenessToUse,
-        tokenMint: accounts.itemMint,
+        tokenMint: args.itemMint,
         parentMint: args.itemClassMint,
         parentIndex: args.classIndex,
         parent: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
@@ -677,99 +693,48 @@ export class Instruction extends SolKitInstruction {
       await getItemPDA(args.itemClassMint, args.classIndex)
     )[0];
 
-    const [itemActivationMarker, itemActivationBump] =
-      await getItemActivationMarker({
-        itemMint: accounts.itemMint,
-        index: args.index,
-        usageIndex: new BN(args.usageIndex),
-        amount: args.amount,
-      });
+    const [itemActivationMarker, _] = await getItemActivationMarker({
+      itemMint: args.itemMint,
+      itemAccount: accounts.itemAccount,
+      index: args.index,
+      usageIndex: new BN(args.usageIndex),
+      amount: args.amount,
+    });
 
-    const instructions: TransactionInstruction[] = [];
-    const itemTransferAuthority = accounts.itemTransferAuthority;
-
-    if (
-      accounts.itemAccount &&
-      accounts.itemAccount.equals(
-        (
-          await getAtaForMint(
-            accounts.itemMint,
-            (this.program.client.provider as AnchorProvider).wallet.publicKey
-          )
-        )[0]
-      )
-    ) {
-      if (!itemTransferAuthority) {
-        throw new Error(
-          "itemTransferAuthority must be specified if itemAccount is itemMint's ATA"
-        );
-      }
-      instructions.push(
-        Token.createApproveInstruction(
-          TOKEN_PROGRAM_ID,
-          accounts.itemAccount,
-          itemTransferAuthority.publicKey,
-          (this.program.client.provider as AnchorProvider).wallet.publicKey,
-          [],
-          args.amount.toNumber()
-        )
-      );
-    }
-
-    const itemKey = (await getItemPDA(accounts.itemMint, args.index))[0];
+    const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
 
     const validationKey =
       args.itemClass.object.itemClassData.config.usages?.[args.usageIndex]
         .validation?.key;
-    const validationProgram: PublicKey = !!validationKey
+    const validationProgram: PublicKey = validationKey
       ? new web3.PublicKey(validationKey)
       : SystemProgram.programId;
 
-    instructions.push(
+    return [
       await this.program.client.methods
         .beginItemActivation(args)
         .accounts({
           itemClass: itemClassKey,
-          itemMint: accounts.itemMint,
           item: itemKey,
-          itemAccount: accounts.itemAccount as Address,
-          itemTransferAuthority: itemTransferAuthority?.publicKey,
+          itemAccount: (accounts.itemAccount ||
+            (
+              await getAtaForMint(
+                args.itemMint,
+                (this.program.client.provider as AnchorProvider).wallet
+                  .publicKey
+              )
+            )[0]) as Address,
           itemActivationMarker,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
-          playerProgram: PLAYER_ID,
           systemProgram: SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
           validationProgram,
         })
         .remainingAccounts(remainingAccounts)
-        .instruction()
-    );
-
-    if (
-      accounts.itemAccount &&
-      accounts.itemAccount.equals(
-        (
-          await getAtaForMint(
-            accounts.itemMint,
-            (this.program.client.provider as AnchorProvider).wallet.publicKey
-          )
-        )[0]
-      )
-    ) {
-      instructions.push(
-        Token.createRevokeInstruction(
-          TOKEN_PROGRAM_ID,
-          accounts.itemAccount,
-          (this.program.client.provider as AnchorProvider).wallet.publicKey,
-          []
-        )
-      );
-    }
-
-    return instructions;
+        .instruction(),
+    ];
   }
 
   async endItemActivation(
@@ -780,7 +745,7 @@ export class Instruction extends SolKitInstruction {
     const remainingAccounts =
       await generateRemainingAccountsGivenPermissivenessToUse({
         permissivenessToUse: args.usagePermissivenessToUse,
-        tokenMint: args.itemMint,
+        tokenMint: accounts.itemMint,
         parentMint: args.itemClassMint,
         parentIndex: args.classIndex,
         parent: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
@@ -794,28 +759,68 @@ export class Instruction extends SolKitInstruction {
 
     const itemActivationMarker = (
       await getItemActivationMarker({
-        itemMint: args.itemMint,
+        itemMint: accounts.itemMint,
+        itemAccount: accounts.itemAccount,
         index: args.index,
         usageIndex: new BN(args.usageIndex),
         amount: args.amount,
       })
     )[0];
 
-    const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
-    return [
+    const itemKey = (await getItemPDA(accounts.itemMint, args.index))[0];
+
+    const instructions: TransactionInstruction[] = [];
+    const itemTransferAuthority = accounts.itemTransferAuthority;
+
+    if (itemTransferAuthority) {
+      instructions.push(
+        Token.createApproveInstruction(
+          TOKEN_PROGRAM_ID,
+          accounts.itemAccount,
+          itemTransferAuthority.publicKey,
+          (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          [],
+          args.amount.toNumber()
+        )
+      );
+    }
+    instructions.push(
       await this.program.client.methods
         .endItemActivation(args)
         .accounts({
           itemClass: itemClassKey,
           item: itemKey,
+          itemMint: accounts.itemMint,
+          itemTransferAuthority: itemTransferAuthority
+            ? itemTransferAuthority.publicKey
+            : (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          itemAccount:
+            accounts.itemAccount ||
+            (
+              await getAtaForMint(accounts.itemMint, accounts.originator)
+            )[0],
           itemActivationMarker,
+          tokenProgram: TOKEN_PROGRAM_ID,
           receiver:
             accounts.originator ||
             (this.program.client.provider as AnchorProvider).wallet.publicKey,
         })
         .remainingAccounts(remainingAccounts)
-        .instruction(),
-    ];
+        .instruction()
+    );
+
+    if (itemTransferAuthority) {
+      instructions.push(
+        Token.createRevokeInstruction(
+          TOKEN_PROGRAM_ID,
+          accounts.itemAccount,
+          (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          []
+        )
+      );
+    }
+
+    return instructions;
   }
 
   async drainItemEscrow(
@@ -935,23 +940,20 @@ export class Instruction extends SolKitInstruction {
 
   async updateItem(
     args: UpdateItemArgs,
-    accounts: UpdateItemAccounts,
-    additionalArgs: UpdateItemAdditionalArgs
+    _accounts: UpdateItemAccounts = {},
+    _additionalArgs: UpdateItemAdditionalArgs = {}
   ) {
     const itemClassKey = (
       await getItemPDA(args.itemClassMint, args.classIndex)
     )[0];
 
     const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
-
     return [
       await this.program.client.methods
         .updateItem(args)
         .accounts({
-          accounts: {
-            itemClass: itemClassKey,
-            item: itemKey,
-          },
+          itemClass: itemClassKey,
+          item: itemKey,
         })
         .instruction(),
     ];
@@ -1074,7 +1076,9 @@ export interface UpdateValidForUseIfWarmupPassedArgs {
   usage: null;
 }
 
-export interface UpdateValidForUseIfWarmupPassedAccounts {}
+export interface UpdateValidForUseIfWarmupPassedAccounts {
+  itemAccount: web3.PublicKey | null;
+}
 
 export interface UpdateValidForUseIfWarmupPassedAdditionalArgs {}
 
@@ -1160,18 +1164,18 @@ export interface BeginItemActivationArgs {
   classIndex: BN;
   index: BN;
   itemClassMint: web3.PublicKey;
+  itemMint: web3.PublicKey;
   itemMarkerSpace: number;
   usagePermissivenessToUse: null | AnchorPermissivenessType;
   amount: BN;
   usageIndex: number;
   usageInfo: null;
   itemClass: ItemClassWrapper;
+  target: web3.PublicKey | null;
 }
 
 export interface BeginItemActivationAccounts {
-  itemMint: web3.PublicKey;
   itemAccount: null | web3.PublicKey;
-  itemTransferAuthority: null | web3.Keypair;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 
@@ -1180,17 +1184,18 @@ export interface BeginItemActivationAdditionalArgs {}
 export interface EndItemActivationArgs {
   classIndex: BN;
   index: BN;
-  itemMint: web3.PublicKey;
   itemClassMint: web3.PublicKey;
   usagePermissivenessToUse: null | AnchorPermissivenessType;
   amount: BN;
   usageIndex: number;
-  usageProof: null | web3.PublicKey[];
-  usage: null;
+  usageInfo: null;
 }
 
 export interface EndItemActivationAccounts {
   originator: web3.PublicKey;
+  itemMint: web3.PublicKey;
+  itemAccount: null | web3.PublicKey;
+  itemTransferAuthority: null | web3.Keypair;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 

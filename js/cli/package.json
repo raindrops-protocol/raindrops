@@ -1,11 +1,12 @@
 {
   "name": "@raindrops-protocol/raindrops-cli",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "license": "Apache-2.0",
   "bin": {
     "items-cli": "./src/item.ts",
     "matches-cli": "./src/matches.ts",
     "namespace-cli": "./src/namespace.ts",
+    "player-cli": "./src/player.ts",
     "staking-cli": "./src/staking.ts"
   },
   "scripts": {
@@ -54,6 +55,7 @@
     "@typescript-eslint/parser": "latest",
     "eslint": "latest",
     "pkg": "^5.3.1",
+    "prettier": "^2.7.1",
     "typescript": "^4.3.5"
   }
 }

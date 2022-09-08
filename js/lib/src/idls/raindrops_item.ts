@@ -1,6 +1,6 @@
-export type Item = {
+export type RaindropsItem = {
   "version": "0.1.0",
-  "name": "item",
+  "name": "raindrops_item",
   "instructions": [
     {
       "name": "createItemClass",
@@ -572,19 +572,9 @@ export type Item = {
           "isSigner": false
         },
         {
-          "name": "itemMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemTransferAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "itemActivationMarker",
@@ -597,17 +587,7 @@ export type Item = {
           "isSigner": true
         },
         {
-          "name": "playerProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -645,6 +625,21 @@ export type Item = {
           "isSigner": false
         },
         {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemTransferAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
           "name": "itemClass",
           "isMut": false,
           "isSigner": false
@@ -652,6 +647,11 @@ export type Item = {
         {
           "name": "itemActivationMarker",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -683,6 +683,11 @@ export type Item = {
           "isSigner": false
         },
         {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "itemActivationMarker",
           "isMut": true,
           "isSigner": false
@@ -707,6 +712,11 @@ export type Item = {
         },
         {
           "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
           "isMut": false,
           "isSigner": false
         },
@@ -741,6 +751,11 @@ export type Item = {
         {
           "name": "itemClass",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1002,9 +1017,7 @@ export type Item = {
           },
           {
             "name": "amount",
-            "type": {
-              "option": "u64"
-            }
+            "type": "u64"
           },
           {
             "name": "unixTimestamp",
@@ -1016,6 +1029,12 @@ export type Item = {
               "option": {
                 "defined": "ItemActivationMarkerProofCounter"
               }
+            }
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
             }
           }
         ]
@@ -1726,6 +1745,10 @@ export type Item = {
             "type": "publicKey"
           },
           {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
             "name": "itemMarkerSpace",
             "type": "u8"
           },
@@ -1744,6 +1767,12 @@ export type Item = {
           {
             "name": "usageIndex",
             "type": "u16"
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
+            }
           },
           {
             "name": "usageInfo",
@@ -2003,10 +2032,6 @@ export type Item = {
             "type": "publicKey"
           },
           {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
             "name": "usagePermissivenessToUse",
             "type": {
               "option": {
@@ -2031,23 +2056,10 @@ export type Item = {
             "type": "u64"
           },
           {
-            "name": "usageProof",
+            "name": "usageInfo",
             "type": {
               "option": {
-                "vec": {
-                  "array": [
-                    "u8",
-                    32
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "name": "usage",
-            "type": {
-              "option": {
-                "defined": "ItemUsage"
+                "defined": "CraftUsageInfo"
               }
             }
           }
@@ -3302,13 +3314,23 @@ export type Item = {
       "code": 6065,
       "name": "MustBeCalledByStakingProgram",
       "msg": "Must be called by staking program"
+    },
+    {
+      "code": 6066,
+      "name": "ExpectedDelegateToMatchProvided",
+      "msg": "Expected delegate to match provided"
+    },
+    {
+      "code": 6067,
+      "name": "CannotEffectTheSameStatTwice",
+      "msg": "Cannot affect the same stat twice"
     }
   ]
 };
 
-export const IDL: Item = {
+export const IDL: RaindropsItem = {
   "version": "0.1.0",
-  "name": "item",
+  "name": "raindrops_item",
   "instructions": [
     {
       "name": "createItemClass",
@@ -3880,19 +3902,9 @@ export const IDL: Item = {
           "isSigner": false
         },
         {
-          "name": "itemMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemTransferAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "itemActivationMarker",
@@ -3905,17 +3917,7 @@ export const IDL: Item = {
           "isSigner": true
         },
         {
-          "name": "playerProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -3953,6 +3955,21 @@ export const IDL: Item = {
           "isSigner": false
         },
         {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemTransferAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
           "name": "itemClass",
           "isMut": false,
           "isSigner": false
@@ -3960,6 +3977,11 @@ export const IDL: Item = {
         {
           "name": "itemActivationMarker",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -3991,6 +4013,11 @@ export const IDL: Item = {
           "isSigner": false
         },
         {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "itemActivationMarker",
           "isMut": true,
           "isSigner": false
@@ -4015,6 +4042,11 @@ export const IDL: Item = {
         },
         {
           "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
           "isMut": false,
           "isSigner": false
         },
@@ -4049,6 +4081,11 @@ export const IDL: Item = {
         {
           "name": "itemClass",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -4310,9 +4347,7 @@ export const IDL: Item = {
           },
           {
             "name": "amount",
-            "type": {
-              "option": "u64"
-            }
+            "type": "u64"
           },
           {
             "name": "unixTimestamp",
@@ -4324,6 +4359,12 @@ export const IDL: Item = {
               "option": {
                 "defined": "ItemActivationMarkerProofCounter"
               }
+            }
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
             }
           }
         ]
@@ -5034,6 +5075,10 @@ export const IDL: Item = {
             "type": "publicKey"
           },
           {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
             "name": "itemMarkerSpace",
             "type": "u8"
           },
@@ -5052,6 +5097,12 @@ export const IDL: Item = {
           {
             "name": "usageIndex",
             "type": "u16"
+          },
+          {
+            "name": "target",
+            "type": {
+              "option": "publicKey"
+            }
           },
           {
             "name": "usageInfo",
@@ -5311,10 +5362,6 @@ export const IDL: Item = {
             "type": "publicKey"
           },
           {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
             "name": "usagePermissivenessToUse",
             "type": {
               "option": {
@@ -5339,23 +5386,10 @@ export const IDL: Item = {
             "type": "u64"
           },
           {
-            "name": "usageProof",
+            "name": "usageInfo",
             "type": {
               "option": {
-                "vec": {
-                  "array": [
-                    "u8",
-                    32
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "name": "usage",
-            "type": {
-              "option": {
-                "defined": "ItemUsage"
+                "defined": "CraftUsageInfo"
               }
             }
           }
@@ -6610,6 +6644,16 @@ export const IDL: Item = {
       "code": 6065,
       "name": "MustBeCalledByStakingProgram",
       "msg": "Must be called by staking program"
+    },
+    {
+      "code": 6066,
+      "name": "ExpectedDelegateToMatchProvided",
+      "msg": "Expected delegate to match provided"
+    },
+    {
+      "code": 6067,
+      "name": "CannotEffectTheSameStatTwice",
+      "msg": "Cannot affect the same stat twice"
     }
   ]
 };

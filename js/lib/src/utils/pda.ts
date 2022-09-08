@@ -132,6 +132,7 @@ export const getPlayerPDA = async (
 
 export const getItemActivationMarker = async (args: {
   itemMint: web3.PublicKey;
+  itemAccount: web3.PublicKey;
   index: BN;
   usageIndex: BN;
   amount: BN;
@@ -140,6 +141,7 @@ export const getItemActivationMarker = async (args: {
     [
       Buffer.from(ITEM_PREFIX),
       args.itemMint.toBuffer(),
+      args.itemAccount.toBuffer(),
       args.index.toArrayLike(Buffer, "le", 8),
       args.usageIndex.toArrayLike(Buffer, "le", 8),
       args.amount.toArrayLike(Buffer, "le", 8),
@@ -149,11 +151,40 @@ export const getItemActivationMarker = async (args: {
   );
 };
 
+export const getPlayerItemAccount = async (args: {
+  item: web3.PublicKey;
+  player: web3.PublicKey;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [Buffer.from(PLAYER_PREFIX), args.item.toBuffer(), args.player.toBuffer()],
+    PLAYER_ID
+  );
+};
+
+export const getPlayerItemActivationMarker = async (args: {
+  item: web3.PublicKey;
+  player: web3.PublicKey;
+  itemUsageIndex: BN;
+  amount: BN;
+}): Promise<[web3.PublicKey, number]> => {
+  return await web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from(PLAYER_PREFIX),
+      args.item.toBuffer(),
+      args.player.toBuffer(),
+      args.itemUsageIndex.toArrayLike(Buffer, "le", 8),
+      args.amount.toArrayLike(Buffer, "le", 8),
+      Buffer.from(MARKER),
+    ],
+    PLAYER_ID
+  );
+};
+
 export const getCraftItemCounter = async (args: {
   itemClassMint: web3.PublicKey;
   newItemMint: web3.PublicKey;
   craftItemMint: web3.PublicKey;
-  componentScope: String;
+  componentScope: string;
   craftItemIndex: BN;
   craftEscrowIndex: BN;
   classIndex: BN;
@@ -181,7 +212,7 @@ export const getCraftItemEscrow = async (args: {
   craftItemMint: web3.PublicKey;
   amountToMake: BN;
   amountToContributeFromThisContributor: BN;
-  componentScope: String;
+  componentScope: string;
   craftIndex: BN;
   classIndex: BN;
   craftEscrowIndex: BN;
@@ -211,7 +242,7 @@ export const getItemEscrow = async (args: {
   newItemMint: web3.PublicKey;
   newItemToken: web3.PublicKey;
   amountToMake: BN;
-  componentScope: String;
+  componentScope: string;
   craftEscrowIndex: BN;
   classIndex: BN;
 }): Promise<[web3.PublicKey, number]> => {

@@ -14,8 +14,7 @@ const { PDA } = Utils;
 const { loadWalletKey } = Wallet;
 
 import ItemState = State.Item;
-import InheritanceState = State;
-import PermissivenessType = State;
+const { PermissivenessType, InheritanceState } = State;
 
 programCommand("create_item_class")
   .requiredOption(
@@ -74,8 +73,8 @@ programCommand("create_item_class")
           ? new web3.PublicKey(config.parent.mint)
           : null,
         parentOfParentClass: config.parent?.parent
-           ? new web3.PublicKey(config.parent.parent.key)
-           : null,
+          ? new web3.PublicKey(config.parent.parent.key)
+          : null,
         parentOfParentClassMint: config.parent?.parent
           ? new web3.PublicKey(config.parent.parent.mint)
           : null,
@@ -533,20 +532,20 @@ programCommand("begin_item_activation")
         usageInfo: null,
         usageIndex: config.usageIndex,
         usagePermissivenessToUse: config.usagePermissivenessToUse,
+        itemMint: new web3.PublicKey(config.itemMint),
+        target: config.target ? new web3.PublicKey(config.target) : null,
       },
       {
-        itemMint: new web3.PublicKey(config.itemMint),
         itemAccount: config.itemAccount
           ? new web3.PublicKey(config.itemAccount)
           : (
               await PDA.getAtaForMint(
                 new web3.PublicKey(config.itemMint),
-                walletKeyPair.publicKey
+                config.originator
+                  ? new web3.PublicKey(config.originator)
+                  : walletKeyPair.publicKey
               )
             )[0],
-        itemTransferAuthority: transferAuthority
-          ? loadWalletKey(transferAuthority)
-          : null,
         metadataUpdateAuthority: new web3.PublicKey(
           config.metadataUpdateAuthority
         ),
@@ -580,13 +579,27 @@ programCommand("end_item_activation")
         amount: new BN(config.amount || 1),
         index: new BN(config.index),
         usageIndex: config.usageIndex,
-        itemMint: new web3.PublicKey(config.itemMint),
-        usageProof: null,
-        usage: null,
+        usageInfo: null,
         usagePermissivenessToUse: config.usagePermissivenessToUse,
       },
       {
-        originator: config.originator || walletKeyPair.publicKey,
+        originator: config.originator
+          ? new web3.PublicKey(config.originator)
+          : walletKeyPair.publicKey,
+        itemTransferAuthority: transferAuthority
+          ? loadWalletKey(transferAuthority)
+          : null,
+        itemAccount: config.itemAccount
+          ? new web3.PublicKey(config.itemAccount)
+          : (
+              await PDA.getAtaForMint(
+                new web3.PublicKey(config.itemMint),
+                config.originator
+                  ? new web3.PublicKey(config.originator)
+                  : walletKeyPair.publicKey
+              )
+            )[0],
+        itemMint: new web3.PublicKey(config.itemMint),
         metadataUpdateAuthority: new web3.PublicKey(
           config.metadataUpdateAuthority
         ),
@@ -613,16 +626,30 @@ programCommand("update_valid_for_use_if_warmup_passed")
     //@ts-ignore
     const config = JSON.parse(configString);
 
-    await anchorProgram.updateValidForUseIfWarmupPassed({
-      classIndex: new BN(config.classIndex || 0),
-      itemClassMint: new web3.PublicKey(config.itemClassMint),
-      amount: new BN(config.amount || 1),
-      index: new BN(config.index),
-      usageIndex: config.usageIndex,
-      itemMint: new web3.PublicKey(config.itemMint),
-      usageProof: null,
-      usage: null,
-    });
+    await anchorProgram.updateValidForUseIfWarmupPassed(
+      {
+        classIndex: new BN(config.classIndex || 0),
+        itemClassMint: new web3.PublicKey(config.itemClassMint),
+        amount: new BN(config.amount || 1),
+        index: new BN(config.index),
+        usageIndex: config.usageIndex,
+        itemMint: new web3.PublicKey(config.itemMint),
+        usageProof: null,
+        usage: null,
+      },
+      {
+        itemAccount: config.itemAccount
+          ? new web3.PublicKey(config.itemAccount)
+          : (
+              await PDA.getAtaForMint(
+                new web3.PublicKey(config.itemMint),
+                config.originator
+                  ? new web3.PublicKey(config.originator)
+                  : walletKeyPair.publicKey
+              )
+            )[0],
+      }
+    );
   });
 
 programCommand("show_item_build")
@@ -684,21 +711,19 @@ programCommand("show_item_build")
   });
 
 programCommand("show_item")
-  .option("-m, --mint <string>", "If no json file, provide mint directly")
-  .option(
+  .requiredOption("-m, --mint <string>", "mint")
+  .requiredOption(
     "-i, --index <string>",
     "index. Normally is 0, defaults to 0. Allows for more than one item class def per nft."
   )
   .action(async (files: string[], cmd) => {
-    const { keypair, env, configPath, rpcUrl, mint, index } = cmd.opts();
+    const { keypair, env, rpcUrl, mint, index } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
 
-    let actualMint: web3.PublicKey, actualIndex: BN;
-
-    actualMint = new web3.PublicKey(mint);
-    actualIndex = new BN(index);
+    const actualMint = new web3.PublicKey(mint);
+    const actualIndex = new BN(index);
 
     const itemKey = (await PDA.getItemPDA(actualMint, actualIndex))[0];
 
@@ -759,7 +784,7 @@ programCommand("show_item")
     if (item.data.usageStates)
       item.data.usageStates.map((u) => {
         log.info("----> Index:", u.index);
-        log.info("----> # Times Used:", u.uses);
+        log.info("----> # Times Used:", u.uses.toNumber());
         log.info(
           "----> Activated At:",
           u.activatedAt
@@ -815,7 +840,7 @@ programCommand("show_item_class")
               log.info(
                 `--> ${
                   InheritanceState[u.inherited]
-                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+                } ${u.namespace.toBase58()} Indexed: ${u.index}`
               );
           })
         : "Not Set"
@@ -888,7 +913,7 @@ programCommand("show_item_class")
             }`
           );
         })
-      : "Default to Update Authority on Metadata";
+      : "Default to Token Holder";
     log.info("----> Build Permissiveness:");
     settings.buildPermissiveness
       ? settings.buildPermissiveness.forEach((u) => {
@@ -986,7 +1011,6 @@ programCommand("show_item_class")
       });
 
     log.info("----> Usages:");
-
     if (config.usages)
       config.usages.forEach((u) => {
         log.info("------> Index:", u.index);
@@ -1039,7 +1063,7 @@ programCommand("show_item_class")
 
             log.info(
               "--------> Active Duration:",
-              ItemState.BasicItemEffectType[b.itemEffectType]
+              b.activeDuration ? b.activeDuration.toNumber() : "Not Set"
             );
 
             log.info(
@@ -1076,7 +1100,7 @@ programCommand("show_item_class")
           });
         }
 
-        if ((u.itemClassType as any).bodyPart) {
+        if ((u.itemClassType as any).wearable) {
           const itemClassType = u.itemClassType.wearable as ItemState.Wearable;
           log.info("------> Wearable:");
           log.info(
@@ -1085,12 +1109,10 @@ programCommand("show_item_class")
               ? itemClassType.limitPerPart.toNumber()
               : "Not Set"
           );
-          log.info(
-            "--------> Body Parts:",
-            itemClassType.bodyPart.forEach((b) => {
-              log.info(`----------> ${b}`);
-            })
-          );
+          log.info("--------> Body Parts:");
+          itemClassType.bodyPart.forEach((b) => {
+            log.info(`----------> ${b}`);
+          });
         } else {
           const itemClassType = u.itemClassType
             .consumable as ItemState.Consumable;
@@ -1138,7 +1160,7 @@ programCommand("update_item_class")
     "Permissionlessly update inherited fields"
   )
   .action(async (files: string[], cmd) => {
-    const { keypair, env, configPath, rpcUrl, inheritenceUpdate } = cmd.opts();
+    const { keypair, env, configPath, rpcUrl, inheritanceUpdate } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
     const anchorProgram = await getItemProgram(walletKeyPair, env, rpcUrl);
@@ -1186,7 +1208,9 @@ programCommand("update_item_class")
           : walletKeyPair.publicKey,
       },
       {
-        permissionless: inheritenceUpdate,
+        permissionless:
+          inheritanceUpdate ||
+          (config.updatePermissivenessToUse ? false : true),
       }
     );
   });

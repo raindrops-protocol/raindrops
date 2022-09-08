@@ -17,13 +17,17 @@ import {
   convertTokenType,
   convertPermissiveness,
   RaindropsProgram,
+  Namespace,
 } from "../state/namespace";
 import * as splToken from "@solana/spl-token";
+import { Common } from "../constants";
 
 export interface InitializeNamespaceAccounts {
   mint: web3.PublicKey;
   metadata: web3.PublicKey;
   masterEdition: web3.PublicKey;
+  paymentMint?: web3.PublicKey;
+  paymentVault?: web3.PublicKey;
 }
 
 export interface InitializeNamespaceArgs {
@@ -32,6 +36,7 @@ export interface InitializeNamespaceArgs {
   prettyName: string;
   permissivenessSettings: PermissivenessSettings;
   whitelistedStakingMints: web3.PublicKey[];
+  paymentAmount?: BN;
 }
 
 export interface UpdateNamespaceArgs {
@@ -103,13 +108,37 @@ export class Instruction extends SolKitInstruction {
   ): Promise<[[web3.TransactionInstruction], web3.PublicKey]> {
     const [namespacePDA, _namespaceBump] = await getNamespacePDA(accounts.mint);
 
-    const remainingAccounts = args.whitelistedStakingMints.map((mint) => {
-      return { pubkey: mint, isWritable: false, isSigner: false };
+    const remainingAccounts: web3.AccountMeta[] = [];
+
+    // add optional payment accounts first
+    if (args.paymentAmount) {
+      const paymentMint = {
+        pubkey: accounts.paymentMint!,
+        isWritable: false,
+        isSigner: false,
+      };
+      const paymentVault = {
+        pubkey: accounts.paymentVault!,
+        isWritable: false,
+        isSigner: false,
+      };
+      remainingAccounts.push(paymentMint, paymentVault);
+    } else {
+      args.paymentAmount = null;
+    }
+
+    // then add optional staking mints
+    args.whitelistedStakingMints.map((mint) => {
+      remainingAccounts.push({
+        pubkey: mint,
+        isWritable: false,
+        isSigner: false,
+      });
     });
 
     let ix: web3.TransactionInstruction;
 
-    let permissivenessSettings = {
+    const permissivenessSettings = {
       namespacePermissiveness: convertPermissiveness(
         args.permissivenessSettings.namespacePermissiveness
       ),
@@ -130,12 +159,13 @@ export class Instruction extends SolKitInstruction {
       ),
     };
 
-    let formattedArgs = {
+    const formattedArgs = {
       desiredNamespaceArraySize: args.desiredNamespaceArraySize,
       uuid: args.uuid,
       prettyName: args.prettyName,
       permissivenessSettings: permissivenessSettings,
       whitelistedStakingMints: args.whitelistedStakingMints,
+      paymentAmount: args.paymentAmount,
     };
 
     if (remainingAccounts.length > 0) {
@@ -343,8 +373,54 @@ export class Instruction extends SolKitInstruction {
       payer
     );
 
-    return [
-      await this.program.client.methods
+    const rainPayerAta = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      Common.RAIN_TOKEN_MINT,
+      payer
+    );
+
+    const rainTokenVault = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      Common.RAIN_TOKEN_MINT,
+      Common.RAIN_TOKEN_VAULT_AUTHORITY
+    );
+
+    const nsData = await this.program.client.account.namespace.fetch(
+      namespacePDA
+    );
+    const namespace = new Namespace(namespacePDA, nsData);
+
+    let ix: web3.TransactionInstruction;
+
+    if (nsData.paymentMint && nsData.paymentVault && nsData.paymentAmount) {
+      const paymentAta = await splToken.Token.getAssociatedTokenAddress(
+        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        splToken.TOKEN_PROGRAM_ID,
+        namespace.paymentMint,
+        payer
+      );
+
+      const remainingAccounts = [
+        {
+          pubkey: namespace.paymentMint,
+          isWritable: false,
+          isSigner: false,
+        },
+        {
+          pubkey: namespace.paymentVault,
+          isWritable: true,
+          isSigner: false,
+        },
+        {
+          pubkey: paymentAta,
+          isWritable: true,
+          isSigner: false,
+        },
+      ];
+
+      ix = await this.program.client.methods
         .joinNamespace()
         .accounts({
           namespace: namespacePDA,
@@ -352,13 +428,38 @@ export class Instruction extends SolKitInstruction {
           artifact: accounts.artifact,
           namespaceGatekeeper: namespaceGatekeeperPDA,
           tokenHolder: payer,
+          rainPayerAta: rainPayerAta,
+          rainTokenVault: rainTokenVault,
+          rainTokenMint: Common.RAIN_TOKEN_MINT,
           raindropsProgram: RaindropsProgram.getRaindropsProgram(
             accounts.raindropsProgram
           ),
           instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
-        .instruction(),
-    ];
+        .remainingAccounts(remainingAccounts)
+        .instruction();
+    } else {
+      ix = await this.program.client.methods
+        .joinNamespace()
+        .accounts({
+          namespace: namespacePDA,
+          namespaceToken: nsTA,
+          artifact: accounts.artifact,
+          namespaceGatekeeper: namespaceGatekeeperPDA,
+          tokenHolder: payer,
+          rainPayer: payer,
+          rainPayerAta: rainPayerAta,
+          rainTokenVault: rainTokenVault,
+          rainTokenMint: Common.RAIN_TOKEN_MINT,
+          raindropsProgram: RaindropsProgram.getRaindropsProgram(
+            accounts.raindropsProgram
+          ),
+          instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        })
+        .instruction();
+    }
+
+    return [ix];
   }
 
   async leaveNamespace(accounts: LeaveNamespaceAccounts) {
