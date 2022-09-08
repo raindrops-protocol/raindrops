@@ -12,8 +12,6 @@
     "matchPermissiveness": "ALL",
     "missionPermissiveness": "NAMESPACE",
     "cachePermissiveness": "ALL"
-  }, 
-  "whitelistedStakingMints": [
-    "AeVUZ6ZHBZhCHVyg7CtfE7ysRgH45iMD4k3CRLM37ffH"
-  ]
+  },
+  "whitelistedStakingMints": ["AeVUZ6ZHBZhCHVyg7CtfE7ysRgH45iMD4k3CRLM37ffH"]
 }

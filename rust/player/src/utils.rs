@@ -1,39 +1,35 @@
 use anchor_lang::solana_program::msg;
 
-use {
-    crate::{
-        AddOrRemoveItemValidationArgs, BasicItemEffect, BasicItemEffectType, BasicStat,
-        BasicStatState, BasicStatTemplate, BasicStatType, BodyPart,
-        ChildUpdatePropagationPermissivenessType,
-        CopyBeginItemActivationBecauseAnchorSucksSometimesArgs,
-        CopyEndItemActivationBecauseAnchorSucksSometimesArgs,
-        CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs, EquippedItem,
-        ErrorCode, InheritanceState, Inherited, ItemCallbackArgs, Permissiveness,
-        PermissivenessType, Player, PlayerClass, PlayerClassData, StatDiffType,
-        UpdateValidForUseIfWarmupPassedOnItemArgs, UseItemArgs, PREFIX,
+use crate::{
+    AddOrRemoveItemValidationArgs, BasicItemEffect, BasicItemEffectType, BasicStat, BasicStatState,
+    BasicStatTemplate, BasicStatType, BodyPart, ChildUpdatePropagationPermissivenessType,
+    CopyBeginItemActivationBecauseAnchorSucksSometimesArgs,
+    CopyEndItemActivationBecauseAnchorSucksSometimesArgs,
+    CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs, EquippedItem, ErrorCode,
+    InheritanceState, Inherited, ItemCallbackArgs, Permissiveness, PermissivenessType, Player,
+    PlayerClass, PlayerClassData, StatDiffType, UpdateValidForUseIfWarmupPassedOnItemArgs,
+    UseItemArgs, PREFIX,
+};
+use anchor_lang::{
+    error,
+    prelude::{
+        Account, AccountInfo, AccountMeta, Clock, Program, Pubkey, Rent, Result, Signer, System,
+        Sysvar, UncheckedAccount,
     },
-    anchor_lang::{
-        error,
-        prelude::{
-            Account, AccountInfo, AccountMeta, Clock, Program, Pubkey, Rent, Result, Signer,
-            System, Sysvar, UncheckedAccount,
-        },
-        require,
-        solana_program::{
-            instruction::Instruction,
-            program::{invoke, invoke_signed},
-        },
-        AnchorDeserialize, AnchorSerialize, Key, ToAccountInfo,
+    require,
+    solana_program::{
+        instruction::Instruction,
+        program::{invoke, invoke_signed},
     },
-    anchor_spl::token::{Mint, Token, TokenAccount},
-    raindrops_item::{
-        utils::{
-            assert_derivation, assert_is_ata, assert_keys_equal, assert_metadata_valid,
-            assert_signer, get_item_usage, grab_parent, grab_update_authority, sighash,
-            GetItemUsageArgs,
-        },
-        Item, ItemActivationMarker, ItemClass, ItemUsage,
+    AnchorDeserialize, AnchorSerialize, Key, ToAccountInfo,
+};
+use anchor_spl::token::{Mint, Token, TokenAccount};
+use raindrops_item::{
+    utils::{
+        assert_derivation, assert_is_ata, assert_keys_equal, assert_metadata_valid, assert_signer,
+        get_item_usage, grab_parent, grab_update_authority, sighash, GetItemUsageArgs,
     },
+    Item, ItemActivationMarker, ItemClass, ItemUsage,
 };
 
 pub fn update_player_class_with_inherited_information(

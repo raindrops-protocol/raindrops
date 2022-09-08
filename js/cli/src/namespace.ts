@@ -174,7 +174,10 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: new web3.PublicKey(config.artifact),
-      raindropsProgram: State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram)
+      raindropsProgram:
+        State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(
+          config.raindropsProgram
+        ),
     };
 
     await namespaceProgram.joinNamespace(accounts);
@@ -193,7 +196,10 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.LeaveNamespaceAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: new web3.PublicKey(config.artifact),
-      raindropsProgram: State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram)
+      raindropsProgram:
+        State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(
+          config.raindropsProgram
+        ),
     };
 
     await namespaceProgram.leaveNamespace(accounts);
@@ -212,7 +218,10 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.CacheArtifactAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: config.artifact,
-      raindropsProgram: State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram) 
+      raindropsProgram:
+        State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(
+          config.raindropsProgram
+        ),
     };
 
     await namespaceProgram.cacheArtifact(accounts);
@@ -231,7 +240,10 @@ CLI.programCommandWithConfig(
     const accounts: Instructions.Namespace.UncacheArtifactAccounts = {
       namespaceMint: new web3.PublicKey(config.mint),
       artifact: config.artifact,
-      raindropsProgram: State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(config.raindropsProgram)
+      raindropsProgram:
+        State.Namespace.RaindropsProgram.getRaindropsProgramFromAddress(
+          config.raindropsProgram
+        ),
     };
 
     const args: Instructions.Namespace.UncacheArtifactArgs = {

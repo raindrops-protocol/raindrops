@@ -1,6 +1,6 @@
-export type Item = {
+export type RaindropsItem = {
   "version": "0.1.0",
-  "name": "item",
+  "name": "raindrops_item",
   "instructions": [
     {
       "name": "createItemClass",
@@ -3328,9 +3328,9 @@ export type Item = {
   ]
 };
 
-export const IDL: Item = {
+export const IDL: RaindropsItem = {
   "version": "0.1.0",
-  "name": "item",
+  "name": "raindrops_item",
   "instructions": [
     {
       "name": "createItemClass",
