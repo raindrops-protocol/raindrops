@@ -120,7 +120,7 @@ programCommand("update_match")
                   : walletKeyPair.publicKey
               )
             )[0],
-      },
+      }
     );
   });
 
@@ -264,21 +264,19 @@ programCommand("update_match_from_oracle")
     //@ts-ignore
     const config = JSON.parse(configString);
 
-    await anchorProgram.updateMatchFromOracle(
-      {
-        winOracle: config.winOracle
-          ? new web3.PublicKey(config.winOracle)
-          : (
-              await PDA.getOracle(
-                new web3.PublicKey(config.oracleState.seed),
+    await anchorProgram.updateMatchFromOracle({
+      winOracle: config.winOracle
+        ? new web3.PublicKey(config.winOracle)
+        : (
+            await PDA.getOracle(
+              new web3.PublicKey(config.oracleState.seed),
 
-                config.oracleState.authority
-                  ? new web3.PublicKey(config.oracleState.authority)
-                  : walletKeyPair.publicKey
-              )
-            )[0],
-      },
-    );
+              config.oracleState.authority
+                ? new web3.PublicKey(config.oracleState.authority)
+                : walletKeyPair.publicKey
+            )
+          )[0],
+    });
   });
 
 programCommand("disburse_tokens_by_oracle")
@@ -498,10 +496,7 @@ programCommand("show_match")
       o.tokenTransfers.map((k) => {
         log.info("--> From:", k.from.toBase58());
         log.info("--> To:", k.to ? k.to.toBase58() : "Burn");
-        log.info(
-          "--> Transfer Type:",
-          k.tokenTransferType
-        );
+        log.info("--> Transfer Type:", k.tokenTransferType);
         log.info("--> Mint:", k.mint.toBase58());
         log.info("--> Amount:", k.amount.toNumber());
       });
@@ -578,7 +573,11 @@ function setLogLevel(value, prev) {
 
 program.parse(process.argv);
 
-async function initMatchesProgram(rpcUrl: string, env: string, keypairPath: string): Promise<MatchesProgram> {
+async function initMatchesProgram(
+  rpcUrl: string,
+  env: string,
+  keypairPath: string
+): Promise<MatchesProgram> {
   const keypair = web3.Keypair.fromSecretKey(
     new Uint8Array(JSON.parse(fs.readFileSync(keypairPath, "utf8")))
   );
