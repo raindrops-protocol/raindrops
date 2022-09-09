@@ -6,10 +6,10 @@ import { web3, BN } from "@project-serum/anchor";
 
 import { Wallet } from "@raindrop-studios/sol-command";
 import {
-  getMatchesProgram,
   Utils,
   State,
-  CreateMatchArgs,
+  Instructions,
+  MatchesProgram,
 } from "@raindrops-protocol/raindrops";
 
 const { loadWalletKey } = Wallet;
@@ -25,7 +25,7 @@ programCommand("create_match")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -35,7 +35,7 @@ programCommand("create_match")
     //@ts-ignore
     const config = JSON.parse(configString);
 
-    const createMatchArgs: CreateMatchArgs = {
+    const createMatchArgs: Instructions.Matches.CreateMatchArgs = {
       winOracle: config.winOracle
         ? new web3.PublicKey(config.winOracle)
         : (
@@ -69,7 +69,7 @@ programCommand("create_match")
       );
     }
 
-    await anchorProgram.createMatch(createMatchArgs, {}, config.oracleState);
+    await anchorProgram.createMatch(createMatchArgs);
   });
 
 programCommand("update_match")
@@ -81,7 +81,7 @@ programCommand("update_match")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -121,7 +121,6 @@ programCommand("update_match")
               )
             )[0],
       },
-      {}
     );
   });
 
@@ -138,7 +137,7 @@ programCommand("join_match")
     const { keypair, env, configPath, rpcUrl, index } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -204,7 +203,7 @@ programCommand("leave_match")
     const { keypair, env, configPath, rpcUrl, index } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -255,7 +254,7 @@ programCommand("update_match_from_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -266,7 +265,6 @@ programCommand("update_match_from_oracle")
     const config = JSON.parse(configString);
 
     await anchorProgram.updateMatchFromOracle(
-      {},
       {
         winOracle: config.winOracle
           ? new web3.PublicKey(config.winOracle)
@@ -280,7 +278,6 @@ programCommand("update_match_from_oracle")
               )
             )[0],
       },
-      {}
     );
   });
 
@@ -293,7 +290,7 @@ programCommand("disburse_tokens_by_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -314,9 +311,9 @@ programCommand("disburse_tokens_by_oracle")
               : walletKeyPair.publicKey
           )
         )[0];
-    const oracleInstance = await anchorProgram.fetchOracle(winOracle);
-    for (let i = 0; i < oracleInstance.object.tokenTransfers.length; i++) {
-      const tfer = oracleInstance.object.tokenTransfers[i];
+    const oracleInstance = await anchorProgram.fetchWinOracle(winOracle);
+    for (let i = 0; i < oracleInstance.tokenTransfers.length; i++) {
+      const tfer = oracleInstance.tokenTransfers[i];
 
       await anchorProgram.disburseTokensByOracle(
         {
@@ -341,7 +338,7 @@ programCommand("drain_match")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -352,7 +349,6 @@ programCommand("drain_match")
     const config = JSON.parse(configString);
 
     await anchorProgram.drainMatch(
-      {},
       {
         receiver: walletKeyPair.publicKey,
       },
@@ -381,7 +377,7 @@ programCommand("drain_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -413,7 +409,7 @@ programCommand("create_or_update_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -442,7 +438,7 @@ programCommand("show_match")
     const { keypair, env, configPath, rpcUrl, oracle } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
+    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
 
     let actualOracle = oracle ? new web3.PublicKey(oracle) : null;
     if (configPath !== undefined) {
@@ -464,10 +460,10 @@ programCommand("show_match")
 
     const matchInstance = await anchorProgram.fetchMatch(actualOracle);
 
-    const oracleInstance = await anchorProgram.fetchOracle(actualOracle);
+    const oracleInstance = await anchorProgram.fetchWinOracle(actualOracle);
 
-    const u = matchInstance.object;
-    const o = oracleInstance.object;
+    const u = matchInstance;
+    const o = oracleInstance;
     log.setLevel("info");
     log.info("Match ", matchInstance.key.toBase58());
     log.info(
@@ -478,18 +474,18 @@ programCommand("show_match")
               log.info(
                 `--> ${
                   State.InheritanceState[u.inherited]
-                } ${u.namespace.toBase58()} Indexed: ${u.indexed}`
+                } ${u.namespace.toBase58()} Index: ${u.index}`
               );
           })
         : "Not Set"
     );
     log.info("State:", Object.keys(u.state)[0]);
     log.info("Win Oracle:", actualOracle);
-    log.info("Oracle Cooldown:", u.winOracleCooldown.toNumber());
+    log.info("Oracle Cooldown:", u.winOracleCooldown);
     log.info(
       "Last Oracle Check:",
-      u.lastOracleCheck.toNumber() > 0
-        ? new Date(u.lastOracleCheck.toNumber() * 1000)
+      u.lastOracleCheck > 0
+        ? new Date(u.lastOracleCheck * 1000)
         : "Never Checked"
     );
     log.info("Oracle Finalized:", o.finalized);
@@ -504,7 +500,7 @@ programCommand("show_match")
         log.info("--> To:", k.to ? k.to.toBase58() : "Burn");
         log.info(
           "--> Transfer Type:",
-          MatchesState.TokenTransferType[k.tokenTransferType]
+          k.tokenTransferType
         );
         log.info("--> Mint:", k.mint.toBase58());
         log.info("--> Amount:", k.amount.toNumber());
@@ -521,15 +517,15 @@ programCommand("show_match")
     log.info(
       "Minimum Allowed Entry Time:",
       u.minimumAllowedEntryTime
-        ? new Date(u.minimumAllowedEntryTime.toNumber() * 1000)
+        ? new Date(u.minimumAllowedEntryTime * 1000)
         : "Unset"
     );
     log.info(
       "Current token transfer index:",
       u.currentTokenTransferIndex.toNumber()
     );
-    log.info("Token Types Added:", u.tokenTypesAdded.toNumber());
-    log.info("Token Types Removed:", u.tokenTypesRemoved.toNumber());
+    log.info("Token Types Added:", u.tokenTypesAdded);
+    log.info("Token Types Removed:", u.tokenTypesRemoved);
     log.info("Token Entry Validations:");
     if (u.tokenEntryValidation) {
       u.tokenEntryValidation.map((k) => {
@@ -581,3 +577,18 @@ function setLogLevel(value, prev) {
 }
 
 program.parse(process.argv);
+
+async function initMatchesProgram(rpcUrl: string, env: string, keypairPath: string): Promise<MatchesProgram> {
+  const keypair = web3.Keypair.fromSecretKey(
+    new Uint8Array(JSON.parse(fs.readFileSync(keypairPath, "utf8")))
+  );
+
+  const matchesProgram = await MatchesProgram.getProgramWithWalletKeyPair(
+    MatchesProgram,
+    keypair,
+    env,
+    rpcUrl
+  );
+
+  return matchesProgram;
+}
