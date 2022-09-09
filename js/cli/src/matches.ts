@@ -515,10 +515,7 @@ programCommand("show_match")
         ? new Date(u.minimumAllowedEntryTime * 1000)
         : "Unset"
     );
-    log.info(
-      "Current token transfer index:",
-      u.currentTokenTransferIndex.toNumber()
-    );
+    log.info("Current token transfer index:", u.currentTokenTransferIndex);
     log.info("Token Types Added:", u.tokenTypesAdded);
     log.info("Token Types Removed:", u.tokenTypesRemoved);
     log.info("Token Entry Validations:");
