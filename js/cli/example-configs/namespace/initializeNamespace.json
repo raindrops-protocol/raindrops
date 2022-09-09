@@ -1,8 +1,8 @@
 {
   "uuid": "e3e52d",
-  "mint": "Exr4E56htinshjpxHyAibJyKy5CxCGihyhWVmie6aAHY",
-  "metadata": "Dijj7s7BkPS7Zr75YnnNgJRZQ5y18BcyUx66B6VN1WqX",
-  "masterEdition": "Dijj7s7BkPS7Zr75YnnNgJRZQ5y18BcyUx66B6VN1WqX",
+  "mint": "7w7sAjikAzrf9CeLhgfQDpvHfQJbgS8AmVBjapiZXZ4S",
+  "metadata": "HTDfqQ1Nphs7gRY2TkynazneYrVePB9Q87mUb48BV17L",
+  "masterEdition": "4AfEGc1cGth2X9BDDccaM6NkE1J7ffDjUgzNUUMZwSJu",
   "prettyName": "Trash with Frens",
   "desiredNamespaceArraySize": 2,
   "permissivenessSettings": {
@@ -10,8 +10,8 @@
     "itemPermissiveness": "ALL",
     "playerPermissiveness": "ALL",
     "matchPermissiveness": "ALL",
-    "missionPermissiveness": "NAMESPACE",
+    "missionPermissiveness": "ALL",
     "cachePermissiveness": "ALL"
   },
-  "whitelistedStakingMints": ["AeVUZ6ZHBZhCHVyg7CtfE7ysRgH45iMD4k3CRLM37ffH"]
+  "whitelistedStakingMints": []
 }
