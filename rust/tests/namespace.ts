@@ -1768,7 +1768,150 @@ describe("namespace", () => {
     );
     console.log("createNsGKTxSig: %s", createGkResult.txid);
 
-    const player = await createPlayerClass(payer, connection);
+    const [player, _playerMint] = await createPlayerClass(payer, connection);
+
+    const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: player,
+      raindropsProgram: State.Namespace.RaindropsProgram.Player,
+    };
+
+    const joinNsResult = await namespaceProgram.joinNamespace(joinNsAccounts);
+    console.log("joinNsTxSig: %s", joinNsResult.txid);
+
+    const cacheArtifactAccounts: Instructions.Namespace.CacheArtifactAccounts =
+      {
+        namespaceMint: nsMint,
+        artifact: player,
+        raindropsProgram: State.Namespace.RaindropsProgram.Player,
+      };
+
+    const cacheArtifactResult = await namespaceProgram.cacheArtifact(
+      cacheArtifactAccounts
+    );
+    console.log("cacheArtifactTxSig: %s", cacheArtifactResult.txid);
+
+    const [namespace, _namespaceBump] = await Utils.PDA.getNamespacePDA(nsMint);
+    const nsData = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsData.artifactsAdded === 1);
+    assert(nsData.artifactsCached === 1);
+
+    // check player was indexed on the namespace side
+    let [index, _indexBump] = await Utils.PDA.getIndexPDA(namespace, new BN(0));
+
+    let nsIndexData = await namespaceProgram.fetchNamespaceIndex(index);
+    assert(nsIndexData.caches.some((artifact) => artifact.equals(player)));
+
+    const uncacheArtifactAccounts: Instructions.Namespace.UncacheArtifactAccounts =
+      {
+        namespaceMint: nsMint,
+        artifact: player,
+        raindropsProgram: State.Namespace.RaindropsProgram.Player,
+      };
+
+    const uncacheArtifactArgs: Instructions.Namespace.UncacheArtifactArgs = {
+      page: new anchor.BN(0),
+    };
+
+    const uncacheArtifactResult = await namespaceProgram.uncacheArtifact(
+      uncacheArtifactArgs,
+      uncacheArtifactAccounts
+    );
+    console.log("uncacheArtifactTxSig: %s", uncacheArtifactResult.txid);
+
+    const nsDataUpdated = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdated.artifactsAdded === 1);
+    assert(nsDataUpdated.artifactsCached === 0);
+
+    const leaveNsAccounts: Instructions.Namespace.LeaveNamespaceAccounts = {
+      namespaceMint: nsMint,
+      artifact: player,
+      raindropsProgram: State.Namespace.RaindropsProgram.Player,
+    };
+
+    const leaveNsResult = await namespaceProgram.leaveNamespace(
+      leaveNsAccounts
+    );
+    console.log("leaveNsTxSig: %s", leaveNsResult.txid);
+
+    const nsDataUpdatedAgain = await namespaceProgram.fetchNamespace(namespace);
+    assert(nsDataUpdatedAgain.artifactsAdded === 0);
+    assert(nsDataUpdatedAgain.artifactsCached === 0);
+  });
+
+  it("join player, cache, uncache then leave ns", async () => {
+    const payer = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
+    const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
+      NamespaceProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.NamespaceIDL,
+      }
+    );
+
+    const [nsMint, nsMetadata, nsMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "namespace",
+        connection,
+        payer
+      );
+
+    const permissivenessSettings: State.Namespace.PermissivenessSettings = {
+      namespacePermissiveness: State.Namespace.Permissiveness.All,
+      itemPermissiveness: State.Namespace.Permissiveness.All,
+      playerPermissiveness: State.Namespace.Permissiveness.All,
+      matchPermissiveness: State.Namespace.Permissiveness.All,
+      missionPermissiveness: State.Namespace.Permissiveness.All,
+      cachePermissiveness: State.Namespace.Permissiveness.All,
+    };
+
+    const initializeNamespaceArgs: Instructions.Namespace.InitializeNamespaceArgs =
+      {
+        desiredNamespaceArraySize: new anchor.BN(2),
+        uuid: "123456",
+        prettyName: "my-ns",
+        permissivenessSettings: permissivenessSettings,
+        whitelistedStakingMints: [],
+      };
+
+    const initializeNamespaceAccounts: Instructions.Namespace.InitializeNamespaceAccounts =
+      {
+        mint: nsMint,
+        metadata: nsMetadata,
+        masterEdition: nsMasterEdition,
+      };
+
+    const initNsResult = await namespaceProgram.initializeNamespace(
+      initializeNamespaceArgs,
+      initializeNamespaceAccounts
+    );
+
+    console.log("initNsTxSig: %s", initNsResult.txid);
+
+    const createNsGKAccounts: Instructions.Namespace.CreateNamespaceGatekeeperAccounts =
+      {
+        namespaceMint: nsMint,
+      };
+
+    const createGkResult = await namespaceProgram.createNamespaceGatekeeper(
+      createNsGKAccounts
+    );
+    console.log("createNsGKTxSig: %s", createGkResult.txid);
+
+    const [_playerClass, playerClassMint] = await createPlayerClass(
+      payer,
+      connection
+    );
+    const player = await createPlayer(payer, connection, playerClassMint);
 
     const joinNsAccounts: Instructions.Namespace.JoinNamespaceAccounts = {
       namespaceMint: nsMint,
@@ -2421,7 +2564,7 @@ async function createMintMetadataAndMasterEditionAccounts(
 async function createPlayerClass(
   payer: anchor.web3.Keypair,
   connection: anchor.web3.Connection
-): Promise<anchor.web3.PublicKey> {
+): Promise<[anchor.web3.PublicKey, anchor.web3.PublicKey]> {
   const playerProgram = await PlayerProgram.getProgramWithConfig(
     PlayerProgram,
     {
@@ -2496,6 +2639,70 @@ async function createPlayerClass(
     )
   ).rpc();
   console.log("createPlayerClassTxSig: %s", createPlayerClassResult.txid);
+
+  const [player, _playerBump] = await Utils.PDA.getPlayerPDA(
+    playerMint,
+    new anchor.BN(0)
+  );
+
+  return [player, playerMint];
+}
+
+async function createPlayer(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection,
+  playerClassMint: anchor.web3.PublicKey
+): Promise<anchor.web3.PublicKey> {
+  const playerProgram = await PlayerProgram.getProgramWithConfig(
+    PlayerProgram,
+    {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.PlayerIDL,
+    }
+  );
+
+  const [playerMint, _playerMetadata, _playerMasterEdition] =
+    await createMintMetadataAndMasterEditionAccounts(
+      "player",
+      connection,
+      payer
+    );
+
+  const playerAta = await splToken.getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    playerMint,
+    payer.publicKey
+  );
+
+  const buildPlayerArgs: Instructions.Player.BuildPlayerArgs = {
+    classIndex: new anchor.BN(0),
+    parentClassIndex: null,
+    newPlayerIndex: new anchor.BN(0),
+    space: new anchor.BN(300),
+    playerClassMint: playerClassMint,
+    buildPermissivenessToUse: { tokenHolder: true },
+    storeMint: false,
+    storeMetadataFields: false,
+  };
+
+  const buildPlayerAccounts: Instructions.Player.BuildPlayerAccounts = {
+    newPlayerMint: playerMint,
+    newPlayerToken: playerAta.address,
+    newPlayerTokenHolder: payer.publicKey,
+    parentMint: playerClassMint,
+    metadataUpdateAuthority: payer.publicKey,
+  };
+
+  const createPlayerResult = await (
+    await playerProgram.buildPlayer(buildPlayerArgs, buildPlayerAccounts)
+  ).rpc();
+  console.log("createPlayerTxSig: %s", createPlayerResult.txid);
 
   const [player, _playerBump] = await Utils.PDA.getPlayerPDA(
     playerMint,
