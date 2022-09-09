@@ -33,20 +33,47 @@ export enum MatchState {
   Deactivated,
 }
 
+export function transformTokenValidations(args: {
+  tokenEntryValidation: AnchorTokenEntryValidation[] | null;
+}) {
+  if (args.tokenEntryValidation) {
+    args.tokenEntryValidation = args.tokenEntryValidation.map((r) => {
+      const newRFilter = { ...r.filter };
+      Object.keys(newRFilter).forEach((k) => {
+        Object.keys(newRFilter[k]).forEach((y) => {
+          if (typeof newRFilter[k][y] === "string") {
+            newRFilter[k][y] = new web3.PublicKey(newRFilter[k][y]);
+          }
+        });
+      });
+
+      r.filter = newRFilter;
+
+      if (r.validation) {
+        if (typeof r.validation.key === "string") {
+          r.validation.key = new web3.PublicKey(r.validation.key);
+          r.validation.code = new BN(r.validation.code);
+        }
+      }
+      return r;
+    });
+  }
+}
+
 export function convertMatchState(ms: MatchState): {} {
-  switch(ms) {
+  switch (ms) {
     case MatchState.Draft:
-      return { draft: {} }
+      return { draft: {} };
     case MatchState.Initialized:
-      return { initialized: {} }
+      return { initialized: {} };
     case MatchState.Started:
-      return { started: {} }
+      return { started: {} };
     case MatchState.Finalized:
-      return { paidOut: {} }
+      return { paidOut: {} };
     case MatchState.Deactivated:
-      return { deactivated: {} }
+      return { deactivated: {} };
     default:
-      throw new Error(`Invalid MatchState: ${ms}`)
+      throw new Error(`Invalid MatchState: ${ms}`);
   }
 }
 

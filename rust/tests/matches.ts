@@ -17,7 +17,7 @@ import {
 } from "@raindrops-protocol/raindrops";
 import assert = require("assert");
 
-describe.only("matches", () => {
+describe("matches", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
