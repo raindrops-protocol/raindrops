@@ -1,5 +1,58 @@
 import { web3, BN } from "@project-serum/anchor";
-import { Callback } from "./common";
+import { u64 } from "@solana/spl-token";
+import { Callback, NamespaceAndIndex, Root } from "./common";
+
+export class Match {
+  key: web3.PublicKey;
+  namespaces: NamespaceAndIndex[] | null;
+  winOracle: web3.PublicKey;
+  winOracleCooldown: number;
+  lastOracleCheck: number;
+  authority: web3.PublicKey;
+  state: AnchorMatchState;
+  leaveAllowed: boolean;
+  minimumAllowedEntryTime: number | null;
+  bump: number;
+  currentTokenTransferIndex: u64;
+  tokenTypesAdded: number;
+  tokenTypesRemoved: number;
+  tokenEntryValidation: AnchorTokenEntryValidation[] | null;
+  tokenEntryValidationRoot: Root | null;
+  joinAllowedDuringStart: boolean;
+
+  constructor(key, data) {
+    this.key = key;
+    this.namespaces = data.namespaces;
+    this.winOracle = data.winOracle;
+    this.winOracleCooldown = data.winOracleCooldown;
+    this.lastOracleCheck = data.lastOracleCheck;
+    this.authority = data.authority;
+    this.state = data.state;
+    this.leaveAllowed = data.leaveAllowed;
+    this.minimumAllowedEntryTime = data.minimumAllowedEntryTime;
+    this.bump = data.bump;
+    this.currentTokenTransferIndex = data.currentTokenTransferIndex;
+    this.tokenTypesAdded = data.tokenTypesAdded;
+    this.tokenTypesRemoved = data.tokenTypesRemoved;
+    this.tokenEntryValidation = data.tokenEntryValidation;
+    this.tokenEntryValidationRoot = data.tokenEntryValidationRoot;
+    this.joinAllowedDuringStart = data.joinAllowedDuringStart;
+  }
+}
+
+export class WinOracle {
+  key: web3.PublicKey;
+  finalized: boolean;
+  tokenTransferRoot: Root | null;
+  tokenTransfers: AnchorTokenDelta[] | null;
+
+  constructor(key, data) {
+    this.key = key;
+    this.finalized = data.finalized;
+    this.tokenTransferRoot = data.tokenTransferRoot;
+    this.tokenTransfers = data.tokenTransfers;
+  }
+}
 
 export interface AnchorMatchState {
   draft?: boolean;

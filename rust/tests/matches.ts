@@ -43,7 +43,7 @@ describe("matches", () => {
       tokenTransfers: null,
     };
 
-    const createOracleResult = await matchesProgram.createOracle(
+    const createOracleResult = await matchesProgram.createOrUpdateOracle(
       createOracleArgs
     );
     console.log("createOracleTxSig: %s", createOracleResult.txid);
@@ -120,6 +120,82 @@ describe("matches", () => {
       joinMatchAdditionalArgs
     );
     console.log("joinMatchTxSig: %s", joinMatchResult.txid);
+
+    const updateOracleArgs: Instructions.Matches.CreateOrUpdateOracleArgs = {
+      seed: oracleSeed.publicKey.toString(),
+      authority: payer.publicKey,
+      space: new anchor.BN(100),
+      finalized: true,
+      tokenTransferRoot: null,
+      tokenTransfers: null,
+    };
+
+    const updateOracleResult = await matchesProgram.createOrUpdateOracle(
+      updateOracleArgs
+    );
+    console.log("updateOracleResult: %s", updateOracleResult.txid);
+
+    const winOracleData = await matchesProgram.fetchWinOracle(oracle);
+    assert.equal(winOracleData.finalized, true);
+
+    const updateMatchFromOracleAccounts: Instructions.Matches.UpdateMatchFromOracleAccounts =
+      {
+        winOracle: oracle,
+      };
+
+    const updateMatchFromOracleResult =
+      await matchesProgram.updateMatchFromOracle(updateMatchFromOracleAccounts);
+    console.log(
+      "updateMatchFromOracleTxSig: %s",
+      updateMatchFromOracleResult.txid
+    );
+
+    const disburseTokensByOracleArgs: Instructions.Matches.DisburseTokensByOracleArgs =
+      {
+        tokenDeltaProofInfo: null,
+      };
+
+    const disburseTokensByOracleAccounts: Instructions.Matches.DisburseTokensByOracleAccounts =
+      {
+        winOracle: oracle,
+      };
+
+    const disburseTokensByOracleAdditionalArgs: Instructions.Matches.DisburseTokensByOracleAdditionalArgs =
+      {
+        tokenDelta: {
+          from: payer.publicKey,
+          to: payerJoinMatchMintAta.address,
+          tokenTransferType: { normal: true },
+          mint: joinMatchMint,
+          amount: new anchor.BN(1_000_000),
+        },
+      };
+
+    const disburseTokensByOracleResult =
+      await matchesProgram.disburseTokensByOracle(
+        disburseTokensByOracleArgs,
+        disburseTokensByOracleAccounts,
+        disburseTokensByOracleAdditionalArgs
+      );
+    console.log(
+      "disburseTokensByOracleTxSig: %s",
+      disburseTokensByOracleResult.txid
+    );
+
+    const drainMatchAccounts: Instructions.Matches.DrainMatchAccounts = {
+      receiver: payerJoinMatchMintAta.address,
+    };
+
+    const drainMatchAdditionalArgs: Instructions.Matches.DrainMatchAdditionalArgs =
+      {
+        winOracle: oracle,
+      };
+
+    const drainMatchResult = await matchesProgram.drainMatch(
+      drainMatchAccounts,
+      drainMatchAdditionalArgs
+    );
+    console.log("drainMatchTxSig: %s", drainMatchResult.txid);
 
     const leaveMatchArgs: Instructions.Matches.LeaveMatchArgs = {
       amount: new anchor.BN(1_000_000),

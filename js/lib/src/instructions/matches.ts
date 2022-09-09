@@ -74,7 +74,7 @@ export interface CreateOrUpdateOracleArgs {
   space: BN;
   finalized: boolean;
   tokenTransferRoot: null;
-  tokenTransfers: null | AnchorTokenDelta[];
+  tokenTransfers: AnchorTokenDelta[] | null;
 }
 
 export interface DrainMatchArgs {}
