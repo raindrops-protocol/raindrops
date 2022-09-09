@@ -18,7 +18,7 @@ describe("staking", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it.only("staking smoke test", async () => {
+  it("staking smoke test", async () => {
     const payer = await newPayer(
       connection,
     );
