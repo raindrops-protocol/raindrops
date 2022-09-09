@@ -1,5 +1,4 @@
 import { web3, BN } from "@project-serum/anchor";
-import { u64 } from "@solana/spl-token";
 import { Callback, NamespaceAndIndex, Root } from "./common";
 
 export class Match {
@@ -13,7 +12,7 @@ export class Match {
   leaveAllowed: boolean;
   minimumAllowedEntryTime: number | null;
   bump: number;
-  currentTokenTransferIndex: u64;
+  currentTokenTransferIndex: number;
   tokenTypesAdded: number;
   tokenTypesRemoved: number;
   tokenEntryValidation: AnchorTokenEntryValidation[] | null;
