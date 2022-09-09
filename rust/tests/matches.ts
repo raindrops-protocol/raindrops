@@ -11,7 +11,7 @@ import {
 } from "@raindrops-protocol/raindrops";
 import assert = require("assert");
 
-describe.only("matches", () => {
+describe("matches", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -361,6 +361,124 @@ describe.only("matches", () => {
     );
     console.log("leaveMatchTxSig: %s", leaveMatchResult.txid);
   });
+
+  it("update match", async () => {
+    const payer = await newPayer(connection);
+    const matchesProgram = await MatchesProgram.getProgramWithConfig(
+      MatchesProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.MatchesIDL,
+      }
+    );
+
+    // create mint and mint initial tokens to payer for testing
+    const matchMint = await splToken.createMint(
+      connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      6
+    );
+    let payerMatchMintAta = await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
+      payer,
+      matchMint,
+      payer.publicKey
+    );
+    await splToken.mintTo(
+      connection,
+      payer,
+      matchMint,
+      payerMatchMintAta.address,
+      payer,
+      1_000_000_000
+    );
+
+    // create win oracle and transfer tokens from payer to escrow
+    const oracleSeed = anchor.web3.Keypair.generate();
+
+    const createOracleArgs: Instructions.Matches.CreateOrUpdateOracleArgs = {
+      seed: oracleSeed.publicKey.toString(),
+      authority: payer.publicKey,
+      space: new anchor.BN(1000),
+      finalized: false,
+      tokenTransferRoot: null,
+      tokenTransfers: [
+        {
+          from: payer.publicKey,
+          to: payerMatchMintAta.address,
+          tokenTransferType: { normal: true },
+          mint: matchMint,
+          amount: new anchor.BN(1_000_000),
+        },
+      ],
+    };
+
+    const createOracleResult = await matchesProgram.createOrUpdateOracle(
+      createOracleArgs
+    );
+    console.log("createOracleTxSig: %s", createOracleResult.txid);
+
+    const [oracle, _oracleBump] = await Utils.PDA.getOracle(
+      oracleSeed.publicKey,
+      payer.publicKey
+    );
+
+    // create match in initialized state
+    const createMatchArgs: Instructions.Matches.CreateMatchArgs = {
+      matchState: { initialized: true },
+      tokenEntryValidation: null,
+      tokenEntryValidationRoot: null,
+      winOracle: oracle,
+      winOracleCooldown: new anchor.BN(100),
+      authority: payer.publicKey,
+      space: new anchor.BN(2000),
+      leaveAllowed: false,
+      joinAllowedDuringStart: false,
+      minimumAllowedEntryTime: new anchor.BN(1000),
+      desiredNamespaceArraySize: new anchor.BN(2),
+    };
+
+    const createMatchResult = await matchesProgram.createMatch(createMatchArgs);
+    console.log("createMatchTxSig: %s", createMatchResult.txid);
+
+    const [match, _matchBump] = await Utils.PDA.getMatch(oracle);
+
+    // assert match is initialized
+    const matchData = await matchesProgram.fetchMatch(match)
+    assert.deepStrictEqual(matchData.state, { initialized: {} });
+    assert.equal(matchData.leaveAllowed, false);
+    assert.equal(matchData.winOracleCooldown, 100);
+
+    const updateMatchArgs: Instructions.Matches.UpdateMatchArgs = {
+      matchState: { initialized: true },
+      tokenEntryValidation: null,
+      tokenEntryValidationRoot: null,
+      winOracleCooldown: new anchor.BN(1000),
+      authority: payer.publicKey,
+      leaveAllowed: true,
+      joinAllowedDuringStart: false,
+      minimumAllowedEntryTime: new anchor.BN(1000),
+    }
+
+    const updateMatchAccounts: Instructions.Matches.UpdateMatchAccounts = {
+      winOracle: oracle,
+    }
+
+    const updateMatchResult = await matchesProgram.updateMatch(updateMatchArgs, updateMatchAccounts);
+    console.log("updateMatchResult: %s", updateMatchResult.txid);
+
+    // assert match is initialized
+    const matchDataUpdated = await matchesProgram.fetchMatch(match)
+    assert.equal(matchDataUpdated.leaveAllowed, true);
+    assert.equal(matchDataUpdated.winOracleCooldown, 1000);
+  });
 });
 
 async function newPayer(
@@ -375,13 +493,4 @@ async function newPayer(
   await connection.confirmTransaction(txSig);
 
   return payer;
-}
-
-async function confirmTransactions(
-  txSigs: string[],
-  connection: anchor.web3.Connection
-) {
-  for (let txSig of txSigs) {
-    connection.confirmTransaction(txSig, "finalized");
-  }
 }
