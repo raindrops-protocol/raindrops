@@ -314,9 +314,9 @@ export class Instruction extends SolKitInstruction {
   ) {
     const match = (await getMatch(additionalArgs.winOracle))[0];
 
-    const destinationTokenAccount = (
-      await getAtaForMint(accounts.tokenMint, accounts.receiver)
-    )[0];
+    //const destinationTokenAccount = (
+    //  await getAtaForMint(accounts.tokenMint, accounts.receiver)
+    //)[0];
 
     const [tokenAccountEscrow, _escrowBump] = await getMatchTokenAccountEscrow(
       additionalArgs.winOracle,
@@ -334,7 +334,7 @@ export class Instruction extends SolKitInstruction {
             matchInstance: match,
             tokenAccountEscrow,
             tokenMint: accounts.tokenMint,
-            destinationTokenAccount,
+            destinationTokenAccount: accounts.receiver,
             receiver: (this.program.client.provider as AnchorProvider).wallet
               .publicKey,
             tokenProgram: TOKEN_PROGRAM_ID,
