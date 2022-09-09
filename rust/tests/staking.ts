@@ -19,7 +19,9 @@ describe("staking", () => {
   const connection = anchor.getProvider().connection;
 
   it("staking smoke test", async () => {
-    const payer = await newPayer(connection);
+    const payer = await newPayer(
+      connection,
+    );
 
     const _stakingProgram = await StakingProgram.getProgramWithConfig(
       StakingProgram,

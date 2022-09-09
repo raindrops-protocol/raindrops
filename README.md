@@ -10,9 +10,17 @@ https://docs.raindropstudios.xyz/raindrops
 
 The Solana ecosystem has a fragmented and very customized way of storing in-game assets on chain, with as many different formats as there are play-2-earn games. However, the methods of storing ordinary NFT data are standardized in the Metaplex Protocol. The aim of Raindrops is to do the same thing for game assets.
 
-## Setup
+## Development 
 
-There are a few packages in this repo that require you to setup an auth token to pull from our github packages repo. The steps to do this can be found in this document [here](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry).
+[Turbo](https://turborepo.org/) is used for dependency management and building all components.
+
+- Build all: `yarn build`
+- Build CLI: `yarn build:cli`
+- Build Libs: `yarn build:lib`
+- Build Programs: `yarn build:program`
+- Format: `yarn format`
+- Lint: `yarn lint`
+- Run tests locally: `yarn test`
 
 ## Contributing
 
