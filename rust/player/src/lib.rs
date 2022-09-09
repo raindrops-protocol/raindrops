@@ -1963,11 +1963,12 @@ pub struct UpdatePlayer<'info> {
 
 #[derive(Accounts)]
 pub struct PlayerArtifactJoinNamespace<'info> {
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
     #[account(mut)]
     pub player_artifact: UncheckedAccount<'info>,
 
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
@@ -1977,11 +1978,12 @@ pub struct PlayerArtifactJoinNamespace<'info> {
 
 #[derive(Accounts)]
 pub struct PlayerArtifactLeaveNamespace<'info> {
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
     #[account(mut)]
     pub player_artifact: UncheckedAccount<'info>,
 
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
@@ -1992,11 +1994,12 @@ pub struct PlayerArtifactLeaveNamespace<'info> {
 #[derive(Accounts)]
 #[instruction(page: u64)]
 pub struct PlayerArtifactCacheNamespace<'info> {
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
     #[account(mut)]
     pub player_artifact: UncheckedAccount<'info>,
 
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles.
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
@@ -2006,11 +2009,12 @@ pub struct PlayerArtifactCacheNamespace<'info> {
 
 #[derive(Accounts)]
 pub struct PlayerArtifactUncacheNamespace<'info> {
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
     #[account(mut)]
     pub player_artifact: UncheckedAccount<'info>,
 
-    /// CHECK: deserialized inside instruction
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 

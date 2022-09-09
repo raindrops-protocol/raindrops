@@ -164,7 +164,7 @@ export interface CreatePlayerClassArgs {
   parentOfParentClassIndex: null | BN;
   parentClassIndex: null | BN;
   space: BN;
-  desiredNamespaceArraySize: BN;
+  desiredNamespaceArraySize: number;
   updatePermissivenessToUse: null | AnchorPermissivenessType;
   storeMint: boolean;
   storeMetadataFields: boolean;
