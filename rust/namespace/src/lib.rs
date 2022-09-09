@@ -461,6 +461,16 @@ pub mod raindrops_namespace {
             };
 
             match_leave_namespace(CpiContext::new(rd_program, accounts))
+        } else if raindrops_player::check_id(&rd_program.key()) {
+            check_permissiveness_against_holder(
+                &rd_program.key(),
+                &ctx.accounts.artifact,
+                &ctx.accounts.token_holder.to_account_info(),
+                &ctx.accounts.namespace_gatekeeper,
+                &namespace.permissiveness_settings.player_permissiveness,
+            )?;
+
+            Ok(())
         } else if crate::id().eq(&rd_program.key()) {
             let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
 
@@ -537,6 +547,16 @@ pub mod raindrops_namespace {
             };
 
             match_join_namespace(CpiContext::new(rd_program, accounts))?;
+        } else if raindrops_player::check_id(&rd_program.key()) {
+            msg!("joining player to namespace");
+
+            check_permissiveness_against_holder(
+                &rd_program.key(),
+                &ctx.accounts.artifact,
+                &ctx.accounts.token_holder.to_account_info(),
+                &ctx.accounts.namespace_gatekeeper,
+                &namespace.permissiveness_settings.player_permissiveness,
+            )?;
         } else if crate::id().eq(&rd_program.key()) {
             msg!("joining namespace to namespace");
             check_permissiveness_against_holder(
