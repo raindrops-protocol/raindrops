@@ -72,6 +72,16 @@ export class MatchesProgram extends Program.Program {
     return await this.sendWithRetry(ix.instructions, ix.signers, options);
   }
 
+  async updateMatch(
+    args: MatchesInstruction.UpdateMatchArgs,
+    accounts: MatchesInstruction.UpdateMatchAccounts,
+    options?: SendOptions
+  ): Promise<SendTransactionResult> {
+    const ix = await this.instruction.updateMatch(args, accounts, {});
+
+    return await this.sendWithRetry(ix.instructions, ix.signers, options);
+  }
+
   async updateMatchFromOracle(
     accounts: MatchesInstruction.UpdateMatchFromOracleAccounts,
     options?: SendOptions
@@ -86,6 +96,16 @@ export class MatchesProgram extends Program.Program {
     options?: SendOptions
   ): Promise<SendTransactionResult> {
     const ix = await this.instruction.createOrUpdateOracle(args);
+
+    return await this.sendWithRetry(ix.instructions, ix.signers, options);
+  }
+
+  async drainOracle(
+    args: MatchesInstruction.DrainOracleArgs,
+    accounts: MatchesInstruction.DrainOracleAccounts,
+    options?: SendOptions
+  ): Promise<SendTransactionResult> {
+    const ix = await this.instruction.drainOracle(args, accounts, {});
 
     return await this.sendWithRetry(ix.instructions, ix.signers, options);
   }
