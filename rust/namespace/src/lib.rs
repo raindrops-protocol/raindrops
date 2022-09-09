@@ -24,6 +24,15 @@ use raindrops_matches::cpi::{
     match_cache_namespace, match_join_namespace, match_leave_namespace, match_uncache_namespace,
 };
 
+use raindrops_player::cpi::{
+    accounts::{
+        PlayerArtifactCacheNamespace, PlayerArtifactJoinNamespace, PlayerArtifactLeaveNamespace,
+        PlayerArtifactUncacheNamespace,
+    },
+    player_artifact_cache_namespace, player_artifact_join_namespace,
+    player_artifact_leave_namespace, player_artifact_uncache_namespace,
+};
+
 anchor_lang::declare_id!("nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV");
 pub const PREFIX: &str = "namespace";
 const GATEKEEPER: &str = "gatekeeper";
@@ -290,6 +299,14 @@ pub mod raindrops_namespace {
             };
 
             match_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
+        } else if raindrops_player::check_id(&rd_program.key()) {
+            let accounts = PlayerArtifactCacheNamespace {
+                player_artifact: ctx.accounts.artifact.to_account_info(),
+                namespace: namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            player_artifact_cache_namespace(CpiContext::new(rd_program, accounts), args.page)
         } else if crate::id().eq(&rd_program.key()) {
             let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
 
@@ -346,6 +363,14 @@ pub mod raindrops_namespace {
             };
 
             match_uncache_namespace(CpiContext::new(rd_program, accounts))?;
+        } else if raindrops_player::check_id(&rd_program.key()) {
+            let accounts = PlayerArtifactUncacheNamespace {
+                player_artifact: ctx.accounts.artifact.to_account_info(),
+                namespace: namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            player_artifact_uncache_namespace(CpiContext::new(rd_program, accounts))?;
         } else if crate::id().eq(&rd_program.key()) {
             let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
 
@@ -470,7 +495,13 @@ pub mod raindrops_namespace {
                 &namespace.permissiveness_settings.player_permissiveness,
             )?;
 
-            Ok(())
+            let accounts = PlayerArtifactLeaveNamespace {
+                player_artifact: ctx.accounts.artifact.to_account_info(),
+                namespace: namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            player_artifact_leave_namespace(CpiContext::new(rd_program, accounts))
         } else if crate::id().eq(&rd_program.key()) {
             let artifact_ns = &mut Account::<'_, Namespace>::try_from(&ctx.accounts.artifact)?;
 
@@ -557,6 +588,14 @@ pub mod raindrops_namespace {
                 &ctx.accounts.namespace_gatekeeper,
                 &namespace.permissiveness_settings.player_permissiveness,
             )?;
+
+            let accounts = PlayerArtifactJoinNamespace {
+                player_artifact: ctx.accounts.artifact.to_account_info(),
+                namespace: namespace.to_account_info(),
+                instructions: ctx.accounts.instructions.to_account_info(),
+            };
+
+            player_artifact_join_namespace(CpiContext::new(rd_program, accounts))?;
         } else if crate::id().eq(&rd_program.key()) {
             msg!("joining namespace to namespace");
             check_permissiveness_against_holder(
