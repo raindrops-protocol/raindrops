@@ -2590,7 +2590,7 @@ async function createPlayerClass(
     parentOfParentClassIndex: null,
     parentClassIndex: null,
     space: new anchor.BN(300),
-    desiredNamespaceArraySize: new anchor.BN(2),
+    desiredNamespaceArraySize: 2,
     updatePermissivenessToUse: null,
     storeMint: false,
     storeMetadataFields: false,
