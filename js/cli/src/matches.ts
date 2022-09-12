@@ -574,7 +574,7 @@ program.parse(process.argv);
 async function getMatchesProgram(
   anchorWallet: NodeWallet | web3.Keypair,
   env: string,
-  rpcUrl: string,
+  rpcUrl: string
 ): Promise<MatchesProgram> {
   if ((anchorWallet as web3.Keypair).secretKey) {
     return MatchesProgram.getProgramWithWalletKeyPair(
@@ -590,5 +590,5 @@ async function getMatchesProgram(
     anchorWallet as AnchorWallet,
     env,
     rpcUrl
-  ); 
+  );
 }
