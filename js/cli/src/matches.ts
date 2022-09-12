@@ -2,7 +2,7 @@
 import * as fs from "fs";
 import { program } from "commander";
 import log from "loglevel";
-import { web3, BN } from "@project-serum/anchor";
+import { web3, BN, Wallet as AnchorWallet } from "@project-serum/anchor";
 
 import { Wallet } from "@raindrop-studios/sol-command";
 import {
@@ -15,6 +15,7 @@ import {
 const { loadWalletKey } = Wallet;
 const { PDA } = Utils;
 import MatchesState = State.Matches;
+import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 programCommand("create_match")
   .requiredOption(
@@ -25,7 +26,7 @@ programCommand("create_match")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -81,7 +82,7 @@ programCommand("update_match")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -137,7 +138,7 @@ programCommand("join_match")
     const { keypair, env, configPath, rpcUrl, index } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -203,7 +204,7 @@ programCommand("leave_match")
     const { keypair, env, configPath, rpcUrl, index } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -254,7 +255,7 @@ programCommand("update_match_from_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -288,7 +289,7 @@ programCommand("disburse_tokens_by_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -336,7 +337,7 @@ programCommand("drain_match")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -375,7 +376,7 @@ programCommand("drain_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -407,7 +408,7 @@ programCommand("create_or_update_oracle")
     const { keypair, env, configPath, rpcUrl } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     if (configPath === undefined) {
       throw new Error("The configPath is undefined");
@@ -436,7 +437,7 @@ programCommand("show_match")
     const { keypair, env, configPath, rpcUrl, oracle } = cmd.opts();
 
     const walletKeyPair = loadWalletKey(keypair);
-    const anchorProgram = await initMatchesProgram(rpcUrl, env, keypair);
+    const anchorProgram = await getMatchesProgram(walletKeyPair, env, rpcUrl);
 
     let actualOracle = oracle ? new web3.PublicKey(oracle) : null;
     if (configPath !== undefined) {
@@ -570,21 +571,24 @@ function setLogLevel(value, prev) {
 
 program.parse(process.argv);
 
-async function initMatchesProgram(
-  rpcUrl: string,
+async function getMatchesProgram(
+  anchorWallet: NodeWallet | web3.Keypair,
   env: string,
-  keypairPath: string
+  rpcUrl: string,
 ): Promise<MatchesProgram> {
-  const keypair = web3.Keypair.fromSecretKey(
-    new Uint8Array(JSON.parse(fs.readFileSync(keypairPath, "utf8")))
-  );
+  if ((anchorWallet as web3.Keypair).secretKey) {
+    return MatchesProgram.getProgramWithWalletKeyPair(
+      MatchesProgram,
+      anchorWallet as web3.Keypair,
+      env,
+      rpcUrl
+    );
+  }
 
-  const matchesProgram = await MatchesProgram.getProgramWithWalletKeyPair(
+  return MatchesProgram.getProgramWithWallet(
     MatchesProgram,
-    keypair,
+    anchorWallet as AnchorWallet,
     env,
     rpcUrl
-  );
-
-  return matchesProgram;
+  ); 
 }
