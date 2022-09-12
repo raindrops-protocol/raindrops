@@ -6,12 +6,14 @@ import { BN, web3 } from "@project-serum/anchor";
 
 import { Wallet, CLI } from "@raindrop-studios/sol-command";
 import { PlayerProgram, ItemProgram } from "@raindrops-protocol/raindrops";
-import { Utils, State } from "@raindrops-protocol/raindrops";
+import { Utils, State, Constants } from "@raindrops-protocol/raindrops";
 import { SystemProgram } from "@solana/web3.js";
 
 import InheritanceState = State;
 
 const { PDA } = Utils;
+const { Player } = Constants;
+const { RAIN_PAYMENT_AMOUNT } = Player;
 const { getPlayerPDA, getAtaForMint, getItemPDA } = PDA;
 const { PublicKey } = web3;
 
@@ -184,6 +186,10 @@ CLI.programCommandWithConfig(
           metadataUpdateAuthority: config.metadataUpdateAuthority
             ? new PublicKey(config.metadataUpdateAuthority)
             : keypair.publicKey,
+        },
+        {
+          rainAmount:
+            env == "mainnet-beta" ? new BN(RAIN_PAYMENT_AMOUNT) : new BN(0),
         }
       )
     ).rpc();
@@ -231,6 +237,10 @@ CLI.programCommandWithConfig(
           newPlayerTokenHolder: config.newPlayerTokenHolder
             ? new PublicKey(config.newPlayerTokenHolder)
             : wallet.publicKey,
+        },
+        {
+          rainAmount:
+            env == "mainnet-beta" ? new BN(RAIN_PAYMENT_AMOUNT) : new BN(0),
         }
       )
     ).rpc();

@@ -81,7 +81,7 @@ export class PlayerProgram extends Program.Program {
   async buildPlayer(
     args: PlayerInstruction.BuildPlayerArgs,
     accounts: PlayerInstruction.BuildPlayerAccounts,
-    additionalArgs = {},
+    additionalArgs: PlayerInstruction.BuildPlayerAdditionalArgs,
     options?: { commitment: web3.Commitment; timeout?: number }
   ): Promise<{
     rpc: () => Promise<{ txid: string; slot: number }>;
