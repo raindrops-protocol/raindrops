@@ -128,7 +128,7 @@ pub mod raindrops_namespace {
             }
         };
 
-        if whitelisted_staking_mints.len() > 0 {
+        if !whitelisted_staking_mints.is_empty() {
             for n in 0..whitelisted_staking_mints.len() {
                 let mint_account = &remaining_accounts[n];
                 // Assert they are all real mints.
@@ -197,7 +197,7 @@ pub mod raindrops_namespace {
             for n in 0..ws_mints.len() {
                 let mint_account = &ctx.remaining_accounts[n];
                 // Assert they are all real mints.
-                let _mint: spl_token::state::Mint = assert_initialized(&mint_account)?;
+                let _mint: spl_token::state::Mint = assert_initialized(mint_account)?;
             }
             namespace.whitelisted_staking_mints = ws_mints;
         }
@@ -225,7 +225,7 @@ pub mod raindrops_namespace {
 
         // check artifact is joined to this namespace
         let mut in_namespace = false;
-        let art_namespaces = pull_namespaces(&artifact).unwrap();
+        let art_namespaces = pull_namespaces(artifact).unwrap();
         for art_ns in art_namespaces {
             msg!("{}, {}", art_ns, namespace.key());
             if art_ns == namespace.key() {
@@ -245,7 +245,7 @@ pub mod raindrops_namespace {
         }
 
         // if caches len is 0, it was just initialized
-        if index.caches.len() == 0 {
+        if index.caches.is_empty() {
             index.namespace = namespace.key();
             index.bump = *ctx.bumps.get("index").unwrap();
             index.page = args.page;
@@ -330,7 +330,7 @@ pub mod raindrops_namespace {
             artifact_ns.namespaces = Some(new_namespaces);
             artifact_ns.exit(&crate::id())
         } else {
-            return Err(error!(ErrorCode::CannotCacheArtifact));
+            Err(error!(ErrorCode::CannotCacheArtifact))
         }
     }
 
@@ -407,7 +407,7 @@ pub mod raindrops_namespace {
         // if page was full, remove the page from full pages list
         namespace.full_pages.retain(|&i| i != page);
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn create_namespace_gatekeeper<'info>(
@@ -528,7 +528,7 @@ pub mod raindrops_namespace {
             artifact_ns.namespaces = Some(new_namespaces);
             artifact_ns.exit(&crate::id())
         } else {
-            return Err(error!(ErrorCode::CannotLeaveNamespace));
+            Err(error!(ErrorCode::CannotLeaveNamespace))
         }
     }
 
@@ -721,7 +721,7 @@ pub enum Permissiveness {
     Namespace,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum ArtifactType {
     Player,
     Item,
@@ -731,7 +731,7 @@ pub enum ArtifactType {
 
 pub const MAX_FILTER_SLOTS: usize = 5;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum Filter {
     Namespace {
         namespaces: Vec<Pubkey>,
@@ -746,7 +746,7 @@ pub enum Filter {
 
 pub const FILTER_SIZE: usize = (MAX_FILTER_SLOTS + 1) * 32;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub struct ArtifactFilter {
     filter: Filter,
     token_type: ArtifactType,
@@ -816,7 +816,7 @@ pub struct NamespaceAndIndex {
     inherited: InheritanceState,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,

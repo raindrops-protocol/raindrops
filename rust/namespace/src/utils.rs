@@ -16,7 +16,7 @@ pub fn assert_part_of_namespace<'a>(
 ) -> Result<()> {
     let data = artifact.data.borrow_mut();
     let number = u32::from_le_bytes(*array_ref![data, 9, 4]) as usize;
-    let offset = 13 as usize;
+    let offset = 13_usize;
     msg!("number: {}, offset: {}", number, offset);
     for i in 0..number {
         let key_bytes = array_ref![data, offset + i * 33, 32];
@@ -26,7 +26,7 @@ pub fn assert_part_of_namespace<'a>(
         }
     }
 
-    return Err(error!(ErrorCode::ArtifactLacksNamespace));
+    Err(error!(ErrorCode::ArtifactLacksNamespace))
 }
 
 pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -> Result<T> {
@@ -39,7 +39,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(account_info: &AccountInfo) -
 }
 
 pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
-    let (key, bump) = Pubkey::find_program_address(&path, program_id);
+    let (key, bump) = Pubkey::find_program_address(path, program_id);
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
@@ -153,7 +153,7 @@ pub fn check_permissiveness_against_holder<'a>(
     namespace_gatekeeper: &Account<'a, NamespaceGatekeeper>,
     permissiveness: &Permissiveness,
 ) -> Result<()> {
-    if !artifact.owner.eq(&program_id) {
+    if !artifact.owner.eq(program_id) {
         return Err(error!(ErrorCode::IncorrectOwner));
     }
 
@@ -193,7 +193,7 @@ pub fn check_permissiveness_against_holder<'a>(
                     }
                 }
             }
-            return Ok(());
+            Ok(())
         }
         Permissiveness::Blacklist => {
             msg!("Blacklist match");
@@ -222,12 +222,12 @@ pub fn check_permissiveness_against_holder<'a>(
                     }
                 }
             }
-            return Ok(());
+            Ok(())
         }
         Permissiveness::Namespace => {
             msg!("Namespace match");
             assert_signer(token_holder)?;
-            return Ok(());
+            Ok(())
         }
     }
 }
@@ -302,7 +302,7 @@ pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
 pub fn lowest_available_page(full_pages: &mut Vec<u64>) -> Result<u64> {
     full_pages.sort();
 
-    if full_pages.len() == 0 {
+    if full_pages.is_empty() {
         return Ok(0);
     }
 

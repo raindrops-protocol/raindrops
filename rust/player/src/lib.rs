@@ -537,7 +537,7 @@ pub mod raindrops_player {
         })?;
 
         require!(player.tokens_staked == 0, UnstakeTokensFirst);
-        require!(player.equipped_items.len() == 0, RemoveEquipmentFirst);
+        require!(player.equipped_items.is_empty(), RemoveEquipmentFirst);
         require!(player.active_item_counter == 0, DeactivateAllItemsFirst);
         require!(
             player.items_in_backpack == 0,
@@ -559,7 +559,7 @@ pub mod raindrops_player {
             };
             let (_, bump) = Pubkey::find_program_address(
                 &[PREFIX.as_bytes(), VAULT.as_bytes()],
-                &ctx.program_id,
+                ctx.program_id,
             );
 
             let signer_seeds = &[PREFIX.as_bytes(), VAULT.as_bytes(), &[bump]];
@@ -656,7 +656,7 @@ pub mod raindrops_player {
             if rain_token_program_account.data_len() == 0 {
                 let (_, bump) = Pubkey::find_program_address(
                     &[PREFIX.as_bytes(), VAULT.as_bytes()],
-                    &ctx.program_id,
+                    ctx.program_id,
                 );
 
                 let signer_seeds = &[PREFIX.as_bytes(), VAULT.as_bytes(), &[bump]];
@@ -782,7 +782,7 @@ pub mod raindrops_player {
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &add_item_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.add_item_permissiveness,
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -863,7 +863,7 @@ pub mod raindrops_player {
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &remove_item_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.remove_item_permissiveness,
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -1029,7 +1029,7 @@ pub mod raindrops_player {
         let receiver = &ctx.accounts.receiver;
         let clock = &ctx.accounts.clock;
 
-        let act_at = player_item_activation_marker.activated_at.clone() as i64;
+        let act_at = player_item_activation_marker.activated_at as i64;
 
         // how do we know if item should have effect removed yet? we have it on the item act
         // marker and duration on the item usage...check and throw error.
@@ -1117,11 +1117,7 @@ pub mod raindrops_player {
         let item_usage_to_use = get_item_usage(GetItemUsageArgs {
             item_class,
             usage_index: item_usage_index,
-            usage_proof: if let Some(u) = &usage_info {
-                Some(u.usage_proof.clone())
-            } else {
-                None
-            },
+            usage_proof: usage_info.as_ref().map(|u| u.usage_proof.clone()),
             usage: if let Some(u2) = &usage_info {
                 Some(raindrops_item::ItemUsage::try_from_slice(&u2.usage)?)
             } else {
@@ -1145,7 +1141,7 @@ pub mod raindrops_player {
                 None
             };
         if let Some(bie) = &item_usage_to_use.basic_item_effects {
-            if bie.len() > 0 {
+            if !bie.is_empty() {
                 let bie_size = 1 + bie
                     .len()
                     .checked_div(8)
@@ -1253,7 +1249,7 @@ pub mod raindrops_player {
             } else {
                 &player_class.data.settings.unequip_item_permissiveness
             },
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -1361,7 +1357,7 @@ pub mod raindrops_player {
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &equip_item_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.equip_item_permissiveness,
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -1374,7 +1370,7 @@ pub mod raindrops_player {
                 match new_bs.state {
                     BasicStatState::Integer { base, .. } => {
                         new_bs.state = BasicStatState::Integer {
-                            base: base,
+                            base,
                             with_temporary_changes: base,
                             finalized: base,
                             temporary_numerator: 1,
@@ -2148,7 +2144,7 @@ pub struct EquippedItem {
 
 pub const MAX_NAMESPACES: usize = 10;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum PermissivenessType {
     TokenHolder,
     ParentTokenHolder,
@@ -2156,7 +2152,7 @@ pub enum PermissivenessType {
     Anybody,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug, Copy)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,
@@ -2305,7 +2301,7 @@ pub struct Boolean {
     pub boolean: bool,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct Permissiveness {
     pub inherited: InheritanceState,
     pub permissiveness_type: PermissivenessType,
@@ -2499,7 +2495,7 @@ pub enum BasicStatState {
     Null,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Copy)]
 pub enum StatDiffType {
     Wearable,
     Consumable,
@@ -2531,7 +2527,7 @@ pub struct PlayerItemActivationMarker {
 
 // Copied from Item class because Anchor sucks and can't do imports
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Copy)]
 pub enum BasicItemEffectType {
     Increment,
     Decrement,
