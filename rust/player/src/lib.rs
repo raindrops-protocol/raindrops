@@ -20,7 +20,7 @@ pub const PREFIX: &str = "player";
 pub const VAULT: &str = "rain_vault";
 
 const RAIN_TOKEN_MINT: &str = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL";
-const RAIN_PAYMENT_AMOUNT: u64 = 0; // 1 token with 5 decimals
+const RAIN_PAYMENT_AMOUNT: u64 = 100_000; // 1 token with 5 decimals
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemCallbackArgs {
