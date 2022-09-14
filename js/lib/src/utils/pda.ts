@@ -34,7 +34,7 @@ export const getAtaForMint = async (
 export const getPlayerRainVault = async (): Promise<web3.PublicKey> => {
   return (
     await web3.PublicKey.findProgramAddress(
-      [Buffer.from(PLAYER_PREFIX), Buffer.from("vault")],
+      [Buffer.from(PLAYER_PREFIX), Buffer.from("rain_vault")],
       PLAYER_ID
     )
   )[0];

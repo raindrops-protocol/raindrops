@@ -568,7 +568,6 @@ export class Instruction extends SolKitInstruction {
       )[0];
     const instructions = [];
     const signers = [];
-
     if (additionalArgs.rainAmount.toNumber() > 0) {
       instructions.push(
         Token.createApproveInstruction(
@@ -577,7 +576,7 @@ export class Instruction extends SolKitInstruction {
           transferAuthority.publicKey,
           (this.program.client.provider as AnchorProvider).wallet.publicKey,
           [],
-          additionalArgs.rainAmount
+          additionalArgs.rainAmount.toNumber()
         )
       );
       signers.push(transferAuthority);
@@ -603,7 +602,6 @@ export class Instruction extends SolKitInstruction {
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
           tokenProgram: TOKEN_PROGRAM_ID,
-          playerProgram: PLAYER_ID,
         })
         .remainingAccounts(remainingAccounts)
         .instruction()
@@ -709,7 +707,6 @@ export class Instruction extends SolKitInstruction {
             rainToken: myRainAccount,
             rainTokenProgramAccount: await getPlayerRainVault(),
             tokenProgram: TOKEN_PROGRAM_ID,
-            playerProgram: PLAYER_ID,
             receiver: (this.program.client.provider as AnchorProvider).wallet
               .publicKey,
           })

@@ -1,6 +1,6 @@
-export type RaindropsPlayer = {
+export type Player = {
   "version": "0.1.0",
-  "name": "raindrops_player",
+  "name": "player",
   "instructions": [
     {
       "name": "createPlayerClass",
@@ -128,21 +128,6 @@ export type RaindropsPlayer = {
           "name": "receiver",
           "isMut": false,
           "isSigner": true
-        },
-        {
-          "name": "rainToken",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rainTokenProgramAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": [
@@ -211,26 +196,6 @@ export type RaindropsPlayer = {
           "isSigner": false
         },
         {
-          "name": "rainTokenTransferAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rainToken",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rainTokenMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rainTokenProgramAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "newPlayerTokenHolder",
           "isMut": false,
           "isSigner": false
@@ -242,11 +207,6 @@ export type RaindropsPlayer = {
         },
         {
           "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -869,10 +829,6 @@ export type RaindropsPlayer = {
                 "defined": "EquippedItem"
               }
             }
-          },
-          {
-            "name": "tokensPaidIn",
-            "type": "u64"
           }
         ]
       }
@@ -2659,225 +2615,144 @@ export type RaindropsPlayer = {
           }
         ]
       }
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "IncorrectOwner",
-      "msg": "Account does not have correct owner!"
     },
     {
-      "code": 6001,
-      "name": "Uninitialized",
-      "msg": "Account is not initialized!"
-    },
-    {
-      "code": 6002,
-      "name": "MintMismatch",
-      "msg": "Mint Mismatch!"
-    },
-    {
-      "code": 6003,
-      "name": "TokenTransferFailed",
-      "msg": "Token transfer failed"
-    },
-    {
-      "code": 6004,
-      "name": "NumericalOverflowError",
-      "msg": "Numerical overflow error"
-    },
-    {
-      "code": 6005,
-      "name": "TokenMintToFailed",
-      "msg": "Token mint to failed"
-    },
-    {
-      "code": 6006,
-      "name": "TokenBurnFailed",
-      "msg": "TokenBurnFailed"
-    },
-    {
-      "code": 6007,
-      "name": "DerivedKeyInvalid",
-      "msg": "Derived key is invalid"
-    },
-    {
-      "code": 6008,
-      "name": "NoParentPresent",
-      "msg": "No parent present"
-    },
-    {
-      "code": 6009,
-      "name": "ExpectedParent",
-      "msg": "Expected parent"
-    },
-    {
-      "code": 6010,
-      "name": "ChildrenStillExist",
-      "msg": "You need to kill the children before killing the parent"
-    },
-    {
-      "code": 6011,
-      "name": "UnstakeTokensFirst",
-      "msg": "Unstake tokens first"
-    },
-    {
-      "code": 6012,
-      "name": "MustBeHolderToBuild",
-      "msg": "Must be holder to build"
-    },
-    {
-      "code": 6013,
-      "name": "CannotRemoveThisMuch",
-      "msg": "Cannot remove this much of this item because there is not enough of it or too much of it is equipped"
-    },
-    {
-      "code": 6014,
-      "name": "UsageRootNotPresent",
-      "msg": "This item lacks a usage root"
-    },
-    {
-      "code": 6015,
-      "name": "InvalidProof",
-      "msg": "Invalid proof"
-    },
-    {
-      "code": 6016,
-      "name": "ItemContainsNoUsages",
-      "msg": "Item contains no usages"
-    },
-    {
-      "code": 6017,
-      "name": "FoundNoMatchingUsage",
-      "msg": "Found no item usage matching this index"
-    },
-    {
-      "code": 6018,
-      "name": "CannotEquipConsumable",
-      "msg": "Cannot equip consumable"
-    },
-    {
-      "code": 6019,
-      "name": "BodyPartNotEligible",
-      "msg": "This body part cannot equip this item"
-    },
-    {
-      "code": 6020,
-      "name": "CannotUnequipThisMuch",
-      "msg": "Cannot unequip this much"
-    },
-    {
-      "code": 6021,
-      "name": "BodyPartContainsTooManyOfThisType",
-      "msg": "Body part contains too many items of this type on it"
-    },
-    {
-      "code": 6022,
-      "name": "BodyPartContainsTooMany",
-      "msg": "Body part contains too many items"
-    },
-    {
-      "code": 6023,
-      "name": "CannotEquipItemWithoutUsageOrMerkle",
-      "msg": "Cannot equip item without usage or merkle"
-    },
-    {
-      "code": 6024,
-      "name": "NoBodyPartsToEquip",
-      "msg": "No body parts to equip"
-    },
-    {
-      "code": 6025,
-      "name": "UnableToFindBodyPartByIndex",
-      "msg": "Unable to find body part with this index"
-    },
-    {
-      "code": 6026,
-      "name": "ItemCannotBePairedWithSelf",
-      "msg": "Item cannot be paired with self"
-    },
-    {
-      "code": 6027,
-      "name": "ItemCannotBeEquippedWithDNPEntry",
-      "msg": "Item cannot be equipped because a DNP entry is also equipped"
-    },
-    {
-      "code": 6028,
-      "name": "BasicStatTemplateTypeDoesNotMatchBasicStatType",
-      "msg": "Template stat type does not match stat of player, try updating player permissionlessly before running this command again"
-    },
-    {
-      "code": 6029,
-      "name": "CannotAlterThisTypeNumerically",
-      "msg": "Cannot numerically alter this type of stat"
-    },
-    {
-      "code": 6030,
-      "name": "Unreachable",
-      "msg": "Unreachable code"
-    },
-    {
-      "code": 6031,
-      "name": "NotValidForUseYet",
-      "msg": "Not valid for use yet"
-    },
-    {
-      "code": 6032,
-      "name": "RemoveEquipmentFirst",
-      "msg": "Remove equipped items first"
-    },
-    {
-      "code": 6033,
-      "name": "DeactivateAllItemsFirst",
-      "msg": "Deactivate all items first"
-    },
-    {
-      "code": 6034,
-      "name": "RemoveAllItemsFromBackpackFirst",
-      "msg": "Remove all items from backpack first"
-    },
-    {
-      "code": 6035,
-      "name": "InsufficientBalance",
-      "msg": "Insufficient Balance"
-    },
-    {
-      "code": 6036,
-      "name": "PermissivenessNotFound",
-      "msg": "Permissiveness Not Found"
-    },
-    {
-      "code": 6037,
-      "name": "MustSpecifyPermissivenessType",
-      "msg": "Must specify permissiveness type"
-    },
-    {
-      "code": 6038,
-      "name": "IndexAlreadyUsed",
-      "msg": "Cannot use the same index in basic stats or body parts twice"
-    },
-    {
-      "code": 6039,
-      "name": "NameAlreadyUsed",
-      "msg": "Cannot use the same name in basic stats or body parts twice"
-    },
-    {
-      "code": 6040,
-      "name": "CannotResetPlayerStatsUntilItemEffectsAreRemoved",
-      "msg": "Cannot reset player until item effects removed"
-    },
-    {
-      "code": 6041,
-      "name": "RainTokenMintMismatch",
-      "msg": "Rain token mint mismatch"
+      "name": "ErrorCode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "IncorrectOwner"
+          },
+          {
+            "name": "Uninitialized"
+          },
+          {
+            "name": "MintMismatch"
+          },
+          {
+            "name": "TokenTransferFailed"
+          },
+          {
+            "name": "NumericalOverflowError"
+          },
+          {
+            "name": "TokenMintToFailed"
+          },
+          {
+            "name": "TokenBurnFailed"
+          },
+          {
+            "name": "DerivedKeyInvalid"
+          },
+          {
+            "name": "NoParentPresent"
+          },
+          {
+            "name": "ExpectedParent"
+          },
+          {
+            "name": "ChildrenStillExist"
+          },
+          {
+            "name": "UnstakeTokensFirst"
+          },
+          {
+            "name": "MustBeHolderToBuild"
+          },
+          {
+            "name": "CannotRemoveThisMuch"
+          },
+          {
+            "name": "UsageRootNotPresent"
+          },
+          {
+            "name": "InvalidProof"
+          },
+          {
+            "name": "ItemContainsNoUsages"
+          },
+          {
+            "name": "FoundNoMatchingUsage"
+          },
+          {
+            "name": "CannotEquipConsumable"
+          },
+          {
+            "name": "BodyPartNotEligible"
+          },
+          {
+            "name": "CannotUnequipThisMuch"
+          },
+          {
+            "name": "BodyPartContainsTooManyOfThisType"
+          },
+          {
+            "name": "BodyPartContainsTooMany"
+          },
+          {
+            "name": "CannotEquipItemWithoutUsageOrMerkle"
+          },
+          {
+            "name": "NoBodyPartsToEquip"
+          },
+          {
+            "name": "UnableToFindBodyPartByIndex"
+          },
+          {
+            "name": "ItemCannotBePairedWithSelf"
+          },
+          {
+            "name": "ItemCannotBeEquippedWithDNPEntry"
+          },
+          {
+            "name": "BasicStatTemplateTypeDoesNotMatchBasicStatType"
+          },
+          {
+            "name": "CannotAlterThisTypeNumerically"
+          },
+          {
+            "name": "Unreachable"
+          },
+          {
+            "name": "NotValidForUseYet"
+          },
+          {
+            "name": "RemoveEquipmentFirst"
+          },
+          {
+            "name": "DeactivateAllItemsFirst"
+          },
+          {
+            "name": "RemoveAllItemsFromBackpackFirst"
+          },
+          {
+            "name": "InsufficientBalance"
+          },
+          {
+            "name": "PermissivenessNotFound"
+          },
+          {
+            "name": "MustSpecifyPermissivenessType"
+          },
+          {
+            "name": "IndexAlreadyUsed"
+          },
+          {
+            "name": "NameAlreadyUsed"
+          },
+          {
+            "name": "CannotResetPlayerStatsUntilItemEffectsAreRemoved"
+          }
+        ]
+      }
     }
   ]
 };
 
-export const IDL: RaindropsPlayer = {
+export const IDL: Player = {
   "version": "0.1.0",
-  "name": "raindrops_player",
+  "name": "player",
   "instructions": [
     {
       "name": "createPlayerClass",
@@ -3005,21 +2880,6 @@ export const IDL: RaindropsPlayer = {
           "name": "receiver",
           "isMut": false,
           "isSigner": true
-        },
-        {
-          "name": "rainToken",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rainTokenProgramAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": [
@@ -3088,26 +2948,6 @@ export const IDL: RaindropsPlayer = {
           "isSigner": false
         },
         {
-          "name": "rainTokenTransferAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rainToken",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rainTokenMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rainTokenProgramAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "newPlayerTokenHolder",
           "isMut": false,
           "isSigner": false
@@ -3119,11 +2959,6 @@ export const IDL: RaindropsPlayer = {
         },
         {
           "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -3746,10 +3581,6 @@ export const IDL: RaindropsPlayer = {
                 "defined": "EquippedItem"
               }
             }
-          },
-          {
-            "name": "tokensPaidIn",
-            "type": "u64"
           }
         ]
       }
@@ -5536,218 +5367,137 @@ export const IDL: RaindropsPlayer = {
           }
         ]
       }
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "IncorrectOwner",
-      "msg": "Account does not have correct owner!"
     },
     {
-      "code": 6001,
-      "name": "Uninitialized",
-      "msg": "Account is not initialized!"
-    },
-    {
-      "code": 6002,
-      "name": "MintMismatch",
-      "msg": "Mint Mismatch!"
-    },
-    {
-      "code": 6003,
-      "name": "TokenTransferFailed",
-      "msg": "Token transfer failed"
-    },
-    {
-      "code": 6004,
-      "name": "NumericalOverflowError",
-      "msg": "Numerical overflow error"
-    },
-    {
-      "code": 6005,
-      "name": "TokenMintToFailed",
-      "msg": "Token mint to failed"
-    },
-    {
-      "code": 6006,
-      "name": "TokenBurnFailed",
-      "msg": "TokenBurnFailed"
-    },
-    {
-      "code": 6007,
-      "name": "DerivedKeyInvalid",
-      "msg": "Derived key is invalid"
-    },
-    {
-      "code": 6008,
-      "name": "NoParentPresent",
-      "msg": "No parent present"
-    },
-    {
-      "code": 6009,
-      "name": "ExpectedParent",
-      "msg": "Expected parent"
-    },
-    {
-      "code": 6010,
-      "name": "ChildrenStillExist",
-      "msg": "You need to kill the children before killing the parent"
-    },
-    {
-      "code": 6011,
-      "name": "UnstakeTokensFirst",
-      "msg": "Unstake tokens first"
-    },
-    {
-      "code": 6012,
-      "name": "MustBeHolderToBuild",
-      "msg": "Must be holder to build"
-    },
-    {
-      "code": 6013,
-      "name": "CannotRemoveThisMuch",
-      "msg": "Cannot remove this much of this item because there is not enough of it or too much of it is equipped"
-    },
-    {
-      "code": 6014,
-      "name": "UsageRootNotPresent",
-      "msg": "This item lacks a usage root"
-    },
-    {
-      "code": 6015,
-      "name": "InvalidProof",
-      "msg": "Invalid proof"
-    },
-    {
-      "code": 6016,
-      "name": "ItemContainsNoUsages",
-      "msg": "Item contains no usages"
-    },
-    {
-      "code": 6017,
-      "name": "FoundNoMatchingUsage",
-      "msg": "Found no item usage matching this index"
-    },
-    {
-      "code": 6018,
-      "name": "CannotEquipConsumable",
-      "msg": "Cannot equip consumable"
-    },
-    {
-      "code": 6019,
-      "name": "BodyPartNotEligible",
-      "msg": "This body part cannot equip this item"
-    },
-    {
-      "code": 6020,
-      "name": "CannotUnequipThisMuch",
-      "msg": "Cannot unequip this much"
-    },
-    {
-      "code": 6021,
-      "name": "BodyPartContainsTooManyOfThisType",
-      "msg": "Body part contains too many items of this type on it"
-    },
-    {
-      "code": 6022,
-      "name": "BodyPartContainsTooMany",
-      "msg": "Body part contains too many items"
-    },
-    {
-      "code": 6023,
-      "name": "CannotEquipItemWithoutUsageOrMerkle",
-      "msg": "Cannot equip item without usage or merkle"
-    },
-    {
-      "code": 6024,
-      "name": "NoBodyPartsToEquip",
-      "msg": "No body parts to equip"
-    },
-    {
-      "code": 6025,
-      "name": "UnableToFindBodyPartByIndex",
-      "msg": "Unable to find body part with this index"
-    },
-    {
-      "code": 6026,
-      "name": "ItemCannotBePairedWithSelf",
-      "msg": "Item cannot be paired with self"
-    },
-    {
-      "code": 6027,
-      "name": "ItemCannotBeEquippedWithDNPEntry",
-      "msg": "Item cannot be equipped because a DNP entry is also equipped"
-    },
-    {
-      "code": 6028,
-      "name": "BasicStatTemplateTypeDoesNotMatchBasicStatType",
-      "msg": "Template stat type does not match stat of player, try updating player permissionlessly before running this command again"
-    },
-    {
-      "code": 6029,
-      "name": "CannotAlterThisTypeNumerically",
-      "msg": "Cannot numerically alter this type of stat"
-    },
-    {
-      "code": 6030,
-      "name": "Unreachable",
-      "msg": "Unreachable code"
-    },
-    {
-      "code": 6031,
-      "name": "NotValidForUseYet",
-      "msg": "Not valid for use yet"
-    },
-    {
-      "code": 6032,
-      "name": "RemoveEquipmentFirst",
-      "msg": "Remove equipped items first"
-    },
-    {
-      "code": 6033,
-      "name": "DeactivateAllItemsFirst",
-      "msg": "Deactivate all items first"
-    },
-    {
-      "code": 6034,
-      "name": "RemoveAllItemsFromBackpackFirst",
-      "msg": "Remove all items from backpack first"
-    },
-    {
-      "code": 6035,
-      "name": "InsufficientBalance",
-      "msg": "Insufficient Balance"
-    },
-    {
-      "code": 6036,
-      "name": "PermissivenessNotFound",
-      "msg": "Permissiveness Not Found"
-    },
-    {
-      "code": 6037,
-      "name": "MustSpecifyPermissivenessType",
-      "msg": "Must specify permissiveness type"
-    },
-    {
-      "code": 6038,
-      "name": "IndexAlreadyUsed",
-      "msg": "Cannot use the same index in basic stats or body parts twice"
-    },
-    {
-      "code": 6039,
-      "name": "NameAlreadyUsed",
-      "msg": "Cannot use the same name in basic stats or body parts twice"
-    },
-    {
-      "code": 6040,
-      "name": "CannotResetPlayerStatsUntilItemEffectsAreRemoved",
-      "msg": "Cannot reset player until item effects removed"
-    },
-    {
-      "code": 6041,
-      "name": "RainTokenMintMismatch",
-      "msg": "Rain token mint mismatch"
+      "name": "ErrorCode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "IncorrectOwner"
+          },
+          {
+            "name": "Uninitialized"
+          },
+          {
+            "name": "MintMismatch"
+          },
+          {
+            "name": "TokenTransferFailed"
+          },
+          {
+            "name": "NumericalOverflowError"
+          },
+          {
+            "name": "TokenMintToFailed"
+          },
+          {
+            "name": "TokenBurnFailed"
+          },
+          {
+            "name": "DerivedKeyInvalid"
+          },
+          {
+            "name": "NoParentPresent"
+          },
+          {
+            "name": "ExpectedParent"
+          },
+          {
+            "name": "ChildrenStillExist"
+          },
+          {
+            "name": "UnstakeTokensFirst"
+          },
+          {
+            "name": "MustBeHolderToBuild"
+          },
+          {
+            "name": "CannotRemoveThisMuch"
+          },
+          {
+            "name": "UsageRootNotPresent"
+          },
+          {
+            "name": "InvalidProof"
+          },
+          {
+            "name": "ItemContainsNoUsages"
+          },
+          {
+            "name": "FoundNoMatchingUsage"
+          },
+          {
+            "name": "CannotEquipConsumable"
+          },
+          {
+            "name": "BodyPartNotEligible"
+          },
+          {
+            "name": "CannotUnequipThisMuch"
+          },
+          {
+            "name": "BodyPartContainsTooManyOfThisType"
+          },
+          {
+            "name": "BodyPartContainsTooMany"
+          },
+          {
+            "name": "CannotEquipItemWithoutUsageOrMerkle"
+          },
+          {
+            "name": "NoBodyPartsToEquip"
+          },
+          {
+            "name": "UnableToFindBodyPartByIndex"
+          },
+          {
+            "name": "ItemCannotBePairedWithSelf"
+          },
+          {
+            "name": "ItemCannotBeEquippedWithDNPEntry"
+          },
+          {
+            "name": "BasicStatTemplateTypeDoesNotMatchBasicStatType"
+          },
+          {
+            "name": "CannotAlterThisTypeNumerically"
+          },
+          {
+            "name": "Unreachable"
+          },
+          {
+            "name": "NotValidForUseYet"
+          },
+          {
+            "name": "RemoveEquipmentFirst"
+          },
+          {
+            "name": "DeactivateAllItemsFirst"
+          },
+          {
+            "name": "RemoveAllItemsFromBackpackFirst"
+          },
+          {
+            "name": "InsufficientBalance"
+          },
+          {
+            "name": "PermissivenessNotFound"
+          },
+          {
+            "name": "MustSpecifyPermissivenessType"
+          },
+          {
+            "name": "IndexAlreadyUsed"
+          },
+          {
+            "name": "NameAlreadyUsed"
+          },
+          {
+            "name": "CannotResetPlayerStatsUntilItemEffectsAreRemoved"
+          }
+        ]
+      }
     }
   ]
 };
