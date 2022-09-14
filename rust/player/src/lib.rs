@@ -2,19 +2,26 @@ pub mod utils;
 
 use crate::utils::*;
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
+use anchor_spl::token::transfer;
+use anchor_spl::token::{initialize_account, Transfer};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{close_account, CloseAccount, Mint, Token, TokenAccount},
 };
 use raindrops_item::utils::{
-    assert_keys_equal, assert_metadata_valid, get_item_usage, spl_token_transfer, GetItemUsageArgs,
-    TokenTransferParams,
+    assert_initialized, assert_keys_equal, assert_metadata_valid, assert_signer, get_item_usage,
+    spl_token_transfer, GetItemUsageArgs, TokenTransferParams,
 };
+use std::str::FromStr;
 
 anchor_lang::declare_id!("p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1");
 pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
 
 pub const PREFIX: &str = "player";
+pub const VAULT: &str = "rain_vault";
+
+const RAIN_TOKEN_MINT: &str = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL";
+const RAIN_PAYMENT_AMOUNT: u64 = 100_000; // 1 token with 5 decimals
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ItemCallbackArgs {
@@ -505,6 +512,8 @@ pub mod raindrops_player {
     ) -> Result<()> {
         let player_class = &mut ctx.accounts.player_class;
         let player = &mut ctx.accounts.player;
+        let rain_token = &ctx.accounts.rain_token;
+        let rain_token_program_account = &ctx.accounts.rain_token_program_account;
         let receiver = &ctx.accounts.receiver;
 
         let DrainPlayerArgs {
@@ -539,6 +548,24 @@ pub mod raindrops_player {
                 .existing_children
                 .checked_sub(1)
                 .ok_or(ErrorCode::NumericalOverflowError)?;
+        }
+
+        if player.tokens_paid_in > 0 {
+            let cpi_accounts = Transfer {
+                from: rain_token_program_account.to_account_info(),
+                to: rain_token.to_account_info(),
+                authority: rain_token_program_account.to_account_info(),
+            };
+            let (_, bump) = Pubkey::find_program_address(
+                &[PREFIX.as_bytes(), VAULT.as_bytes()],
+                &ctx.program_id,
+            );
+
+            let signer_seeds = &[PREFIX.as_bytes(), VAULT.as_bytes(), &[bump]];
+
+            let context =
+                CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+            transfer(context.with_signer(&[signer_seeds]), player.tokens_paid_in)?;
         }
 
         let player_info = player.to_account_info();
@@ -602,6 +629,11 @@ pub mod raindrops_player {
         let new_player_token_holder = &ctx.accounts.new_player_token_holder;
         let metadata = &ctx.accounts.new_player_metadata;
         let edition = &ctx.accounts.new_player_edition;
+        let rain_token = &ctx.accounts.rain_token;
+        let rain_token_transfer_authority = &ctx.accounts.rain_token_transfer_authority;
+        let rain_token_program_account = &ctx.accounts.rain_token_program_account;
+        let rain_token_mint = &ctx.accounts.rain_token_mint;
+        let payer = &ctx.accounts.payer;
 
         let BuildPlayerArgs {
             class_index,
@@ -612,6 +644,65 @@ pub mod raindrops_player {
             parent_class_index,
             ..
         } = args;
+
+        if RAIN_PAYMENT_AMOUNT > 0 {
+            msg!("Paying rain fee. {}", RAIN_PAYMENT_AMOUNT);
+            require!(
+                rain_token_mint.key() == Pubkey::from_str(RAIN_TOKEN_MINT).unwrap(),
+                RainTokenMintMismatch
+            );
+
+            if rain_token_program_account.data_len() == 0 {
+                let (_, bump) = Pubkey::find_program_address(
+                    &[PREFIX.as_bytes(), VAULT.as_bytes()],
+                    &ctx.program_id,
+                );
+
+                let signer_seeds = &[PREFIX.as_bytes(), VAULT.as_bytes(), &[bump]];
+                create_or_allocate_account_raw(
+                    ctx.accounts.token_program.key(),
+                    rain_token_program_account,
+                    &ctx.accounts.rent,
+                    &ctx.accounts.system_program,
+                    payer,
+                    anchor_spl::token::TokenAccount::LEN,
+                    signer_seeds,
+                )?;
+
+                let cpi_accounts = anchor_spl::token::InitializeAccount {
+                    authority: rain_token_program_account.to_account_info(),
+                    account: rain_token_program_account.to_account_info(),
+                    mint: rain_token_mint.to_account_info(),
+                    rent: ctx.accounts.rent.to_account_info(),
+                };
+
+                let context =
+                    CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+
+                initialize_account(context)?;
+            }
+
+            let rain_token_acct: spl_token::state::Account = assert_initialized(rain_token)?;
+
+            require!(
+                rain_token_acct.mint == rain_token_mint.key(),
+                RainTokenMintMismatch
+            );
+
+            assert_signer(rain_token_transfer_authority)?;
+
+            let cpi_accounts = Transfer {
+                from: rain_token.to_account_info(),
+                to: rain_token_program_account.to_account_info(),
+                authority: rain_token_transfer_authority.to_account_info(),
+            };
+            let context =
+                CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+
+            transfer(context.with_signer(&[]), RAIN_PAYMENT_AMOUNT)?;
+
+            new_player.tokens_paid_in = RAIN_PAYMENT_AMOUNT;
+        }
 
         msg!("assert_metadata_valid");
         assert_metadata_valid(
@@ -1887,6 +1978,18 @@ pub struct DrainPlayer<'info> {
     )]
     player_class: Box<Account<'info, PlayerClass>>,
     receiver: Signer<'info>,
+    #[account(mut)]
+    rain_token: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            VAULT.as_bytes(),
+        ],
+        bump
+    )]
+    rain_token_program_account: UncheckedAccount<'info>,
+    token_program: Program<'info, Token>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -1925,11 +2028,24 @@ pub struct BuildPlayer<'info> {
         constraint=new_player_token.mint == new_player_mint.key() && new_player_token.owner == new_player_token_holder.key(),
     )]
     new_player_token: Box<Account<'info, TokenAccount>>,
+    rain_token_transfer_authority: UncheckedAccount<'info>,
+    rain_token: UncheckedAccount<'info>,
+    rain_token_mint: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            VAULT.as_bytes(),
+        ],
+        bump
+    )]
+    rain_token_program_account: UncheckedAccount<'info>,
     // may be required signer if builder must be holder in item class is true
     new_player_token_holder: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
@@ -2289,7 +2405,8 @@ pub const MIN_PLAYER_SIZE: usize = 8 + // key
 8 + // item types in backpack
 1 + // category
 4 + // equipped items
-1; // basic stats
+1 + // basic stats
+8; // tokens paid in
 
 /// seed ['player', player program, mint, namespace] also
 #[account]
@@ -2308,6 +2425,7 @@ pub struct Player {
     pub items_in_backpack: u64,
     pub data: PlayerData,
     pub equipped_items: Vec<EquippedItem>,
+    pub tokens_paid_in: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -2534,4 +2652,6 @@ pub enum ErrorCode {
     NotCached,
     #[msg("Unauthorized Caller")]
     UnauthorizedCaller,
+    #[msg("Rain token mint mismatch")]
+    RainTokenMintMismatch,
 }

@@ -31,6 +31,15 @@ export const getAtaForMint = async (
   );
 };
 
+export const getPlayerRainVault = async (): Promise<web3.PublicKey> => {
+  return (
+    await web3.PublicKey.findProgramAddress(
+      [Buffer.from(PLAYER_PREFIX), Buffer.from("rain_vault")],
+      PLAYER_ID
+    )
+  )[0];
+};
+
 export const getMatch = async (
   oracle: web3.PublicKey
 ): Promise<[web3.PublicKey, number]> => {

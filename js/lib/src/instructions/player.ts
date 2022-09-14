@@ -22,10 +22,12 @@ import {
   getPlayerItemActivationMarker,
 } from "../utils/pda";
 import { ContractCommon } from "../contract/common";
-import { getPlayerPDA } from "../utils/pda";
-import { ITEM_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
+import { getPlayerPDA, getPlayerRainVault } from "../utils/pda";
+import { ITEM_ID, PLAYER_ID, TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { ItemProgram } from "../contract";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
+import { RAIN_TOKEN_MINT } from "../constants/common";
+
 const {
   generateRemainingAccountsForCreateClass,
   generateRemainingAccountsGivenPermissivenessToUse,
@@ -285,6 +287,7 @@ export interface DrainPlayerClassAccounts {
 
 export interface DrainPlayerAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
+  rainToken?: web3.PublicKey | null;
 }
 
 export interface UpdatePlayerClassAdditionalArgs {
@@ -301,6 +304,12 @@ export interface BuildPlayerAccounts {
   newPlayerTokenHolder: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  rainToken?: web3.PublicKey | null;
+  rainTransferAuthority?: null | Keypair;
+}
+
+export interface BuildPlayerAdditionalArgs {
+  rainAmount: BN;
 }
 
 export interface UpdatePlayerAccounts {
@@ -512,7 +521,7 @@ export class Instruction extends SolKitInstruction {
   async buildPlayer(
     args: BuildPlayerArgs,
     accounts: BuildPlayerAccounts,
-    _additionalArgs = {}
+    additionalArgs: BuildPlayerAdditionalArgs
   ) {
     const remainingAccounts =
       await generateRemainingAccountsGivenPermissivenessToUse({
@@ -547,27 +556,71 @@ export class Instruction extends SolKitInstruction {
       args.newPlayerIndex
     );
 
+    const transferAuthority =
+      accounts.rainTransferAuthority || Keypair.generate();
+    const myRainAccount =
+      accounts.rainToken ||
+      (
+        await getAtaForMint(
+          RAIN_TOKEN_MINT,
+          (this.program.client.provider as AnchorProvider).wallet.publicKey
+        )
+      )[0];
+    const instructions = [];
+    const signers = [];
+    if (additionalArgs.rainAmount.toNumber() > 0) {
+      instructions.push(
+        Token.createApproveInstruction(
+          TOKEN_PROGRAM_ID,
+          myRainAccount,
+          transferAuthority.publicKey,
+          (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          [],
+          additionalArgs.rainAmount.toNumber()
+        )
+      );
+      signers.push(transferAuthority);
+    }
+
+    instructions.push(
+      await this.program.client.methods
+        .buildPlayer(args)
+        .accounts({
+          playerClass: playerClassKey,
+          newPlayer,
+          newPlayerMint: accounts.newPlayerMint,
+          newPlayerMetadata: await getMetadata(accounts.newPlayerMint),
+          newPlayerEdition: await getEdition(accounts.newPlayerMint),
+          newPlayerToken: accounts.newPlayerToken,
+          newPlayerTokenHolder: accounts.newPlayerTokenHolder,
+          rainTokenTransferAuthority: transferAuthority.publicKey,
+          rainToken: myRainAccount,
+          rainTokenMint: RAIN_TOKEN_MINT,
+          rainTokenProgramAccount: await getPlayerRainVault(),
+          payer: (this.program.client.provider as AnchorProvider).wallet
+            .publicKey,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .remainingAccounts(remainingAccounts)
+        .instruction()
+    );
+
+    if (additionalArgs.rainAmount.toNumber() > 0) {
+      instructions.push(
+        Token.createRevokeInstruction(
+          TOKEN_PROGRAM_ID,
+          myRainAccount,
+          (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          []
+        )
+      );
+    }
+
     return {
-      instructions: [
-        await this.program.client.methods
-          .buildPlayer(args)
-          .accounts({
-            playerClass: playerClassKey,
-            newPlayer,
-            newPlayerMint: accounts.newPlayerMint,
-            newPlayerMetadata: await getMetadata(accounts.newPlayerMint),
-            newPlayerEdition: await getEdition(accounts.newPlayerMint),
-            newPlayerToken: accounts.newPlayerToken,
-            newPlayerTokenHolder: accounts.newPlayerTokenHolder,
-            payer: (this.program.client.provider as AnchorProvider).wallet
-              .publicKey,
-            systemProgram: SystemProgram.programId,
-            rent: web3.SYSVAR_RENT_PUBKEY,
-          })
-          .remainingAccounts(remainingAccounts)
-          .instruction(),
-      ],
-      signers: [],
+      instructions,
+      signers,
     };
   }
 
@@ -636,7 +689,14 @@ export class Instruction extends SolKitInstruction {
     InstructionUtils.convertNumbersToBNs(args, ["classIndex", "index"]);
 
     const player = (await getPlayerPDA(args.playerMint, args.index))[0];
-
+    const myRainAccount =
+      accounts.rainToken ||
+      (
+        await getAtaForMint(
+          RAIN_TOKEN_MINT,
+          (this.program.client.provider as AnchorProvider).wallet.publicKey
+        )
+      )[0];
     return {
       instructions: [
         await this.program.client.methods
@@ -644,6 +704,9 @@ export class Instruction extends SolKitInstruction {
           .accounts({
             playerClass: parent,
             player,
+            rainToken: myRainAccount,
+            rainTokenProgramAccount: await getPlayerRainVault(),
+            tokenProgram: TOKEN_PROGRAM_ID,
             receiver: (this.program.client.provider as AnchorProvider).wallet
               .publicKey,
           })
