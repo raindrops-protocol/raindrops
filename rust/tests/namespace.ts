@@ -2699,8 +2699,12 @@ async function createPlayer(
     metadataUpdateAuthority: payer.publicKey,
   };
 
+  const buildPlayerAdditionalArgs: Instructions.Player.BuildPlayerAdditionalArgs = {
+    rainAmount: new anchor.BN(Constants.Player.RAIN_PAYMENT_AMOUNT),
+  };
+
   const createPlayerResult = await (
-    await playerProgram.buildPlayer(buildPlayerArgs, buildPlayerAccounts)
+    await playerProgram.buildPlayer(buildPlayerArgs, buildPlayerAccounts, buildPlayerAdditionalArgs)
   ).rpc();
   console.log("createPlayerTxSig: %s", createPlayerResult.txid);
 
