@@ -18,27 +18,26 @@ describe("staking", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it.only("staking smoke test", async () => {
-    const payer = await newPayer(
-      connection,
-    );
+  it("staking smoke test", async () => {
+    const payer = await newPayer(connection);
 
     const _stakingProgram = await StakingProgram.getProgramWithConfig(
-        StakingProgram,
-        {
-          asyncSigning: false,
-          provider: new anchor.AnchorProvider(
-            connection,
-            new anchor.Wallet(payer),
-            { commitment: "confirmed" }
-          ),
-          idl: Idls.StakingIDL,
-    });
+      StakingProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.StakingIDL,
+      }
+    );
   });
 });
 
 async function newPayer(
-  connection: anchor.web3.Connection,
+  connection: anchor.web3.Connection
 ): Promise<anchor.web3.Keypair> {
   const payer = anchor.web3.Keypair.generate();
 
