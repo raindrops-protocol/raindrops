@@ -741,6 +741,9 @@ export type RaindropsPlayer = {
   "accounts": [
     {
       "name": "playerClass",
+      "docs": [
+        "seed ['player', player program, mint, namespace]"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -797,6 +800,9 @@ export type RaindropsPlayer = {
     },
     {
       "name": "player",
+      "docs": [
+        "seed ['player', player program, mint, namespace] also"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3618,6 +3624,9 @@ export const IDL: RaindropsPlayer = {
   "accounts": [
     {
       "name": "playerClass",
+      "docs": [
+        "seed ['player', player program, mint, namespace]"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3674,6 +3683,9 @@ export const IDL: RaindropsPlayer = {
     },
     {
       "name": "player",
+      "docs": [
+        "seed ['player', player program, mint, namespace] also"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
