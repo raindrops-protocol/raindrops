@@ -1144,9 +1144,9 @@ impl Filter {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TokenValidation {
-    filter: Filter,
-    is_blacklist: bool,
-    validation: Option<Callback>,
+    pub filter: Filter,
+    pub is_blacklist: bool,
+    pub validation: Option<Callback>,
 }
 
 impl TokenValidation {
