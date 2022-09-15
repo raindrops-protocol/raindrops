@@ -26,17 +26,17 @@ pub struct DrainOracleArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateMatchArgs {
-    match_state: MatchState,
-    token_entry_validation_root: Option<Root>,
-    token_entry_validation: Option<Vec<TokenValidation>>,
-    win_oracle: Pubkey,
-    win_oracle_cooldown: u64,
-    authority: Pubkey,
-    space: u64,
-    leave_allowed: bool,
-    join_allowed_during_start: bool,
-    minimum_allowed_entry_time: Option<u64>,
-    desired_namespace_array_size: u64,
+    pub match_state: MatchState,
+    pub token_entry_validation_root: Option<Root>,
+    pub token_entry_validation: Option<Vec<TokenValidation>>,
+    pub win_oracle: Pubkey,
+    pub win_oracle_cooldown: u64,
+    pub authority: Pubkey,
+    pub space: u64,
+    pub leave_allowed: bool,
+    pub join_allowed_during_start: bool,
+    pub minimum_allowed_entry_time: Option<u64>,
+    pub desired_namespace_array_size: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
