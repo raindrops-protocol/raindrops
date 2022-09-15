@@ -2,11 +2,12 @@ pub mod utils;
 
 use crate::utils::*;
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
-use anchor_spl::token::transfer;
-use anchor_spl::token::{initialize_account, Transfer};
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{close_account, CloseAccount, Mint, Token, TokenAccount},
+    token::{
+        close_account, initialize_account, transfer, CloseAccount, Mint, Token, TokenAccount,
+        Transfer,
+    },
 };
 use raindrops_item::utils::{
     assert_initialized, assert_keys_equal, assert_metadata_valid, assert_signer, get_item_usage,
