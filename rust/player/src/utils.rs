@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, str::FromStr};
 
 use crate::{
     AddOrRemoveItemValidationArgs, BasicItemEffect, BasicItemEffectType, BasicStat, BasicStatState,
@@ -6,9 +6,9 @@ use crate::{
     CopyBeginItemActivationBecauseAnchorSucksSometimesArgs,
     CopyEndItemActivationBecauseAnchorSucksSometimesArgs,
     CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs, EquippedItem, ErrorCode,
-    InheritanceState, Inherited, ItemCallbackArgs, Permissiveness, PermissivenessType, Player,
-    PlayerClass, PlayerClassData, StatDiffType, UpdateValidForUseIfWarmupPassedOnItemArgs,
-    UseItemArgs, PREFIX,
+    InheritanceState, Inherited, ItemCallbackArgs, NamespaceAndIndex, Permissiveness,
+    PermissivenessType, Player, PlayerClass, PlayerClassData, StatDiffType,
+    UpdateValidForUseIfWarmupPassedOnItemArgs, UseItemArgs, NAMESPACE_ID, PREFIX,
 };
 use anchor_lang::{
     error,
@@ -350,7 +350,7 @@ pub fn run_item_validation<'a, 'b, 'c, 'info>(
                     instruction: raindrops_item::utils::sighash("global", name),
                     extra_identifier: validation.code,
                     player_mint: *player_mint,
-                    item_permissiveness_to_use: item_permissiveness_to_use.clone(),
+                    item_permissiveness_to_use,
                     amount,
                 })?,
             },
@@ -574,7 +574,7 @@ pub fn verify_item_usage_appropriate_for_body_part<'a, 'b, 'info>(
         }
     }
 
-    return Ok(usage_to_check);
+    Ok(usage_to_check)
 }
 
 pub struct RunToggleEquipItemValidationArgs<'a, 'b, 'c, 'info> {
@@ -716,19 +716,17 @@ pub fn build_new_equipped_items_and_provide_counts<'b, 'info>(
                         ei.amount
                             .checked_add(moving_amount)
                             .ok_or(ErrorCode::NumericalOverflowError)?
+                    } else if ei.amount < moving_amount {
+                        moving_amount = moving_amount
+                            .checked_sub(ei.amount)
+                            .ok_or(ErrorCode::NumericalOverflowError)?;
+                        0
                     } else {
-                        if ei.amount < moving_amount {
-                            moving_amount = moving_amount
-                                .checked_sub(ei.amount)
-                                .ok_or(ErrorCode::NumericalOverflowError)?;
-                            0
-                        } else {
-                            let old_moving = moving_amount;
-                            moving_amount = 0;
-                            ei.amount
-                                .checked_sub(old_moving)
-                                .ok_or(ErrorCode::NumericalOverflowError)?
-                        }
+                        let old_moving = moving_amount;
+                        moving_amount = 0;
+                        ei.amount
+                            .checked_sub(old_moving)
+                            .ok_or(ErrorCode::NumericalOverflowError)?
                     },
                 };
                 total_equipped_for_this_body_part_for_this_item =
@@ -829,7 +827,7 @@ pub fn find_used_body_part_from_index(
             return Ok(body_part.clone());
         }
     };
-    return Err(ErrorCode::NoBodyPartsToEquip.into());
+    Err(ErrorCode::NoBodyPartsToEquip.into())
 }
 
 pub struct ToggleItemToBasicStatsArgs<'b, 'c, 'info> {
@@ -899,32 +897,30 @@ pub fn toggle_item_to_basic_stats<'b, 'c, 'info>(
                                         modded_amount,
                                     })?;
                                 } // there is no removing a consumable with no active duration, it is permanent...
+                            } else if !adding && stat_diff_type == StatDiffType::Consumable {
+                                no_more_waiting = no_more_waiting
+                                    && rebalance_stat_for_consumable_with_duration(
+                                        RebalanceStatForConsumableWithDurationArgs {
+                                            bie_bitmap,
+                                            unix_timestamp,
+                                            bs,
+                                            bie,
+                                            bst,
+                                            modded_amount,
+                                            adding,
+                                            item,
+                                            i,
+                                            activated_at,
+                                        },
+                                    )?
                             } else {
-                                if !adding && stat_diff_type == StatDiffType::Consumable {
-                                    no_more_waiting = no_more_waiting
-                                        && rebalance_stat_for_consumable_with_duration(
-                                            RebalanceStatForConsumableWithDurationArgs {
-                                                bie_bitmap,
-                                                unix_timestamp,
-                                                bs,
-                                                bie,
-                                                bst,
-                                                modded_amount,
-                                                adding,
-                                                item,
-                                                i,
-                                                activated_at,
-                                            },
-                                        )?
-                                } else {
-                                    rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
-                                        bie,
-                                        bs,
-                                        bst,
-                                        modded_amount,
-                                        adding,
-                                    })?;
-                                }
+                                rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
+                                    bie,
+                                    bs,
+                                    bst,
+                                    modded_amount,
+                                    adding,
+                                })?;
                             }
                         }
                         i += 1;
@@ -986,7 +982,7 @@ fn rebalance_stat_for_consumable_with_duration<'b, 'c, 'info>(
                             .checked_add(modded_duration)
                             .ok_or(ErrorCode::NumericalOverflowError)?
                     {
-                        arr[index_in_bie] = arr[index_in_bie] | mask;
+                        arr[index_in_bie] |= mask;
                         rebalance_stat_temporarily(RebalanceStatTemporarilyArgs {
                             bie,
                             bs,
@@ -1621,8 +1617,8 @@ pub fn begin_item_activation<'b, 'c, 'info>(
             data: AnchorSerialize::try_to_vec(
                 &CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
                     instruction: sighash("global", "begin_item_activation"),
-                    item_class_mint: item_class_mint,
-                    item_mint: item_mint,
+                    item_class_mint,
+                    item_mint,
                     usage_permissiveness_to_use: use_item_permissiveness_to_use,
                     usage_index: item_usage_index,
                     index: item_index,
@@ -1709,7 +1705,7 @@ pub fn update_valid_for_use_if_warmup_passed<'b, 'c, 'info>(
             data: AnchorSerialize::try_to_vec(
                 &CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs {
                     instruction: sighash("global", "update_valid_for_use_if_warmup_passed"),
-                    item_class_mint: item_class_mint,
+                    item_class_mint,
                     usage_index: item_usage_index,
                     index: item_index,
                     class_index: item_class_index,
@@ -2028,7 +2024,7 @@ pub fn add_to_new_array_from_parent<T: Inherited>(
 ) {
     for item in parent_items {
         let mut new_copy = item.clone();
-        new_copy.set_inherited(inheritance.clone());
+        new_copy.set_inherited(inheritance);
         new_items.push(new_copy);
     }
 }
@@ -2060,6 +2056,117 @@ pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T>
     }
 
     child.as_ref().cloned()
+}
+
+pub fn join_to_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    new_namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut joined = false;
+    let mut new_namespaces = vec![];
+
+    for mut ns in current_namespaces {
+        if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+            ns.namespace = new_namespace.key();
+            ns.index = None;
+            ns.inherited = InheritanceState::NotInherited;
+            joined = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !joined {
+        return Err(error!(ErrorCode::FailedToJoinNamespace));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn leave_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    leave_namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut left = false;
+    let mut new_namespaces = vec![];
+
+    for mut ns in current_namespaces {
+        if ns.namespace == leave_namespace.key() && !left {
+            // if the artifact is still cached, error
+            if ns.index != None {
+                return Err(error!(ErrorCode::FailedToLeaveNamespace));
+            };
+            ns.namespace = anchor_lang::solana_program::system_program::id();
+            ns.inherited = InheritanceState::NotInherited;
+            left = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !left {
+        return Err(error!(ErrorCode::FailedToLeaveNamespace));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn cache_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    namespace: Pubkey,
+    page: u64,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut cached = false;
+    let mut new_namespaces = vec![];
+    for mut ns in current_namespaces {
+        if ns.namespace == namespace && !cached {
+            ns.index = Some(page);
+            cached = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !cached {
+        return Err(error!(ErrorCode::FailedToCache));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn uncache_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut uncached = false;
+    let mut new_namespaces = vec![];
+    for mut ns in current_namespaces {
+        if ns.namespace == namespace && !uncached {
+            ns.index = None;
+            uncached = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !uncached {
+        return Err(error!(ErrorCode::FailedToUncache));
+    }
+
+    Ok(new_namespaces)
+}
+
+// returns true if the namespace program called the item program
+pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
+    let current_ix =
+        anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns)
+            .unwrap();
+
+    if current_ix.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
+        return false;
+    };
+
+    true
 }
 
 /// Create account almost from scratch, lifted from

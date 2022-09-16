@@ -42,15 +42,13 @@ pub fn assert_is_proper_class<'info>(
         DiscriminatorMismatch
     );
 
-    let class_deserialized: ArtifactClass;
-
     // FIXME: Remove it after the player contract is done.
     require!(class_name != "PlayerClass", StakingForPlayerComingSoon);
 
-    let item_class_deserialized: Account<ItemClass> = Account::try_from(&artifact_class)?;
+    let item_class_deserialized: Account<ItemClass> = Account::try_from(artifact_class)?;
     let item_class_data = item_class_deserialized.item_class_data(&artifact_class.data)?;
 
-    class_deserialized = ArtifactClass {
+    let class_deserialized: ArtifactClass = ArtifactClass {
         namespaces: item_class_deserialized.namespaces.clone(),
         parent: item_class_deserialized.parent,
         mint: item_class_deserialized.mint,
@@ -127,14 +125,12 @@ pub fn assert_is_proper_instance<'info>(
         DiscriminatorMismatch
     );
 
-    let instance_deserialized: Artifact;
-
     // FIXME: Remove it after the player contract is done.
     require!(instance_name != "Player", StakingForPlayerComingSoon);
 
-    let item_deserialized: Account<Item> = Account::try_from(&artifact)?;
+    let item_deserialized: Account<Item> = Account::try_from(artifact)?;
 
-    instance_deserialized = Artifact {
+    let instance_deserialized: Artifact = Artifact {
         namespaces: item_deserialized.namespaces.clone(),
         parent: item_deserialized.parent,
         mint: item_deserialized.mint,

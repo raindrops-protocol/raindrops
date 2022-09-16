@@ -736,6 +736,107 @@ export type RaindropsPlayer = {
           }
         }
       ]
+    },
+    {
+      "name": "playerArtifactJoinNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "playerArtifactLeaveNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "playerArtifactCacheNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "page",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "playerArtifactUncacheNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -1857,8 +1958,10 @@ export type RaindropsPlayer = {
             "type": "publicKey"
           },
           {
-            "name": "indexed",
-            "type": "bool"
+            "name": "index",
+            "type": {
+              "option": "u64"
+            }
           },
           {
             "name": "inherited",
@@ -2875,6 +2978,41 @@ export type RaindropsPlayer = {
     },
     {
       "code": 6041,
+      "name": "FailedToJoinNamespace",
+      "msg": "Failed to join namespace"
+    },
+    {
+      "code": 6042,
+      "name": "FailedToLeaveNamespace",
+      "msg": "Failed to leave namespace"
+    },
+    {
+      "code": 6043,
+      "name": "FailedToCache",
+      "msg": "Failed to cache"
+    },
+    {
+      "code": 6044,
+      "name": "FailedToUncache",
+      "msg": "Failed to uncache"
+    },
+    {
+      "code": 6045,
+      "name": "AlreadyCached",
+      "msg": "Already cached"
+    },
+    {
+      "code": 6046,
+      "name": "NotCached",
+      "msg": "Not cached"
+    },
+    {
+      "code": 6047,
+      "name": "UnauthorizedCaller",
+      "msg": "Unauthorized Caller"
+    },
+    {
+      "code": 6048,
       "name": "RainTokenMintMismatch",
       "msg": "Rain token mint mismatch"
     }
@@ -3619,6 +3757,107 @@ export const IDL: RaindropsPlayer = {
           }
         }
       ]
+    },
+    {
+      "name": "playerArtifactJoinNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "playerArtifactLeaveNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "playerArtifactCacheNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "page",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "playerArtifactUncacheNamespace",
+      "accounts": [
+        {
+          "name": "playerArtifact",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "namespace",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -4740,8 +4979,10 @@ export const IDL: RaindropsPlayer = {
             "type": "publicKey"
           },
           {
-            "name": "indexed",
-            "type": "bool"
+            "name": "index",
+            "type": {
+              "option": "u64"
+            }
           },
           {
             "name": "inherited",
@@ -5758,6 +5999,41 @@ export const IDL: RaindropsPlayer = {
     },
     {
       "code": 6041,
+      "name": "FailedToJoinNamespace",
+      "msg": "Failed to join namespace"
+    },
+    {
+      "code": 6042,
+      "name": "FailedToLeaveNamespace",
+      "msg": "Failed to leave namespace"
+    },
+    {
+      "code": 6043,
+      "name": "FailedToCache",
+      "msg": "Failed to cache"
+    },
+    {
+      "code": 6044,
+      "name": "FailedToUncache",
+      "msg": "Failed to uncache"
+    },
+    {
+      "code": 6045,
+      "name": "AlreadyCached",
+      "msg": "Already cached"
+    },
+    {
+      "code": 6046,
+      "name": "NotCached",
+      "msg": "Not cached"
+    },
+    {
+      "code": 6047,
+      "name": "UnauthorizedCaller",
+      "msg": "Unauthorized Caller"
+    },
+    {
+      "code": 6048,
       "name": "RainTokenMintMismatch",
       "msg": "Rain token mint mismatch"
     }

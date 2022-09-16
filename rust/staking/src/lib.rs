@@ -101,10 +101,8 @@ pub mod raindrops_staking {
 
         let namespace = assert_part_of_namespace(&artifact_unchecked.to_account_info(), namespace)?;
 
-        let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
-            Some(p) => Some(p.to_item_permissiveness()),
-            None => None,
-        };
+        let permissiveness: Option<ItemPermissivenessType> =
+            staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
@@ -139,7 +137,7 @@ pub mod raindrops_staking {
             }
         }
 
-        return Err(error!(ErrorCode::StakingMintNotWhitelisted));
+        Err(error!(ErrorCode::StakingMintNotWhitelisted))
     }
 
     pub fn end_artifact_stake_warmup<'a, 'b, 'c, 'info>(
@@ -195,7 +193,7 @@ pub mod raindrops_staking {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &index.to_le_bytes(),
-            &staking_mint_key.as_ref(),
+            (staking_mint_key.as_ref()),
             &args.staking_index.to_le_bytes(),
             STAKING_COUNTER.as_bytes(),
             &[staking_counter.bump],
@@ -241,7 +239,7 @@ pub mod raindrops_staking {
 
             let cpi_args = raindrops_item::UpdateTokensStakedArgs {
                 item_mint: artifact_mint.key(),
-                index: index,
+                index,
                 staked: true,
                 amount: staking_amount,
             };
@@ -253,7 +251,7 @@ pub mod raindrops_staking {
             // TODO: Add calling player::update_tokens_staked cpi
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn begin_artifact_stake_cooldown<'a, 'b, 'c, 'info>(
@@ -290,10 +288,8 @@ pub mod raindrops_staking {
             index,
         )?;
 
-        let permissiveness: Option<ItemPermissivenessType> = match staking_permissiveness_to_use {
-            Some(p) => Some(p.to_item_permissiveness()),
-            None => None,
-        };
+        let permissiveness: Option<ItemPermissivenessType> =
+            staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
@@ -321,7 +317,7 @@ pub mod raindrops_staking {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &index.to_le_bytes(),
-            &staking_mint_key.as_ref(),
+            (staking_mint_key.as_ref()),
             &args.staking_index.to_le_bytes(),
             &[staking_escrow_bump],
         ];
@@ -348,7 +344,7 @@ pub mod raindrops_staking {
 
             let cpi_args = raindrops_item::UpdateTokensStakedArgs {
                 item_mint: artifact_mint.key(),
-                index: index,
+                index,
                 staked: false,
                 amount: amount_to_unstake,
             };
@@ -367,7 +363,7 @@ pub mod raindrops_staking {
         staking_counter.event_start = clock.unix_timestamp;
         staking_counter.event_type = 1;
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn end_artifact_stake_cooldown<'a, 'b, 'c, 'info>(
@@ -423,7 +419,7 @@ pub mod raindrops_staking {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &index.to_le_bytes(),
-            &staking_mint_key.as_ref(),
+            (staking_mint_key.as_ref()),
             &args.staking_index.to_le_bytes(),
             STAKING_COUNTER.as_bytes(),
             staking_account_key.as_ref(),
@@ -457,7 +453,7 @@ pub mod raindrops_staking {
             &signer_seeds,
         )?;
 
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -491,7 +487,7 @@ pub struct BeginArtifactStakeWarmup<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
         ],
         bump,
@@ -507,7 +503,7 @@ pub struct BeginArtifactStakeWarmup<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
             STAKING_COUNTER.as_bytes(),
         ],
@@ -546,7 +542,7 @@ pub struct EndArtifactStakeWarmup<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
         ],
         bump,
@@ -559,7 +555,7 @@ pub struct EndArtifactStakeWarmup<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
             STAKING_COUNTER.as_bytes(),
         ],
@@ -573,7 +569,7 @@ pub struct EndArtifactStakeWarmup<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
         ],
         bump,
         token::mint = staking_mint,
@@ -610,7 +606,7 @@ pub struct BeginArtifactStakeCooldown<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
         ],
         bump,
@@ -632,7 +628,7 @@ pub struct BeginArtifactStakeCooldown<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
             STAKING_COUNTER.as_bytes(),
             staking_account.key().as_ref(),
@@ -649,7 +645,7 @@ pub struct BeginArtifactStakeCooldown<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
         ],
         bump,
     )]
@@ -685,7 +681,7 @@ pub struct EndArtifactStakeCooldown<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
         ],
         bump,
@@ -698,7 +694,7 @@ pub struct EndArtifactStakeCooldown<'info> {
             args.artifact_class_mint.as_ref(),
             args.artifact_mint.as_ref(),
             &args.index.to_le_bytes(),
-            &staking_mint.key().as_ref(),
+            staking_mint.key().as_ref(),
             &args.staking_index.to_le_bytes(),
             STAKING_COUNTER.as_bytes(),
             staking_account.key().as_ref(),
@@ -762,7 +758,7 @@ pub struct Artifact {
     pub tokens_staked: u64,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum PermissivenessType {
     TokenHolder,
     ParentTokenHolder,

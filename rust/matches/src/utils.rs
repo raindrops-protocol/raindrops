@@ -62,7 +62,7 @@ pub fn close_token_account<'a>(
 ) -> Result<()> {
     invoke_signed(
         &close_account(
-            &token_program.key,
+            token_program.key,
             &program_account.key(),
             &fee_payer.key(),
             &owner.key(),
@@ -75,7 +75,7 @@ pub fn close_token_account<'a>(
             program_account.to_account_info(),
             owner.clone(),
         ],
-        &[&signer_seeds],
+        &[signer_seeds],
     )?;
 
     Ok(())
@@ -136,7 +136,7 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> Result<()> {
             amount,
         )?,
         &[source, destination, authority, token_program],
-        if authority_signer_seeds.len() == 0 {
+        if authority_signer_seeds.is_empty() {
             &[]
         } else {
             val
@@ -159,7 +159,7 @@ pub fn get_mask_and_index_for_seq(seq: u64) -> Result<(u8, usize)> {
 }
 
 pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
-    let (key, bump) = Pubkey::find_program_address(&path, program_id);
+    let (key, bump) = Pubkey::find_program_address(path, program_id);
     if key != *account.key {
         return Err(error!(ErrorCode::DerivedKeyInvalid));
     }
@@ -187,7 +187,7 @@ pub fn create_or_allocate_account_raw<'a>(
     if required_lamports > 0 {
         msg!("Transfer {} lamports to the new account", required_lamports);
         invoke(
-            &system_instruction::transfer(&payer_info.key, new_account_info.key, required_lamports),
+            &system_instruction::transfer(payer_info.key, new_account_info.key, required_lamports),
             &[
                 payer_info.clone(),
                 new_account_info.clone(),
@@ -202,14 +202,14 @@ pub fn create_or_allocate_account_raw<'a>(
     invoke_signed(
         &system_instruction::allocate(new_account_info.key, size.try_into().unwrap()),
         accounts,
-        &[&signer_seeds],
+        &[signer_seeds],
     )?;
 
     msg!("Assign the account to the owning program");
     invoke_signed(
         &system_instruction::assign(new_account_info.key, &program_id),
         accounts,
-        &[&signer_seeds],
+        &[signer_seeds],
     )?;
     msg!("Completed assignation!");
 
@@ -289,7 +289,7 @@ pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> Result<()> {
 /// pair of leaves and each pair of pre-images are assumed to be sorted.
 pub fn verify(proof: &Vec<[u8; 32]>, root: &[u8; 32], leaf: [u8; 32]) -> bool {
     let mut computed_hash = leaf;
-    for proof_element in proof.into_iter() {
+    for proof_element in proof.iter() {
         if computed_hash <= *proof_element {
             // Hash(current computed hash + current element of the proof)
             computed_hash = anchor_lang::solana_program::keccak::hashv(&[
@@ -315,7 +315,7 @@ pub fn verify(proof: &Vec<[u8; 32]>, root: &[u8; 32], leaf: [u8; 32]) -> bool {
 pub fn is_part_of_namespace<'a>(artifact: &AccountInfo<'a>, namespace: &Pubkey) -> bool {
     let data = artifact.data.borrow_mut();
     let number = u32::from_le_bytes(*array_ref![data, 9, 4]) as usize;
-    let offset = 13 as usize;
+    let offset = 13_usize;
     for i in 0..number {
         let key_bytes = array_ref![data, offset + i * 33, 32];
         let key = Pubkey::new_from_array(*key_bytes);
@@ -324,7 +324,7 @@ pub fn is_part_of_namespace<'a>(artifact: &AccountInfo<'a>, namespace: &Pubkey) 
         }
     }
 
-    return false;
+    false
 }
 
 pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
@@ -343,14 +343,14 @@ pub fn grab_parent<'a>(artifact: &AccountInfo<'a>) -> Result<Pubkey> {
     } else {
         0
     };
-    let offset = 8 as usize + number * 34 + if data[8] == 1 { 4 } else { 0 } + 1;
+    let offset = 8_usize + number * 34 + if data[8] == 1 { 4 } else { 0 } + 1;
 
     if data[offset] == 1 {
         let key_bytes = array_ref![data, offset + 1, 32];
         let key = Pubkey::new_from_array(*key_bytes);
-        return Ok(key);
+        Ok(key)
     } else {
-        return Err(error!(ErrorCode::NoParentPresent));
+        Err(error!(ErrorCode::NoParentPresent))
     }
 }
 
@@ -421,7 +421,7 @@ pub fn is_valid_validation<'info>(
         )?;
     }
 
-    return Ok(true);
+    Ok(true)
 }
 
 // returns true if the namespace program called the item program
@@ -434,5 +434,5 @@ pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
         return false;
     };
 
-    return true;
+    true
 }
