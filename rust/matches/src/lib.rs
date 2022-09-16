@@ -53,9 +53,9 @@ pub struct UpdateMatchArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct JoinMatchArgs {
-    amount: u64,
-    token_entry_validation_proof: Option<Vec<[u8; 32]>>,
-    token_entry_validation: Option<TokenValidation>,
+    pub amount: u64,
+    pub token_entry_validation_proof: Option<Vec<[u8; 32]>>,
+    pub token_entry_validation: Option<TokenValidation>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
