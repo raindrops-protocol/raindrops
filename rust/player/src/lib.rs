@@ -16,6 +16,7 @@ use raindrops_item::utils::{
 use std::str::FromStr;
 
 anchor_lang::declare_id!("p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1");
+pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
 
 pub const PREFIX: &str = "player";
 pub const VAULT: &str = "rain_vault";
@@ -292,7 +293,7 @@ pub mod raindrops_player {
             for _n in 0..desired_namespace_array_size {
                 namespace_arr.push(NamespaceAndIndex {
                     namespace: anchor_lang::solana_program::system_program::id(),
-                    indexed: false,
+                    index: None,
                     inherited: InheritanceState::NotInherited,
                 });
             }
@@ -1387,6 +1388,129 @@ pub mod raindrops_player {
 
         Ok(())
     }
+
+    pub fn player_artifact_join_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactJoinNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        };
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = join_to_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = join_to_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
+
+        Ok(())
+    }
+
+    pub fn player_artifact_leave_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactLeaveNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = leave_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = leave_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
+
+        Ok(())
+    }
+
+    pub fn player_artifact_cache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactCacheNamespace<'info>>,
+        page: u64,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = cache_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+                page,
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = cache_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+                page,
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
+
+        Ok(())
+    }
+
+    pub fn player_artifact_uncache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactUncacheNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = uncache_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = uncache_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -1950,6 +2074,67 @@ pub struct UpdatePlayer<'info> {
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
+#[derive(Accounts)]
+pub struct PlayerArtifactJoinNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct PlayerArtifactLeaveNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(page: u64)]
+pub struct PlayerArtifactCacheNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles.
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct PlayerArtifactUncacheNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct EquippedItem {
     item: Pubkey,
@@ -1977,7 +2162,7 @@ pub enum InheritanceState {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
     pub namespace: Pubkey,
-    pub indexed: bool,
+    pub index: Option<u64>,
     pub inherited: InheritanceState,
 }
 
@@ -2450,6 +2635,20 @@ pub enum ErrorCode {
     NameAlreadyUsed,
     #[msg("Cannot reset player until item effects removed")]
     CannotResetPlayerStatsUntilItemEffectsAreRemoved,
+    #[msg("Failed to join namespace")]
+    FailedToJoinNamespace,
+    #[msg("Failed to leave namespace")]
+    FailedToLeaveNamespace,
+    #[msg("Failed to cache")]
+    FailedToCache,
+    #[msg("Failed to uncache")]
+    FailedToUncache,
+    #[msg("Already cached")]
+    AlreadyCached,
+    #[msg("Not cached")]
+    NotCached,
+    #[msg("Unauthorized Caller")]
+    UnauthorizedCaller,
     #[msg("Rain token mint mismatch")]
     RainTokenMintMismatch,
 }

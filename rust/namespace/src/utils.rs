@@ -8,6 +8,7 @@ use anchor_lang::{
 use arrayref::array_ref;
 use raindrops_item::{Item, ItemClass, ItemEscrow};
 use raindrops_matches::Match;
+use raindrops_player::{Player, PlayerClass};
 
 pub fn assert_part_of_namespace<'a>(
     artifact: &AccountInfo<'a>,
@@ -106,6 +107,30 @@ pub fn pull_namespaces(artifact: &AccountInfo) -> Result<Vec<Pubkey>> {
         return Ok(namespaces);
     } else if let Ok(namespace) = Account::<'_, Namespace>::try_from(artifact) {
         let artifact_namespaces = match namespace.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
+    } else if let Ok(player_class) = Account::<'_, PlayerClass>::try_from(artifact) {
+        let artifact_namespaces = match player_class.namespaces.as_ref() {
+            Some(artifact_namespaces) => artifact_namespaces,
+            None => {
+                return Err(error!(ErrorCode::DesiredNamespacesNone));
+            }
+        };
+        for ns in artifact_namespaces {
+            namespaces.push(ns.namespace);
+        }
+
+        return Ok(namespaces);
+    } else if let Ok(player) = Account::<'_, Player>::try_from(artifact) {
+        let artifact_namespaces = match player.namespaces.as_ref() {
             Some(artifact_namespaces) => artifact_namespaces,
             None => {
                 return Err(error!(ErrorCode::DesiredNamespacesNone));

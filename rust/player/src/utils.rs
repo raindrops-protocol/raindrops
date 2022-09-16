@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, str::FromStr};
 
 use crate::{
     AddOrRemoveItemValidationArgs, BasicItemEffect, BasicItemEffectType, BasicStat, BasicStatState,
@@ -6,9 +6,9 @@ use crate::{
     CopyBeginItemActivationBecauseAnchorSucksSometimesArgs,
     CopyEndItemActivationBecauseAnchorSucksSometimesArgs,
     CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs, EquippedItem, ErrorCode,
-    InheritanceState, Inherited, ItemCallbackArgs, Permissiveness, PermissivenessType, Player,
-    PlayerClass, PlayerClassData, StatDiffType, UpdateValidForUseIfWarmupPassedOnItemArgs,
-    UseItemArgs, PREFIX,
+    InheritanceState, Inherited, ItemCallbackArgs, NamespaceAndIndex, Permissiveness,
+    PermissivenessType, Player, PlayerClass, PlayerClassData, StatDiffType,
+    UpdateValidForUseIfWarmupPassedOnItemArgs, UseItemArgs, NAMESPACE_ID, PREFIX,
 };
 use anchor_lang::{
     error,
@@ -2056,6 +2056,117 @@ pub fn propagate_parent<T: Inherited>(args: PropagateParentArgs<T>) -> Option<T>
     }
 
     child.as_ref().cloned()
+}
+
+pub fn join_to_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    new_namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut joined = false;
+    let mut new_namespaces = vec![];
+
+    for mut ns in current_namespaces {
+        if ns.namespace == anchor_lang::solana_program::system_program::id() && !joined {
+            ns.namespace = new_namespace.key();
+            ns.index = None;
+            ns.inherited = InheritanceState::NotInherited;
+            joined = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !joined {
+        return Err(error!(ErrorCode::FailedToJoinNamespace));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn leave_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    leave_namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut left = false;
+    let mut new_namespaces = vec![];
+
+    for mut ns in current_namespaces {
+        if ns.namespace == leave_namespace.key() && !left {
+            // if the artifact is still cached, error
+            if ns.index != None {
+                return Err(error!(ErrorCode::FailedToLeaveNamespace));
+            };
+            ns.namespace = anchor_lang::solana_program::system_program::id();
+            ns.inherited = InheritanceState::NotInherited;
+            left = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !left {
+        return Err(error!(ErrorCode::FailedToLeaveNamespace));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn cache_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    namespace: Pubkey,
+    page: u64,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut cached = false;
+    let mut new_namespaces = vec![];
+    for mut ns in current_namespaces {
+        if ns.namespace == namespace && !cached {
+            ns.index = Some(page);
+            cached = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !cached {
+        return Err(error!(ErrorCode::FailedToCache));
+    }
+
+    Ok(new_namespaces)
+}
+
+pub fn uncache_namespace(
+    current_namespaces: Vec<NamespaceAndIndex>,
+    namespace: Pubkey,
+) -> Result<Vec<NamespaceAndIndex>> {
+    let mut uncached = false;
+    let mut new_namespaces = vec![];
+    for mut ns in current_namespaces {
+        if ns.namespace == namespace && !uncached {
+            ns.index = None;
+            uncached = true;
+            new_namespaces.push(ns);
+        } else {
+            new_namespaces.push(ns);
+        }
+    }
+    if !uncached {
+        return Err(error!(ErrorCode::FailedToUncache));
+    }
+
+    Ok(new_namespaces)
+}
+
+// returns true if the namespace program called the item program
+pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
+    let current_ix =
+        anchor_lang::solana_program::sysvar::instructions::get_instruction_relative(0, ixns)
+            .unwrap();
+
+    if current_ix.program_id != Pubkey::from_str(NAMESPACE_ID).unwrap() {
+        return false;
+    };
+
+    true
 }
 
 /// Create account almost from scratch, lifted from

@@ -101,7 +101,8 @@ pub mod raindrops_staking {
 
         let namespace = assert_part_of_namespace(&artifact_unchecked.to_account_info(), namespace)?;
 
-        let permissiveness: Option<ItemPermissivenessType> = staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
+        let permissiveness: Option<ItemPermissivenessType> =
+            staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
@@ -287,7 +288,8 @@ pub mod raindrops_staking {
             index,
         )?;
 
-        let permissiveness: Option<ItemPermissivenessType> = staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
+        let permissiveness: Option<ItemPermissivenessType> =
+            staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,

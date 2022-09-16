@@ -42,8 +42,6 @@ pub fn assert_is_proper_class<'info>(
         DiscriminatorMismatch
     );
 
-    
-
     // FIXME: Remove it after the player contract is done.
     require!(class_name != "PlayerClass", StakingForPlayerComingSoon);
 
@@ -126,8 +124,6 @@ pub fn assert_is_proper_instance<'info>(
         expected_discriminator_as_u64 == discriminator,
         DiscriminatorMismatch
     );
-
-    
 
     // FIXME: Remove it after the player contract is done.
     require!(instance_name != "Player", StakingForPlayerComingSoon);
