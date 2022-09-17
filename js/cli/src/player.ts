@@ -10,6 +10,7 @@ import { Utils, State, Constants } from "@raindrops-protocol/raindrops";
 import { SystemProgram } from "@solana/web3.js";
 
 import InheritanceState = State;
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 const { PDA } = Utils;
 const { Player } = Constants;

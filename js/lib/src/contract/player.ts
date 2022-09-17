@@ -1,21 +1,13 @@
-import {
-  Address,
-  AnchorProvider,
-  BN,
-  Instruction,
-  web3,
-} from "@project-serum/anchor";
-import { ObjectWrapper, Program } from "@raindrop-studios/sol-kit";
+import { AnchorProvider, BN, web3 } from "@project-serum/anchor";
+import { Program } from "@raindrop-studios/sol-kit";
 import { PublicKey, Signer, TransactionInstruction } from "@solana/web3.js";
-import {
-  MasterEditionV2,
-  Metadata,
-} from "@metaplex-foundation/mpl-token-metadata";
+import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 
 import * as PlayerInstruction from "../instructions/player";
 import * as Utils from "../utils";
 import { PLAYER_ID } from "../constants/programIds";
 import { getPlayerItemAccount } from "../utils/pda";
+
 const {
   PDA: {
     getAtaForMint,

@@ -2162,6 +2162,7 @@ pub const MIN_PLAYER_CLASS_SIZE: usize = 8 + // key
 1 + // build permissiveness
 1 + // equip item perm
 1 + // add item
+1 + // use item
 1 + // unequip
 1 + // remove
 1 + //staking warm up
