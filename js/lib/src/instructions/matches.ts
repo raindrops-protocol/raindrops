@@ -107,7 +107,7 @@ export interface DisburseTokensByOracleAccounts {
 export interface JoinMatchAccounts {
   tokenMint: web3.PublicKey;
   sourceTokenAccount: web3.PublicKey | null;
-  tokenTransferAuthority: web3.Keypair | null;
+  tokenTransferAuthority: web3.PublicKey | null;
   validationProgram: web3.PublicKey | null;
 }
 
@@ -361,8 +361,9 @@ export class Instruction extends SolKitInstruction {
           (this.program.client.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
-    const transferAuthority =
-      accounts.tokenTransferAuthority || web3.Keypair.generate();
+    //const transferAuthority =
+    //  accounts.tokenTransferAuthority || web3.Keypair.generate();
+    const transferAuthority = accounts.tokenTransferAuthority || web3.Keypair.generate().publicKey;
 
     const [tokenAccountEscrow, _escrowBump] = await getMatchTokenAccountEscrow(
       additionalArgs.winOracle,
@@ -370,23 +371,23 @@ export class Instruction extends SolKitInstruction {
       (this.program.client.provider as AnchorProvider).wallet.publicKey
     );
 
-    const signers = [transferAuthority];
+    const signers = [];
 
     return {
       instructions: [
-        Token.createApproveInstruction(
-          TOKEN_PROGRAM_ID,
-          sourceTokenAccount,
-          transferAuthority.publicKey,
-          (this.program.client.provider as AnchorProvider).wallet.publicKey,
-          [],
-          args.amount.toNumber()
-        ),
+        //Token.createApproveInstruction(
+        //  TOKEN_PROGRAM_ID,
+        //  sourceTokenAccount,
+        //  transferAuthority,
+        //  (this.program.client.provider as AnchorProvider).wallet.publicKey,
+        //  [],
+        //  args.amount.toNumber()
+        //),
         await this.program.client.methods
           .joinMatch(args)
           .accounts({
             matchInstance: match,
-            tokenTransferAuthority: transferAuthority.publicKey,
+            tokenTransferAuthority: (this.program.client.provider as AnchorProvider).wallet.publicKey,
             tokenAccountEscrow,
             tokenMint: accounts.tokenMint,
             sourceTokenAccount,
@@ -408,14 +409,14 @@ export class Instruction extends SolKitInstruction {
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
           })
-          .signers(signers)
+          .signers([])
           .instruction(),
-        Token.createRevokeInstruction(
-          TOKEN_PROGRAM_ID,
-          sourceTokenAccount,
-          (this.program.client.provider as AnchorProvider).wallet.publicKey,
-          []
-        ),
+        //Token.createRevokeInstruction(
+        //  TOKEN_PROGRAM_ID,
+        //  sourceTokenAccount,
+        //  (this.program.client.provider as AnchorProvider).wallet.publicKey,
+        //  []
+        //),
       ],
       signers,
     };

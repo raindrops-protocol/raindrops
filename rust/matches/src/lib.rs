@@ -550,12 +550,16 @@ pub mod raindrops_matches {
             ..
         } = args;
 
+        msg!("accounts loaded");
+
         assert_is_ata(
             &source_info,
             &payer.key(),
             &token_mint.key(),
             Some(&token_transfer_authority.key()),
         )?;
+
+        msg!("assert_is_ata success");
 
         if match_instance.join_allowed_during_start {
             require!(
@@ -569,10 +573,14 @@ pub mod raindrops_matches {
                 CannotEnterMatch
             );
         }
+        msg!("check join allowed success");
 
         if let Some(proof) = token_entry_validation_proof {
+            msg!("proof detected");
             if let Some(root) = &match_instance.token_entry_validation_root {
+                msg!("root detected");
                 if let Some(validation) = token_entry_validation {
+                    msg!("validation detected");
                     let chief_node = anchor_lang::solana_program::keccak::hashv(&[
                         &[0x00],
                         &AnchorSerialize::try_to_vec(&validation)?,
@@ -593,6 +601,7 @@ pub mod raindrops_matches {
                 return Err(error!(ErrorCode::RootNotPresent));
             }
         } else if let Some(val_arr) = &match_instance.token_entry_validation {
+            msg!("token entry validation detected");
             let mut validation = false;
             for val in val_arr {
                 if is_valid_validation(
@@ -609,6 +618,7 @@ pub mod raindrops_matches {
                 return Err(error!(ErrorCode::NoValidValidationFound));
             }
         };
+        msg!("token entry validation success");
 
         spl_token_transfer(TokenTransferParams {
             source: source_info,
@@ -619,10 +629,14 @@ pub mod raindrops_matches {
             token_program: token_info,
         })?;
 
+        msg!("spl token transfer success");
+
         match_instance.token_types_added = match_instance
             .token_types_added
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        msg!("token_types_added success");
 
         Ok(())
     }

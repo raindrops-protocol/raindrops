@@ -479,6 +479,126 @@ describe("matches", () => {
     assert.equal(matchDataUpdated.leaveAllowed, true);
     assert.equal(matchDataUpdated.winOracleCooldown, 1000);
   });
+
+  it.only("TESTING ONLY", async () => {
+    const payer = await newPayer(connection);
+    const matchesProgram = await MatchesProgram.getProgramWithConfig(
+      MatchesProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.MatchesIDL,
+      }
+    );
+
+    // create mint and mint initial tokens to payer for testing
+    const matchMint = await splToken.createMint(
+      connection,
+      payer,
+      payer.publicKey,
+      payer.publicKey,
+      6
+    );
+    let payerMatchMintAta = await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
+      payer,
+      matchMint,
+      payer.publicKey
+    );
+    await splToken.mintTo(
+      connection,
+      payer,
+      matchMint,
+      payerMatchMintAta.address,
+      payer,
+      1_000_000_000
+    );
+
+    // create win oracle and transfer tokens from payer to escrow
+    const oracleSeed = anchor.web3.Keypair.generate();
+
+    const createOracleArgs: Instructions.Matches.CreateOrUpdateOracleArgs = {
+      seed: oracleSeed.publicKey.toString(),
+      authority: payer.publicKey,
+      space: new anchor.BN(1000),
+      finalized: false,
+      tokenTransferRoot: null,
+      tokenTransfers: [
+        {
+          from: payer.publicKey,
+          to: payerMatchMintAta.address,
+          tokenTransferType: { normal: true },
+          mint: matchMint,
+          amount: new anchor.BN(1_000_000),
+        },
+      ],
+    };
+
+    const createOracleResult = await matchesProgram.createOrUpdateOracle(
+      createOracleArgs
+    );
+    console.log("createOracleTxSig: %s", createOracleResult.txid);
+
+    const [oracle, _oracleBump] = await Utils.PDA.getOracle(
+      oracleSeed.publicKey,
+      payer.publicKey
+    );
+
+    // create match in initialized state
+    const createMatchArgs: Instructions.Matches.CreateMatchArgs = {
+      matchState: { initialized: true },
+      tokenEntryValidation: null,
+      tokenEntryValidationRoot: null,
+      winOracle: oracle,
+      winOracleCooldown: new anchor.BN(100),
+      authority: payer.publicKey,
+      space: new anchor.BN(2000),
+      leaveAllowed: false,
+      joinAllowedDuringStart: false,
+      minimumAllowedEntryTime: new anchor.BN(1000),
+      desiredNamespaceArraySize: new anchor.BN(2),
+    };
+
+    const createMatchResult = await matchesProgram.createMatch(createMatchArgs);
+    console.log("createMatchTxSig: %s", createMatchResult.txid);
+
+    const [match, _matchBump] = await Utils.PDA.getMatch(oracle);
+
+    // assert match is initialized
+    const matchData = await matchesProgram.fetchMatch(match)
+    assert.deepStrictEqual(matchData.state, { initialized: {} });
+
+    const joinMatchArgs: Instructions.Matches.JoinMatchArgs = {
+      amount: new anchor.BN(1_000_000),
+      tokenEntryValidationProof: null,
+      tokenEntryValidation: null,
+    };
+
+    const joinMatchAccounts: Instructions.Matches.JoinMatchAccounts = {
+      tokenMint: matchMint,
+      sourceTokenAccount: null,
+      tokenTransferAuthority: payer.publicKey,
+      validationProgram: null,
+    };
+
+    const joinMatchAdditionalArgs: Instructions.Matches.JoinMatchAdditionalArgs =
+      {
+        sourceType: State.Matches.TokenType.Any,
+        index: null,
+        winOracle: oracle,
+      };
+
+    const joinMatchResult = await matchesProgram.joinMatch(
+      joinMatchArgs,
+      joinMatchAccounts,
+      joinMatchAdditionalArgs
+    );
+    console.log("joinMatchTxSig: %s", joinMatchResult.txid);
+  });
 });
 
 async function newPayer(
