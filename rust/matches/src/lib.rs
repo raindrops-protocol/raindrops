@@ -822,7 +822,7 @@ pub struct UpdateMatchFromOracle<'info> {
 
 #[derive(Accounts)]
 pub struct DrainMatch<'info> {
-    #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
+    #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
     authority: Signer<'info>,
     receiver: UncheckedAccount<'info>,
