@@ -108,11 +108,6 @@ export type RaindropsMatches = {
           "name": "winOracle",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": []
@@ -1454,11 +1449,6 @@ export const IDL: RaindropsMatches = {
         },
         {
           "name": "winOracle",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "clock",
           "isMut": false,
           "isSigner": false
         }

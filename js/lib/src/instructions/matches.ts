@@ -438,7 +438,6 @@ export class Instruction extends SolKitInstruction {
             winOracle: accounts.winOracle,
             authority: (this.program.client.provider as AnchorProvider).wallet
               .publicKey,
-            clock: web3.SYSVAR_CLOCK_PUBKEY,
           })
           .instruction(),
       ],

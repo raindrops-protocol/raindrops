@@ -246,7 +246,7 @@ pub mod raindrops_matches {
     ) -> Result<()> {
         let match_instance = &mut ctx.accounts.match_instance;
         let win_oracle = &ctx.accounts.win_oracle;
-        let clock = &ctx.accounts.clock;
+        let clock = Clock::get().unwrap();
 
         let win_oracle_instance: Account<'_, WinOracle> =
             Account::try_from(&win_oracle.to_account_info())?;
@@ -815,10 +815,9 @@ pub struct UpdateMatch<'info> {
 #[derive(Accounts)]
 pub struct UpdateMatchFromOracle<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
-    match_instance: Account<'info, Match>,
+    pub match_instance: Account<'info, Match>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
-    win_oracle: UncheckedAccount<'info>,
-    clock: Sysvar<'info, Clock>,
+    pub win_oracle: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
