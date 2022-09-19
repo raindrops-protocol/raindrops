@@ -55,11 +55,20 @@ async function getBootsProgram(options) {
 async function loadItemImageFileFromDir(
   dir: string
 ): Promise<Record<string, Buffer>> {
-  const files = fs.readdirSync(dir);
+  const folders = fs.readdirSync(dir);
   const imageFiles: Record<string, Buffer> = {};
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    imageFiles[file] = fs.readFileSync(path.join(dir, file));
+  for (let j = 0; j < folders.length; j++) {
+    const folder = folders[j];
+    if (folder != ".DS_Store") {
+      const files = fs.readdirSync(path.join(dir, folder));
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file != ".DS_Store")
+          imageFiles[folder + "-" + file] = fs.readFileSync(
+            path.join(dir, folder + "/" + file)
+          );
+      }
+    }
   }
   return imageFiles;
 }
@@ -70,15 +79,15 @@ async function loadItemImageFileFromDir(
 // some other movie magic added etc.
 async function getConfig(config, env, configPath): Promise<BootUpArgs> {
   return {
+    ...config,
     scope: {
-      type: config.type as Scope,
-      values: config.values.map((v) => new web3.PublicKey(v)),
+      type: config.scope.type as Scope,
+      values: config.scope.values.map((v) => new web3.PublicKey(v)),
     },
-    playerStates: config.playerStates.map((p) => ({
+    playerStates: config.playerStates?.map((p) => ({
       ...p,
       state: p.state as MintState,
     })),
-    ...config,
     env,
     existingCollectionForItems: config.existingCollectionForItems
       ? new PublicKey(config.existingCollectionForItems)
@@ -90,15 +99,14 @@ async function getConfig(config, env, configPath): Promise<BootUpArgs> {
     itemIndex: new BN(config.itemIndex),
     itemImageFile: await loadItemImageFileFromDir(config.itemImageFile),
     writeOutState: async (f: any) => {
-      await fs.writeFile(
+      await fs.writeFileSync(
         configPath,
         JSON.stringify({
           ...f,
           itemImageFile: config.itemImageFile,
           shadowWallet: config.shadowWallet,
           shadowAccountId: config.shadowAccountId,
-        }),
-        null
+        })
       );
     },
     writeToImmutableStorage: async (f: Buffer, name: string) => {

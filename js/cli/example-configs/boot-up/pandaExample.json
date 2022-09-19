@@ -1,0 +1,639 @@
+{
+  "scope": {
+    "type": 0,
+    "values": ["E6rTY8yBATwCH2fykc16yS4rLmvaYdnsfZsStybEacS5"]
+  },
+  "playerStates": null,
+  "bodyPartLayers": ["DUMPSTER", "BODY", "HEAD", "MOUTH", "GLASSES"],
+  "stringLayers": ["BACKGROUND", "FUR"],
+  "newBasicStats": [
+    {
+      "index": 0,
+      "name": "mutationLevel",
+      "inherited": { "notInherited": true },
+      "statType": {
+        "enum": {
+          "starting": 0,
+          "values": [
+            { "name": "NA", "value": 0 },
+            { "name": "Lvl1", "value": 1 },
+            { "name": "Lvl2", "value": 2 },
+            { "name": "Lvl3", "value": 3 },
+            { "name": "Lvl4", "value": 4 }
+          ]
+        }
+      }
+    }
+  ],
+  "itemsWillBeSFTs": true,
+  "className": "panda",
+  "namespaceName": "dtp",
+  "allowTokenHolder": false,
+  "itemClassLookup": {
+    "BACKGROUND": {
+      "Blue": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Red": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Yellow": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Green": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Purple": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Black": {
+        "existingClassDef": null,
+        "address": null
+      }
+    },
+    "FUR": {
+      "Scarred Red - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Red - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Red - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Red - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Brown - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Brown - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Brown - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Brown - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Green - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Green - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Green - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Green - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Blue - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Blue - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Blue - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Blue - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Purple - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Purple - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Purple - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Purple - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Black - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Black - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Scarred Black - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Black - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Fox - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Fox - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Antique - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Antique - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Gold - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Gold - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Zombie - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Zombie - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Acid Trip - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Acid Trip - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      }
+    },
+    "DUMPSTER": {
+      "BLACK": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "RED": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "GREEN": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "ZOMBIE": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "BLUE": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "PURPLE": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "BROWN": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "ANTIQUE": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "FOX": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "ACID": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "GOLD": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "EXALTED_STAT | RUGGED_COUNT: 2": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "EXALTED_STAT | TELL_ME_A_JOKE: Mint Date": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "EXALTED_STAT | PSYCHOLOGICAL_TRAUMA_LEVEL: Medium": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "EXALTED_STAT | WEN: 2 hours": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "EXALTED_STAT | EXILED: Just kidding": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "EXALTED_STAT | MONOLIFF?: Mono-LEAF!": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "EXALTED_STAT | B_AND_J": {
+        "existingClassDef": null,
+        "address": null
+      }
+    },
+    "BODY": {
+      "Fairy Wings": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Turtle Neck": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Tweed Suit": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Knitted Vest": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Singlet": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Hoodie": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Xmas Sweater": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Football Jersey - Red/Blue": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Football Jersey - Blue/White": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Prom King": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Leather Jacket": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Dress Shirt": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Degen Service Polo": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Open Shirt": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Rain Jacket": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Designer Jacket": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Engineer": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Bandana": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Overalls": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Fishing Vest": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Admiral": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Down Jacket": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Bumbag": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "T-Shirt": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Hockey Pads": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Chav Jacket": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Slav Jacket": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Spacesuit": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Chain": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Crayon Farmer": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Toga": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Mummy": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Vampire Cape": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Denim Vest": {
+        "existingClassDef": null,
+        "address": null
+      }
+    },
+    "HEAD": {
+      "Space Helmet": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Pandas Pickles": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Cardboard Box": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Lampshade": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Ice Cream": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Road Cone": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Pot": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Crown": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Boot": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Trash Lid": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Headband": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Paper Bag": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Paint Can": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Sock": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Belt": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Takeout": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Pandos": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Beanie": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Degen Service Hat": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Flat Cap": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Colander": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Trucker Cap": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "The Gambler": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Steampunk Hat": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Beret": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Pirate Hat": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Sombrero": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Tomato Soup": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Plunger": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Urn": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Tamberine": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Unicorn Headband": {
+        "existingClassDef": null,
+        "address": null
+      }
+    },
+    "GLASSES": {
+      "Trash Vipers": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Snow Goggles": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Reading Glasses": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Star Glasses": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Designer Glasses": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Swimming Goggles": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Monocle": {
+        "existingClassDef": null,
+        "address": null
+      }
+    },
+    "MOUTH": {
+      "Cigarette - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "War Medal - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Match Stick - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Joint - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Crayon Shiv - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Bird Foot - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Burnt Spoon - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Rat Tail - Smirk": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Dirty Fiat - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Dynamite - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Cigar - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Acid - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Lollipop - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Smashed Bottle - Grin": {
+        "existingClassDef": null,
+        "address": null
+      },
+      "Bone - Grin": {
+        "existingClassDef": null,
+        "address": null
+      }
+    }
+  },
+  "itemImageFile": "/Users/jprince/Documents/pandaItems/",
+  "collectionMint": "GoLMLLR6iSUrA6KsCrFh7f45Uq5EHFQ3p8RmzPoUH9mb",
+  "index": 0,
+  "itemIndex": 0,
+  "existingClassDef": null,
+  "itemsName": "DTP Items",
+  "existingCollectionForItems": null
+}

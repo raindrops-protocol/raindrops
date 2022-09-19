@@ -57,7 +57,7 @@ export interface BootUpArgs {
   // These traits will become bodyparts
   bodyPartLayers: string[];
   // These traits will become enums
-  enumerableLayers: string[];
+  stringLayers: string[];
   newBasicStats: any[];
   itemsWillBeSFTs: boolean;
   className: string;
@@ -99,10 +99,9 @@ export class BootUp {
       // These traits will become bodyparts
       bodyPartLayers,
       // These traits will become enums
-      enumerableLayers,
+      stringLayers,
       newBasicStats,
       className,
-      itemClassLookup,
       collectionMint,
       allowTokenHolder,
       existingClassDef,
@@ -201,16 +200,13 @@ export class BootUp {
           startingStatsUri: null,
           basicStats: [
             ...newBasicStats,
-            ...enumerableLayers.map((s, i) => ({
+            ...stringLayers.map((s, i) => ({
               index: i + newBasicStats.length,
               name: s,
               inherited: { notInherited: true },
               statType: {
-                enum: {
-                  starting: 0,
-                  values: Object.keys(itemClassLookup[s])
-                    .sort()
-                    .map((n, v) => ({ name: n, value: v })),
+                string: {
+                  starting: "unset",
                 },
               },
             })),
@@ -235,60 +231,67 @@ export class BootUp {
       /// Rough estimate of bytes needed for class plus buffer
       totalSpaceBytes:
         250 +
-        (newBasicStats.length + enumerableLayers.length) *
-          (2 + 25 + 8 * 5 + 1) +
+        (newBasicStats.length + stringLayers.length) * (2 + 25 + 8 * 5 + 1) +
         bodyPartLayers.length * (2 + 25 + 9 + 1) +
         100,
     };
 
-    let playerClass;
     try {
-      playerClass = await this.player.fetchPlayerClass(collectionMint, index);
+      await this.player.fetchPlayerClass(collectionMint, index);
       console.log("Updating player class");
-      await this.player.updatePlayerClass(
-        {
-          classIndex: index,
-          parentClassIndex: null,
-          updatePermissivenessToUse: playerClass.updatePermissivenessToUse,
-          playerClassData: playerClass.data,
-        },
-        {
-          playerMint: new web3.PublicKey(playerClass.mint),
-          parent: null,
-          parentMint: null,
-          metadataUpdateAuthority: wallet,
-        },
-        {
-          permissionless: false,
-        }
-      );
+      await (
+        await this.player.updatePlayerClass(
+          {
+            classIndex: index,
+            parentClassIndex: null,
+            updatePermissivenessToUse: classDef.updatePermissivenessToUse,
+            playerClassData: classDef.data,
+          },
+          {
+            playerMint: new web3.PublicKey(classDef.mint),
+            parent: null,
+            parentMint: null,
+            metadataUpdateAuthority: wallet,
+          },
+          {
+            permissionless: false,
+          }
+        )
+      ).rpc();
     } catch (e) {
       console.error(e);
       console.log("Player Class not found.");
-      console.log("Creating player class");
-      await this.player.createPlayerClass(
-        {
-          classIndex: index,
-          parentClassIndex: null,
-          space: new BN(playerClass.space),
-          desiredNamespaceArraySize: playerClass.namespaceRequirement,
-          updatePermissivenessToUse: playerClass.updatePermissivenessToUse,
-          storeMint: playerClass.storeMint,
-          storeMetadataFields: playerClass.storeMetadataFields,
-          playerClassData: playerClass.data,
-          parentOfParentClassIndex: null,
-        },
-        {
-          playerMint: new web3.PublicKey(playerClass.mint),
-          parent: null,
-          parentMint: null,
-          parentOfParentClassMint: null,
-          metadataUpdateAuthority: wallet,
-          parentUpdateAuthority: null,
-        },
-        {}
-      );
+      await (
+        await this.player.createPlayerClass(
+          {
+            classIndex: index,
+            parentClassIndex: null,
+            space: new BN(classDef.totalSpaceBytes),
+            desiredNamespaceArraySize: classDef.namespaceRequirement,
+            updatePermissivenessToUse: classDef.updatePermissivenessToUse,
+            storeMint: classDef.storeMint,
+            storeMetadataFields: classDef.storeMetadataFields,
+            playerClassData: classDef.data,
+            parentOfParentClassIndex: null,
+          },
+          {
+            playerMint: new web3.PublicKey(classDef.mint),
+            parent: null,
+            parentMint: null,
+            parentOfParentClassMint: null,
+            metadataUpdateAuthority: wallet,
+            parentUpdateAuthority: null,
+          },
+          {}
+        )
+      ).rpc();
     }
+
+    classDef.data.config.bodyParts.forEach((b) => {
+      if (b.totalItemSpots.toNumber)
+        b.totalItemSpots = b.totalItemSpots.toNumber();
+    });
+    if (classDef.index.toNumber) classDef.index = classDef.index.toNumber();
 
     console.log("Writing out player class to save area.");
 
@@ -306,8 +309,7 @@ export class BootUp {
       },
       // These traits will become bodyparts
       bodyPartLayers: args.bodyPartLayers,
-      // These traits will become enums
-      enumerableLayers: args.enumerableLayers,
+      stringLayers: args.stringLayers,
       newBasicStats: args.newBasicStats,
       itemsWillBeSFTs: args.itemsWillBeSFTs,
       className: args.className,
@@ -528,9 +530,13 @@ export class BootUp {
         if (!itemMint) {
           console.log(`Trait ${trait} doesn't exist. Creating NFT.`);
           console.log("Uploading trait image to web3 storage");
+          const fileName = (layer + "-" + trait)
+            .replace(" ", "_")
+            .replace("|", "")
+            .replace(":", "_");
           const upload = await writeToImmutableStorage(
-            itemImageFile[layer + "-" + trait],
-            layer + "-" + trait + ".png"
+            itemImageFile[fileName],
+            fileName
           );
           console.log("Upload complete, pushing to chain", upload);
           const keypair = web3.Keypair.generate();
@@ -959,7 +965,7 @@ export class BootUp {
       existingClassDef,
       index,
       itemIndex,
-      enumerableLayers,
+      stringLayers,
       bodyPartLayers,
       newBasicStats,
       itemClassLookup,
@@ -1158,18 +1164,13 @@ export class BootUp {
                   basicStats: [
                     //@ts-ignore
                     ...player.basicStats.slice(0, newBasicStats.length),
-                    ...enumerableLayers.map((l, i) => ({
+                    ...stringLayers.map((l, i) => ({
                       index: newBasicStats.length + i,
                       state: {
-                        enum: {
-                          current: Object.keys(itemClassLookup[l])
-                            .sort()
-                            .findIndex(
-                              (s) =>
-                                s ==
-                                json.attributes.find((a) => a.trait_type == l)
-                                  .value
-                            ),
+                        string: {
+                          current: json.attributes.find(
+                            (a) => a.trait_type == l
+                          ).value,
                         },
                       },
                     })),

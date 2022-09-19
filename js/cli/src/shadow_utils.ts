@@ -2,7 +2,7 @@ import { ShdwDrive, ShadowFile } from "@shadow-drive/sdk";
 import { clusterApiUrl, Connection, Keypair } from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
 
-const { logger } = require("./logger");
+import log from "loglevel";
 
 const SHADOW_RPC_URL: string =
   process.env.SHADOW_RPC_URL || clusterApiUrl("devnet");
@@ -78,7 +78,7 @@ export const uploadFile = async (
           "v2"
         );
         if (pngFileUploadResult && pngFileUploadResult.finalized_locations) {
-          logger.log(
+          log.info(
             "info",
             `Image file for ${name} is created.  File location is ${pngFileUploadResult.finalized_locations[0]}`
           );
@@ -86,7 +86,7 @@ export const uploadFile = async (
           throw new Error(`Could not upload ${pngShadowFile.name}`);
         }
       } else {
-        logger.error(`${name} upload had an error.  Time to crash!`);
+        log.info(`${name} upload had an error.  Time to crash!`);
         throw err;
       }
     });
@@ -94,7 +94,7 @@ export const uploadFile = async (
   // If not, check to see if it was edited.  If it was, set the pngURI
   // If neither case works, then there was an error (should have been caught above.)
   if (pngFileEditResult && pngFileEditResult.finalized_location) {
-    logger.log(
+    log.info(
       "info",
       `Image file for ${name} is updated.  File location is ${pngFileEditResult.finalized_location}`
     );
