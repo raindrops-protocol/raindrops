@@ -39,6 +39,7 @@
     "@raindrop-studios/sol-command": "^0.4.0",
     "@raindrop-studios/sol-kit": "^0.1.78",
     "@raindrops-protocol/raindrops": "workspace:^",
+    "@shadow-drive/sdk": "^3.0.6",
     "@solana/spl-token": "^0.1.8",
     "borsh": "^0.4.0",
     "commander": "^8.1.0",

@@ -1,16 +1,8 @@
 import { AnchorProvider, BN, web3 } from "@project-serum/anchor";
-import { Program } from "@raindrop-studios/sol-kit";
-import { PublicKey, Signer, TransactionInstruction } from "@solana/web3.js";
-import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
+import { PublicKey } from "@solana/web3.js";
 
-import * as PlayerInstruction from "../instructions/player";
 import * as Utils from "../utils";
-import { PLAYER_ID } from "../constants/programIds";
-import {
-  getEdition,
-  getNamespacePDA,
-  getPlayerItemAccount,
-} from "../utils/pda";
+import { getEdition } from "../utils/pda";
 import {
   createMasterEditionInstruction,
   createMetadataInstruction,
@@ -30,33 +22,25 @@ import { PlayerProgram } from "./player";
 import { ItemProgram } from "./item";
 import { createAssociatedTokenAccountInstruction } from "../utils/ata";
 import { NamespaceProgram } from "./namespace";
-import { randomUUID } from "crypto";
-import { Permissiveness } from "../state/namespace";
 import { RAIN_PAYMENT_AMOUNT } from "../constants/player";
 const {
-  PDA: {
-    getAtaForMint,
-    getItemActivationMarker,
-    getItemPDA,
-    getMetadata,
-    getPlayerPDA,
-  },
+  PDA: { getAtaForMint, getItemPDA, getMetadata, getPlayerPDA },
 } = Utils;
 
-enum Scope {
+export enum Scope {
   Mint,
   CandyMachine,
   Collection,
 }
 
-enum MintState {
+export enum MintState {
   NotBuilt,
   Built,
   Set,
   Loaded,
   FullyLoadedAndEquipped,
 }
-export interface PlayerizeArgs {
+export interface BootUpArgs {
   scope: {
     type: Scope;
     values: PublicKey[];
@@ -91,12 +75,12 @@ export interface PlayerizeArgs {
   existingClassDef: any;
   itemsName: string;
   existingCollectionForItems: PublicKey | null;
-  writeToImmutableStorage: (f: Buffer) => Promise<string>;
-  writeOutState: (f: string) => Promise<void>;
+  writeToImmutableStorage: (f: Buffer, name: string) => Promise<string>;
+  writeOutState: (f: any) => Promise<void>;
   env: string;
 }
 
-export class Playerizer {
+export class BootUp {
   player: PlayerProgram;
   item: ItemProgram;
   namespace: NamespaceProgram;
@@ -110,7 +94,7 @@ export class Playerizer {
     this.namespace = namespace;
   }
 
-  async createMainNFTClass(args: PlayerizeArgs) {
+  async createMainNFTClass(args: BootUpArgs) {
     const {
       // These traits will become bodyparts
       bodyPartLayers,
@@ -308,12 +292,13 @@ export class Playerizer {
 
     console.log("Writing out player class to save area.");
 
-    await writeOutState(
-      JSON.stringify({ ...this.turnToConfig(args), existingClassDef: classDef })
-    );
+    await writeOutState({
+      ...this.turnToConfig(args),
+      existingClassDef: classDef,
+    });
   }
 
-  turnToConfig(args: PlayerizeArgs) {
+  turnToConfig(args: BootUpArgs) {
     return {
       scope: {
         type: args.scope.type,
@@ -340,7 +325,7 @@ export class Playerizer {
     };
   }
 
-  async getMints(args: PlayerizeArgs): Promise<PublicKey[]> {
+  async getMints(args: BootUpArgs): Promise<PublicKey[]> {
     const {
       scope: { type, values },
     } = args;
@@ -355,7 +340,7 @@ export class Playerizer {
     return mints;
   }
 
-  async createItemCollection(args: PlayerizeArgs) {
+  async createItemCollection(args: BootUpArgs) {
     const {
       scope: { type, values },
       itemClassLookup,
@@ -379,7 +364,8 @@ export class Playerizer {
       const layers = Object.keys(itemClassLookup);
       const traits = Object.keys(itemClassLookup[layers[0]]).sort();
       const firstUpload = await writeToImmutableStorage(
-        itemImageFile[layers[0] + "-" + traits[0]]
+        itemImageFile[layers[0] + "-" + traits[0]],
+        layers[0] + "-" + traits[0] + ".png"
       );
       const mint = mints[0];
       console.log("Grabbing a single mint to grab royalties...");
@@ -487,15 +473,13 @@ export class Playerizer {
 
     console.log("Writing out collection to save area.");
 
-    await writeOutState(
-      JSON.stringify({
-        ...args,
-        existingCollectionForItems: realCollectionMint.toBase58(),
-      })
-    );
+    await writeOutState({
+      ...args,
+      existingCollectionForItems: realCollectionMint.toBase58(),
+    });
   }
 
-  async createItemClasses(args: PlayerizeArgs) {
+  async createItemClasses(args: BootUpArgs) {
     const {
       itemClassLookup,
       existingCollectionForItems,
@@ -545,7 +529,8 @@ export class Playerizer {
           console.log(`Trait ${trait} doesn't exist. Creating NFT.`);
           console.log("Uploading trait image to web3 storage");
           const upload = await writeToImmutableStorage(
-            itemImageFile[layer + "-" + trait]
+            itemImageFile[layer + "-" + trait],
+            layer + "-" + trait + ".png"
           );
           console.log("Upload complete, pushing to chain", upload);
           const keypair = web3.Keypair.generate();
@@ -716,21 +701,19 @@ export class Playerizer {
         console.log(
           `Storing class def for ${itemMint} to config storage before attempting to update on chain in case that breaks so we don't lose the mint key.`
         );
-        await writeOutState(
-          JSON.stringify({
-            ...this.turnToConfig(args),
-            itemClassLookup: {
-              ...itemClassLookup,
-              [layer]: {
-                ...itemClassLookup[layer],
-                [trait]: {
-                  existingClassDef: existingClass,
-                  address: itemClassLookup[layer][trait].address,
-                },
+        await writeOutState({
+          ...this.turnToConfig(args),
+          itemClassLookup: {
+            ...itemClassLookup,
+            [layer]: {
+              ...itemClassLookup[layer],
+              [trait]: {
+                existingClassDef: existingClass,
+                address: itemClassLookup[layer][trait].address,
               },
             },
-          })
-        );
+          },
+        });
 
         try {
           await this.item.fetchItemClass(new PublicKey(itemMint), itemIndex);
@@ -949,31 +932,29 @@ export class Playerizer {
         console.log(
           `Done update/create for item class ${itemMint}. Writing to config storage.`
         );
-        await writeOutState(
-          JSON.stringify({
-            ...this.turnToConfig(args),
-            itemClassLookup: {
-              ...itemClassLookup,
-              [layer]: {
-                ...itemClassLookup[layer],
-                [trait]: {
-                  existingClassDef: existingClass,
-                  address: (
-                    await getItemPDA(
-                      new web3.PublicKey(existingClass.mint),
-                      existingClass.index
-                    )
-                  )[0].toBase58(),
-                },
+        await writeOutState({
+          ...this.turnToConfig(args),
+          itemClassLookup: {
+            ...itemClassLookup,
+            [layer]: {
+              ...itemClassLookup[layer],
+              [trait]: {
+                existingClassDef: existingClass,
+                address: (
+                  await getItemPDA(
+                    new web3.PublicKey(existingClass.mint),
+                    existingClass.index
+                  )
+                )[0].toBase58(),
               },
             },
-          })
-        );
+          },
+        });
       }
     }
   }
 
-  async createPlayers(args: PlayerizeArgs) {
+  async createPlayers(args: BootUpArgs) {
     const {
       existingClassDef,
       index,
@@ -1046,9 +1027,7 @@ export class Playerizer {
             itemsMinted: [],
             itemsEquipped: [],
           };
-          await writeOutState(
-            JSON.stringify({ ...this.turnToConfig(args), playerStates })
-          );
+          await writeOutState({ ...this.turnToConfig(args), playerStates });
         }
 
         if (playerStates[mint.toBase58()].state == MintState.NotBuilt) {
@@ -1100,9 +1079,7 @@ export class Playerizer {
               itemClassMint.toBase58()
             );
 
-            await writeOutState(
-              JSON.stringify({ ...this.turnToConfig(args), playerStates })
-            );
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
           }
         }
 
@@ -1157,9 +1134,7 @@ export class Playerizer {
           ).rpc();
 
           playerStates[mint.toBase58()].state = MintState.Built;
-          await writeOutState(
-            JSON.stringify({ ...this.turnToConfig(args), playerStates })
-          );
+          await writeOutState({ ...this.turnToConfig(args), playerStates });
         }
 
         if (playerStates[mint.toBase58()].state == MintState.Built) {
@@ -1211,9 +1186,7 @@ export class Playerizer {
           ).rpc();
 
           playerStates[mint.toBase58()].state = MintState.Set;
-          await writeOutState(
-            JSON.stringify({ ...this.turnToConfig(args), playerStates })
-          );
+          await writeOutState({ ...this.turnToConfig(args), playerStates });
         }
 
         if (playerStates[mint.toBase58()].state == MintState.Set) {
@@ -1269,9 +1242,7 @@ export class Playerizer {
               itemClassMint.toBase58()
             );
 
-            await writeOutState(
-              JSON.stringify({ ...this.turnToConfig(args), playerStates })
-            );
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
           }
         }
 
@@ -1311,9 +1282,7 @@ export class Playerizer {
             );
           } else {
             playerStates[mint.toBase58()].state = MintState.Loaded;
-            await writeOutState(
-              JSON.stringify({ ...this.turnToConfig(args), playerStates })
-            );
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
           }
         }
 
@@ -1373,9 +1342,7 @@ export class Playerizer {
               itemClassMint.toBase58()
             );
 
-            await writeOutState(
-              JSON.stringify({ ...this.turnToConfig(args), playerStates })
-            );
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
           }
         }
 
@@ -1416,9 +1383,7 @@ export class Playerizer {
           } else {
             playerStates[mint.toBase58()].state =
               MintState.FullyLoadedAndEquipped;
-            await writeOutState(
-              JSON.stringify({ ...this.turnToConfig(args), playerStates })
-            );
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
           }
         }
 

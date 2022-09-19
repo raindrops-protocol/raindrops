@@ -1853,6 +1853,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@noble/ed25519@npm:^1.7.0":
+  version: 1.7.1
+  resolution: "@noble/ed25519@npm:1.7.1"
+  checksum: b8e50306ac70f5cecc349111997e72e897b47a28d406b96cf95d0ebe7cbdefb8380d26117d7847d94102281db200aa3a494e520f9fc12e2f292e0762cb0fa333
+  languageName: node
+  linkType: hard
+
+"@noble/hashes@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "@noble/hashes@npm:1.1.2"
+  checksum: 3c2a8cb7c2e053811032f242155d870c5eb98844d924d69702244d48804cb03b42d4a666c49c2b71164420d8229cb9a6f242b972d50d5bb2f1d673b98b041de2
+  languageName: node
+  linkType: hard
+
+"@noble/secp256k1@npm:^1.6.3":
+  version: 1.7.0
+  resolution: "@noble/secp256k1@npm:1.7.0"
+  checksum: 540a2b8e527ee1e5522af1c430e54945ad373883cac983b115136cd0950efa1f2c473ee6a36d8e69b6809b3ee586276de62f5fa705c77a9425721e81bada8116
+  languageName: node
+  linkType: hard
+
 "@nodelib/fs.scandir@npm:2.1.5":
   version: 2.1.5
   resolution: "@nodelib/fs.scandir@npm:2.1.5"
@@ -1967,19 +1988,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@project-serum/borsh@npm:^0.2.2":
-  version: 0.2.2
-  resolution: "@project-serum/borsh@npm:0.2.2"
-  dependencies:
-    bn.js: ^5.1.2
-    buffer-layout: ^1.2.0
-  peerDependencies:
-    "@solana/web3.js": ^1.2.0
-  checksum: f6ffd5f21cad0cb8a84901dcf21342af73a4b48e2121ba9fd3e1f84b400e66eacb3a7e80ae350a0592f728dea99604c50084ab1455ddf4f3a9d28c8a38bbc188
-  languageName: node
-  linkType: hard
-
-"@project-serum/borsh@npm:^0.2.5":
+"@project-serum/borsh@npm:^0.2.2, @project-serum/borsh@npm:^0.2.5":
   version: 0.2.5
   resolution: "@project-serum/borsh@npm:0.2.5"
   dependencies:
@@ -2005,15 +2014,15 @@ __metadata:
   linkType: hard
 
 "@project-serum/serum@npm:^0.13.21":
-  version: 0.13.57
-  resolution: "@project-serum/serum@npm:0.13.57"
+  version: 0.13.65
+  resolution: "@project-serum/serum@npm:0.13.65"
   dependencies:
     "@project-serum/anchor": ^0.11.1
     "@solana/spl-token": ^0.1.6
     "@solana/web3.js": ^1.21.0
     bn.js: ^5.1.2
     buffer-layout: ^1.2.0
-  checksum: af4f8d05ca1cd0177e5cba3a3b86520710e6ac144314f67faea7ce4b3821eca3fec6eb585da58126b01dff32f43fbfe57a14eecc2e2f3474dd83af3b95501a5f
+  checksum: 62621db755a2d2f5d7293e737263510db66077e52532b32f898930a10ba849561379669caab6c8b4036fdc55194ef7ab0938a25433b9762187735cf1c45343a0
   languageName: node
   linkType: hard
 
@@ -2051,6 +2060,7 @@ __metadata:
     "@raindrop-studios/sol-command": ^0.4.0
     "@raindrop-studios/sol-kit": ^0.1.78
     "@raindrops-protocol/raindrops": "workspace:^"
+    "@shadow-drive/sdk": ^3.0.6
     "@solana/spl-token": ^0.1.8
     "@types/node": ^18.0.3
     "@typescript-eslint/eslint-plugin": latest
@@ -2142,6 +2152,23 @@ __metadata:
     typescript: ^4.3.5
   languageName: unknown
   linkType: soft
+
+"@shadow-drive/sdk@npm:^3.0.6":
+  version: 3.0.6
+  resolution: "@shadow-drive/sdk@npm:3.0.6"
+  dependencies:
+    "@project-serum/anchor": ^0.24.2
+    "@solana/spl-token": ^0.2.0
+    cross-fetch: ^3.1.5
+    form-data: ^4.0.0
+    node-fetch: 2
+    rxjs: ^7.5.5
+    tweetnacl: ^1.0.3
+  peerDependencies:
+    react: ^17.0.0 || ^18
+  checksum: f1988ad79a00c2388e56074de743fbcbc070e0771822bda821beb87b922f2e3ea0dc9d7645dca1569071d42f56f1d3d5638f98ba3f060ca7caa9f241b6c704fb
+  languageName: node
+  linkType: hard
 
 "@sideway/address@npm:^4.1.3":
   version: 4.1.4
@@ -2264,17 +2291,42 @@ __metadata:
   linkType: hard
 
 "@solana/spl-token@npm:^0.3.1":
-  version: 0.3.1
-  resolution: "@solana/spl-token@npm:0.3.1"
+  version: 0.3.5
+  resolution: "@solana/spl-token@npm:0.3.5"
   dependencies:
     "@solana/buffer-layout": ^4.0.0
     "@solana/buffer-layout-utils": ^0.2.0
-    "@solana/web3.js": ^1.41.0
-  checksum: f8d4b897eeaebfcf7dd73fc9e328c5659125826ba2f3f421f62edc492923e57e59aed58dcefd8ef4c8e8c45fc80f992e3fd7d56d7ac3641f5f516bc99df14027
+    buffer: ^6.0.3
+  peerDependencies:
+    "@solana/web3.js": ^1.47.4
+  checksum: 230c153b886c7dedb09fdd65c4fd71259d37f3c951ab6ea9c099aff875cc595fc9d44c74b4d7ffef59475f7edd7a8a00931bfec8ab2bd3141512ca3f6f828139
   languageName: node
   linkType: hard
 
-"@solana/web3.js@npm:^1.17.0, @solana/web3.js@npm:^1.21.0":
+"@solana/web3.js@npm:^1.17.0":
+  version: 1.62.0
+  resolution: "@solana/web3.js@npm:1.62.0"
+  dependencies:
+    "@babel/runtime": ^7.12.5
+    "@noble/ed25519": ^1.7.0
+    "@noble/hashes": ^1.1.2
+    "@noble/secp256k1": ^1.6.3
+    "@solana/buffer-layout": ^4.0.0
+    bigint-buffer: ^1.1.5
+    bn.js: ^5.0.0
+    borsh: ^0.7.0
+    bs58: ^4.0.1
+    buffer: 6.0.1
+    fast-stable-stringify: ^1.0.0
+    jayson: ^3.4.4
+    node-fetch: 2
+    rpc-websockets: ^7.5.0
+    superstruct: ^0.14.2
+  checksum: 64272ef29963e7bfa479aa7ca287a015c82617ae48e64135513e10b9d3c9c50c5ff72c120c4b85eb1a1a5975780818f5db023a3246d0960150558d34da483bab
+  languageName: node
+  linkType: hard
+
+"@solana/web3.js@npm:^1.21.0":
   version: 1.24.1
   resolution: "@solana/web3.js@npm:1.24.1"
   dependencies:
@@ -2346,31 +2398,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solana/web3.js@npm:^1.41.0":
-  version: 1.53.0
-  resolution: "@solana/web3.js@npm:1.53.0"
-  dependencies:
-    "@babel/runtime": ^7.12.5
-    "@ethersproject/sha2": ^5.5.0
-    "@solana/buffer-layout": ^4.0.0
-    bigint-buffer: ^1.1.5
-    bn.js: ^5.0.0
-    borsh: ^0.7.0
-    bs58: ^4.0.1
-    buffer: 6.0.1
-    fast-stable-stringify: ^1.0.0
-    jayson: ^3.4.4
-    js-sha3: ^0.8.0
-    node-fetch: 2
-    react-native-url-polyfill: ^1.3.0
-    rpc-websockets: ^7.5.0
-    secp256k1: ^4.0.2
-    superstruct: ^0.14.2
-    tweetnacl: ^1.0.3
-  checksum: cb7020c3ff6c13784b6073316ea3895ff413090be96b8e332ee0fc74c5981cef40582cfa8cb796e7263fd023e920f9b6403dc56292a2e07558361618236b4926
-  languageName: node
-  linkType: hard
-
 "@tootallnate/once@npm:2":
   version: 2.0.0
   resolution: "@tootallnate/once@npm:2.0.0"
@@ -2429,11 +2456,11 @@ __metadata:
   linkType: hard
 
 "@types/bn.js@npm:^5.1.0":
-  version: 5.1.0
-  resolution: "@types/bn.js@npm:5.1.0"
+  version: 5.1.1
+  resolution: "@types/bn.js@npm:5.1.1"
   dependencies:
     "@types/node": "*"
-  checksum: 1dc1cbbd7a1e8bf3614752e9602f558762a901031f499f3055828b5e3e2bba16e5b88c27b3c4152ad795248fbe4086c731a5c4b0f29bb243f1875beeeabee59c
+  checksum: e50ed2dd3abe997e047caf90e0352c71e54fc388679735217978b4ceb7e336e51477791b715f49fd77195ac26dd296c7bad08a3be9750e235f9b2e1edb1b51c2
   languageName: node
   linkType: hard
 
@@ -3423,7 +3450,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"buffer@npm:6.0.3, buffer@npm:~6.0.3":
+"buffer@npm:6.0.3, buffer@npm:^6.0.3, buffer@npm:~6.0.3":
   version: 6.0.3
   resolution: "buffer@npm:6.0.3"
   dependencies:
@@ -7384,7 +7411,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rxjs@npm:^7.1.0, rxjs@npm:^7.5.4":
+"rxjs@npm:^7.1.0, rxjs@npm:^7.5.4, rxjs@npm:^7.5.5":
   version: 7.5.6
   resolution: "rxjs@npm:7.5.6"
   dependencies:
@@ -8040,9 +8067,9 @@ __metadata:
   linkType: hard
 
 "tiny-invariant@npm:^1.0.6":
-  version: 1.1.0
-  resolution: "tiny-invariant@npm:1.1.0"
-  checksum: 27d29bbb9e1d1d86e25766711c28ad91af6d67c87d561167077ac7fbce5212b97bbfe875e70bc369808e075748c825864c9b61f0e9f8652275ec86bcf4dcc924
+  version: 1.2.0
+  resolution: "tiny-invariant@npm:1.2.0"
+  checksum: e09a718a7c4a499ba592cdac61f015d87427a0867ca07f50c11fd9b623f90cdba18937b515d4a5e4f43dac92370498d7bdaee0d0e7a377a61095e02c4a92eade
   languageName: node
   linkType: hard
 
