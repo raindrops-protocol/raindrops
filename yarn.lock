@@ -2038,6 +2038,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@raindrop-studios/sol-kit@npm:0.1.78":
+  version: 0.1.78
+  resolution: "@raindrop-studios/sol-kit@npm:0.1.78"
+  dependencies:
+    "@project-serum/anchor": ^0.24.2
+    borsh: ^0.4.0
+    loglevel: ^1.8.0
+    typescript: ^4.3.5
+  checksum: 3aff3722d6bbee3841654b8e3b0c8caa716b2ee0f5754b860d4a32b10bd95a2806ef812d4ff264a59c47e22bdd644ba3b675e73ae8cd4aade76f95573efe0a18
+  languageName: node
+  linkType: hard
+
 "@raindrop-studios/sol-kit@npm:^0.1.78":
   version: 0.1.79
   resolution: "@raindrop-studios/sol-kit@npm:0.1.79"
@@ -2061,12 +2073,13 @@ __metadata:
     "@raindrop-studios/sol-kit": ^0.1.78
     "@raindrops-protocol/raindrops": "workspace:^"
     "@shadow-drive/sdk": ^3.0.6
-    "@solana/spl-token": ^0.1.8
+    "@solana/spl-token": 0.2.0
     "@types/node": ^18.0.3
     "@typescript-eslint/eslint-plugin": latest
     "@typescript-eslint/parser": latest
     borsh: ^0.4.0
     commander: ^8.1.0
+    cross-fetch: 3.1.5
     eslint: latest
     form-data: ^4.0.0
     jsonschema: ^1.4.0
@@ -2134,8 +2147,8 @@ __metadata:
     "@babel/preset-typescript": ^7.15.0
     "@metaplex-foundation/mpl-token-metadata": ^2.2.2
     "@project-serum/anchor": ^0.24.2
-    "@raindrop-studios/sol-kit": ^0.1.78
-    "@solana/spl-token": ^0.1.8
+    "@raindrop-studios/sol-kit": 0.1.78
+    "@solana/spl-token": 0.2.0
     "@types/jest": ^28.1.5
     "@types/node": ^18.0.3
     "@typescript-eslint/eslint-plugin": latest
@@ -2264,7 +2277,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solana/spl-token@npm:^0.1.6, @solana/spl-token@npm:^0.1.8":
+"@solana/spl-token@npm:0.2.0, @solana/spl-token@npm:^0.2.0":
+  version: 0.2.0
+  resolution: "@solana/spl-token@npm:0.2.0"
+  dependencies:
+    "@solana/buffer-layout": ^4.0.0
+    "@solana/buffer-layout-utils": ^0.2.0
+    "@solana/web3.js": ^1.32.0
+    start-server-and-test: ^1.14.0
+  checksum: c07f32428985ae67f97ed95d31d9e5c6d9317d26fa81b5df6c6f664152c48c9ad08af32a20d8c6667c636bfc22950a261c5cf57457820cba16c488640169b2f6
+  languageName: node
+  linkType: hard
+
+"@solana/spl-token@npm:^0.1.6":
   version: 0.1.8
   resolution: "@solana/spl-token@npm:0.1.8"
   dependencies:
@@ -2275,18 +2300,6 @@ __metadata:
     buffer-layout: ^1.2.0
     dotenv: 10.0.0
   checksum: be4971c4af9c56fd30353356d8ca404b4460eb37806499ab1257e7d77afa56f89149cfe03c41a0f8908f50e9c421c5b805502857455281e8d3088a2eae1c3297
-  languageName: node
-  linkType: hard
-
-"@solana/spl-token@npm:^0.2.0":
-  version: 0.2.0
-  resolution: "@solana/spl-token@npm:0.2.0"
-  dependencies:
-    "@solana/buffer-layout": ^4.0.0
-    "@solana/buffer-layout-utils": ^0.2.0
-    "@solana/web3.js": ^1.32.0
-    start-server-and-test: ^1.14.0
-  checksum: c07f32428985ae67f97ed95d31d9e5c6d9317d26fa81b5df6c6f664152c48c9ad08af32a20d8c6667c636bfc22950a261c5cf57457820cba16c488640169b2f6
   languageName: node
   linkType: hard
 
@@ -3859,7 +3872,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cross-fetch@npm:^3.1.5":
+"cross-fetch@npm:3.1.5, cross-fetch@npm:^3.1.5":
   version: 3.1.5
   resolution: "cross-fetch@npm:3.1.5"
   dependencies:

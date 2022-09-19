@@ -4,22 +4,17 @@ import * as anchor from "@project-serum/anchor";
 
 import log from "loglevel";
 
-const SHADOW_RPC_URL: string =
-  process.env.SHADOW_RPC_URL || clusterApiUrl("devnet");
-const SHADOW_BASE_URL: string =
-  process.env.SHADOW_BASE_URL || `https://shdw-drive.genesysgo.net`;
-
+const SHADOW_BASE_URL = "https://shdw-drive.genesysgo.net";
 const SHADOW_URI_NOT_EXISTS_MESSAGE: string = `undefined (reading 'owner-account-pubkey')`;
 
 import fs from "fs";
-
-const conn = new Connection(SHADOW_RPC_URL, "confirmed");
 
 export const uploadFile = async (
   shadowWallet: string,
   shadowAccountId: string,
   buffer: Buffer,
-  name: string
+  name: string,
+  conn: Connection
 ) => {
   const decodedKey = new Uint8Array(
     JSON.parse(fs.readFileSync(shadowWallet).toString())
@@ -35,6 +30,7 @@ export const uploadFile = async (
       `There was an error initializing the Shadow Drive: ${err.message}`
     );
   }
+
   try {
     shadow = await drive.getStorageAccounts("v2");
   } catch (err: any) {

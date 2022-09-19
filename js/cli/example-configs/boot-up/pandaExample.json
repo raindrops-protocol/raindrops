@@ -635,5 +635,7 @@
   "itemIndex": 0,
   "existingClassDef": null,
   "itemsName": "DTP Items",
-  "existingCollectionForItems": null
+  "existingCollectionForItems": null,
+  "shadowWallet": "/path/to/SHADOW_WALLET.json",
+  "shadowAccountId": "account-id"
 }

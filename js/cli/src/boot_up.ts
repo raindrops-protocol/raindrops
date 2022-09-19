@@ -20,6 +20,7 @@ import { SystemProgram } from "@solana/web3.js";
 import InheritanceState = State;
 import path = require("path");
 import { uploadFile } from "./shadow_utils";
+import { Connection } from "@solana/web3.js";
 
 const { PDA } = Utils;
 const { Player } = Constants;
@@ -77,7 +78,12 @@ async function loadItemImageFileFromDir(
 // (shadow wallet removed)
 // image dir turned into buffers
 // some other movie magic added etc.
-async function getConfig(config, env, configPath): Promise<BootUpArgs> {
+async function getConfig(
+  config,
+  env,
+  configPath,
+  conn: Connection
+): Promise<BootUpArgs> {
   return {
     ...config,
     scope: {
@@ -110,7 +116,13 @@ async function getConfig(config, env, configPath): Promise<BootUpArgs> {
       );
     },
     writeToImmutableStorage: async (f: Buffer, name: string) => {
-      await uploadFile(config.shadowWallet, config.shadowAccountId, f, name);
+      await uploadFile(
+        config.shadowWallet,
+        config.shadowAccountId,
+        f,
+        name,
+        conn
+      );
     },
   } as BootUpArgs;
 }
@@ -120,7 +132,12 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl, configPath } = options;
     const boots = await getBootsProgram(options);
-    const args = await getConfig(config, env, configPath);
+    const args = await getConfig(
+      config,
+      env,
+      configPath,
+      boots.player.client.provider.connection
+    );
     await boots.createMainNFTClass(args);
   }
 );
@@ -130,7 +147,12 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl, configPath } = options;
     const boots = await getBootsProgram(options);
-    const args = await getConfig(config, env, configPath);
+    const args = await getConfig(
+      config,
+      env,
+      configPath,
+      boots.player.client.provider.connection
+    );
     await boots.createItemCollection(args);
   }
 );
@@ -140,7 +162,12 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl, configPath } = options;
     const boots = await getBootsProgram(options);
-    const args = await getConfig(config, env, configPath);
+    const args = await getConfig(
+      config,
+      env,
+      configPath,
+      boots.player.client.provider.connection
+    );
     await boots.createItemClasses(args);
   }
 );
@@ -150,7 +177,12 @@ CLI.programCommandWithConfig(
   async (config, options, _files) => {
     const { keypair, env, rpcUrl, configPath } = options;
     const boots = await getBootsProgram(options);
-    const args = await getConfig(config, env, configPath);
+    const args = await getConfig(
+      config,
+      env,
+      configPath,
+      boots.player.client.provider.connection
+    );
     await boots.createPlayers(args);
   }
 );

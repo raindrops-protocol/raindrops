@@ -27,10 +27,10 @@ export class ItemProgram extends Program.Program {
     mint: web3.PublicKey,
     index: BN
   ): Promise<ItemClassWrapper | null> {
-    const itemClass = (await getItemPDA(mint, index))[0];
+    let itemClass = (await getItemPDA(mint, index))[0];
 
     // Need a manual deserializer due to our hack we had to do.
-    const itemClassObj = await (
+    let itemClassObj = await (
       this.client.provider as AnchorProvider
     ).connection.getAccountInfo(itemClass);
 
