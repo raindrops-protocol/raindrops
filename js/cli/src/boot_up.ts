@@ -14,13 +14,12 @@ import {
   Scope,
   MintState,
 } from "@raindrops-protocol/raindrops";
-import { Utils, State, Constants } from "@raindrops-protocol/raindrops";
-import { SystemProgram } from "@solana/web3.js";
+import { Utils, Constants } from "@raindrops-protocol/raindrops";
 
-import InheritanceState = State;
 import path = require("path");
-import { uploadFile } from "./shadow_utils";
 import { Connection } from "@solana/web3.js";
+import { uploadFileToArweave } from "./upload";
+import { Keypair } from "@solana/web3.js";
 
 const { PDA } = Utils;
 const { Player } = Constants;
@@ -82,7 +81,8 @@ async function getConfig(
   config,
   env,
   configPath,
-  conn: Connection
+  conn: Connection,
+  user: Keypair
 ): Promise<BootUpArgs> {
   return {
     ...config,
@@ -116,13 +116,12 @@ async function getConfig(
       );
     },
     writeToImmutableStorage: async (f: Buffer, name: string) => {
-      await uploadFile(
-        config.shadowWallet,
-        config.shadowAccountId,
-        f,
+      await uploadFileToArweave({
+        connection: conn,
+        file: f,
         name,
-        conn
-      );
+        user,
+      });
     },
   } as BootUpArgs;
 }
@@ -136,7 +135,8 @@ CLI.programCommandWithConfig(
       config,
       env,
       configPath,
-      boots.player.client.provider.connection
+      boots.player.client.provider.connection,
+      keypair
     );
     await boots.createMainNFTClass(args);
   }
@@ -151,7 +151,8 @@ CLI.programCommandWithConfig(
       config,
       env,
       configPath,
-      boots.player.client.provider.connection
+      boots.player.client.provider.connection,
+      keypair
     );
     await boots.createItemCollection(args);
   }
@@ -166,7 +167,8 @@ CLI.programCommandWithConfig(
       config,
       env,
       configPath,
-      boots.player.client.provider.connection
+      boots.player.client.provider.connection,
+      keypair
     );
     await boots.createItemClasses(args);
   }
@@ -181,7 +183,8 @@ CLI.programCommandWithConfig(
       config,
       env,
       configPath,
-      boots.player.client.provider.connection
+      boots.player.client.provider.connection,
+      keypair
     );
     await boots.createPlayers(args);
   }
