@@ -481,9 +481,9 @@ pub mod raindrops_matches {
 
         if let Some(to) = tfer.to {
             let dest_acct_info = destination_token_account.to_account_info();
-            if to != destination_token_account.key() {
-                assert_is_ata(&dest_acct_info, &to, &token_mint.key(), None)?;
-            }
+            //if to != destination_token_account.key() {
+            //    assert_is_ata(&dest_acct_info, &to, &token_mint.key(), None)?;
+            //}
 
             spl_token_transfer(TokenTransferParams {
                 source: token_account_escrow.to_account_info(),
