@@ -12,11 +12,11 @@ pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateOrUpdateOracleArgs {
-    token_transfer_root: Option<Root>,
-    token_transfers: Option<Vec<TokenDelta>>,
-    seed: Pubkey,
-    space: u64,
-    finalized: bool,
+    pub token_transfer_root: Option<Root>,
+    pub token_transfers: Option<Vec<TokenDelta>>,
+    pub seed: Pubkey,
+    pub space: u64,
+    pub finalized: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -481,9 +481,9 @@ pub mod raindrops_matches {
 
         if let Some(to) = tfer.to {
             let dest_acct_info = destination_token_account.to_account_info();
-            //if to != destination_token_account.key() {
-            //    assert_is_ata(&dest_acct_info, &to, &token_mint.key(), None)?;
-            //}
+            if to != destination_token_account.key() {
+                assert_is_ata(&dest_acct_info, &to, &token_mint.key(), None)?;
+            }
 
             spl_token_transfer(TokenTransferParams {
                 source: token_account_escrow.to_account_info(),
