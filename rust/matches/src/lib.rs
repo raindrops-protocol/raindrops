@@ -1110,13 +1110,13 @@ pub struct PlayerWinCallbackBitmap {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TokenDelta {
     // Is either player pda, or original wallet that moved token in
-    from: Pubkey,
-    /// if no to, token is burned
+    pub from: Pubkey,
+    // if no to, token is burned
     // can be player pda, or new wallet to send to.
-    to: Option<Pubkey>,
-    token_transfer_type: TokenTransferType,
-    mint: Pubkey,
-    amount: u64,
+    pub to: Option<Pubkey>,
+    pub token_transfer_type: TokenTransferType,
+    pub mint: Pubkey,
+    pub amount: u64,
 }
 // Oracles must match this serde
 #[account]
