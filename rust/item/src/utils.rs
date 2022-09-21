@@ -433,12 +433,16 @@ pub fn write_data(
     item_class_data: &ItemClassData,
 ) -> Result<()> {
     let item_class_info = item_class.to_account_info();
-    let (ctr, _) = get_class_write_offsets(item_class, &item_class_info.data);
     let mut data = item_class_info.try_borrow_mut_data()?;
     let dst: &mut [u8] = &mut data;
+    let mut i: u64 = 8;
+    let to_write = item_class.try_to_vec()?;
+    for el in to_write {
+        dst[i as usize] = el;
+        i += 1;
+    }
     let mut cursor = std::io::Cursor::new(dst);
-    msg!("Cursor is at {}", ctr);
-    cursor.set_position(ctr);
+    cursor.set_position(i);
     AnchorSerialize::serialize(&item_class_data.settings, &mut cursor)?;
     AnchorSerialize::serialize(&item_class_data.config, &mut cursor)?;
 

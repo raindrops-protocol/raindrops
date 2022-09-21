@@ -315,6 +315,7 @@ pub mod raindrops_item {
         let parent = &ctx.accounts.parent;
         let ed = edition.to_account_info();
         msg!("1");
+
         let edition_option = if edition.data_len() > 0 {
             Some(&ed)
         } else {
@@ -428,6 +429,7 @@ pub mod raindrops_item {
 
         msg!("store_mint");
         if store_mint {
+            msg!("Storing the mint.");
             item_class.mint = Some(item_mint.key());
             item_class.index = Some(class_index);
         }
