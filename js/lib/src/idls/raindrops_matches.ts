@@ -928,9 +928,6 @@ export type RaindropsMatches = {
           },
           {
             "name": "to",
-            "docs": [
-              "if no to, token is burned"
-            ],
             "type": {
               "option": "publicKey"
             }
@@ -2271,9 +2268,6 @@ export const IDL: RaindropsMatches = {
           },
           {
             "name": "to",
-            "docs": [
-              "if no to, token is burned"
-            ],
             "type": {
               "option": "publicKey"
             }

@@ -65,7 +65,7 @@ pub struct LeaveMatchArgs {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct DisburseTokensByOracleArgs {
-    token_delta_proof_info: Option<TokenDeltaProofInfo>,
+    pub token_delta_proof_info: Option<TokenDeltaProofInfo>,
 }
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TokenDeltaProofInfo {
