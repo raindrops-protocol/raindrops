@@ -31,7 +31,7 @@ use std::{cell::RefCell, convert::TryInto};
 
 impl ItemClass {
     pub fn item_class_data(&self, data: &RefCell<&mut [u8]>) -> Result<ItemClassData> {
-        let (ctr, end_ctr) = get_class_write_offsets(self, data);
+        let (ctr, end_ctr) = get_class_write_offsets(self, data)?;
 
         //  msg!("Ctr {}->{} {:?}", ctr, end_ctr, &data.borrow());
         let item_class_data: ItemClassData =
@@ -76,40 +76,9 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
 pub fn get_class_write_offsets(
     item_class: &ItemClass,
     item_data: &RefCell<&mut [u8]>,
-) -> (u64, u64) {
-    let mut ctr: usize = 8;
+) -> Result<(u64, u64)> {
+    let ctr: usize = item_class.try_to_vec()?.len() + 8;
     let data = item_data.borrow();
-    if let Some(ns) = &item_class.namespaces {
-        ctr += 1 + 4 + 34 * ns.len();
-    } else {
-        ctr += 1;
-    }
-
-    if item_class.parent.is_some() {
-        ctr += 33;
-    } else {
-        ctr += 1;
-    }
-
-    if item_class.mint.is_some() {
-        ctr += 33;
-    } else {
-        ctr += 1;
-    }
-
-    if item_class.metadata.is_some() {
-        ctr += 33;
-    } else {
-        ctr += 1;
-    }
-
-    if item_class.edition.is_some() {
-        ctr += 33;
-    } else {
-        ctr += 1;
-    }
-
-    ctr += 9; // bump and existing children (1 + 8)
 
     let mut end_ctr = ctr;
 
@@ -404,7 +373,7 @@ pub fn get_class_write_offsets(
         end_ctr += 1;
     }
 
-    (ctr as u64, end_ctr as u64)
+    Ok((ctr as u64, end_ctr as u64))
 }
 
 pub fn check_data_for_duplicate_item_effects(item_class_data: &ItemClassData) -> Result<()> {
