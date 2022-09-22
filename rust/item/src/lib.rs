@@ -695,20 +695,31 @@ pub mod raindrops_item {
             }
             Some(&ed)
         } else {
-            let mint_authority_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 2];
-            let token_program_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 1];
-            assert_keys_equal(*token_program_info.key, spl_token::id())?;
-            assert_mint_authority_matches_mint(&new_item_mint.mint_authority, mint_authority_info)?;
-            // give minting for the item to the item's class since we will need it
-            // to produce the fungible tokens when completed. Can also then be reused.
-            if mint_authority_info.key != &item_class.key() {
-                transfer_mint_authority(TransferMintAuthorityArgs {
-                    item_class_key: &item_class.key(),
-                    item_class_info: &item_class_info,
-                    mint_authority_info,
-                    token_program_info,
-                    mint: new_item_mint,
-                })?;
+            if let anchor_lang::solana_program::program_option::COption::Some(ma) =
+                new_item_mint.mint_authority
+            {
+                if ma != item_class.key() {
+                    let mint_authority_info =
+                        &ctx.remaining_accounts[ctx.remaining_accounts.len() - 2];
+                    let token_program_info =
+                        &ctx.remaining_accounts[ctx.remaining_accounts.len() - 1];
+                    assert_keys_equal(*token_program_info.key, spl_token::id())?;
+                    assert_mint_authority_matches_mint(
+                        &new_item_mint.mint_authority,
+                        mint_authority_info,
+                    )?;
+                    // give minting for the item to the item's class since we will need it
+                    // to produce the fungible tokens when completed. Can also then be reused.
+                    transfer_mint_authority(TransferMintAuthorityArgs {
+                        item_class_key: &item_class.key(),
+                        item_class_info: &item_class_info,
+                        mint_authority_info,
+                        token_program_info,
+                        mint: new_item_mint,
+                    })?;
+                }
+            } else {
+                return Err(ErrorCode::MintAuthorityRequiredForSFTs.into());
             }
             None
         };
@@ -1249,7 +1260,7 @@ pub mod raindrops_item {
                 .ok_or(ErrorCode::NumericalOverflowError)?;
         }
 
-        if amount_to_make > 1 {
+        if amount_to_make > 1 || edition_option.is_none() {
             // means it's a fungible mint, so we are minting the tokens, vs
             // an NFT which has been pre-minted already due to constraints on token metadata
             // time to mint!
@@ -3353,4 +3364,6 @@ pub enum ErrorCode {
     ExpectedDelegateToMatchProvided,
     #[msg("Cannot affect the same stat twice")]
     CannotEffectTheSameStatTwice,
+    #[msg("Cannot mint an SFT without mint auth")]
+    MintAuthorityRequiredForSFTs,
 }
