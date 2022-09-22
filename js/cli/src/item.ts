@@ -829,6 +829,7 @@ programCommand("show_item_class")
       log.info("Item Class not found with mint:", actualMint.toString());
       return;
     }
+    log.info("Item class", Uint8Array.from(itemClass.data).length);
 
     log.info("Item Class", itemClass.key.toBase58());
     log.info(

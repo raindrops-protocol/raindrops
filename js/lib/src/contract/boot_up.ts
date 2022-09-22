@@ -14,6 +14,7 @@ import {
   CreateMasterEditionArgs,
   CreateMetadataArgs,
   Creator,
+  DataV2,
   decodeMetadata,
   METADATA_SCHEMA,
 } from "../utils/tokenMetadata/schema";
@@ -73,9 +74,14 @@ export interface BootUpArgs {
   index: BN;
   itemIndex: BN;
   existingClassDef: any;
+  existingItemClassDef: any;
   itemsName: string;
   existingCollectionForItems: PublicKey | null;
-  writeToImmutableStorage: (f: Buffer, name: string) => Promise<string>;
+  writeToImmutableStorage: (
+    f: Buffer,
+    name: string,
+    creators: { address: string; share: number }[]
+  ) => Promise<string>;
   writeOutState: (f: any) => Promise<void>;
   env: string;
 }
@@ -92,6 +98,13 @@ export class BootUp {
     this.player = player;
     this.item = item;
     this.namespace = namespace;
+  }
+
+  createItemLookupKey(layer: string, trait: string): string {
+    return (layer + "-" + trait + ".png")
+      .replace(" ", "_")
+      .replace("|", "")
+      .replace(":", "_");
   }
 
   async createMainNFTClass(args: BootUpArgs) {
@@ -347,9 +360,11 @@ export class BootUp {
       scope: { type, values },
       itemClassLookup,
       existingCollectionForItems,
-      index,
+      existingItemClassDef,
+      bodyPartLayers,
       itemsName,
       itemImageFile,
+      itemIndex,
       writeToImmutableStorage,
       writeOutState,
     } = args;
@@ -363,19 +378,22 @@ export class BootUp {
     if (!existingCollectionForItems) {
       console.log("The collection doesn't exist. Uploading image.");
 
-      const layers = Object.keys(itemClassLookup);
-      const traits = Object.keys(itemClassLookup[layers[0]]).sort();
-      const firstUpload = await writeToImmutableStorage(
-        itemImageFile[layers[0] + "-" + traits[0]],
-        layers[0] + "-" + traits[0] + ".png"
-      );
+      const traits = Object.keys(itemClassLookup[bodyPartLayers[0]]).sort();
+
       const mint = mints[0];
       console.log("Grabbing a single mint to grab royalties...");
       const metadata = await getMetadata(mint);
       const metadataAccount =
         await this.player.client.provider.connection.getAccountInfo(metadata);
       const metadataObj = decodeMetadata(metadataAccount.data);
-
+      const firstUpload = await writeToImmutableStorage(
+        itemImageFile[this.createItemLookupKey(bodyPartLayers[0], traits[0])],
+        itemsName,
+        metadataObj.data.creators.map((c) => ({
+          address: c.address,
+          share: c.share,
+        }))
+      );
       console.log("Uploaded image to", firstUpload);
 
       const keypair = web3.Keypair.generate();
@@ -424,22 +442,22 @@ export class BootUp {
             serialize(
               METADATA_SCHEMA,
               new CreateMetadataArgs({
-                data: {
+                data: new DataV2({
                   name: itemsName,
-                  symbol: null,
+                  symbol: itemsName.substring(0, 4),
                   uri: firstUpload,
                   sellerFeeBasisPoints: 0,
                   creators: metadataObj.data.creators?.map(
                     (c) =>
                       new Creator({
                         address: c.address,
-                        verified: c.verified,
+                        verified: c.address == wallet.toBase58() ? 1 : 0,
                         share: c.share,
                       })
                   ),
                   collection: null,
                   uses: null,
-                },
+                }),
                 isMutable: true,
               })
             )
@@ -468,8 +486,9 @@ export class BootUp {
         [keypair],
         "single"
       );
-      realCollectionMint = keypair.publicKey;
+      args.existingCollectionForItems = realCollectionMint = keypair.publicKey;
     } else {
+      console.log("Collection exists.");
       realCollectionMint = existingCollectionForItems;
     }
 
@@ -479,6 +498,149 @@ export class BootUp {
       ...args,
       existingCollectionForItems: realCollectionMint.toBase58(),
     });
+
+    console.log("Checking to see if master item class exists.");
+    const itemClass = existingItemClassDef || {
+      data: {
+        settings: {
+          freeBuild: {
+            boolean: true,
+            inherited: { notInherited: true },
+          },
+          childrenMustBeEditions: {
+            boolean: true,
+            inherited: { notInherited: true },
+          },
+          builderMustBeHolder: {
+            boolean: true,
+            inherited: { notInherited: true },
+          },
+          updatePermissiveness: [
+            {
+              permissivenessType: { updateAuthority: true },
+              inherited: { notInherited: true },
+            },
+          ],
+          buildPermissiveness: [
+            {
+              permissivenessType: { updateAuthority: true },
+              inherited: { notInherited: true },
+            },
+          ],
+          stakingWarmUpDuration: null,
+          stakingCooldownDuration: null,
+          stakingPermissiveness: null,
+          unstakingPermissiveness: null,
+          childUpdatePropagationPermissiveness: [
+            {
+              childUpdatePropagationPermissivenessType: {
+                updatePermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                buildPermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                builderMustBeHolderPermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                childrenMustBeEditionsPermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+            {
+              childUpdatePropagationPermissivenessType: {
+                freeBuildPermissiveness: true,
+              },
+              inherited: { notInherited: true },
+            },
+          ],
+        },
+        config: {
+          usageRoot: null,
+          usageStateRoot: null,
+          componentRoot: null,
+          usages: [],
+          components: [],
+        },
+      },
+      metadataUpdateAuthority: null,
+      storeMint: true,
+      storeMetadataFields: true,
+      mint: realCollectionMint,
+      index: itemIndex,
+      updatePermissivenessToUse: { updateAuthority: true },
+      namespaceRequirement: 1,
+      totalSpaceBytes: 300,
+    };
+
+    const itemClassObj = await this.item.fetchItemClass(
+      realCollectionMint,
+      itemIndex
+    );
+    console.log("item index", realCollectionMint.toBase58());
+    if (itemClassObj) {
+      console.log("Master Item Class exists, updating");
+
+      await this.item.updateItemClass(
+        {
+          classIndex: new BN(itemClass.index),
+          updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
+          itemClassData: itemClass.data,
+          parentClassIndex: null,
+        },
+        {
+          itemMint: new web3.PublicKey(itemClass.mint),
+          parent: null,
+          parentMint: null,
+          metadataUpdateAuthority: wallet,
+        },
+        {
+          permissionless: false,
+        }
+      );
+    } else {
+      console.log("Master ItemClass does not exist, creating");
+
+      await this.item.createItemClass(
+        {
+          classIndex: new BN(itemClass.index),
+          parentClassIndex: null,
+          space: new BN(itemClass.totalSpaceBytes),
+          desiredNamespaceArraySize: itemClass.namespaceRequirement,
+          updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
+          storeMint: itemClass.storeMint,
+          storeMetadataFields: itemClass.storeMetadataFields,
+          itemClassData: itemClass.data,
+          parentOfParentClassIndex: null,
+        },
+        {
+          itemMint: new web3.PublicKey(itemClass.mint),
+          parent: null,
+          parentMint: null,
+          parentOfParentClass: null,
+          parentOfParentClassMint: null,
+          metadataUpdateAuthority: wallet,
+          parentUpdateAuthority: null,
+        },
+        {}
+      );
+    }
+    if (itemClass.index.toNumber) itemClass.index = itemClass.index.toNumber();
+    console.log("Writing out master item class to save area.");
+
+    await writeOutState({
+      ...this.turnToConfig(args),
+      existingItemClassDef: itemClass,
+    });
   }
 
   async createItemClasses(args: BootUpArgs) {
@@ -486,6 +648,7 @@ export class BootUp {
       itemClassLookup,
       existingCollectionForItems,
       itemImageFile,
+      existingItemClassDef,
       itemsWillBeSFTs,
       itemIndex,
       writeToImmutableStorage,
@@ -512,7 +675,7 @@ export class BootUp {
       (c) =>
         new Creator({
           address: c.address,
-          verified: c.verified,
+          verified: c.address == wallet.toBase58() ? 1 : 0,
           share: c.share,
         })
     );
@@ -530,13 +693,11 @@ export class BootUp {
         if (!itemMint) {
           console.log(`Trait ${trait} doesn't exist. Creating NFT.`);
           console.log("Uploading trait image to web3 storage");
-          const fileName = (layer + "-" + trait)
-            .replace(" ", "_")
-            .replace("|", "")
-            .replace(":", "_");
+          const fileName = this.createItemLookupKey(layer, trait);
           const upload = await writeToImmutableStorage(
             itemImageFile[fileName],
-            fileName
+            fileName,
+            royalties.map((c) => ({ address: c.address, share: c.share }))
           );
           console.log("Upload complete, pushing to chain", upload);
           const keypair = web3.Keypair.generate();
@@ -584,19 +745,19 @@ export class BootUp {
                 serialize(
                   METADATA_SCHEMA,
                   new CreateMetadataArgs({
-                    data: {
+                    data: new DataV2({
                       name: trait,
-                      symbol: null,
+                      symbol: trait.slice(0, 4),
                       uri: upload,
                       sellerFeeBasisPoints:
                         metadataObj.data.sellerFeeBasisPoints,
                       creators: royalties,
                       collection: new Collection({
-                        verified: 1,
+                        verified: 0,
                         key: existingCollectionForItems.toBase58(),
                       }),
                       uses: null,
-                    },
+                    }),
                     isMutable: true,
                   })
                 )
@@ -639,30 +800,11 @@ export class BootUp {
         itemClassLookup[layer][trait].existingClassDef ||= {
           data: {
             settings: {
-              freeBuild: {
-                boolean: true,
-                inherited: { notInherited: true },
-              },
-              childrenMustBeEditions: {
-                boolean: true,
-                inherited: { notInherited: true },
-              },
-              builderMustBeHolder: {
-                boolean: true,
-                inherited: { notInherited: true },
-              },
-              updatePermissiveness: [
-                {
-                  permissivenessType: { updateAuthority: true },
-                  inherited: { notInherited: true },
-                },
-              ],
-              buildPermissiveness: [
-                {
-                  permissivenessType: { updateAuthority: true },
-                  inherited: { notInherited: true },
-                },
-              ],
+              freeBuild: null,
+              childrenMustBeEditions: null,
+              builderMustBeHolder: null,
+              updatePermissiveness: [],
+              buildPermissiveness: [],
               stakingWarmUpDuration: null,
               stakingCooldownDuration: null,
               stakingPermissiveness: null,
@@ -691,6 +833,10 @@ export class BootUp {
               ],
               components: [],
             },
+          },
+          parent: {
+            index: new BN(existingItemClassDef.index),
+            mint: existingItemClassDef.mint,
           },
           metadataUpdateAuthority: null,
           storeMint: true,
@@ -721,8 +867,11 @@ export class BootUp {
           },
         });
 
-        try {
-          await this.item.fetchItemClass(new PublicKey(itemMint), itemIndex);
+        const itemClassObj = await this.item.fetchItemClass(
+          new PublicKey(itemMint),
+          itemIndex
+        );
+        if (itemClassObj) {
           console.log("Item Class exists, updating");
           await this.item.updateItemClass(
             {
@@ -730,26 +879,30 @@ export class BootUp {
               updatePermissivenessToUse:
                 existingClass.updatePermissivenessToUse,
               itemClassData: existingClass.data,
-              parentClassIndex: null,
+              parentClassIndex: new BN(existingItemClassDef.index),
             },
             {
               itemMint: new web3.PublicKey(existingClass.mint),
-              parent: null,
-              parentMint: null,
+              parent: (
+                await getItemPDA(
+                  new web3.PublicKey(existingItemClassDef.mint),
+                  new BN(existingItemClassDef.index)
+                )
+              )[0],
+              parentMint: new web3.PublicKey(existingItemClassDef.mint),
               metadataUpdateAuthority: wallet,
             },
             {
               permissionless: false,
             }
           );
-        } catch (e) {
-          console.error(e);
+        } else {
           console.log("ItemClass does not exist, creating");
 
           await this.item.createItemClass(
             {
               classIndex: new BN(existingClass.index),
-              parentClassIndex: null,
+              parentClassIndex: new BN(existingItemClassDef.index),
               space: new BN(existingClass.totalSpaceBytes),
               desiredNamespaceArraySize: existingClass.namespaceRequirement,
               updatePermissivenessToUse:
@@ -761,12 +914,17 @@ export class BootUp {
             },
             {
               itemMint: new web3.PublicKey(existingClass.mint),
-              parent: null,
-              parentMint: null,
+              parent: (
+                await getItemPDA(
+                  new web3.PublicKey(existingItemClassDef.mint),
+                  new BN(existingItemClassDef.index)
+                )
+              )[0],
+              parentMint: new web3.PublicKey(existingItemClassDef.mint),
               parentOfParentClass: null,
               parentOfParentClassMint: null,
               metadataUpdateAuthority: wallet,
-              parentUpdateAuthority: null,
+              parentUpdateAuthority: wallet,
             },
             {}
           );

@@ -100,6 +100,11 @@ export function createMetadataInstruction(
       isSigner: false,
       isWritable: false,
     },
+    {
+      pubkey: SYSVAR_RENT_PUBKEY,
+      isSigner: false,
+      isWritable: false,
+    },
   ];
   return new TransactionInstruction({
     keys,
@@ -225,6 +230,53 @@ export function createSetAndVerifyCollectionInstruction(
       isWritable: false,
     });
   }
+  return new TransactionInstruction({
+    keys,
+    programId: TOKEN_METADATA_PROGRAM_ID,
+  });
+}
+
+export function createVerifyCollectionInstruction(
+  metadataAccount: PublicKey,
+  collectionAuthority: PublicKey,
+  payer: PublicKey,
+  collectionMint: PublicKey,
+  collection: PublicKey,
+  collectionMasterEditionAccount: PublicKey
+) {
+  const keys = [
+    {
+      pubkey: metadataAccount,
+      isSigner: false,
+      isWritable: true,
+    },
+    {
+      pubkey: collectionAuthority,
+      isSigner: true,
+      isWritable: true,
+    },
+    {
+      pubkey: payer,
+      isSigner: true,
+      isWritable: true,
+    },
+    {
+      pubkey: collectionMint,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: collection,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: collectionMasterEditionAccount,
+      isSigner: false,
+      isWritable: false,
+    },
+  ];
+
   return new TransactionInstruction({
     keys,
     programId: TOKEN_METADATA_PROGRAM_ID,

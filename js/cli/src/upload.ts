@@ -1,5 +1,4 @@
 import { WebBundlr } from "@bundlr-network/client";
-import { sendSignedTransaction } from "@raindrop-studios/sol-kit/dist/src/transaction";
 import {
   Commitment,
   Connection,
@@ -12,34 +11,36 @@ import {
   TransactionSignature,
 } from "@solana/web3.js";
 import nacl from "tweetnacl";
+import { Utils, Constants } from "@raindrops-protocol/raindrops";
+const { Transactions } = Utils;
+const { sendSignedTransaction } = Transactions;
 
 export const uploadFileToArweave = async ({
   connection,
   file,
   name,
   user,
+  creators,
 }: {
   connection: Connection;
+  creators: { address: string; share: number }[];
   user: Keypair;
   file: Buffer;
   name: string;
 }) => {
-  const funderKeypair = Keypair.generate();
   const bundlr = new WebBundlr("https://node1.bundlr.network", "solana", {
-    publicKey: funderKeypair.publicKey,
+    publicKey: user.publicKey,
     sendTransaction: async (data: Transaction) => {
       data.signatures.push({
-        publicKey: funderKeypair.publicKey,
+        publicKey: user.publicKey,
         signature: null,
       });
 
-      // @ts-ignore
-      data.recentBlockhash = await connection._recentBlockhash(
-        // @ts-ignore
-        connection._disableBlockhashCaching
-      );
+      data.recentBlockhash = (
+        await connection.getLatestBlockhash("single")
+      ).blockhash;
 
-      data.partialSign(funderKeypair);
+      data.partialSign(user);
 
       const { txid, slot } = await sendSignedTransaction({
         connection,
@@ -57,7 +58,7 @@ export const uploadFileToArweave = async ({
       return txid;
     },
     signMessage: async (data: Uint8Array): Promise<Uint8Array> => {
-      return nacl.sign.detached(data, funderKeypair.secretKey);
+      return nacl.sign.detached(data, user.secretKey);
     },
   });
   await bundlr.ready();
@@ -68,44 +69,36 @@ export const uploadFileToArweave = async ({
   const imgUploadPrice = await bundlr.getPrice(imgSize);
   console.log("img upload cost:", imgUploadPrice.toNumber());
 
+  const metadata = {
+    name,
+    symbol: "",
+    description: "",
+    seller_fee_basis_points: 0,
+    image:
+      "https://arweave.net/dummy122334444555512232311221-dummy122334444555512232311221",
+    animation_url: null,
+    external_url: null,
+    properties: {
+      files: [
+        {
+          uri: "https://arweave.net/dummy122334444555512232311221-dummy122334444555512232311221",
+          type: "image/png",
+        },
+      ],
+      creators,
+    },
+  };
+  const metaSize = Buffer.byteLength(JSON.stringify(metadata));
+  console.log("md size bytes:", metaSize);
+  const metaUploadPrice = await bundlr.getPrice(metaSize);
+  console.log("md upload cost:", metaUploadPrice.toNumber());
+
   console.log("Funding...");
 
-  const sendFundsToKeypairTx = new Transaction();
-  sendFundsToKeypairTx.instructions.push(
-    SystemProgram.transfer({
-      toPubkey: funderKeypair.publicKey,
-      fromPubkey: new PublicKey(user),
-      lamports: 2 * imgUploadPrice.toNumber(),
-    })
-  );
-  sendFundsToKeypairTx.feePayer = new PublicKey(user);
-  // @ts-ignore
-  sendFundsToKeypairTx.recentBlockhash = await connection._recentBlockhash(
-    // @ts-ignore
-    connection._disableBlockhashCaching
-  );
-  sendFundsToKeypairTx.signatures.push({
-    publicKey: new PublicKey(user),
-    signature: null,
-  });
-
-  sendFundsToKeypairTx.partialSign(user);
-
-  const { txid, slot } = await sendSignedTransaction({
-    connection,
-    signedTransaction: sendFundsToKeypairTx,
-  });
-
-  await awaitTransactionSignatureConfirmation(
-    txid,
-    60000,
-    connection,
-    "max",
-    true
-  );
-
   try {
-    let response = await bundlr.fund(2 * imgUploadPrice.toNumber());
+    let response = await bundlr.fund(
+      2 * imgUploadPrice.plus(metaUploadPrice).toNumber()
+    );
     console.log(response);
   } catch (e) {
     console.log("Funding call failed, trying anyway");
@@ -115,21 +108,32 @@ export const uploadFileToArweave = async ({
   for (let i = 0; i < 6; i++) {
     const currentBundlrBal = await bundlr.getLoadedBalance();
     console.log("current bal:", currentBundlrBal.toNumber());
-    if (currentBundlrBal.toNumber() > imgUploadPrice.toNumber()) break;
+    if (
+      currentBundlrBal.toNumber() >
+      imgUploadPrice.plus(metaUploadPrice).toNumber()
+    )
+      break;
     else {
       console.log("Sleeping on funder being funded");
       await sleep(5000);
     }
   }
 
-  const imgUploadResp = await bundlr.uploader.upload(
-    file,
-    //@ts-ignore
-    [{ name: "Content-Type", value: "image/" + fileType }]
-  );
+  const imgUploadResp = await bundlr.uploader.upload(file, {
+    tags: [{ name: "Content-Type", value: "image/png" }],
+  });
   console.log(imgUploadResp);
 
-  return "https://arweave.net/" + imgUploadResp.data.id;
+  metadata.image = "https://arweave.net/" + imgUploadResp.data.id + "?ext=png";
+  metadata.properties.files[0].uri =
+    "https://arweave.net/" + imgUploadResp.data.id + "?ext=png";
+
+  const metaUploadResp = await bundlr.uploader.upload(
+    Buffer.from(JSON.stringify(metadata)),
+    { tags: [{ name: "Content-Type", value: "text/json" }] }
+  );
+  console.log(metaUploadResp);
+  return "https://arweave.net/" + metaUploadResp.data.id;
 };
 
 export async function awaitTransactionSignatureConfirmation(

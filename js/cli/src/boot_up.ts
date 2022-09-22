@@ -2,7 +2,7 @@
 import log from "loglevel";
 import * as fs from "fs";
 
-import { BN, web3 } from "@project-serum/anchor";
+import { AnchorProvider, BN, web3 } from "@project-serum/anchor";
 
 import { Wallet, CLI } from "@raindrop-studios/sol-command";
 import {
@@ -74,7 +74,6 @@ async function loadItemImageFileFromDir(
 }
 
 // Turns the config into BootUpArgs, which are SDK friendly version
-// (shadow wallet removed)
 // image dir turned into buffers
 // some other movie magic added etc.
 async function getConfig(
@@ -82,8 +81,12 @@ async function getConfig(
   env,
   configPath,
   conn: Connection,
-  user: Keypair
+  user: string
 ): Promise<BootUpArgs> {
+  const decodedKey = new Uint8Array(
+    JSON.parse(fs.readFileSync(user).toString())
+  );
+  const keypair = Keypair.fromSecretKey(decodedKey);
   return {
     ...config,
     scope: {
@@ -110,17 +113,20 @@ async function getConfig(
         JSON.stringify({
           ...f,
           itemImageFile: config.itemImageFile,
-          shadowWallet: config.shadowWallet,
-          shadowAccountId: config.shadowAccountId,
         })
       );
     },
-    writeToImmutableStorage: async (f: Buffer, name: string) => {
-      await uploadFileToArweave({
+    writeToImmutableStorage: async (
+      f: Buffer,
+      name: string,
+      creators: { address: string; share: number }[]
+    ) => {
+      return await uploadFileToArweave({
         connection: conn,
         file: f,
         name,
-        user,
+        user: keypair,
+        creators,
       });
     },
   } as BootUpArgs;

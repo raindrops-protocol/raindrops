@@ -633,9 +633,8 @@
   "collectionMint": "GoLMLLR6iSUrA6KsCrFh7f45Uq5EHFQ3p8RmzPoUH9mb",
   "index": 0,
   "itemIndex": 0,
+  "existingItemClassDef": null,
   "existingClassDef": null,
   "itemsName": "DTP Items",
-  "existingCollectionForItems": null,
-  "shadowWallet": "/path/to/SHADOW_WALLET.json",
-  "shadowAccountId": "account-id"
+  "existingCollectionForItems": null
 }
