@@ -12,7 +12,7 @@ export type RaindropsItem = {
         },
         {
           "name": "itemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -154,7 +154,7 @@ export type RaindropsItem = {
         },
         {
           "name": "newItemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -3342,7 +3342,7 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "itemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -3484,7 +3484,7 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "newItemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {

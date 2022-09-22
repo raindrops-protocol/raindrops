@@ -100,6 +100,21 @@ export class Instruction extends SolKitInstruction {
       parentUpdateAuthority: accounts.parentUpdateAuthority,
       program: this.program,
     });
+    const edition = await getEdition(accounts.itemMint);
+    const editionSize =
+      await this.program.client.provider.connection.getAccountInfo(edition);
+    if (!editionSize) {
+      remainingAccounts.push({
+        pubkey: accounts.mintAuthority || accounts.metadataUpdateAuthority,
+        isWritable: false,
+        isSigner: true,
+      });
+      remainingAccounts.push({
+        pubkey: TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      });
+    }
 
     return [
       await this.program.client.methods
@@ -108,7 +123,7 @@ export class Instruction extends SolKitInstruction {
           itemClass: itemClassKey,
           itemMint: accounts.itemMint,
           metadata: await getMetadata(accounts.itemMint),
-          edition: await getEdition(accounts.itemMint),
+          edition,
           parent: accounts.parent || itemClassKey,
           payer: (this.program.client.provider as AnchorProvider).wallet
             .publicKey,
@@ -207,6 +222,22 @@ export class Instruction extends SolKitInstruction {
       amountToMake: args.amountToMake,
       componentScope: args.componentScope,
     });
+
+    const edition = await getEdition(accounts.newItemMint);
+    const editionSize =
+      await this.program.client.provider.connection.getAccountInfo(edition);
+    if (!editionSize) {
+      remainingAccounts.push({
+        pubkey: accounts.mintAuthority || accounts.metadataUpdateAuthority,
+        isWritable: false,
+        isSigner: true,
+      });
+      remainingAccounts.push({
+        pubkey: TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      });
+    }
 
     return [
       await this.program.client.methods
@@ -980,6 +1011,7 @@ export interface CreateItemClassAccounts {
   parentOfParentClassMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
   parentUpdateAuthority: web3.PublicKey | null;
+  mintAuthority?: web3.PublicKey | null;
 }
 
 export interface CreateItemClassAdditionalArgs {}
@@ -1020,6 +1052,7 @@ export interface CreateItemEscrowAccounts {
   newItemTokenHolder: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  mintAuthority?: web3.PublicKey | null;
 }
 
 export interface CreateItemEscrowAdditionalArgs {}
