@@ -98,6 +98,10 @@ export class CreateMetadataArgs {
   }
 }
 
+export class VerifyCollectionArgs {
+  instruction: number = 18;
+}
+
 export class UpdateMetadataArgs {
   instruction: number = 4;
   data: DataV2 | null;
@@ -167,6 +171,13 @@ export const METADATA_SCHEMA = new Map<any, any>([
         ["data", DataV2],
         ["isMutable", "u8"], // bool
       ],
+    },
+  ],
+  [
+    VerifyCollectionArgs,
+    {
+      kind: "struct",
+      fields: [["instruction", "u8"]],
     },
   ],
   [

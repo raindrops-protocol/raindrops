@@ -6,6 +6,7 @@ import { getEdition } from "../utils/pda";
 import {
   createMasterEditionInstruction,
   createMetadataInstruction,
+  createVerifyCollectionInstruction,
 } from "../utils/tokenMetadata/instructions";
 import { MintLayout, Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { serialize } from "borsh";
@@ -17,6 +18,7 @@ import {
   DataV2,
   decodeMetadata,
   METADATA_SCHEMA,
+  VerifyCollectionArgs,
 } from "../utils/tokenMetadata/schema";
 import { sendTransactionWithRetry, sleep } from "../utils/transactions";
 import { PlayerProgram } from "./player";
@@ -102,9 +104,10 @@ export class BootUp {
 
   createItemLookupKey(layer: string, trait: string): string {
     return (layer + "-" + trait + ".png")
-      .replace(" ", "_")
+      .replace(new RegExp(/\s+/g), "_")
       .replace("|", "")
-      .replace(":", "_");
+      .replace(":", "")
+      .replace("/", ":");
   }
 
   async createMainNFTClass(args: BootUpArgs) {
@@ -334,6 +337,7 @@ export class BootUp {
       index: args.index.toNumber(),
       itemIndex: args.itemIndex.toNumber(),
       existingClassDef: args.existingClassDef,
+      existingItemClassDef: args.existingItemClassDef,
       itemsName: args.itemsName,
       existingCollectionForItems: args.existingCollectionForItems,
       playerStates: args.playerStates,
@@ -589,50 +593,64 @@ export class BootUp {
     console.log("item index", realCollectionMint.toBase58());
     if (itemClassObj) {
       console.log("Master Item Class exists, updating");
-
-      await this.item.updateItemClass(
-        {
-          classIndex: new BN(itemClass.index),
-          updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
-          itemClassData: itemClass.data,
-          parentClassIndex: null,
-        },
-        {
-          itemMint: new web3.PublicKey(itemClass.mint),
-          parent: null,
-          parentMint: null,
-          metadataUpdateAuthority: wallet,
-        },
-        {
-          permissionless: false,
+      try {
+        await this.item.updateItemClass(
+          {
+            classIndex: new BN(itemClass.index),
+            updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
+            itemClassData: itemClass.data,
+            parentClassIndex: null,
+          },
+          {
+            itemMint: new web3.PublicKey(itemClass.mint),
+            parent: null,
+            parentMint: null,
+            metadataUpdateAuthority: wallet,
+          },
+          {
+            permissionless: false,
+          }
+        );
+      } catch (e) {
+        if (e.toString().match("Timed")) {
+          console.log("Timeout detected but ignoring");
+        } else {
+          throw e;
         }
-      );
+      }
     } else {
       console.log("Master ItemClass does not exist, creating");
-
-      await this.item.createItemClass(
-        {
-          classIndex: new BN(itemClass.index),
-          parentClassIndex: null,
-          space: new BN(itemClass.totalSpaceBytes),
-          desiredNamespaceArraySize: itemClass.namespaceRequirement,
-          updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
-          storeMint: itemClass.storeMint,
-          storeMetadataFields: itemClass.storeMetadataFields,
-          itemClassData: itemClass.data,
-          parentOfParentClassIndex: null,
-        },
-        {
-          itemMint: new web3.PublicKey(itemClass.mint),
-          parent: null,
-          parentMint: null,
-          parentOfParentClass: null,
-          parentOfParentClassMint: null,
-          metadataUpdateAuthority: wallet,
-          parentUpdateAuthority: null,
-        },
-        {}
-      );
+      try {
+        await this.item.createItemClass(
+          {
+            classIndex: new BN(itemClass.index),
+            parentClassIndex: null,
+            space: new BN(itemClass.totalSpaceBytes),
+            desiredNamespaceArraySize: itemClass.namespaceRequirement,
+            updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
+            storeMint: itemClass.storeMint,
+            storeMetadataFields: itemClass.storeMetadataFields,
+            itemClassData: itemClass.data,
+            parentOfParentClassIndex: null,
+          },
+          {
+            itemMint: new web3.PublicKey(itemClass.mint),
+            parent: null,
+            parentMint: null,
+            parentOfParentClass: null,
+            parentOfParentClassMint: null,
+            metadataUpdateAuthority: wallet,
+            parentUpdateAuthority: null,
+          },
+          {}
+        );
+      } catch (e) {
+        if (e.toString().match("Timed")) {
+          console.log("Timeout detected but ignoring");
+        } else {
+          throw e;
+        }
+      }
     }
     if (itemClass.index.toNumber) itemClass.index = itemClass.index.toNumber();
     console.log("Writing out master item class to save area.");
@@ -694,6 +712,7 @@ export class BootUp {
           console.log(`Trait ${trait} doesn't exist. Creating NFT.`);
           console.log("Uploading trait image to web3 storage");
           const fileName = this.createItemLookupKey(layer, trait);
+          console.log("Looking for ", fileName);
           const upload = await writeToImmutableStorage(
             itemImageFile[fileName],
             fileName,
@@ -727,14 +746,18 @@ export class BootUp {
               wallet,
               keypair.publicKey
             ),
-            Token.createMintToInstruction(
-              TOKEN_PROGRAM_ID,
-              keypair.publicKey,
-              ata,
-              wallet,
-              [],
-              1
-            ),
+            ...(itemsWillBeSFTs
+              ? []
+              : [
+                  Token.createMintToInstruction(
+                    TOKEN_PROGRAM_ID,
+                    keypair.publicKey,
+                    ata,
+                    wallet,
+                    [],
+                    1
+                  ),
+                ]),
             createMetadataInstruction(
               await getMetadata(keypair.publicKey),
               keypair.publicKey,
@@ -746,7 +769,7 @@ export class BootUp {
                   METADATA_SCHEMA,
                   new CreateMetadataArgs({
                     data: new DataV2({
-                      name: trait,
+                      name: trait.slice(0, 25),
                       symbol: trait.slice(0, 4),
                       uri: upload,
                       sellerFeeBasisPoints:
@@ -781,6 +804,17 @@ export class BootUp {
                     )
                   ),
                 ]),
+            createVerifyCollectionInstruction(
+              await getMetadata(keypair.publicKey),
+              wallet,
+              wallet,
+              existingCollectionForItems,
+              await getMetadata(existingCollectionForItems),
+              await getEdition(existingCollectionForItems),
+              Buffer.from(
+                serialize(METADATA_SCHEMA, new VerifyCollectionArgs())
+              )
+            ),
           ];
 
           await sendTransactionWithRetry(
@@ -819,7 +853,7 @@ export class BootUp {
                 {
                   index: 0,
                   basicItemEffects: null,
-                  usagePermissiveness: [{ tokenHolder: true }],
+                  usagePermissiveness: [{ updateAuthority: true }],
                   inherited: { notInherited: true },
                   validation: null,
                   callback: null,
@@ -872,30 +906,44 @@ export class BootUp {
           itemIndex
         );
         if (itemClassObj) {
-          console.log("Item Class exists, updating");
-          await this.item.updateItemClass(
-            {
-              classIndex: new BN(existingClass.index),
-              updatePermissivenessToUse:
-                existingClass.updatePermissivenessToUse,
-              itemClassData: existingClass.data,
-              parentClassIndex: new BN(existingItemClassDef.index),
-            },
-            {
-              itemMint: new web3.PublicKey(existingClass.mint),
-              parent: (
-                await getItemPDA(
-                  new web3.PublicKey(existingItemClassDef.mint),
-                  new BN(existingItemClassDef.index)
-                )
-              )[0],
-              parentMint: new web3.PublicKey(existingItemClassDef.mint),
-              metadataUpdateAuthority: wallet,
-            },
-            {
-              permissionless: false,
-            }
+          existingClass.data.config.usages.map(
+            (u) =>
+              (u.itemClassType.wearable.limitPerPart = parseInt(
+                u.itemClassType.wearable.limitPerPart
+              ))
           );
+          console.log("Item Class exists, updating");
+          try {
+            await this.item.updateItemClass(
+              {
+                classIndex: new BN(existingClass.index),
+                updatePermissivenessToUse:
+                  existingClass.updatePermissivenessToUse,
+                itemClassData: existingClass.data,
+                parentClassIndex: new BN(existingItemClassDef.index),
+              },
+              {
+                itemMint: new web3.PublicKey(existingClass.mint),
+                parent: (
+                  await getItemPDA(
+                    new web3.PublicKey(existingItemClassDef.mint),
+                    new BN(existingItemClassDef.index)
+                  )
+                )[0],
+                parentMint: new web3.PublicKey(existingItemClassDef.mint),
+                metadataUpdateAuthority: wallet,
+              },
+              {
+                permissionless: false,
+              }
+            );
+          } catch (e) {
+            if (e.toString().match("Timed")) {
+              console.log("Timeout detected but ignoring");
+            } else {
+              throw e;
+            }
+          }
         } else {
           console.log("ItemClass does not exist, creating");
 
@@ -930,172 +978,6 @@ export class BootUp {
           );
         }
 
-        if (itemsWillBeSFTs) {
-          console.log(
-            `Because items will be SFTs, we need to demarcate this decimals=0, supply unlimited mint as an Item as well as an ItemClass. We will fetch the item to see if it exists, if it does not, we will create it.`
-          );
-          try {
-            await this.item.client.account.item.fetch(
-              (
-                await getItemPDA(
-                  new web3.PublicKey(existingClass.mint),
-                  existingClass.index.add(1)
-                )
-              )[0]
-            );
-            console.log(
-              "This item pda already exists. Let's just update it to make sure its in sync."
-            );
-            await this.item.updateItem(
-              {
-                index: existingClass.index.add(1),
-                classIndex: existingClass.index,
-                itemMint: new web3.PublicKey(existingClass.mint),
-                itemClassMint: new web3.PublicKey(existingClass.mint),
-              },
-              {},
-              {}
-            );
-          } catch (e) {
-            console.error(e);
-            console.log(
-              "This item pda hasnt been made yet. We will make it now. Creating item escrow..."
-            );
-
-            const ata = (
-              await getAtaForMint(
-                new web3.PublicKey(existingClass.mint),
-                wallet
-              )
-            )[0];
-
-            try {
-              await this.item.createItemEscrow(
-                {
-                  classIndex: existingClass.index,
-                  craftEscrowIndex: new BN(0),
-                  componentScope: "none",
-                  buildPermissivenessToUse:
-                    existingClass.updatePermissivenessToUse,
-                  namespaceIndex: null,
-                  itemClassMint: new web3.PublicKey(existingClass.mint),
-                  amountToMake: new BN(1),
-                  parentClassIndex: null,
-                },
-                {
-                  newItemMint: new web3.PublicKey(existingClass.mint),
-                  newItemToken: ata,
-                  newItemTokenHolder: wallet,
-                  parentMint: null,
-                  itemClassMint: new web3.PublicKey(existingClass.mint),
-                  metadataUpdateAuthority: wallet,
-                },
-                {}
-              );
-            } catch (e) {
-              console.error(e);
-              console.log(
-                "Caught this error with item escrow creation. Attempting next step anyway."
-              );
-            }
-            console.log("Attempting to start the build phase of the escrow.");
-            try {
-              await this.item.startItemEscrowBuildPhase(
-                {
-                  classIndex: existingClass.index,
-                  craftEscrowIndex: new BN(0),
-                  componentScope: "none",
-                  buildPermissivenessToUse:
-                    existingClass.updatePermissivenessToUse,
-                  newItemMint: new web3.PublicKey(existingClass.mint),
-                  itemClassMint: new web3.PublicKey(existingClass.mint),
-                  amountToMake: new BN(1),
-                  originator: wallet,
-                  totalSteps: null,
-                  endNodeProof: null,
-                  parentClassIndex: null,
-                },
-                {
-                  newItemToken: ata,
-                  newItemTokenHolder: wallet,
-                  parentMint: null,
-                  itemClassMint: new web3.PublicKey(existingClass.mint),
-                  metadataUpdateAuthority: wallet,
-                },
-                {}
-              );
-            } catch (e) {
-              console.error(e);
-              console.log(
-                "Caught this error with item escrow build phase start. Attempting next step anyway."
-              );
-            }
-
-            console.log("Attempting to end the build phase of the escrow.");
-            try {
-              await this.item.completeItemEscrowBuildPhase(
-                {
-                  classIndex: existingClass.index,
-                  craftEscrowIndex: new BN(0),
-                  componentScope: "none",
-                  buildPermissivenessToUse:
-                    existingClass.updatePermissivenessToUse,
-                  itemClassMint: new web3.PublicKey(existingClass.mint),
-                  amountToMake: new BN(1),
-                  originator: wallet,
-                  parentClassIndex: null,
-                  newItemIndex: existingClass.index.add(1),
-                  space: new BN(250),
-                  storeMint: true,
-                  storeMetadataFields: true,
-                },
-                {
-                  newItemToken: ata,
-                  newItemTokenHolder: wallet,
-                  parentMint: null,
-                  itemClassMint: new web3.PublicKey(existingClass.mint),
-                  metadataUpdateAuthority: wallet,
-                  newItemMint: new PublicKey(existingClass.mint),
-                },
-                {}
-              );
-            } catch (e) {
-              console.error(e);
-              console.log(
-                "Caught this error with item escrow build phase end. Attempting next step anyway."
-              );
-            }
-
-            console.log("Attempting to drain the escrow.");
-            try {
-              await this.item.drainItemEscrow(
-                {
-                  classIndex: existingClass.index,
-                  craftEscrowIndex: new BN(0),
-                  componentScope: "none",
-                  itemClassMint: new web3.PublicKey(existingClass.mint),
-                  amountToMake: new BN(1),
-                  parentClassIndex: null,
-                  newItemMint: new PublicKey(existingClass.mint),
-                  newItemToken: ata,
-                },
-                {
-                  originator: wallet,
-                },
-                {}
-              );
-            } catch (e) {
-              console.error(e);
-              console.log(
-                "Caught this error with item escrow build phase drain. Attempting next step anyway."
-              );
-            }
-          }
-        }
-
-        console.log(
-          `Done update/create for item class ${itemMint}. Writing to config storage.`
-        );
         await writeOutState({
           ...this.turnToConfig(args),
           itemClassLookup: {
@@ -1107,7 +989,7 @@ export class BootUp {
                 address: (
                   await getItemPDA(
                     new web3.PublicKey(existingClass.mint),
-                    existingClass.index
+                    new BN(existingClass.index)
                   )
                 )[0].toBase58(),
               },
@@ -1207,33 +1089,139 @@ export class BootUp {
             const itemClassMint = new web3.PublicKey(
               itemClassLookup[bodyPartLayers[i]][myValue].existingClassDef.mint
             );
+            const existingClass =
+              itemClassLookup[bodyPartLayers[i]][myValue].existingClassDef;
 
-            const instructions = [];
             if (itemsWillBeSFTs) {
               const ata = (await getAtaForMint(itemClassMint, wallet))[0];
-              instructions.push(
-                Token.createMintToInstruction(
-                  TOKEN_PROGRAM_ID,
-                  itemClassMint,
-                  ata,
-                  wallet,
-                  [],
-                  1
-                )
-              );
+
+              try {
+                await this.item.createItemEscrow(
+                  {
+                    classIndex: existingClass.index,
+                    craftEscrowIndex: new BN(0),
+                    componentScope: "none",
+                    buildPermissivenessToUse:
+                      existingClass.updatePermissivenessToUse,
+                    namespaceIndex: null,
+                    itemClassMint: new web3.PublicKey(existingClass.mint),
+                    amountToMake: new BN(1),
+                    parentClassIndex: null,
+                  },
+                  {
+                    newItemMint: new web3.PublicKey(existingClass.mint),
+                    newItemToken: ata,
+                    newItemTokenHolder: wallet,
+                    parentMint: null,
+                    itemClassMint: new web3.PublicKey(existingClass.mint),
+                    metadataUpdateAuthority: wallet,
+                  },
+                  {}
+                );
+              } catch (e) {
+                console.error(e);
+                console.log(
+                  "Caught this error with item escrow creation. Attempting next step anyway."
+                );
+              }
+              console.log("Attempting to start the build phase of the escrow.");
+              try {
+                await this.item.startItemEscrowBuildPhase(
+                  {
+                    classIndex: existingClass.index,
+                    craftEscrowIndex: new BN(0),
+                    componentScope: "none",
+                    buildPermissivenessToUse:
+                      existingClass.updatePermissivenessToUse,
+                    newItemMint: new web3.PublicKey(existingClass.mint),
+                    itemClassMint: new web3.PublicKey(existingClass.mint),
+                    amountToMake: new BN(1),
+                    originator: wallet,
+                    totalSteps: null,
+                    endNodeProof: null,
+                    parentClassIndex: null,
+                  },
+                  {
+                    newItemToken: ata,
+                    newItemTokenHolder: wallet,
+                    parentMint: null,
+                    itemClassMint: new web3.PublicKey(existingClass.mint),
+                    metadataUpdateAuthority: wallet,
+                  },
+                  {}
+                );
+              } catch (e) {
+                console.error(e);
+                console.log(
+                  "Caught this error with item escrow build phase start. Attempting next step anyway."
+                );
+              }
+
+              console.log("Attempting to end the build phase of the escrow.");
+              try {
+                await this.item.completeItemEscrowBuildPhase(
+                  {
+                    classIndex: existingClass.index,
+                    craftEscrowIndex: new BN(0),
+                    componentScope: "none",
+                    buildPermissivenessToUse:
+                      existingClass.updatePermissivenessToUse,
+                    itemClassMint: new web3.PublicKey(existingClass.mint),
+                    amountToMake: new BN(1),
+                    originator: wallet,
+                    parentClassIndex: null,
+                    newItemIndex: existingClass.index.add(1),
+                    space: new BN(250),
+                    storeMint: true,
+                    storeMetadataFields: true,
+                  },
+                  {
+                    newItemToken: ata,
+                    newItemTokenHolder: wallet,
+                    parentMint: null,
+                    itemClassMint: new web3.PublicKey(existingClass.mint),
+                    metadataUpdateAuthority: wallet,
+                    newItemMint: new PublicKey(existingClass.mint),
+                  },
+                  {}
+                );
+              } catch (e) {
+                console.error(e);
+                console.log(
+                  "Caught this error with item escrow build phase end. Attempting next step anyway."
+                );
+              }
+
+              console.log("Attempting to drain the escrow.");
+              try {
+                await this.item.drainItemEscrow(
+                  {
+                    classIndex: existingClass.index,
+                    craftEscrowIndex: new BN(0),
+                    componentScope: "none",
+                    itemClassMint: new web3.PublicKey(existingClass.mint),
+                    amountToMake: new BN(1),
+                    parentClassIndex: null,
+                    newItemMint: new PublicKey(existingClass.mint),
+                    newItemToken: ata,
+                  },
+                  {
+                    originator: wallet,
+                  },
+                  {}
+                );
+              } catch (e) {
+                console.error(e);
+                console.log(
+                  "Caught this error with item escrow build phase drain. Attempting next step anyway."
+                );
+              }
             } else {
               throw new Error(
                 "No support for creating NFT items yet. You need to first create the NFT that is a child edition of the mint variable, then go through the escrow build process for item. Given this does not match our current business model, we will revisit soon! Why not try SFTs instead? They are more cost effective. NFT Items are only sensible for stateful items!"
               );
             }
 
-            await sendTransactionWithRetry(
-              this.player.client.provider.connection,
-              (this.player.client.provider as AnchorProvider).wallet,
-              instructions,
-              [],
-              "single"
-            );
             console.log(
               `Minted ${itemClassMint.toBase58()}, for layer ${
                 bodyPartLayers[i]

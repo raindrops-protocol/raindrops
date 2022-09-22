@@ -184,7 +184,8 @@ export function createSetAndVerifyCollectionInstruction(
   collectionMint: PublicKey,
   collection: PublicKey,
   collectionMasterEditionAccount: PublicKey,
-  collectionAuthorityRecord: PublicKey | null
+  collectionAuthorityRecord: PublicKey | null,
+  txnData: Buffer
 ) {
   const keys = [
     {
@@ -233,6 +234,7 @@ export function createSetAndVerifyCollectionInstruction(
   return new TransactionInstruction({
     keys,
     programId: TOKEN_METADATA_PROGRAM_ID,
+    data: txnData,
   });
 }
 
@@ -242,7 +244,8 @@ export function createVerifyCollectionInstruction(
   payer: PublicKey,
   collectionMint: PublicKey,
   collection: PublicKey,
-  collectionMasterEditionAccount: PublicKey
+  collectionMasterEditionAccount: PublicKey,
+  txnData: Buffer
 ) {
   const keys = [
     {
@@ -280,6 +283,7 @@ export function createVerifyCollectionInstruction(
   return new TransactionInstruction({
     keys,
     programId: TOKEN_METADATA_PROGRAM_ID,
+    data: txnData,
   });
 }
 
