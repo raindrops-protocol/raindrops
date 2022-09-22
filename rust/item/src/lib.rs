@@ -1948,6 +1948,7 @@ pub struct CreateItemClass<'info> {
         constraint=args.space as usize >= MIN_ITEM_CLASS_SIZE
     )]
     item_class: Account<'info, ItemClass>,
+    #[account(mut)]
     item_mint: Account<'info, Mint>,
     ///CHECK: TODO
     metadata: UncheckedAccount<'info>,
@@ -1994,6 +1995,7 @@ pub struct CreateItemEscrow<'info> {
     )]
     item_class: Box<Account<'info, ItemClass>>,
     item_class_metadata: UncheckedAccount<'info>,
+    #[account(mut)]
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
