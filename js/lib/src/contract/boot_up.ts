@@ -1280,7 +1280,7 @@ export class BootUp {
               if (!myValue)
                 console.log(
                   "This NFT doesnt have",
-                  bodyPartLayers[i],
+                  bodyPartLayers[j],
                   "defined on it's attribute list, skipping"
                 );
               else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
@@ -1309,10 +1309,15 @@ export class BootUp {
           console.log(
             "Now that we have the tokens, we need to build the player."
           );
-          const tokenOwner =
+          const token = (
             await this.player.client.provider.connection.getTokenLargestAccounts(
               mint
-            )[0];
+            )
+          ).value[0].address;
+          const tokenAcct =
+            await this.player.client.provider.connection.getAccountInfo(token);
+          const parsed = AccountLayout.decode(tokenAcct.data);
+          const tokenOwner = new PublicKey(parsed.owner);
           console.log(
             "The token owner of this mint is ",
             tokenOwner.toBase58()
@@ -1326,7 +1331,9 @@ export class BootUp {
                 buildPermissivenessToUse:
                   existingClassDef.updatePermissivenessToUse,
                 playerClassMint: new web3.PublicKey(existingClassDef.mint),
-                space: new BN(existingClassDef.totalSpaceBytes),
+                space: new BN(existingClassDef.totalSpaceBytes).add(
+                  new BN(bodyPartLayers.length * 34)
+                ),
                 storeMint: existingClassDef.storeMint,
                 storeMetadataFields: existingClassDef.storeMetadataFields,
               },
@@ -1334,7 +1341,7 @@ export class BootUp {
                 parentMint: null,
                 metadataUpdateAuthority: wallet,
                 newPlayerMint: mint,
-                newPlayerToken: (await getAtaForMint(mint, tokenOwner))[0],
+                newPlayerToken: token,
                 newPlayerTokenHolder: tokenOwner,
               },
               {
@@ -1352,7 +1359,12 @@ export class BootUp {
 
         if (playerStates[mint.toBase58()].state == MintState.Built) {
           console.log("Built player. Time to update it.");
-
+          await sleep(5000);
+          const player = await this.player.client.account.player.fetch(
+            (
+              await getPlayerPDA(new web3.PublicKey(mint), new BN(index))
+            )[0]
+          );
           await (
             await this.player.updatePlayer(
               {
@@ -1370,7 +1382,7 @@ export class BootUp {
                   //@ts-ignore,
                   basicStats: [
                     //@ts-ignore
-                    ...player.basicStats.slice(0, newBasicStats.length),
+                    ...player.data.basicStats.slice(0, newBasicStats.length),
                     ...stringLayers.map((l, i) => ({
                       index: newBasicStats.length + i,
                       state: {
@@ -1408,7 +1420,7 @@ export class BootUp {
           ) {
             const myValue = json.attributes.find(
               (a) => a.trait_type == bodyPartLayers[j]
-            ).value;
+            )?.value;
             if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
               const itemClassMint = new web3.PublicKey(
                 itemClassLookup[bodyPartLayers[j]][
@@ -1427,13 +1439,13 @@ export class BootUp {
                     {
                       index: index,
                       addItemPermissivenessToUse:
-                        existingClassDef.updateItemPermissivenessToUse,
+                        existingClassDef.updatePermissivenessToUse,
                       playerMint: mint,
                       amount: new BN(1),
-                      itemIndex,
+                      itemIndex: itemIndex.add(new BN(1)), // item, not item class, so add 1 according to our convention
                     },
                     {
-                      itemMint: itemClassMint,
+                      itemMint: itemClassMint, // for sfts, is the same
                       metadataUpdateAuthority: wallet,
                     },
                     {
@@ -1487,22 +1499,25 @@ export class BootUp {
 
         if (playerStates[mint.toBase58()].state == MintState.Set) {
           console.log(
-            "Performing a check with 5s interval to see if the items added on chain match what we think we have. We cannot proceed until we know for sure."
+            "Performing a check with 10s interval to see if the items added on chain match what we think we have. We cannot proceed until we know for sure."
           );
+          await sleep(5000);
           let player;
           let tries = 0;
           do {
             player = await this.player.client.account.player.fetch(playerPDA);
             tries++;
-            console.log("Try #1.");
+            console.log("Try", tries);
             if (
               (player.itemsInBackpack as BN).toNumber() <
-              playerStates[mint.toBase58()].itemsAdded.length
+              playerStates[mint.toBase58()].itemsAdded.filter((i) => i == "NA")
+                .length
             )
-              await sleep(5000);
+              await sleep(10000);
           } while (
             (player.itemsInBackpack as BN).toNumber() <
-              playerStates[mint.toBase58()].itemsAdded.length &&
+              playerStates[mint.toBase58()].itemsAdded.filter((i) => i == "NA")
+                .length &&
             tries < 3
           );
 
@@ -1521,13 +1536,13 @@ export class BootUp {
             "Now that we have updated it, time to equip stuff in the backpack."
           );
           for (
-            let j = playerStates[mint.toBase58()].itemsAdded.length;
+            let j = playerStates[mint.toBase58()].itemsEquipped.length;
             j < bodyPartLayers.length;
             j++
           ) {
             const myValue = json.attributes.find(
               (a) => a.trait_type == bodyPartLayers[j]
-            ).value;
+            )?.value;
             if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
               const itemClassMint = new web3.PublicKey(
                 itemClassLookup[bodyPartLayers[j]][
@@ -1541,34 +1556,42 @@ export class BootUp {
               );
 
               if (itemsWillBeSFTs) {
-                await (
-                  await this.player.toggleEquipItem(
-                    {
-                      index: index,
-                      playerMint: mint,
-                      amount: new BN(1),
-                      itemIndex,
-                      itemMint: itemClassMint,
-                      itemClassMint: itemClassMint,
-                      equipping: true,
-                      bodyPartIndex: i,
-                      equipItemPermissivenessToUse:
-                        existingClassDef.updatePermissivenessToUse,
-                      itemUsageIndex: 0,
-                      itemUsageProof: null,
-                      itemUsage: null,
-                    },
-                    {
-                      metadataUpdateAuthority: wallet,
-                    },
-                    {
-                      itemProgram: this.item,
-                      playerClassMint: new web3.PublicKey(
-                        existingClassDef.mint
-                      ),
-                    }
-                  )
-                ).rpc();
+                try {
+                  await (
+                    await this.player.toggleEquipItem(
+                      {
+                        index: index,
+                        playerMint: mint,
+                        amount: new BN(1),
+                        itemIndex: itemIndex.add(new BN(1)), // add one according to our convention, since item not itemclass
+                        itemMint: itemClassMint, // with sfts we are stacking the item and itemclass on same mint for economy
+                        itemClassMint: itemClassMint,
+                        equipping: true,
+                        bodyPartIndex: j,
+                        equipItemPermissivenessToUse:
+                          existingClassDef.updatePermissivenessToUse,
+                        itemUsageIndex: 0,
+                        itemUsageProof: null,
+                        itemUsage: null,
+                      },
+                      {
+                        metadataUpdateAuthority: wallet,
+                      },
+                      {
+                        itemProgram: this.item,
+                        playerClassMint: new web3.PublicKey(
+                          existingClassDef.mint
+                        ),
+                      }
+                    )
+                  ).rpc();
+                } catch (e) {
+                  if (e.toString().match("Timed")) {
+                    console.log("Timeout detected but ignoring");
+                  } else {
+                    throw e;
+                  }
+                }
               } else {
                 throw new Error("This is not supported yet.");
               }
@@ -1582,7 +1605,7 @@ export class BootUp {
               if (!myValue)
                 console.log(
                   "This NFT doesnt have",
-                  bodyPartLayers[i],
+                  bodyPartLayers[j],
                   "defined on it's attribute list, skipping"
                 );
               else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
@@ -1592,38 +1615,44 @@ export class BootUp {
                   "is not on the itemClassLookup list meaning you didnt intend it to be wearable and a class for it was never made in step 3. Skipping."
                 );
               }
+              playerStates[mint.toBase58()].itemsEquipped.push("NA");
               await writeOutState({ ...this.turnToConfig(args), playerStates });
             }
           }
         }
 
         if (
-          playerStates[mint.toBase58()].itemsAdded.filter((a) => a == "NA")
-            .length != playerStates[mint.toBase58()].itemsEquipped.length
+          playerStates[mint.toBase58()].itemsAdded.length !=
+          playerStates[mint.toBase58()].itemsEquipped.length
         ) {
           throw new Error(
-            "At this stage, items added should equal number of items equipped when NA is removed."
+            "At this stage, items added should equal number of items equipped"
           );
         }
 
         if (playerStates[mint.toBase58()].state == MintState.Loaded) {
           console.log(
-            "Performing a check with 5s interval to see if the items equipped on chain match what we think we have. We cannot proceed until we know for sure."
+            "Performing a check with 10s interval to see if the items equipped on chain match what we think we have. We cannot proceed until we know for sure."
           );
+          await sleep(5000);
           let player;
           let tries = 0;
           do {
             player = await this.player.client.account.player.fetch(playerPDA);
             tries++;
-            console.log("Try #1.");
+            console.log("Try", tries);
             if (
               player.equippedItems.length <
-              playerStates[mint.toBase58()].itemsEquipped.length
+              playerStates[mint.toBase58()].itemsEquipped.filter(
+                (a) => a == "NA"
+              ).length
             )
-              await sleep(5000);
+              await sleep(10000);
           } while (
             player.equippedItems.length <
-              playerStates[mint.toBase58()].itemsEquipped.length &&
+              playerStates[mint.toBase58()].itemsEquipped.filter(
+                (a) => a == "NA"
+              ).length &&
             tries < 3
           );
 
