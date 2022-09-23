@@ -854,18 +854,28 @@ pub mod raindrops_player {
         let validation_program = &ctx.accounts.validation_program;
         let token_program = &ctx.accounts.token_program;
         let payer = &ctx.accounts.payer;
-
+        msg!("1. Assert permissiveness");
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &player.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &remove_item_permissiveness_to_use,
-            permissiveness_array: &player_class.data.settings.remove_item_permissiveness,
+            permissiveness_array: if player_class
+                .data
+                .settings
+                .remove_item_permissiveness
+                .is_some()
+            {
+                &player_class.data.settings.remove_item_permissiveness
+            } else {
+                &player_class.data.settings.add_item_permissiveness
+            },
             index: index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
 
+        msg!("2. Run item validation");
         run_item_validation(RunItemValidationArgs {
             player_class,
             item_class,
@@ -881,6 +891,7 @@ pub mod raindrops_player {
             add: false,
         })?;
 
+        msg!("3. Adjust items in backpack");
         player.items_in_backpack = player
             .items_in_backpack
             .checked_sub(amount)
@@ -910,6 +921,7 @@ pub mod raindrops_player {
             .amount
             .checked_sub(amount)
             .ok_or(ErrorCode::NumericalOverflowError)?;
+        msg!("4. SPL Transfer");
 
         spl_token_transfer(TokenTransferParams {
             source: player_item_account.to_account_info(),
@@ -921,6 +933,8 @@ pub mod raindrops_player {
         })?;
 
         if new_amount == 0 {
+            msg!("5. Close account");
+
             let cpi_accounts = CloseAccount {
                 account: player_item_account.to_account_info(),
                 destination: payer.to_account_info(),

@@ -1831,7 +1831,6 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
         class_index,
         account_mint,
     } = args;
-
     match permissiveness_to_use {
         Some(perm_to_use) => {
             if let Some(permissiveness_arr) = permissiveness_array {
@@ -1842,11 +1841,9 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         break;
                     }
                 }
-
                 if !found {
                     return Err(error!(ErrorCode::PermissivenessNotFound));
                 }
-
                 match perm_to_use {
                     PermissivenessType::TokenHolder => {
                         //  token_account [readable]
@@ -1912,7 +1909,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         // metadata_update_authority [signer]
                         // metadata [readable]
                         // mint [readable] OR none if already present in the main array
-
+                        msg!("Beginning update authority check");
                         let metadata_update_authority = &remaining_accounts[0];
                         let metadata = &remaining_accounts[1];
                         let mint = if let Some(m) = account_mint {
@@ -1920,13 +1917,16 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         } else {
                             remaining_accounts[2].key()
                         };
-
+                        msg!(
+                            "Using update authority as a permission with {:?} as signer",
+                            metadata_update_authority.key()
+                        );
                         assert_signer(metadata_update_authority)?;
 
                         assert_metadata_valid(metadata, None, &mint)?;
 
                         let update_authority = grab_update_authority(metadata)?;
-
+                        msg!("Checking if the update auth on the metadata {:?} is equal to the above..", update_authority);
                         assert_keys_equal(update_authority, *metadata_update_authority.key)?;
                     }
                     PermissivenessType::Anybody => {
