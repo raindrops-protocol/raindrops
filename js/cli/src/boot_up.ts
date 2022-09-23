@@ -52,6 +52,17 @@ async function getBootsProgram(options) {
   return new BootUp(playerProgram, itemProgram, namespaceProgram);
 }
 
+async function reloadPlayer(options) {
+  const { keypair, env, rpcUrl } = options;
+
+  return await PlayerProgram.getProgramWithWalletKeyPair(
+    PlayerProgram,
+    await Wallet.loadWalletKey(keypair),
+    env,
+    rpcUrl
+  );
+}
+
 async function loadItemImageFileFromDir(
   dir: string
 ): Promise<Record<string, Buffer>> {
@@ -81,7 +92,8 @@ async function getConfig(
   env,
   configPath,
   conn: Connection,
-  user: string
+  user: string,
+  options
 ): Promise<BootUpArgs> {
   const decodedKey = new Uint8Array(
     JSON.parse(fs.readFileSync(user).toString())
@@ -126,6 +138,9 @@ async function getConfig(
         creators,
       });
     },
+    reloadPlayer: async () => {
+      return reloadPlayer(options);
+    },
   } as BootUpArgs;
 }
 
@@ -139,7 +154,8 @@ CLI.programCommandWithConfig(
       env,
       configPath,
       boots.player.client.provider.connection,
-      keypair
+      keypair,
+      options
     );
     await boots.createMainNFTClass(args);
   }
@@ -155,7 +171,8 @@ CLI.programCommandWithConfig(
       env,
       configPath,
       boots.player.client.provider.connection,
-      keypair
+      keypair,
+      options
     );
     await boots.createItemCollection(args);
   }
@@ -171,7 +188,8 @@ CLI.programCommandWithConfig(
       env,
       configPath,
       boots.player.client.provider.connection,
-      keypair
+      keypair,
+      options
     );
     await boots.createItemClasses(args);
   }
@@ -187,7 +205,8 @@ CLI.programCommandWithConfig(
       env,
       configPath,
       boots.player.client.provider.connection,
-      keypair
+      keypair,
+      options
     );
     await boots.createPlayers(args);
   }

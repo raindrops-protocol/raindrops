@@ -92,6 +92,7 @@ export interface BootUpArgs {
   ) => Promise<string>;
   writeOutState: (f: any) => Promise<void>;
   env: string;
+  reloadPlayer: () => Promise<PlayerProgram>;
 }
 
 export class BootUp {
@@ -1018,6 +1019,7 @@ export class BootUp {
       itemsWillBeSFTs,
       playerStates,
       writeOutState,
+      reloadPlayer,
       env,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
@@ -1322,36 +1324,44 @@ export class BootUp {
             "The token owner of this mint is ",
             tokenOwner.toBase58()
           );
-          await (
-            await this.player.buildPlayer(
-              {
-                newPlayerIndex: index,
-                parentClassIndex: null,
-                classIndex: index,
-                buildPermissivenessToUse:
-                  existingClassDef.updatePermissivenessToUse,
-                playerClassMint: new web3.PublicKey(existingClassDef.mint),
-                space: new BN(existingClassDef.totalSpaceBytes).add(
-                  new BN(bodyPartLayers.length * 34)
-                ),
-                storeMint: existingClassDef.storeMint,
-                storeMetadataFields: existingClassDef.storeMetadataFields,
-              },
-              {
-                parentMint: null,
-                metadataUpdateAuthority: wallet,
-                newPlayerMint: mint,
-                newPlayerToken: token,
-                newPlayerTokenHolder: tokenOwner,
-              },
-              {
-                rainAmount:
-                  env == "mainnet-beta"
-                    ? new BN(RAIN_PAYMENT_AMOUNT)
-                    : new BN(0),
-              }
-            )
-          ).rpc();
+          try {
+            await (
+              await this.player.buildPlayer(
+                {
+                  newPlayerIndex: index,
+                  parentClassIndex: null,
+                  classIndex: index,
+                  buildPermissivenessToUse:
+                    existingClassDef.updatePermissivenessToUse,
+                  playerClassMint: new web3.PublicKey(existingClassDef.mint),
+                  space: new BN(existingClassDef.totalSpaceBytes).add(
+                    new BN(bodyPartLayers.length * 34)
+                  ),
+                  storeMint: existingClassDef.storeMint,
+                  storeMetadataFields: existingClassDef.storeMetadataFields,
+                },
+                {
+                  parentMint: null,
+                  metadataUpdateAuthority: wallet,
+                  newPlayerMint: mint,
+                  newPlayerToken: token,
+                  newPlayerTokenHolder: tokenOwner,
+                },
+                {
+                  rainAmount:
+                    env == "mainnet-beta"
+                      ? new BN(RAIN_PAYMENT_AMOUNT)
+                      : new BN(0),
+                }
+              )
+            ).rpc();
+          } catch (e) {
+            if (e.toString().match("Timed")) {
+              console.log("Timeout detected but ignoring");
+            } else {
+              throw e;
+            }
+          }
 
           playerStates[mint.toBase58()].state = MintState.Built;
           await writeOutState({ ...this.turnToConfig(args), playerStates });
@@ -1360,11 +1370,26 @@ export class BootUp {
         if (playerStates[mint.toBase58()].state == MintState.Built) {
           console.log("Built player. Time to update it.");
           await sleep(5000);
-          const player = await this.player.client.account.player.fetch(
-            (
-              await getPlayerPDA(new web3.PublicKey(mint), new BN(index))
-            )[0]
-          );
+          let tries = 0;
+          let player = null;
+          while (tries < 3 && !player) {
+            try {
+              player = await this.player.client.account.player.fetch(
+                (
+                  await getPlayerPDA(new web3.PublicKey(mint), new BN(index))
+                )[0]
+              );
+            } catch (e) {
+              console.error(e);
+            }
+            tries++;
+            if (!player) {
+              this.player = await reloadPlayer();
+              console.log("Fetch player try", tries);
+              await sleep(5000);
+            }
+          }
+
           await (
             await this.player.updatePlayer(
               {
@@ -1499,9 +1524,9 @@ export class BootUp {
 
         if (playerStates[mint.toBase58()].state == MintState.Set) {
           console.log(
-            "Performing a check with 10s interval to see if the items added on chain match what we think we have. We cannot proceed until we know for sure."
+            "Performing a check with 15s interval to see if the items added on chain match what we think we have. We cannot proceed until we know for sure."
           );
-          await sleep(5000);
+          await sleep(10000);
           let player;
           let tries = 0;
           do {
@@ -1510,13 +1535,15 @@ export class BootUp {
             console.log("Try", tries);
             if (
               (player.itemsInBackpack as BN).toNumber() <
-              playerStates[mint.toBase58()].itemsAdded.filter((i) => i == "NA")
+              playerStates[mint.toBase58()].itemsAdded.filter((i) => i != "NA")
                 .length
-            )
-              await sleep(10000);
+            ) {
+              await sleep(15000);
+              this.player = await reloadPlayer();
+            }
           } while (
             (player.itemsInBackpack as BN).toNumber() <
-              playerStates[mint.toBase58()].itemsAdded.filter((i) => i == "NA")
+              playerStates[mint.toBase58()].itemsAdded.filter((i) => i != "NA")
                 .length &&
             tries < 3
           );
@@ -1634,7 +1661,7 @@ export class BootUp {
           console.log(
             "Performing a check with 10s interval to see if the items equipped on chain match what we think we have. We cannot proceed until we know for sure."
           );
-          await sleep(5000);
+          await sleep(15000);
           let player;
           let tries = 0;
           do {
@@ -1644,14 +1671,16 @@ export class BootUp {
             if (
               player.equippedItems.length <
               playerStates[mint.toBase58()].itemsEquipped.filter(
-                (a) => a == "NA"
+                (a) => a != "NA"
               ).length
-            )
-              await sleep(10000);
+            ) {
+              this.player = await reloadPlayer();
+              await sleep(20000);
+            }
           } while (
             player.equippedItems.length <
               playerStates[mint.toBase58()].itemsEquipped.filter(
-                (a) => a == "NA"
+                (a) => a != "NA"
               ).length &&
             tries < 3
           );
