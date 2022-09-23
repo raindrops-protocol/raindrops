@@ -426,7 +426,7 @@ export type RaindropsItem = {
         },
         {
           "name": "newItemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -446,7 +446,7 @@ export type RaindropsItem = {
         },
         {
           "name": "newItemToken",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -3324,6 +3324,11 @@ export type RaindropsItem = {
       "code": 6067,
       "name": "CannotEffectTheSameStatTwice",
       "msg": "Cannot affect the same stat twice"
+    },
+    {
+      "code": 6068,
+      "name": "MintAuthorityRequiredForSFTs",
+      "msg": "Cannot mint an SFT without mint auth"
     }
   ]
 };
@@ -3756,7 +3761,7 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "newItemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -3776,7 +3781,7 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "newItemToken",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -6654,6 +6659,11 @@ export const IDL: RaindropsItem = {
       "code": 6067,
       "name": "CannotEffectTheSameStatTwice",
       "msg": "Cannot affect the same stat twice"
+    },
+    {
+      "code": 6068,
+      "name": "MintAuthorityRequiredForSFTs",
+      "msg": "Cannot mint an SFT without mint auth"
     }
   ]
 };

@@ -1158,6 +1158,7 @@ pub mod raindrops_item {
         let new_item = &mut ctx.accounts.new_item;
         let new_item_mint = &ctx.accounts.new_item_mint;
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
+        let new_item_token = &ctx.accounts.new_item_token;
         let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
         let metadata = &ctx.accounts.new_item_metadata;
@@ -1275,7 +1276,7 @@ pub mod raindrops_item {
             msg!("spl_token_mint_to");
             spl_token_mint_to(
                 new_item_mint.to_account_info(),
-                new_item_token_holder.to_account_info(),
+                new_item_token.to_account_info(),
                 amount_to_make,
                 item_class.to_account_info(),
                 &signer_seeds,
@@ -2359,6 +2360,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
         constraint=args.space as usize >= MIN_ITEM_SIZE
     )]
     new_item: Box<Account<'info, Item>>,
+    #[account(mut)]
     new_item_mint: Box<Account<'info, Mint>>,
     new_item_metadata: UncheckedAccount<'info>,
     new_item_edition: UncheckedAccount<'info>,
@@ -2379,6 +2381,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     )]
     item_escrow: Box<Account<'info, ItemEscrow>>,
     #[account(
+        mut,
         constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,

@@ -93,10 +93,7 @@ async function getConfig(
       type: config.scope.type as Scope,
       values: config.scope.values.map((v) => new web3.PublicKey(v)),
     },
-    playerStates: config.playerStates?.map((p) => ({
-      ...p,
-      state: p.state as MintState,
-    })),
+    playerStates: config.playerStates || {},
     env,
     existingCollectionForItems: config.existingCollectionForItems
       ? new PublicKey(config.existingCollectionForItems)
