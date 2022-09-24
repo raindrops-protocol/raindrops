@@ -1050,25 +1050,33 @@ export class BootUp {
         console.log(
           "Player exists and is in it's final state already. Updating player permissionlessly."
         );
-        await (
-          await this.player.updatePlayer(
-            {
-              index: index,
-              classIndex: index,
-              updatePermissivenessToUse:
-                existingClassDef.updatePermissivenessToUse,
-              playerClassMint: new web3.PublicKey(existingClassDef.mint),
-              playerMint: mint,
-              newData: null,
-            },
-            {
-              metadataUpdateAuthority: wallet,
-            },
-            {
-              permissionless: true,
-            }
-          )
-        ).rpc();
+        try {
+          await (
+            await this.player.updatePlayer(
+              {
+                index: index,
+                classIndex: index,
+                updatePermissivenessToUse:
+                  existingClassDef.updatePermissivenessToUse,
+                playerClassMint: new web3.PublicKey(existingClassDef.mint),
+                playerMint: mint,
+                newData: null,
+              },
+              {
+                metadataUpdateAuthority: wallet,
+              },
+              {
+                permissionless: true,
+              }
+            )
+          ).rpc();
+        } catch (e) {
+          if (e.toString().match("Timed")) {
+            console.log("Timeout detected but ignoring");
+          } else {
+            throw e;
+          }
+        }
       } else {
         console.log(
           `Player for mint ${mint} is in state ${
@@ -1113,13 +1121,33 @@ export class BootUp {
               let successful = false;
               if (itemsWillBeSFTs) {
                 const ata = (await getAtaForMint(itemClassMint, wallet))[0];
-
-                const currBalance = (
-                  await this.player.client.provider.connection.getTokenAccountBalance(
-                    ata
-                  )
-                ).value.uiAmount;
-
+                let currBalance = 0;
+                try {
+                  currBalance = (
+                    await this.player.client.provider.connection.getTokenAccountBalance(
+                      ata
+                    )
+                  ).value.uiAmount;
+                } catch (e) {
+                  console.error(e);
+                  console.log("Need to make a new token account...");
+                  const instructions = [
+                    createAssociatedTokenAccountInstruction(
+                      ata,
+                      wallet,
+                      wallet,
+                      itemClassMint
+                    ),
+                  ];
+                  await sendTransactionWithRetry(
+                    this.player.client.provider.connection,
+                    (this.player.client.provider as AnchorProvider).wallet,
+                    instructions,
+                    [],
+                    "single"
+                  );
+                  await sleep(20000);
+                }
                 try {
                   await this.item.createItemEscrow(
                     {
@@ -1369,7 +1397,7 @@ export class BootUp {
 
         if (playerStates[mint.toBase58()].state == MintState.Built) {
           console.log("Built player. Time to update it.");
-          await sleep(5000);
+          await sleep(60000);
           let tries = 0;
           let player = null;
           while (tries < 3 && !player) {
@@ -1545,10 +1573,10 @@ export class BootUp {
             (player.itemsInBackpack as BN).toNumber() <
               playerStates[mint.toBase58()].itemsAdded.filter((i) => i != "NA")
                 .length &&
-            tries < 3
+            tries < 5
           );
 
-          if (tries >= 3) {
+          if (tries >= 5) {
             throw new Error(
               `Failed to add items, mint ${mint} cannot move forward`
             );
@@ -1682,10 +1710,10 @@ export class BootUp {
               playerStates[mint.toBase58()].itemsEquipped.filter(
                 (a) => a != "NA"
               ).length &&
-            tries < 3
+            tries < 5
           );
 
-          if (tries >= 3) {
+          if (tries >= 5) {
             throw new Error(
               `Failed to equip items, mint ${mint} cannot move forward`
             );
