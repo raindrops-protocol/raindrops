@@ -7,7 +7,8 @@
     "matches-cli": "./src/matches.ts",
     "namespace-cli": "./src/namespace.ts",
     "player-cli": "./src/player.ts",
-    "staking-cli": "./src/staking.ts"
+    "staking-cli": "./src/staking.ts",
+    "boot-up": "./src/boot_up.ts"
   },
   "scripts": {
     "build": "tsc -p .",
