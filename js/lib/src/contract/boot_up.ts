@@ -74,6 +74,7 @@ export interface BootUpArgs {
   className: string;
   namespaceName: string;
   allowTokenHolder: boolean;
+  skipUpdates: boolean;
   // Nested set of URLs for each trait value.
   itemClassLookup: Record<
     string,
@@ -1040,6 +1041,7 @@ export class BootUp {
       playerStates,
       writeOutState,
       reloadPlayer,
+      skipUpdates,
       env,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
@@ -1052,50 +1054,57 @@ export class BootUp {
         `Doing ${i} of ${mints.length} which is ${mints[i].toBase58()}`
       );
       const mint = mints[i];
-      const playerPDA = (await getPlayerPDA(mint, index))[0];
-      const metadata = await getMetadata(mint);
-      const metadataAccount =
-        await this.player.client.provider.connection.getAccountInfo(metadata);
-      const metadataObj = decodeMetadata(metadataAccount.data);
-      console.log("Grabbed metadata obj.");
-      const json = (await (await fetch(metadataObj.data.uri)).json()) as any;
-      console.log("Fetched ", metadataObj.data.uri);
 
       if (
         playerStates[mint.toBase58()] &&
         (playerStates[mint.toBase58()].state as MintState) ==
           MintState.FullyLoadedAndEquipped
       ) {
-        await this.player.client.account.player.fetch(playerPDA);
-        console.log(
-          "Player exists and is in it's final state already. Updating player permissionlessly."
-        );
-        try {
-          await (
-            await this.player.updatePlayer(
-              {
-                index: index,
-                classIndex: index,
-                updatePermissivenessToUse:
-                  existingClassDef.updatePermissivenessToUse,
-                playerClassMint: new web3.PublicKey(existingClassDef.mint),
-                playerMint: mint,
-                newData: null,
-              },
-              {
-                metadataUpdateAuthority: wallet,
-              },
-              {
-                permissionless: true,
-              }
-            )
-          ).rpc();
-        } catch (e) {
-          if (e.toString().match("Timed")) {
-            console.log("Timeout detected but ignoring");
-          } else {
-            throw e;
+        if (!skipUpdates) {
+          const playerPDA = (await getPlayerPDA(mint, index))[0];
+          const metadata = await getMetadata(mint);
+          const metadataAccount =
+            await this.player.client.provider.connection.getAccountInfo(
+              metadata
+            );
+          const metadataObj = decodeMetadata(metadataAccount.data);
+          console.log("Grabbed metadata obj.");
+
+          console.log("Fetched ", metadataObj.data.uri);
+
+          await this.player.client.account.player.fetch(playerPDA);
+          console.log(
+            "Player exists and is in it's final state already. Updating player permissionlessly."
+          );
+          try {
+            await (
+              await this.player.updatePlayer(
+                {
+                  index: index,
+                  classIndex: index,
+                  updatePermissivenessToUse:
+                    existingClassDef.updatePermissivenessToUse,
+                  playerClassMint: new web3.PublicKey(existingClassDef.mint),
+                  playerMint: mint,
+                  newData: null,
+                },
+                {
+                  metadataUpdateAuthority: wallet,
+                },
+                {
+                  permissionless: true,
+                }
+              )
+            ).rpc();
+          } catch (e) {
+            if (e.toString().match("Timed")) {
+              console.log("Timeout detected but ignoring");
+            } else {
+              throw e;
+            }
           }
+        } else {
+          console.log("Skipping updates per config file.");
         }
       } else {
         console.log(
@@ -1103,6 +1112,14 @@ export class BootUp {
             playerStates[mint.toBase58()]?.state || MintState.NotBuilt
           }`
         );
+        const playerPDA = (await getPlayerPDA(mint, index))[0];
+        const metadata = await getMetadata(mint);
+        const metadataAccount =
+          await this.player.client.provider.connection.getAccountInfo(metadata);
+        const metadataObj = decodeMetadata(metadataAccount.data);
+        console.log("Grabbed metadata obj.");
+        const json = (await (await fetch(metadataObj.data.uri)).json()) as any;
+        console.log("Fetched ", metadataObj.data.uri);
 
         if (!playerStates[mint.toBase58()]) {
           playerStates[mint.toBase58()] = {

@@ -28,6 +28,7 @@
   "itemsWillBeSFTs": true,
   "className": "panda",
   "namespaceName": "dtp",
+  "skipUpdates": false,
   "allowTokenHolder": false,
   "itemClassLookup": {
     "DUMPSTER": {
