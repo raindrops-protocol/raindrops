@@ -15,6 +15,7 @@
     "lint": "turbo run lint",
     "lint:check": "turbo run lint:check",
     "build": "turbo run build",
+    "build:no-check": "turbo run build:no-check",
     "build:cli": "turbo run build --filter @raindrops-protocol/raindrops-cli",
     "build:lib": "turbo run build --filter @raindrops-protocol/raindrops",
     "build:program": "turbo run build --filter @raindrops-protocol/raindrops-programs",
