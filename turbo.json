@@ -17,6 +17,10 @@
       "dependsOn": ["lint:check"],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
+    "build:no-check": {
+      "dependsOn": [],
+      "outputs": ["dist/**", "build/**", "target/**"]
+    },
     "test": {
       "dependsOn": ["build"],
       "outputs": [],

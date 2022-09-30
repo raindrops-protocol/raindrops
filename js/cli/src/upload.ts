@@ -96,7 +96,7 @@ export const uploadFileToArweave = async ({
   console.log("Funding...");
 
   try {
-    let response = await bundlr.fund(
+    const response = await bundlr.fund(
       2 * imgUploadPrice.plus(metaUploadPrice).toNumber()
     );
     console.log(response);
