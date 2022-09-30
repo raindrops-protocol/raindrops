@@ -32,6 +32,8 @@ import { ItemProgram } from "./item";
 import { createAssociatedTokenAccountInstruction } from "../utils/ata";
 import { NamespaceProgram } from "./namespace";
 import { RAIN_PAYMENT_AMOUNT } from "../constants/player";
+import { getAccountsByFirstCreatorAddress } from "../utils/candyMachine";
+import { getAccountsByCollectionAddress } from "../utils/collection";
 const {
   PDA: { getAtaForMint, getItemPDA, getMetadata, getPlayerPDA },
 } = Utils;
@@ -359,9 +361,27 @@ export class BootUp {
     if (type == Scope.Mint) {
       mints = values;
     } else if (type == Scope.Collection) {
-      throw new Error("Not supported yet");
+      for (let i = 0; i < values.length; i++) {
+        mints.push(
+          ...(
+            await getAccountsByCollectionAddress(
+              values[i],
+              this.player.client.provider.connection
+            )
+          ).map((m) => new PublicKey(m[0].mint))
+        );
+      }
     } else if (type == Scope.CandyMachine) {
-      throw new Error("Not supported yet");
+      for (let i = 0; i < values.length; i++) {
+        mints.push(
+          ...(
+            await getAccountsByFirstCreatorAddress(
+              values[i],
+              this.player.client.provider.connection
+            )
+          ).map((m) => new PublicKey(m[0].mint))
+        );
+      }
     }
     return mints;
   }

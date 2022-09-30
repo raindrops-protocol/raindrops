@@ -4,6 +4,11 @@ export const NAMESPACE_ID = new web3.PublicKey(
   "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
 );
 
+export const CANDY_MACHINE_PROGRAM_V2_ID = new web3.PublicKey(
+  "cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ"
+  //'Ch3qpQYqr7AvLP6Eph9xxbtneAbzovzuEexAGh48URHS',
+);
+
 export const ITEM_ID = new web3.PublicKey(
   "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 );
