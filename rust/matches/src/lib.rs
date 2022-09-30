@@ -105,10 +105,10 @@ pub mod raindrops_matches {
         require!(!win_oracle.finalized, OracleAlreadyFinalized);
 
         win_oracle.finalized = finalized;
-        win_oracle.token_transfer_root = token_transfer_root.clone();
-        win_oracle.token_transfers = token_transfers.clone();
+        win_oracle.token_transfer_root = token_transfer_root;
+        win_oracle.token_transfers = token_transfers;
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn create_match<'a, 'b, 'c, 'info>(
@@ -524,7 +524,7 @@ pub mod raindrops_matches {
             .checked_add(1)
             .ok_or(ErrorCode::NumericalOverflowError)?;
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn join_match<'a, 'b, 'c, 'info>(
@@ -596,7 +596,7 @@ pub mod raindrops_matches {
             let mut validation = false;
             for val in val_arr {
                 if is_valid_validation(
-                    &val,
+                    val,
                     source_item_or_player_pda,
                     token_mint,
                     validation_program,
@@ -976,7 +976,7 @@ pub struct MatchUncacheNamespace<'info> {
     instructions: UncheckedAccount<'info>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum MatchState {
     Draft,
     Initialized,
@@ -986,7 +986,7 @@ pub enum MatchState {
     Deactivated,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum PermissivenessType {
     TokenHolder,
     ParentTokenHolder,
@@ -1003,7 +1003,7 @@ impl Root {
     pub const SPACE: usize = 32;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,
@@ -1113,7 +1113,7 @@ pub struct WinOracle {
     token_transfers: Option<Vec<TokenDelta>>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum TokenType {
     /// No missions explicitly.
     Player,
@@ -1121,7 +1121,7 @@ pub enum TokenType {
     Any,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum TokenTransferType {
     /// No missions explicitly.
     PlayerToPlayer,

@@ -484,6 +484,10 @@ export type RaindropsMatches = {
           },
           {
             "name": "currentTokenTransferIndex",
+            "docs": [
+              "Increased by 1 every time the next token transfer",
+              "in the win oracle is completed."
+            ],
             "type": "u64"
           },
           {
@@ -929,6 +933,9 @@ export type RaindropsMatches = {
           },
           {
             "name": "to",
+            "docs": [
+              "if no to, token is burned"
+            ],
             "type": {
               "option": "publicKey"
             }
@@ -1825,6 +1832,10 @@ export const IDL: RaindropsMatches = {
           },
           {
             "name": "currentTokenTransferIndex",
+            "docs": [
+              "Increased by 1 every time the next token transfer",
+              "in the win oracle is completed."
+            ],
             "type": "u64"
           },
           {
@@ -2270,6 +2281,9 @@ export const IDL: RaindropsMatches = {
           },
           {
             "name": "to",
+            "docs": [
+              "if no to, token is burned"
+            ],
             "type": {
               "option": "publicKey"
             }

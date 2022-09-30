@@ -1,7 +1,8 @@
-import { AnchorProvider, BN, web3 } from "@project-serum/anchor";
+import { AnchorProvider, BN, Wallet, web3 } from "@project-serum/anchor";
 import { Program } from "@raindrop-studios/sol-kit";
 import { PublicKey, Signer, TransactionInstruction } from "@solana/web3.js";
 import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
+import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 import * as PlayerInstruction from "../instructions/player";
 import * as Utils from "../utils";
@@ -672,4 +673,26 @@ export class PlayerProgram extends Program.Program {
       rpc: () => this.sendWithRetry(instructions, signers, options),
     };
   }
+}
+
+export async function getPlayerProgram(
+  anchorWallet: NodeWallet | web3.Keypair,
+  env: string,
+  customRpcUrl: string
+): Promise<PlayerProgram> {
+  if ((anchorWallet as web3.Keypair).secretKey) {
+    return PlayerProgram.getProgramWithWalletKeyPair(
+      PlayerProgram,
+      anchorWallet as web3.Keypair,
+      env,
+      customRpcUrl
+    );
+  }
+
+  return PlayerProgram.getProgramWithWallet(
+    PlayerProgram,
+    anchorWallet as Wallet,
+    env,
+    customRpcUrl
+  );
 }

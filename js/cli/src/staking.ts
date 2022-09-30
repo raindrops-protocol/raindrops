@@ -1,3 +1,4 @@
+#!/usr/bin/env ts-node
 import { BN, web3 } from "@project-serum/anchor";
 import { CLI, Wallet } from "@raindrop-studios/sol-command";
 import log from "loglevel";

@@ -22,6 +22,23 @@ The Solana ecosystem has a fragmented and very customized way of storing in-game
 - Lint: `yarn lint`
 - Run tests locally: `yarn test`
 
+## Publishing
+
+There are two javascript npm packages that can be published. A js SDK and CLI. To publish follow the below commands:
+
+```
+# This only needs to be run once. Your login credentials should be cached after running.
+yarn npm login
+
+# Publish the JS SDK
+yarn workspace "@raindrops-protocol/raindrops" npm publish --access public
+
+# Publish the CLI
+yarn workspace "@raindrops-protocol/raindrops-cli" npm publish --access public
+```
+
+Be sure to bump the package.json version numbers in the `js/lib/package.json` and `js/cli/package.json` files and push up your modifications.
+
 ## Contributing
 
 Contributors welcome!

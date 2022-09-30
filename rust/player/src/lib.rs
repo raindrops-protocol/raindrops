@@ -2,11 +2,12 @@ pub mod utils;
 
 use crate::utils::*;
 use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
-use anchor_spl::token::transfer;
-use anchor_spl::token::{initialize_account, Transfer};
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{close_account, CloseAccount, Mint, Token, TokenAccount},
+    token::{
+        close_account, initialize_account, transfer, CloseAccount, Mint, Token, TokenAccount,
+        Transfer,
+    },
 };
 use raindrops_item::utils::{
     assert_initialized, assert_keys_equal, assert_metadata_valid, assert_signer, get_item_usage,
@@ -15,6 +16,7 @@ use raindrops_item::utils::{
 use std::str::FromStr;
 
 anchor_lang::declare_id!("p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1");
+pub const NAMESPACE_ID: &str = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV";
 
 pub const PREFIX: &str = "player";
 pub const VAULT: &str = "rain_vault";
@@ -291,7 +293,7 @@ pub mod raindrops_player {
             for _n in 0..desired_namespace_array_size {
                 namespace_arr.push(NamespaceAndIndex {
                     namespace: anchor_lang::solana_program::system_program::id(),
-                    indexed: false,
+                    index: None,
                     inherited: InheritanceState::NotInherited,
                 });
             }
@@ -535,7 +537,7 @@ pub mod raindrops_player {
         })?;
 
         require!(player.tokens_staked == 0, UnstakeTokensFirst);
-        require!(player.equipped_items.len() == 0, RemoveEquipmentFirst);
+        require!(player.equipped_items.is_empty(), RemoveEquipmentFirst);
         require!(player.active_item_counter == 0, DeactivateAllItemsFirst);
         require!(
             player.items_in_backpack == 0,
@@ -557,7 +559,7 @@ pub mod raindrops_player {
             };
             let (_, bump) = Pubkey::find_program_address(
                 &[PREFIX.as_bytes(), VAULT.as_bytes()],
-                &ctx.program_id,
+                ctx.program_id,
             );
 
             let signer_seeds = &[PREFIX.as_bytes(), VAULT.as_bytes(), &[bump]];
@@ -654,7 +656,7 @@ pub mod raindrops_player {
             if rain_token_program_account.data_len() == 0 {
                 let (_, bump) = Pubkey::find_program_address(
                     &[PREFIX.as_bytes(), VAULT.as_bytes()],
-                    &ctx.program_id,
+                    ctx.program_id,
                 );
 
                 let signer_seeds = &[PREFIX.as_bytes(), VAULT.as_bytes(), &[bump]];
@@ -780,7 +782,7 @@ pub mod raindrops_player {
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &add_item_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.add_item_permissiveness,
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -1041,7 +1043,7 @@ pub mod raindrops_player {
         let receiver = &ctx.accounts.receiver;
         let clock = &ctx.accounts.clock;
 
-        let act_at = player_item_activation_marker.activated_at.clone() as i64;
+        let act_at = player_item_activation_marker.activated_at as i64;
 
         // how do we know if item should have effect removed yet? we have it on the item act
         // marker and duration on the item usage...check and throw error.
@@ -1129,11 +1131,7 @@ pub mod raindrops_player {
         let item_usage_to_use = get_item_usage(GetItemUsageArgs {
             item_class,
             usage_index: item_usage_index,
-            usage_proof: if let Some(u) = &usage_info {
-                Some(u.usage_proof.clone())
-            } else {
-                None
-            },
+            usage_proof: usage_info.as_ref().map(|u| u.usage_proof.clone()),
             usage: if let Some(u2) = &usage_info {
                 Some(raindrops_item::ItemUsage::try_from_slice(&u2.usage)?)
             } else {
@@ -1157,7 +1155,7 @@ pub mod raindrops_player {
                 None
             };
         if let Some(bie) = &item_usage_to_use.basic_item_effects {
-            if bie.len() > 0 {
+            if !bie.is_empty() {
                 let bie_size = 1 + bie
                     .len()
                     .checked_div(8)
@@ -1265,7 +1263,7 @@ pub mod raindrops_player {
             } else {
                 &player_class.data.settings.unequip_item_permissiveness
             },
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -1373,7 +1371,7 @@ pub mod raindrops_player {
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &equip_item_permissiveness_to_use,
             permissiveness_array: &player_class.data.settings.equip_item_permissiveness,
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -1386,7 +1384,7 @@ pub mod raindrops_player {
                 match new_bs.state {
                     BasicStatState::Integer { base, .. } => {
                         new_bs.state = BasicStatState::Integer {
-                            base: base,
+                            base,
                             with_temporary_changes: base,
                             finalized: base,
                             temporary_numerator: 1,
@@ -1401,6 +1399,129 @@ pub mod raindrops_player {
             }
             player.data.basic_stats = Some(new_stats);
         }
+
+        Ok(())
+    }
+
+    pub fn player_artifact_join_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactJoinNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        };
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = join_to_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = join_to_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
+
+        Ok(())
+    }
+
+    pub fn player_artifact_leave_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactLeaveNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = leave_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = leave_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
+
+        Ok(())
+    }
+
+    pub fn player_artifact_cache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactCacheNamespace<'info>>,
+        page: u64,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = cache_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+                page,
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = cache_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+                page,
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
+
+        Ok(())
+    }
+
+    pub fn player_artifact_uncache_namespace<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, PlayerArtifactUncacheNamespace<'info>>,
+    ) -> Result<()> {
+        if !is_namespace_program_caller(&ctx.accounts.instructions.to_account_info()) {
+            return Err(error!(ErrorCode::UnauthorizedCaller));
+        }
+
+        if let Ok(player_class) =
+            &mut Account::<'_, PlayerClass>::try_from(&ctx.accounts.player_artifact)
+        {
+            let new_namespaces = uncache_namespace(
+                player_class.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player_class.namespaces = Some(new_namespaces);
+            player_class.exit(&crate::id())?;
+        };
+
+        if let Ok(player) = &mut Account::<'_, Player>::try_from(&ctx.accounts.player_artifact) {
+            let new_namespaces = uncache_namespace(
+                player.namespaces.clone().unwrap(),
+                ctx.accounts.namespace.key(),
+            )?;
+            player.namespaces = Some(new_namespaces);
+            player.exit(&crate::id())?;
+        };
 
         Ok(())
     }
@@ -1967,6 +2088,67 @@ pub struct UpdatePlayer<'info> {
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
+#[derive(Accounts)]
+pub struct PlayerArtifactJoinNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct PlayerArtifactLeaveNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(page: u64)]
+pub struct PlayerArtifactCacheNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles.
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct PlayerArtifactUncacheNamespace<'info> {
+    /// CHECK: deserialized inside instruction, this is an `UncheckedAccount` because it can either be `Player` or `PlayerClass`
+    #[account(mut)]
+    pub player_artifact: UncheckedAccount<'info>,
+
+    /// CHECK: deserialized inside instruction, we can't import the `Namespace` account due to dependency circles
+    /// The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix
+    #[account()]
+    pub namespace: UncheckedAccount<'info>,
+
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub instructions: UncheckedAccount<'info>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct EquippedItem {
     item: Pubkey,
@@ -1976,7 +2158,7 @@ pub struct EquippedItem {
 
 pub const MAX_NAMESPACES: usize = 10;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum PermissivenessType {
     TokenHolder,
     ParentTokenHolder,
@@ -1984,7 +2166,7 @@ pub enum PermissivenessType {
     Anybody,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug, Copy)]
 pub enum InheritanceState {
     NotInherited,
     Inherited,
@@ -1994,7 +2176,7 @@ pub enum InheritanceState {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct NamespaceAndIndex {
     pub namespace: Pubkey,
-    pub indexed: bool,
+    pub index: Option<u64>,
     pub inherited: InheritanceState,
 }
 
@@ -2133,7 +2315,7 @@ pub struct Boolean {
     pub boolean: bool,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct Permissiveness {
     pub inherited: InheritanceState,
     pub permissiveness_type: PermissivenessType,
@@ -2328,7 +2510,7 @@ pub enum BasicStatState {
     Null,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Copy)]
 pub enum StatDiffType {
     Wearable,
     Consumable,
@@ -2360,7 +2542,7 @@ pub struct PlayerItemActivationMarker {
 
 // Copied from Item class because Anchor sucks and can't do imports
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Copy)]
 pub enum BasicItemEffectType {
     Increment,
     Decrement,
@@ -2468,6 +2650,20 @@ pub enum ErrorCode {
     NameAlreadyUsed,
     #[msg("Cannot reset player until item effects removed")]
     CannotResetPlayerStatsUntilItemEffectsAreRemoved,
+    #[msg("Failed to join namespace")]
+    FailedToJoinNamespace,
+    #[msg("Failed to leave namespace")]
+    FailedToLeaveNamespace,
+    #[msg("Failed to cache")]
+    FailedToCache,
+    #[msg("Failed to uncache")]
+    FailedToUncache,
+    #[msg("Already cached")]
+    AlreadyCached,
+    #[msg("Not cached")]
+    NotCached,
+    #[msg("Unauthorized Caller")]
+    UnauthorizedCaller,
     #[msg("Rain token mint mismatch")]
     RainTokenMintMismatch,
 }
