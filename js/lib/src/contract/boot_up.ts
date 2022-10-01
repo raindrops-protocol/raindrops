@@ -348,6 +348,7 @@ export class BootUp {
       itemIndex: args.itemIndex.toNumber(),
       existingClassDef: args.existingClassDef,
       existingItemClassDef: args.existingItemClassDef,
+      skipUpdates: args.skipUpdates,
       itemsName: args.itemsName,
       existingCollectionForItems: args.existingCollectionForItems,
       playerStates: args.playerStates,
