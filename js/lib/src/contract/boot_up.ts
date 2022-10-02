@@ -72,6 +72,7 @@ export interface BootUpArgs {
   newBasicStats: any[];
   itemsWillBeSFTs: boolean;
   className: string;
+  redoFailures: boolean;
   namespaceName: string;
   allowTokenHolder: boolean;
   skipUpdates: boolean;
@@ -349,6 +350,7 @@ export class BootUp {
       existingClassDef: args.existingClassDef,
       existingItemClassDef: args.existingItemClassDef,
       skipUpdates: args.skipUpdates,
+      redoFailures: args.redoFailures,
       itemsName: args.itemsName,
       existingCollectionForItems: args.existingCollectionForItems,
       playerStates: args.playerStates,
@@ -1029,6 +1031,57 @@ export class BootUp {
     }
   }
 
+  async tryBuildPlayer(mint: PublicKey, args: BootUpArgs) {
+    const { existingClassDef, index, bodyPartLayers, env } = args;
+    const wallet = (this.player.client.provider as AnchorProvider).wallet
+      .publicKey;
+    console.log("Now that we have the tokens, we need to build the player.");
+    const token = (
+      await this.player.client.provider.connection.getTokenLargestAccounts(mint)
+    ).value[0].address;
+    const tokenAcct =
+      await this.player.client.provider.connection.getAccountInfo(token);
+    const parsed = AccountLayout.decode(tokenAcct.data);
+    const tokenOwner = new PublicKey(parsed.owner);
+    console.log("The token owner of this mint is ", tokenOwner.toBase58());
+    try {
+      await (
+        await this.player.buildPlayer(
+          {
+            newPlayerIndex: index,
+            parentClassIndex: null,
+            classIndex: index,
+            buildPermissivenessToUse:
+              existingClassDef.updatePermissivenessToUse,
+            playerClassMint: new web3.PublicKey(existingClassDef.mint),
+            space: new BN(existingClassDef.totalSpaceBytes).add(
+              new BN(bodyPartLayers.length * 34)
+            ),
+            storeMint: existingClassDef.storeMint,
+            storeMetadataFields: existingClassDef.storeMetadataFields,
+          },
+          {
+            parentMint: null,
+            metadataUpdateAuthority: wallet,
+            newPlayerMint: mint,
+            newPlayerToken: token,
+            newPlayerTokenHolder: tokenOwner,
+          },
+          {
+            rainAmount:
+              env == "mainnet-beta" ? new BN(RAIN_PAYMENT_AMOUNT) : new BN(0),
+          }
+        )
+      ).rpc();
+    } catch (e) {
+      if (e.toString().match("Timed")) {
+        console.log("Timeout detected but ignoring");
+      } else {
+        throw e;
+      }
+    }
+  }
+
   async createPlayers(args: BootUpArgs) {
     const {
       existingClassDef,
@@ -1043,6 +1096,7 @@ export class BootUp {
       writeOutState,
       reloadPlayer,
       skipUpdates,
+      redoFailures,
       env,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
@@ -1108,566 +1162,410 @@ export class BootUp {
           console.log("Skipping updates per config file.");
         }
       } else {
-        console.log(
-          `Player for mint ${mint} is in state ${
-            playerStates[mint.toBase58()]?.state || MintState.NotBuilt
-          }`
-        );
-        const playerPDA = (await getPlayerPDA(mint, index))[0];
-        const metadata = await getMetadata(mint);
-        const metadataAccount =
-          await this.player.client.provider.connection.getAccountInfo(metadata);
-        const metadataObj = decodeMetadata(metadataAccount.data);
-        console.log("Grabbed metadata obj.");
-        const json = (await (await fetch(metadataObj.data.uri)).json()) as any;
-        console.log("Fetched ", metadataObj.data.uri);
+        try {
+          console.log(
+            `Player for mint ${mint} is in state ${
+              playerStates[mint.toBase58()]?.state || MintState.NotBuilt
+            }`
+          );
+          const playerPDA = (await getPlayerPDA(mint, index))[0];
+          const metadata = await getMetadata(mint);
+          const metadataAccount =
+            await this.player.client.provider.connection.getAccountInfo(
+              metadata
+            );
+          const metadataObj = decodeMetadata(metadataAccount.data);
+          console.log("Grabbed metadata obj.");
+          const json = (await (
+            await fetch(metadataObj.data.uri)
+          ).json()) as any;
+          console.log("Fetched ", metadataObj.data.uri);
 
-        if (!playerStates[mint.toBase58()]) {
-          playerStates[mint.toBase58()] = {
-            state: MintState.NotBuilt,
-            itemsAdded: [],
-            itemsMinted: [],
-            itemsEquipped: [],
-          };
-          await writeOutState({ ...this.turnToConfig(args), playerStates });
-        } else {
-          playerStates[mint.toBase58()].state = playerStates[mint.toBase58()]
-            .state as MintState;
-        }
+          if (!playerStates[mint.toBase58()]) {
+            playerStates[mint.toBase58()] = {
+              state: MintState.NotBuilt,
+              itemsAdded: [],
+              itemsMinted: [],
+              itemsEquipped: [],
+            };
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
+          } else {
+            playerStates[mint.toBase58()].state = playerStates[mint.toBase58()]
+              .state as MintState;
+          }
 
-        if (playerStates[mint.toBase58()].state == MintState.NotBuilt) {
-          console.log("First we need to mint tokens for the body part traits.");
-          for (
-            let j = playerStates[mint.toBase58()].itemsMinted.length;
-            j < bodyPartLayers.length;
-            j++
-          ) {
-            console.log("Searching for value for ", bodyPartLayers[j]);
-            const myValue = json.attributes.find(
-              (a) => a.trait_type == bodyPartLayers[j]
-            )?.value;
-            if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
-              console.log("Found value", myValue, "issuing token");
-              const itemClassMint = new web3.PublicKey(
-                itemClassLookup[bodyPartLayers[j]][
-                  myValue
-                ].existingClassDef.mint
-              );
-              const existingClass =
-                itemClassLookup[bodyPartLayers[j]][myValue].existingClassDef;
-
-              let successful = false;
-              if (itemsWillBeSFTs) {
-                const ata = (await getAtaForMint(itemClassMint, wallet))[0];
-                let currBalance = 0;
-                try {
-                  currBalance = (
-                    await this.player.client.provider.connection.getTokenAccountBalance(
-                      ata
-                    )
-                  ).value.uiAmount;
-                } catch (e) {
-                  console.error(e);
-                  console.log("Need to make a new token account...");
-                  const instructions = [
-                    createAssociatedTokenAccountInstruction(
-                      ata,
-                      wallet,
-                      wallet,
-                      itemClassMint
-                    ),
-                  ];
-                  await sendTransactionWithRetry(
-                    this.player.client.provider.connection,
-                    (this.player.client.provider as AnchorProvider).wallet,
-                    instructions,
-                    [],
-                    "single"
-                  );
-                  await sleep(20000);
-                }
-                try {
-                  await this.item.createItemEscrow(
-                    {
-                      classIndex: new BN(existingClass.index),
-                      craftEscrowIndex: new BN(0),
-                      componentScope: "none",
-                      buildPermissivenessToUse:
-                        existingClass.updatePermissivenessToUse,
-                      namespaceIndex: null,
-                      itemClassMint: new web3.PublicKey(existingClass.mint),
-                      amountToMake: new BN(1),
-                      parentClassIndex: null,
-                    },
-                    {
-                      newItemMint: new web3.PublicKey(existingClass.mint),
-                      newItemToken: ata,
-                      newItemTokenHolder: wallet,
-                      parentMint: null,
-                      itemClassMint: new web3.PublicKey(existingClass.mint),
-                      metadataUpdateAuthority: wallet,
-                    },
-                    {}
-                  );
-                } catch (e) {
-                  console.error(e);
-                  console.log("Ignoring on start item escrow");
-                }
-                console.log(
-                  "Attempting to start the build phase of the escrow."
+          if (playerStates[mint.toBase58()].state == MintState.NotBuilt) {
+            console.log(
+              "First we need to mint tokens for the body part traits."
+            );
+            for (
+              let j = playerStates[mint.toBase58()].itemsMinted.length;
+              j < bodyPartLayers.length;
+              j++
+            ) {
+              console.log("Searching for value for ", bodyPartLayers[j]);
+              const myValue = json.attributes.find(
+                (a) => a.trait_type == bodyPartLayers[j]
+              )?.value;
+              if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
+                console.log("Found value", myValue, "issuing token");
+                const itemClassMint = new web3.PublicKey(
+                  itemClassLookup[bodyPartLayers[j]][
+                    myValue
+                  ].existingClassDef.mint
                 );
-                try {
-                  await this.item.startItemEscrowBuildPhase(
-                    {
-                      classIndex: new BN(existingClass.index),
-                      craftEscrowIndex: new BN(0),
-                      componentScope: "none",
-                      buildPermissivenessToUse:
-                        existingClass.updatePermissivenessToUse,
-                      newItemMint: new web3.PublicKey(existingClass.mint),
-                      itemClassMint: new web3.PublicKey(existingClass.mint),
-                      amountToMake: new BN(1),
-                      originator: wallet,
-                      totalSteps: null,
-                      endNodeProof: null,
-                      parentClassIndex: null,
-                    },
-                    {
-                      newItemToken: ata,
-                      newItemTokenHolder: wallet,
-                      parentMint: null,
-                      itemClassMint: new web3.PublicKey(existingClass.mint),
-                      metadataUpdateAuthority: wallet,
-                    },
-                    {}
-                  );
-                } catch (e) {
-                  console.error(e);
-                  console.log("Ignoring on start build phase");
-                }
+                const existingClass =
+                  itemClassLookup[bodyPartLayers[j]][myValue].existingClassDef;
 
-                console.log("Attempting to end the build phase of the escrow.");
-                try {
-                  await this.item.completeItemEscrowBuildPhase(
-                    {
-                      classIndex: new BN(existingClass.index),
-                      craftEscrowIndex: new BN(0),
-                      componentScope: "none",
-                      buildPermissivenessToUse:
-                        existingClass.updatePermissivenessToUse,
-                      itemClassMint: new web3.PublicKey(existingClass.mint),
-                      amountToMake: new BN(1),
-                      originator: wallet,
-                      parentClassIndex: null,
-                      newItemIndex: new BN(existingClass.index).add(new BN(1)),
-                      space: new BN(250),
-                      storeMint: true,
-                      storeMetadataFields: true,
-                    },
-                    {
-                      newItemToken: ata,
-                      newItemTokenHolder: wallet,
-                      parentMint: null,
-                      itemClassMint: new web3.PublicKey(existingClass.mint),
-                      metadataUpdateAuthority: wallet,
-                      newItemMint: new PublicKey(existingClass.mint),
-                    },
-                    {}
-                  );
-                } catch (e) {
-                  console.error(e);
-                  console.log("Ignoring on end build phase ");
-                }
-
-                console.log("Attempting to drain the escrow.");
-                try {
-                  await this.item.drainItemEscrow(
-                    {
-                      classIndex: new BN(existingClass.index),
-                      craftEscrowIndex: new BN(0),
-                      componentScope: "none",
-                      itemClassMint: new web3.PublicKey(existingClass.mint),
-                      amountToMake: new BN(1),
-                      parentClassIndex: null,
-                      newItemMint: new PublicKey(existingClass.mint),
-                      newItemToken: ata,
-                    },
-                    {
-                      originator: wallet,
-                    },
-                    {}
-                  );
-                } catch (e) {
-                  console.error(e);
-                  console.log("Ignoring on drain item escrow");
-                }
-
-                let tries = 0;
-                console.log("Sleeping for 5s before beginning token check.");
-                await sleep(5000);
-
-                do {
-                  const ataAcct =
-                    await this.item.client.provider.connection.getAccountInfo(
-                      ata
+                let successful = false;
+                if (itemsWillBeSFTs) {
+                  const ata = (await getAtaForMint(itemClassMint, wallet))[0];
+                  let currBalance = 0;
+                  try {
+                    currBalance = (
+                      await this.player.client.provider.connection.getTokenAccountBalance(
+                        ata
+                      )
+                    ).value.uiAmount;
+                  } catch (e) {
+                    console.error(e);
+                    console.log("Need to make a new token account...");
+                    const instructions = [
+                      createAssociatedTokenAccountInstruction(
+                        ata,
+                        wallet,
+                        wallet,
+                        itemClassMint
+                      ),
+                    ];
+                    await sendTransactionWithRetry(
+                      this.player.client.provider.connection,
+                      (this.player.client.provider as AnchorProvider).wallet,
+                      instructions,
+                      [],
+                      "single"
                     );
-                  const ataObj = AccountLayout.decode(ataAcct.data);
-                  const supply = u64.fromBuffer(ataObj.amount).toNumber();
-                  tries++;
+                  }
+                  try {
+                    await this.item.createItemEscrow(
+                      {
+                        classIndex: new BN(existingClass.index),
+                        craftEscrowIndex: new BN(0),
+                        componentScope: "none",
+                        buildPermissivenessToUse:
+                          existingClass.updatePermissivenessToUse,
+                        namespaceIndex: null,
+                        itemClassMint: new web3.PublicKey(existingClass.mint),
+                        amountToMake: new BN(1),
+                        parentClassIndex: null,
+                      },
+                      {
+                        newItemMint: new web3.PublicKey(existingClass.mint),
+                        newItemToken: ata,
+                        newItemTokenHolder: wallet,
+                        parentMint: null,
+                        itemClassMint: new web3.PublicKey(existingClass.mint),
+                        metadataUpdateAuthority: wallet,
+                      },
+                      {}
+                    );
+                  } catch (e) {
+                    console.error(e);
+                    console.log("Ignoring on start item escrow");
+                  }
                   console.log(
-                    "Try",
-                    tries,
-                    " on checking mint balance after running item build. Starting bal: ",
-                    currBalance,
-                    " Ending bal:",
-                    supply
+                    "Attempting to start the build phase of the escrow."
                   );
-                  successful = supply > currBalance;
-                  if (!successful) await sleep(20000);
-                } while (!successful && tries < 3);
-              } else {
-                throw new Error(
-                  "No support for creating NFT items yet. You need to first create the NFT that is a child edition of the mint variable, then go through the escrow build process for item. Given this does not match our current business model, we will revisit soon! Why not try SFTs instead? They are more cost effective. NFT Items are only sensible for stateful items!"
-                );
-              }
+                  try {
+                    await this.item.startItemEscrowBuildPhase(
+                      {
+                        classIndex: new BN(existingClass.index),
+                        craftEscrowIndex: new BN(0),
+                        componentScope: "none",
+                        buildPermissivenessToUse:
+                          existingClass.updatePermissivenessToUse,
+                        newItemMint: new web3.PublicKey(existingClass.mint),
+                        itemClassMint: new web3.PublicKey(existingClass.mint),
+                        amountToMake: new BN(1),
+                        originator: wallet,
+                        totalSteps: null,
+                        endNodeProof: null,
+                        parentClassIndex: null,
+                      },
+                      {
+                        newItemToken: ata,
+                        newItemTokenHolder: wallet,
+                        parentMint: null,
+                        itemClassMint: new web3.PublicKey(existingClass.mint),
+                        metadataUpdateAuthority: wallet,
+                      },
+                      {}
+                    );
+                  } catch (e) {
+                    console.error(e);
+                    console.log("Ignoring on start build phase");
+                  }
 
-              if (successful) {
-                console.log(
-                  `Minted ${itemClassMint.toBase58()}, for layer ${
-                    bodyPartLayers[j]
-                  } which is a ${myValue}`
-                );
-                playerStates[mint.toBase58()].itemsMinted.push(
-                  itemClassMint.toBase58()
-                );
-              } else {
-                throw new Error("Failed to mint.");
-              }
-              await writeOutState({ ...this.turnToConfig(args), playerStates });
-            } else {
-              if (!myValue)
-                console.log(
-                  "This NFT doesnt have",
-                  bodyPartLayers[j],
-                  "defined on it's attribute list, skipping"
-                );
-              else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
-                console.log(
-                  "The value",
-                  myValue,
-                  "is not on the itemClassLookup list meaning you didnt intend it to be wearable and a class for it was never made in step 3. Skipping."
-                );
-              }
-              playerStates[mint.toBase58()].itemsMinted.push("NA");
-              await writeOutState({ ...this.turnToConfig(args), playerStates });
-            }
-          }
-        }
+                  console.log(
+                    "Attempting to end the build phase of the escrow."
+                  );
+                  try {
+                    await this.item.completeItemEscrowBuildPhase(
+                      {
+                        classIndex: new BN(existingClass.index),
+                        craftEscrowIndex: new BN(0),
+                        componentScope: "none",
+                        buildPermissivenessToUse:
+                          existingClass.updatePermissivenessToUse,
+                        itemClassMint: new web3.PublicKey(existingClass.mint),
+                        amountToMake: new BN(1),
+                        originator: wallet,
+                        parentClassIndex: null,
+                        newItemIndex: new BN(existingClass.index).add(
+                          new BN(1)
+                        ),
+                        space: new BN(250),
+                        storeMint: true,
+                        storeMetadataFields: true,
+                      },
+                      {
+                        newItemToken: ata,
+                        newItemTokenHolder: wallet,
+                        parentMint: null,
+                        itemClassMint: new web3.PublicKey(existingClass.mint),
+                        metadataUpdateAuthority: wallet,
+                        newItemMint: new PublicKey(existingClass.mint),
+                      },
+                      {}
+                    );
+                  } catch (e) {
+                    console.error(e);
+                    console.log("Ignoring on end build phase ");
+                  }
 
-        if (
-          playerStates[mint.toBase58()].itemsMinted.length !=
-          bodyPartLayers.length
-        ) {
-          throw new Error(
-            "At this stage, items minted should equal number of body part layers."
-          );
-        }
+                  console.log("Attempting to drain the escrow.");
+                  try {
+                    await this.item.drainItemEscrow(
+                      {
+                        classIndex: new BN(existingClass.index),
+                        craftEscrowIndex: new BN(0),
+                        componentScope: "none",
+                        itemClassMint: new web3.PublicKey(existingClass.mint),
+                        amountToMake: new BN(1),
+                        parentClassIndex: null,
+                        newItemMint: new PublicKey(existingClass.mint),
+                        newItemToken: ata,
+                      },
+                      {
+                        originator: wallet,
+                      },
+                      {}
+                    );
+                  } catch (e) {
+                    console.error(e);
+                    console.log("Ignoring on drain item escrow");
+                  }
 
-        if (playerStates[mint.toBase58()].state == MintState.NotBuilt) {
-          console.log(
-            "Now that we have the tokens, we need to build the player."
-          );
-          const token = (
-            await this.player.client.provider.connection.getTokenLargestAccounts(
-              mint
-            )
-          ).value[0].address;
-          const tokenAcct =
-            await this.player.client.provider.connection.getAccountInfo(token);
-          const parsed = AccountLayout.decode(tokenAcct.data);
-          const tokenOwner = new PublicKey(parsed.owner);
-          console.log(
-            "The token owner of this mint is ",
-            tokenOwner.toBase58()
-          );
-          try {
-            await (
-              await this.player.buildPlayer(
-                {
-                  newPlayerIndex: index,
-                  parentClassIndex: null,
-                  classIndex: index,
-                  buildPermissivenessToUse:
-                    existingClassDef.updatePermissivenessToUse,
-                  playerClassMint: new web3.PublicKey(existingClassDef.mint),
-                  space: new BN(existingClassDef.totalSpaceBytes).add(
-                    new BN(bodyPartLayers.length * 34)
-                  ),
-                  storeMint: existingClassDef.storeMint,
-                  storeMetadataFields: existingClassDef.storeMetadataFields,
-                },
-                {
-                  parentMint: null,
-                  metadataUpdateAuthority: wallet,
-                  newPlayerMint: mint,
-                  newPlayerToken: token,
-                  newPlayerTokenHolder: tokenOwner,
-                },
-                {
-                  rainAmount:
-                    env == "mainnet-beta"
-                      ? new BN(RAIN_PAYMENT_AMOUNT)
-                      : new BN(0),
+                  let tries = 0;
+                  console.log("Sleeping for 5s before beginning token check.");
+
+                  do {
+                    const ataAcct =
+                      await this.item.client.provider.connection.getAccountInfo(
+                        ata
+                      );
+                    const ataObj = AccountLayout.decode(ataAcct.data);
+                    const supply = u64.fromBuffer(ataObj.amount).toNumber();
+                    tries++;
+                    console.log(
+                      "Try",
+                      tries,
+                      " on checking mint balance after running item build. Starting bal: ",
+                      currBalance,
+                      " Ending bal:",
+                      supply
+                    );
+                    successful = supply > currBalance;
+                    if (!successful) await sleep(10000);
+                  } while (!successful && tries < 3);
+                } else {
+                  throw new Error(
+                    "No support for creating NFT items yet. You need to first create the NFT that is a child edition of the mint variable, then go through the escrow build process for item. Given this does not match our current business model, we will revisit soon! Why not try SFTs instead? They are more cost effective. NFT Items are only sensible for stateful items!"
+                  );
                 }
-              )
-            ).rpc();
-          } catch (e) {
-            if (e.toString().match("Timed")) {
-              console.log("Timeout detected but ignoring");
-            } else {
-              throw e;
+
+                if (successful) {
+                  console.log(
+                    `Minted ${itemClassMint.toBase58()}, for layer ${
+                      bodyPartLayers[j]
+                    } which is a ${myValue}`
+                  );
+                  playerStates[mint.toBase58()].itemsMinted.push(
+                    itemClassMint.toBase58()
+                  );
+                } else {
+                  throw new Error("Failed to mint.");
+                }
+                await writeOutState({
+                  ...this.turnToConfig(args),
+                  playerStates,
+                });
+              } else {
+                if (!myValue)
+                  console.log(
+                    "This NFT doesnt have",
+                    bodyPartLayers[j],
+                    "defined on it's attribute list, skipping"
+                  );
+                else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
+                  console.log(
+                    "The value",
+                    myValue,
+                    "is not on the itemClassLookup list meaning you didnt intend it to be wearable and a class for it was never made in step 3. Skipping."
+                  );
+                }
+                playerStates[mint.toBase58()].itemsMinted.push("NA");
+                await writeOutState({
+                  ...this.turnToConfig(args),
+                  playerStates,
+                });
+              }
             }
           }
 
-          playerStates[mint.toBase58()].state = MintState.Built;
-          await writeOutState({ ...this.turnToConfig(args), playerStates });
-        }
+          if (
+            playerStates[mint.toBase58()].itemsMinted.length !=
+            bodyPartLayers.length
+          ) {
+            throw new Error(
+              "At this stage, items minted should equal number of body part layers."
+            );
+          }
 
-        if (playerStates[mint.toBase58()].state == MintState.Built) {
-          console.log("Built player. Time to update it.");
-          await sleep(60000);
-          let tries = 0;
-          let player = null;
-          while (tries < 3 && !player) {
-            try {
+          if (playerStates[mint.toBase58()].state == MintState.NotBuilt) {
+            await this.tryBuildPlayer(mint, args);
+
+            playerStates[mint.toBase58()].state = MintState.Built;
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
+          }
+
+          if (playerStates[mint.toBase58()].state == MintState.Built) {
+            console.log("Built player. Time to update it.");
+            await sleep(10000);
+            let tries = 0;
+            let player = null;
+            while (tries < 3 && !player) {
+              try {
+                player = await this.player.client.account.player.fetch(
+                  (
+                    await getPlayerPDA(new web3.PublicKey(mint), new BN(index))
+                  )[0]
+                );
+              } catch (e) {
+                console.error(e);
+              }
+              tries++;
+              if (!player) {
+                this.player = await reloadPlayer();
+                console.log("Fetch player try", tries);
+                await sleep(3000);
+              }
+            }
+
+            if (!player) {
+              console.log(
+                "Failed three fetches of player. Going to try building it again."
+              );
+              await this.tryBuildPlayer(mint, args);
+              await sleep(10000);
               player = await this.player.client.account.player.fetch(
                 (
                   await getPlayerPDA(new web3.PublicKey(mint), new BN(index))
                 )[0]
               );
-            } catch (e) {
-              console.error(e);
             }
-            tries++;
-            if (!player) {
-              this.player = await reloadPlayer();
-              console.log("Fetch player try", tries);
-              await sleep(5000);
-            }
-          }
 
-          await (
-            await this.player.updatePlayer(
-              {
-                index: index,
-                classIndex: index,
-                updatePermissivenessToUse:
-                  existingClassDef.updatePermissivenessToUse,
-                playerClassMint: new web3.PublicKey(existingClassDef.mint),
-                playerMint: mint,
-                newData: {
-                  //@ts-ignore,
-                  statsUri: player.data.statsUri,
-                  //@ts-ignore,
-                  category: player.data.category,
-                  //@ts-ignore,
-                  basicStats: [
-                    //@ts-ignore
-                    ...player.data.basicStats.slice(0, newBasicStats.length),
-                    ...stringLayers.map((l, i) => ({
-                      index: newBasicStats.length + i,
-                      state: {
-                        string: {
-                          current: json.attributes.find(
-                            (a) => a.trait_type == l
-                          ).value,
+            await (
+              await this.player.updatePlayer(
+                {
+                  index: index,
+                  classIndex: index,
+                  updatePermissivenessToUse:
+                    existingClassDef.updatePermissivenessToUse,
+                  playerClassMint: new web3.PublicKey(existingClassDef.mint),
+                  playerMint: mint,
+                  newData: {
+                    //@ts-ignore,
+                    statsUri: player.data.statsUri,
+                    //@ts-ignore,
+                    category: player.data.category,
+                    //@ts-ignore,
+                    basicStats: [
+                      //@ts-ignore
+                      ...player.data.basicStats.slice(0, newBasicStats.length),
+                      ...stringLayers.map((l, i) => ({
+                        index: newBasicStats.length + i,
+                        state: {
+                          string: {
+                            current: json.attributes.find(
+                              (a) => a.trait_type == l
+                            ).value,
+                          },
                         },
-                      },
-                    })),
-                  ],
+                      })),
+                    ],
+                  },
                 },
-              },
-              {
-                metadataUpdateAuthority: wallet,
-              },
-              {
-                permissionless: false,
-              }
-            )
-          ).rpc();
+                {
+                  metadataUpdateAuthority: wallet,
+                },
+                {
+                  permissionless: false,
+                }
+              )
+            ).rpc();
 
-          playerStates[mint.toBase58()].state = MintState.Set;
-          await writeOutState({ ...this.turnToConfig(args), playerStates });
-        }
-
-        if (playerStates[mint.toBase58()].state == MintState.Set) {
-          console.log(
-            "Now that we have updated it, time to add stuff to the backpack."
-          );
-          for (
-            let j = playerStates[mint.toBase58()].itemsAdded.length;
-            j < bodyPartLayers.length;
-            j++
-          ) {
-            const myValue = json.attributes.find(
-              (a) => a.trait_type == bodyPartLayers[j]
-            )?.value;
-            if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
-              const itemClassMint = new web3.PublicKey(
-                itemClassLookup[bodyPartLayers[j]][
-                  myValue
-                ].existingClassDef.mint
-              );
-              console.log(
-                `Adding item of class mint ${itemClassMint.toBase58()}, which represents ${
-                  bodyPartLayers[j]
-                }`
-              );
-
-              if (itemsWillBeSFTs) {
-                await (
-                  await this.player.addItem(
-                    {
-                      index: index,
-                      addItemPermissivenessToUse:
-                        existingClassDef.updatePermissivenessToUse,
-                      playerMint: mint,
-                      amount: new BN(1),
-                      itemIndex: itemIndex.add(new BN(1)), // item, not item class, so add 1 according to our convention
-                    },
-                    {
-                      itemMint: itemClassMint, // for sfts, is the same
-                      metadataUpdateAuthority: wallet,
-                    },
-                    {
-                      itemProgram: this.item,
-                      playerClassMint: new web3.PublicKey(
-                        existingClassDef.mint
-                      ),
-                      itemClassMint: itemClassMint,
-                    }
-                  )
-                ).rpc();
-              } else {
-                throw new Error(
-                  "This is not supported yet. You'll need to transfer one NFT of this type over to the player."
-                );
-              }
-
-              playerStates[mint.toBase58()].itemsAdded.push(
-                itemClassMint.toBase58()
-              );
-
-              await writeOutState({ ...this.turnToConfig(args), playerStates });
-            } else {
-              if (!myValue)
-                console.log(
-                  "This NFT doesnt have",
-                  bodyPartLayers[i],
-                  "defined on it's attribute list, skipping"
-                );
-              else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
-                console.log(
-                  "The value",
-                  myValue,
-                  "is not on the itemClassLookup list meaning you didnt intend it to be wearable and a class for it was never made in step 3. Skipping."
-                );
-              }
-              playerStates[mint.toBase58()].itemsAdded.push("NA");
-              await writeOutState({ ...this.turnToConfig(args), playerStates });
-            }
-          }
-        }
-
-        if (
-          playerStates[mint.toBase58()].itemsMinted.length !=
-          playerStates[mint.toBase58()].itemsAdded.length
-        ) {
-          throw new Error(
-            "At this stage, items minted should equal number of items added."
-          );
-        }
-
-        if (playerStates[mint.toBase58()].state == MintState.Set) {
-          console.log(
-            "Performing a check with 15s interval to see if the items added on chain match what we think we have. We cannot proceed until we know for sure."
-          );
-          await sleep(10000);
-          let player;
-          let tries = 0;
-          do {
-            player = await this.player.client.account.player.fetch(playerPDA);
-            tries++;
-            console.log("Try", tries);
-            if (
-              (player.itemsInBackpack as BN).toNumber() <
-              playerStates[mint.toBase58()].itemsAdded.filter((i) => i != "NA")
-                .length
-            ) {
-              await sleep(15000);
-              this.player = await reloadPlayer();
-            }
-          } while (
-            (player.itemsInBackpack as BN).toNumber() <
-              playerStates[mint.toBase58()].itemsAdded.filter((i) => i != "NA")
-                .length &&
-            tries < 5
-          );
-
-          if (tries >= 5) {
-            throw new Error(
-              `Failed to add items, mint ${mint} cannot move forward`
-            );
-          } else {
-            playerStates[mint.toBase58()].state = MintState.Loaded;
+            playerStates[mint.toBase58()].state = MintState.Set;
             await writeOutState({ ...this.turnToConfig(args), playerStates });
           }
-        }
 
-        if (playerStates[mint.toBase58()].state == MintState.Loaded) {
-          console.log(
-            "Now that we have updated it, time to equip stuff in the backpack."
-          );
-          for (
-            let j = playerStates[mint.toBase58()].itemsEquipped.length;
-            j < bodyPartLayers.length;
-            j++
-          ) {
-            const myValue = json.attributes.find(
-              (a) => a.trait_type == bodyPartLayers[j]
-            )?.value;
-            if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
-              const itemClassMint = new web3.PublicKey(
-                itemClassLookup[bodyPartLayers[j]][
-                  myValue
-                ].existingClassDef.mint
-              );
-              console.log(
-                `Equipping item of class mint ${itemClassMint.toBase58()}, which represents ${
-                  bodyPartLayers[j]
-                }`
-              );
+          if (playerStates[mint.toBase58()].state == MintState.Set) {
+            console.log(
+              "Now that we have updated it, time to add stuff to the backpack."
+            );
+            for (
+              let j = playerStates[mint.toBase58()].itemsAdded.length;
+              j < bodyPartLayers.length;
+              j++
+            ) {
+              const myValue = json.attributes.find(
+                (a) => a.trait_type == bodyPartLayers[j]
+              )?.value;
+              if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
+                const itemClassMint = new web3.PublicKey(
+                  itemClassLookup[bodyPartLayers[j]][
+                    myValue
+                  ].existingClassDef.mint
+                );
+                console.log(
+                  `Adding item of class mint ${itemClassMint.toBase58()}, which represents ${
+                    bodyPartLayers[j]
+                  }`
+                );
 
-              if (itemsWillBeSFTs) {
-                try {
+                if (itemsWillBeSFTs) {
                   await (
-                    await this.player.toggleEquipItem(
+                    await this.player.addItem(
                       {
                         index: index,
+                        addItemPermissivenessToUse:
+                          existingClassDef.updatePermissivenessToUse,
                         playerMint: mint,
                         amount: new BN(1),
-                        itemIndex: itemIndex.add(new BN(1)), // add one according to our convention, since item not itemclass
-                        itemMint: itemClassMint, // with sfts we are stacking the item and itemclass on same mint for economy
-                        itemClassMint: itemClassMint,
-                        equipping: true,
-                        bodyPartIndex: j,
-                        equipItemPermissivenessToUse:
-                          existingClassDef.updatePermissivenessToUse,
-                        itemUsageIndex: 0,
-                        itemUsageProof: null,
-                        itemUsage: null,
+                        itemIndex: itemIndex.add(new BN(1)), // item, not item class, so add 1 according to our convention
                       },
                       {
+                        itemMint: itemClassMint, // for sfts, is the same
                         metadataUpdateAuthority: wallet,
                       },
                       {
@@ -1675,96 +1573,206 @@ export class BootUp {
                         playerClassMint: new web3.PublicKey(
                           existingClassDef.mint
                         ),
+                        itemClassMint: itemClassMint,
                       }
                     )
                   ).rpc();
-                } catch (e) {
-                  if (e.toString().match("Timed")) {
-                    console.log("Timeout detected but ignoring");
-                  } else {
-                    throw e;
-                  }
+                } else {
+                  throw new Error(
+                    "This is not supported yet. You'll need to transfer one NFT of this type over to the player."
+                  );
                 }
+
+                playerStates[mint.toBase58()].itemsAdded.push(
+                  itemClassMint.toBase58()
+                );
+
+                await writeOutState({
+                  ...this.turnToConfig(args),
+                  playerStates,
+                });
               } else {
-                throw new Error("This is not supported yet.");
+                if (!myValue)
+                  console.log(
+                    "This NFT doesnt have",
+                    bodyPartLayers[i],
+                    "defined on it's attribute list, skipping"
+                  );
+                else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
+                  console.log(
+                    "The value",
+                    myValue,
+                    "is not on the itemClassLookup list meaning you didnt intend it to be wearable and a class for it was never made in step 3. Skipping."
+                  );
+                }
+                playerStates[mint.toBase58()].itemsAdded.push("NA");
+                await writeOutState({
+                  ...this.turnToConfig(args),
+                  playerStates,
+                });
               }
+            }
 
-              playerStates[mint.toBase58()].itemsEquipped.push(
-                itemClassMint.toBase58()
-              );
+            playerStates[mint.toBase58()].state = MintState.Loaded;
+            await writeOutState({
+              ...this.turnToConfig(args),
+              playerStates,
+            });
+          }
 
-              await writeOutState({ ...this.turnToConfig(args), playerStates });
-            } else {
-              if (!myValue)
-                console.log(
-                  "This NFT doesnt have",
-                  bodyPartLayers[j],
-                  "defined on it's attribute list, skipping"
+          if (
+            playerStates[mint.toBase58()].itemsMinted.length !=
+            playerStates[mint.toBase58()].itemsAdded.length
+          ) {
+            throw new Error(
+              "At this stage, items minted should equal number of items added."
+            );
+          }
+
+          if (playerStates[mint.toBase58()].state == MintState.Loaded) {
+            console.log(
+              "Now that we have added items, time to equip stuff in the backpack."
+            );
+            for (
+              let j = playerStates[mint.toBase58()].itemsEquipped.length;
+              j < bodyPartLayers.length;
+              j++
+            ) {
+              const myValue = json.attributes.find(
+                (a) => a.trait_type == bodyPartLayers[j]
+              )?.value;
+              if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
+                const itemClassMint = new web3.PublicKey(
+                  itemClassLookup[bodyPartLayers[j]][
+                    myValue
+                  ].existingClassDef.mint
                 );
-              else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
                 console.log(
-                  "The value",
-                  myValue,
-                  "is not on the itemClassLookup list meaning you didnt intend it to be wearable and a class for it was never made in step 3. Skipping."
+                  `Equipping item of class mint ${itemClassMint.toBase58()}, which represents ${
+                    bodyPartLayers[j]
+                  }`
                 );
+
+                if (itemsWillBeSFTs) {
+                  try {
+                    await (
+                      await this.player.toggleEquipItem(
+                        {
+                          index: index,
+                          playerMint: mint,
+                          amount: new BN(1),
+                          itemIndex: itemIndex.add(new BN(1)), // add one according to our convention, since item not itemclass
+                          itemMint: itemClassMint, // with sfts we are stacking the item and itemclass on same mint for economy
+                          itemClassMint: itemClassMint,
+                          equipping: true,
+                          bodyPartIndex: j,
+                          equipItemPermissivenessToUse:
+                            existingClassDef.updatePermissivenessToUse,
+                          itemUsageIndex: 0,
+                          itemUsageProof: null,
+                          itemUsage: null,
+                        },
+                        {
+                          metadataUpdateAuthority: wallet,
+                        },
+                        {
+                          itemProgram: this.item,
+                          playerClassMint: new web3.PublicKey(
+                            existingClassDef.mint
+                          ),
+                        }
+                      )
+                    ).rpc();
+                  } catch (e) {
+                    if (e.toString().match("Timed")) {
+                      console.log("Timeout detected but ignoring");
+                    } else {
+                      throw e;
+                    }
+                  }
+                } else {
+                  throw new Error("This is not supported yet.");
+                }
+
+                playerStates[mint.toBase58()].itemsEquipped.push(
+                  itemClassMint.toBase58()
+                );
+
+                await writeOutState({
+                  ...this.turnToConfig(args),
+                  playerStates,
+                });
+              } else {
+                if (!myValue)
+                  console.log(
+                    "This NFT doesnt have",
+                    bodyPartLayers[j],
+                    "defined on it's attribute list, skipping"
+                  );
+                else if (!itemClassLookup[bodyPartLayers[j]][myValue]) {
+                  console.log(
+                    "The value",
+                    myValue,
+                    "is not on the itemClassLookup list meaning you didnt intend it to be wearable and a class for it was never made in step 3. Skipping."
+                  );
+                }
+                playerStates[mint.toBase58()].itemsEquipped.push("NA");
+                await writeOutState({
+                  ...this.turnToConfig(args),
+                  playerStates,
+                });
               }
-              playerStates[mint.toBase58()].itemsEquipped.push("NA");
-              await writeOutState({ ...this.turnToConfig(args), playerStates });
             }
           }
-        }
 
-        if (
-          playerStates[mint.toBase58()].itemsAdded.length !=
-          playerStates[mint.toBase58()].itemsEquipped.length
-        ) {
-          throw new Error(
-            "At this stage, items added should equal number of items equipped"
-          );
-        }
+          if (
+            playerStates[mint.toBase58()].itemsAdded.length !=
+            playerStates[mint.toBase58()].itemsEquipped.length
+          ) {
+            throw new Error(
+              "At this stage, items added should equal number of items equipped"
+            );
+          }
 
-        if (playerStates[mint.toBase58()].state == MintState.Loaded) {
-          console.log(
-            "Performing a check with 10s interval to see if the items equipped on chain match what we think we have. We cannot proceed until we know for sure."
-          );
-          await sleep(15000);
-          let player;
-          let tries = 0;
-          do {
-            player = await this.player.client.account.player.fetch(playerPDA);
-            tries++;
-            console.log("Try", tries);
+          if (playerStates[mint.toBase58()].state == MintState.Loaded) {
+            console.log(
+              "Performing a check to see if the items equipped on chain match what we think we have. We cannot proceed until we know for sure."
+            );
+            let player = await this.player.client.account.player.fetch(
+              playerPDA
+            );
             if (
+              //@ts-ignore
               player.equippedItems.length <
               playerStates[mint.toBase58()].itemsEquipped.filter(
                 (a) => a != "NA"
               ).length
             ) {
-              this.player = await reloadPlayer();
-              await sleep(20000);
+              playerStates[mint.toBase58()].itemsEquipped = [];
+              await writeOutState({ ...this.turnToConfig(args), playerStates });
+
+              throw new Error(
+                `Failed to equip items, mint ${mint} cannot move forward. Resetting items equipped to try again next run.`
+              );
+            } else {
+              playerStates[mint.toBase58()].state =
+                MintState.FullyLoadedAndEquipped;
+              await writeOutState({ ...this.turnToConfig(args), playerStates });
             }
-          } while (
-            player.equippedItems.length <
-              playerStates[mint.toBase58()].itemsEquipped.filter(
-                (a) => a != "NA"
-              ).length &&
-            tries < 5
-          );
 
-          if (tries >= 5) {
-            throw new Error(
-              `Failed to equip items, mint ${mint} cannot move forward`
+            console.log(
+              `Player for mint ${mint.toBase58()} is in it's final state and ready to go.`
             );
-          } else {
-            playerStates[mint.toBase58()].state =
-              MintState.FullyLoadedAndEquipped;
-            await writeOutState({ ...this.turnToConfig(args), playerStates });
           }
+        } catch (e) {
+          console.error(e);
+          console.log(
+            "Player",
+            mint.toBase58(),
+            "Failed. You marked retries true. Retrying."
+          );
+          i--;
         }
-
-        console.log(
-          `Player for mint ${mint} is in it's final state and ready to go.`
-        );
       }
     }
   }
