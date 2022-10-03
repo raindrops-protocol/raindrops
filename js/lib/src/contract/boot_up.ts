@@ -35,7 +35,13 @@ import { RAIN_PAYMENT_AMOUNT } from "../constants/player";
 import { getAccountsByFirstCreatorAddress } from "../utils/candyMachine";
 import { getAccountsByCollectionAddress } from "../utils/collection";
 const {
-  PDA: { getAtaForMint, getItemPDA, getMetadata, getPlayerPDA },
+  PDA: {
+    getAtaForMint,
+    getItemPDA,
+    getMetadata,
+    getPlayerPDA,
+    getPlayerItemAccount,
+  },
 } = Utils;
 
 export enum Scope {
@@ -76,6 +82,7 @@ export interface BootUpArgs {
   namespaceName: string;
   allowTokenHolder: boolean;
   skipUpdates: boolean;
+  runDuplicateChecks: boolean;
   // Nested set of URLs for each trait value.
   itemClassLookup: Record<
     string,
@@ -350,6 +357,7 @@ export class BootUp {
       existingClassDef: args.existingClassDef,
       existingItemClassDef: args.existingItemClassDef,
       skipUpdates: args.skipUpdates,
+      runDuplicateChecks: args.runDuplicateChecks,
       redoFailures: args.redoFailures,
       itemsName: args.itemsName,
       existingCollectionForItems: args.existingCollectionForItems,
@@ -1092,6 +1100,123 @@ export class BootUp {
     }
   }
 
+  async runDuplicateChecks(
+    mint: PublicKey,
+    json: any,
+    player: any,
+    args: BootUpArgs
+  ) {
+    const {
+      existingClassDef,
+      index,
+      itemIndex,
+      bodyPartLayers,
+      itemClassLookup,
+      itemsWillBeSFTs,
+      playerStates,
+    } = args;
+    const wallet = (this.player.client.provider as AnchorProvider).wallet
+      .publicKey;
+    console.log(
+      "Running duplicate checks. Removing all copies of tokens recorded to be on itemsEquipped. Use this feature at your peril."
+    );
+    if (
+      player.itemsInBackpack.toNumber() >
+      playerStates[mint.toBase58()].itemsAdded.filter((i) => i != "NA").length
+    ) {
+      console.log(
+        "!!!!!!! There is a mismatch",
+        //@ts-ignore
+        player.itemsInBackpack.toNumber(),
+        " in backpack vs ",
+        playerStates[mint.toBase58()].itemsAdded.filter((i) => i != "NA").length
+      );
+      for (let j = 0; j < bodyPartLayers.length; j++) {
+        const myValue = json.attributes.find(
+          (a) => a.trait_type == bodyPartLayers[j]
+        )?.value;
+        if (myValue && itemClassLookup[bodyPartLayers[j]][myValue]) {
+          const itemClassMint = new web3.PublicKey(
+            itemClassLookup[bodyPartLayers[j]][myValue].existingClassDef.mint
+          );
+
+          if (itemsWillBeSFTs) {
+            let currBalance = 1;
+            try {
+              const player = (await getPlayerPDA(mint, index))[0];
+              const item = (
+                await getItemPDA(itemClassMint, itemIndex.add(new BN(1)))
+              )[0];
+              const playerAcct = (
+                await getPlayerItemAccount({
+                  item,
+                  player,
+                })
+              )[0];
+              currBalance = (
+                await this.player.client.provider.connection.getTokenAccountBalance(
+                  playerAcct
+                )
+              ).value.uiAmount;
+            } catch (e) {
+              console.error(e);
+              console.log(
+                "Failed to get token balance of player token acct, assuming 1"
+              );
+            }
+            if (currBalance > 1) {
+              console.log(
+                `Removing item of class mint ${itemClassMint.toBase58()}, which represents ${
+                  bodyPartLayers[j]
+                }`
+              );
+              try {
+                await (
+                  await this.player.removeItem(
+                    {
+                      index: index,
+                      removeItemPermissivenessToUse:
+                        existingClassDef.updatePermissivenessToUse,
+                      playerMint: mint,
+                      amount: new BN(1),
+                      itemIndex: itemIndex.add(new BN(1)), // item, not item class, so add 1 according to our convention
+                    },
+                    {
+                      itemMint: itemClassMint, // for sfts, is the same
+                      metadataUpdateAuthority: wallet,
+                    },
+                    {
+                      itemProgram: this.item,
+                      playerClassMint: new web3.PublicKey(
+                        existingClassDef.mint
+                      ),
+                      itemClassMint: itemClassMint,
+                    }
+                  )
+                ).rpc();
+              } catch (e) {
+                console.error(e);
+                console.log(
+                  "Does not appear this item is present in the backpack."
+                );
+              }
+            } else {
+              console.log(
+                "Balance is ",
+                currBalance,
+                "which means no removal."
+              );
+            }
+          } else {
+            throw new Error("No support for NFTs yet");
+          }
+        }
+      }
+    } else {
+      console.log("There is item match, no check to be done here.");
+    }
+  }
+
   async createPlayers(args: BootUpArgs) {
     const {
       existingClassDef,
@@ -1107,7 +1232,7 @@ export class BootUp {
       reloadPlayer,
       skipUpdates,
       redoFailures,
-      env,
+      runDuplicateChecks,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
       .publicKey;
@@ -1125,7 +1250,7 @@ export class BootUp {
         (playerStates[mint.toBase58()].state as MintState) ==
           MintState.FullyLoadedAndEquipped
       ) {
-        if (!skipUpdates) {
+        if (!skipUpdates || runDuplicateChecks) {
           const playerPDA = (await getPlayerPDA(mint, index))[0];
           const metadata = await getMetadata(mint);
           const metadataAccount =
@@ -1137,35 +1262,46 @@ export class BootUp {
 
           console.log("Fetched ", metadataObj.data.uri);
 
-          await this.player.client.account.player.fetch(playerPDA);
+          const player = await this.player.client.account.player.fetch(
+            playerPDA
+          );
           console.log(
             "Player exists and is in it's final state already. Updating player permissionlessly."
           );
-          try {
-            await (
-              await this.player.updatePlayer(
-                {
-                  index: index,
-                  classIndex: index,
-                  updatePermissivenessToUse:
-                    existingClassDef.updatePermissivenessToUse,
-                  playerClassMint: new web3.PublicKey(existingClassDef.mint),
-                  playerMint: mint,
-                  newData: null,
-                },
-                {
-                  metadataUpdateAuthority: wallet,
-                },
-                {
-                  permissionless: true,
-                }
-              )
-            ).rpc();
-          } catch (e) {
-            if (e.toString().match("Timed")) {
-              console.log("Timeout detected but ignoring");
-            } else {
-              throw e;
+
+          if (runDuplicateChecks) {
+            const json = (await (
+              await fetch(metadataObj.data.uri)
+            ).json()) as any;
+            await this.runDuplicateChecks(mint, json, player, args);
+          }
+          if (!skipUpdates) {
+            try {
+              await (
+                await this.player.updatePlayer(
+                  {
+                    index: index,
+                    classIndex: index,
+                    updatePermissivenessToUse:
+                      existingClassDef.updatePermissivenessToUse,
+                    playerClassMint: new web3.PublicKey(existingClassDef.mint),
+                    playerMint: mint,
+                    newData: null,
+                  },
+                  {
+                    metadataUpdateAuthority: wallet,
+                  },
+                  {
+                    permissionless: true,
+                  }
+                )
+              ).rpc();
+            } catch (e) {
+              if (e.toString().match("Timed")) {
+                console.log("Timeout detected but ignoring");
+              } else {
+                throw e;
+              }
             }
           }
         } else {
@@ -1750,6 +1886,50 @@ export class BootUp {
                   } catch (e) {
                     if (e.toString().match("Timed")) {
                       console.log("Timeout detected but ignoring");
+                    } else if (
+                      e
+                        .toString()
+                        .match("caused by account: player_item_account")
+                    ) {
+                      console.log(
+                        "Looks like maybe this item never got added. Let's wait a pinch for propagation"
+                      );
+                      await sleep(20000);
+                      let player =
+                        await this.player.client.account.player.fetch(
+                          (
+                            await getPlayerPDA(
+                              new web3.PublicKey(mint),
+                              new BN(index)
+                            )
+                          )[0]
+                        );
+                      const realItems = playerStates[
+                        mint.toBase58()
+                      ].itemsAdded.filter((i) => i != "NA").length;
+
+                      if (
+                        //@ts-ignore
+                        player.itemsInBackpack.toNumber() < realItems
+                      ) {
+                        console.log(
+                          "Yep, you got fucked. Need to re-add that item."
+                        );
+                        playerStates[mint.toBase58()].itemsAdded =
+                          playerStates[mint.toBase58()].itemsEquipped;
+                        playerStates[mint.toBase58()].state = MintState.Set;
+
+                        await writeOutState({
+                          ...this.turnToConfig(args),
+                          playerStates,
+                        });
+                        throw Error("Reset this run.");
+                      } else {
+                        console.log(
+                          "Nope, you have the items. Not sure why this is fucked."
+                        );
+                        throw e;
+                      }
                     } else {
                       throw e;
                     }
@@ -1830,12 +2010,16 @@ export class BootUp {
           }
         } catch (e) {
           console.error(e);
-          console.log(
-            "Player",
-            mint.toBase58(),
-            "Failed. You marked retries true. Retrying."
-          );
-          i--;
+          if (redoFailures) {
+            console.log(
+              "Player",
+              mint.toBase58(),
+              "Failed. You marked retries true. Retrying."
+            );
+            i--;
+          } else {
+            throw e;
+          }
         }
       }
     }

@@ -3,6 +3,7 @@
     "type": 0,
     "values": ["E6rTY8yBATwCH2fykc16yS4rLmvaYdnsfZsStybEacS5"]
   },
+  "runDuplicateChecks": true,
   "playerStates": null,
   "bodyPartLayers": ["DUMPSTER", "BODY", "HEAD", "MOUTH", "GLASSES"],
   "stringLayers": ["BACKGROUND", "FUR"],
