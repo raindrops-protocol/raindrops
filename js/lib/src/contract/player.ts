@@ -506,8 +506,8 @@ export class PlayerProgram extends Program.Program {
 
     const { instructions, signers } = await this.instruction.removeItem(
       args,
-      accounts as PlayerInstruction.AddItemAccounts,
-      additionalArgs as PlayerInstruction.AddItemAdditionalArgs
+      accounts as PlayerInstruction.RemoveItemAccounts,
+      additionalArgs as PlayerInstruction.RemoveItemAdditionalArgs
     );
 
     return {
