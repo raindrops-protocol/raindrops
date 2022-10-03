@@ -14,11 +14,11 @@
       "outputs": ["format:check"]
     },
     "build": {
-      "dependsOn": ["lint:check"],
+      "dependsOn": [],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
-    "build:no-check": {
-      "dependsOn": [],
+    "build:ci": {
+      "dependsOn": ["lint:check"],
       "outputs": ["dist/**", "build/**", "target/**"]
     },
     "test": {
