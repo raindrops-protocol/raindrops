@@ -1077,7 +1077,17 @@ export class BootUp {
       if (e.toString().match("Timed")) {
         console.log("Timeout detected but ignoring");
       } else {
-        throw e;
+        console.log("Maybe player already built? Let's check.");
+        let player = await this.player.client.account.player.fetch(
+          (
+            await getPlayerPDA(new web3.PublicKey(mint), new BN(index))
+          )[0]
+        );
+        if (!player) {
+          throw e;
+        } else {
+          console.log("Player exists!");
+        }
       }
     }
   }
@@ -1561,29 +1571,76 @@ export class BootUp {
                 );
 
                 if (itemsWillBeSFTs) {
-                  await (
-                    await this.player.addItem(
-                      {
-                        index: index,
-                        addItemPermissivenessToUse:
-                          existingClassDef.updatePermissivenessToUse,
-                        playerMint: mint,
-                        amount: new BN(1),
-                        itemIndex: itemIndex.add(new BN(1)), // item, not item class, so add 1 according to our convention
-                      },
-                      {
-                        itemMint: itemClassMint, // for sfts, is the same
-                        metadataUpdateAuthority: wallet,
-                      },
-                      {
-                        itemProgram: this.item,
-                        playerClassMint: new web3.PublicKey(
-                          existingClassDef.mint
-                        ),
-                        itemClassMint: itemClassMint,
+                  try {
+                    await (
+                      await this.player.addItem(
+                        {
+                          index: index,
+                          addItemPermissivenessToUse:
+                            existingClassDef.updatePermissivenessToUse,
+                          playerMint: mint,
+                          amount: new BN(1),
+                          itemIndex: itemIndex.add(new BN(1)), // item, not item class, so add 1 according to our convention
+                        },
+                        {
+                          itemMint: itemClassMint, // for sfts, is the same
+                          metadataUpdateAuthority: wallet,
+                        },
+                        {
+                          itemProgram: this.item,
+                          playerClassMint: new web3.PublicKey(
+                            existingClassDef.mint
+                          ),
+                          itemClassMint: itemClassMint,
+                        }
+                      )
+                    ).rpc();
+                  } catch (e) {
+                    if (e.toString().match("could not find account")) {
+                      console.log(
+                        "It's likely in an earlier iteration we did add the item and now it's gone. Let's check items in backpack counter, if it's at where j is minus the NA items, then we will skip it and move on."
+                      );
+                      let player =
+                        await this.player.client.account.player.fetch(
+                          (
+                            await getPlayerPDA(
+                              new web3.PublicKey(mint),
+                              new BN(index)
+                            )
+                          )[0]
+                        );
+
+                      const itemOffset = playerStates[
+                        mint.toBase58()
+                      ].itemsMinted.filter((i) => i != "NA").length;
+                      if (
+                        //@ts-ignore
+                        player.itemsInBackpack.toNumber() >=
+                        j - itemOffset
+                      ) {
+                        console.log(
+                          "Player has",
+                          //@ts-ignore
+                          player.itemsInBackpack.toNumber(),
+                          "We are trying to add your",
+                          j - itemOffset,
+                          "th item, therefore its likely its already been added."
+                        );
+                      } else {
+                        console.log(
+                          "We are trying to add your",
+                          j - itemOffset,
+                          "but you only have ",
+                          //@ts-ignore
+                          player.itemsInBackpack.toNumber(),
+                          "in your backpack. This is bad."
+                        );
+                        throw e;
                       }
-                    )
-                  ).rpc();
+                    } else {
+                      throw e;
+                    }
+                  }
                 } else {
                   throw new Error(
                     "This is not supported yet. You'll need to transfer one NFT of this type over to the player."
