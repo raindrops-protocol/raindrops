@@ -1246,148 +1246,155 @@ export class BootUp {
                       "single"
                     );
                   }
-                  try {
-                    await this.item.createItemEscrow(
-                      {
-                        classIndex: new BN(existingClass.index),
-                        craftEscrowIndex: new BN(0),
-                        componentScope: "none",
-                        buildPermissivenessToUse:
-                          existingClass.updatePermissivenessToUse,
-                        namespaceIndex: null,
-                        itemClassMint: new web3.PublicKey(existingClass.mint),
-                        amountToMake: new BN(1),
-                        parentClassIndex: null,
-                      },
-                      {
-                        newItemMint: new web3.PublicKey(existingClass.mint),
-                        newItemToken: ata,
-                        newItemTokenHolder: wallet,
-                        parentMint: null,
-                        itemClassMint: new web3.PublicKey(existingClass.mint),
-                        metadataUpdateAuthority: wallet,
-                      },
-                      {}
-                    );
-                  } catch (e) {
-                    console.error(e);
-                    console.log("Ignoring on start item escrow");
-                  }
-                  console.log(
-                    "Attempting to start the build phase of the escrow."
-                  );
-                  try {
-                    await this.item.startItemEscrowBuildPhase(
-                      {
-                        classIndex: new BN(existingClass.index),
-                        craftEscrowIndex: new BN(0),
-                        componentScope: "none",
-                        buildPermissivenessToUse:
-                          existingClass.updatePermissivenessToUse,
-                        newItemMint: new web3.PublicKey(existingClass.mint),
-                        itemClassMint: new web3.PublicKey(existingClass.mint),
-                        amountToMake: new BN(1),
-                        originator: wallet,
-                        totalSteps: null,
-                        endNodeProof: null,
-                        parentClassIndex: null,
-                      },
-                      {
-                        newItemToken: ata,
-                        newItemTokenHolder: wallet,
-                        parentMint: null,
-                        itemClassMint: new web3.PublicKey(existingClass.mint),
-                        metadataUpdateAuthority: wallet,
-                      },
-                      {}
-                    );
-                  } catch (e) {
-                    console.error(e);
-                    console.log("Ignoring on start build phase");
-                  }
-
-                  console.log(
-                    "Attempting to end the build phase of the escrow."
-                  );
-                  try {
-                    await this.item.completeItemEscrowBuildPhase(
-                      {
-                        classIndex: new BN(existingClass.index),
-                        craftEscrowIndex: new BN(0),
-                        componentScope: "none",
-                        buildPermissivenessToUse:
-                          existingClass.updatePermissivenessToUse,
-                        itemClassMint: new web3.PublicKey(existingClass.mint),
-                        amountToMake: new BN(1),
-                        originator: wallet,
-                        parentClassIndex: null,
-                        newItemIndex: new BN(existingClass.index).add(
-                          new BN(1)
-                        ),
-                        space: new BN(250),
-                        storeMint: true,
-                        storeMetadataFields: true,
-                      },
-                      {
-                        newItemToken: ata,
-                        newItemTokenHolder: wallet,
-                        parentMint: null,
-                        itemClassMint: new web3.PublicKey(existingClass.mint),
-                        metadataUpdateAuthority: wallet,
-                        newItemMint: new PublicKey(existingClass.mint),
-                      },
-                      {}
-                    );
-                  } catch (e) {
-                    console.error(e);
-                    console.log("Ignoring on end build phase ");
-                  }
-
-                  console.log("Attempting to drain the escrow.");
-                  try {
-                    await this.item.drainItemEscrow(
-                      {
-                        classIndex: new BN(existingClass.index),
-                        craftEscrowIndex: new BN(0),
-                        componentScope: "none",
-                        itemClassMint: new web3.PublicKey(existingClass.mint),
-                        amountToMake: new BN(1),
-                        parentClassIndex: null,
-                        newItemMint: new PublicKey(existingClass.mint),
-                        newItemToken: ata,
-                      },
-                      {
-                        originator: wallet,
-                      },
-                      {}
-                    );
-                  } catch (e) {
-                    console.error(e);
-                    console.log("Ignoring on drain item escrow");
-                  }
-
-                  let tries = 0;
-                  console.log("Sleeping for 5s before beginning token check.");
-
-                  do {
-                    const ataAcct =
-                      await this.item.client.provider.connection.getAccountInfo(
-                        ata
+                  if (currBalance < 1) {
+                    try {
+                      await this.item.createItemEscrow(
+                        {
+                          classIndex: new BN(existingClass.index),
+                          craftEscrowIndex: new BN(0),
+                          componentScope: "none",
+                          buildPermissivenessToUse:
+                            existingClass.updatePermissivenessToUse,
+                          namespaceIndex: null,
+                          itemClassMint: new web3.PublicKey(existingClass.mint),
+                          amountToMake: new BN(1),
+                          parentClassIndex: null,
+                        },
+                        {
+                          newItemMint: new web3.PublicKey(existingClass.mint),
+                          newItemToken: ata,
+                          newItemTokenHolder: wallet,
+                          parentMint: null,
+                          itemClassMint: new web3.PublicKey(existingClass.mint),
+                          metadataUpdateAuthority: wallet,
+                        },
+                        {}
                       );
-                    const ataObj = AccountLayout.decode(ataAcct.data);
-                    const supply = u64.fromBuffer(ataObj.amount).toNumber();
-                    tries++;
+                    } catch (e) {
+                      console.error(e);
+                      console.log("Ignoring on start item escrow");
+                    }
                     console.log(
-                      "Try",
-                      tries,
-                      " on checking mint balance after running item build. Starting bal: ",
-                      currBalance,
-                      " Ending bal:",
-                      supply
+                      "Attempting to start the build phase of the escrow."
                     );
-                    successful = supply > currBalance;
-                    if (!successful) await sleep(10000);
-                  } while (!successful && tries < 3);
+                    try {
+                      await this.item.startItemEscrowBuildPhase(
+                        {
+                          classIndex: new BN(existingClass.index),
+                          craftEscrowIndex: new BN(0),
+                          componentScope: "none",
+                          buildPermissivenessToUse:
+                            existingClass.updatePermissivenessToUse,
+                          newItemMint: new web3.PublicKey(existingClass.mint),
+                          itemClassMint: new web3.PublicKey(existingClass.mint),
+                          amountToMake: new BN(1),
+                          originator: wallet,
+                          totalSteps: null,
+                          endNodeProof: null,
+                          parentClassIndex: null,
+                        },
+                        {
+                          newItemToken: ata,
+                          newItemTokenHolder: wallet,
+                          parentMint: null,
+                          itemClassMint: new web3.PublicKey(existingClass.mint),
+                          metadataUpdateAuthority: wallet,
+                        },
+                        {}
+                      );
+                    } catch (e) {
+                      console.error(e);
+                      console.log("Ignoring on start build phase");
+                    }
+
+                    console.log(
+                      "Attempting to end the build phase of the escrow."
+                    );
+                    try {
+                      await this.item.completeItemEscrowBuildPhase(
+                        {
+                          classIndex: new BN(existingClass.index),
+                          craftEscrowIndex: new BN(0),
+                          componentScope: "none",
+                          buildPermissivenessToUse:
+                            existingClass.updatePermissivenessToUse,
+                          itemClassMint: new web3.PublicKey(existingClass.mint),
+                          amountToMake: new BN(1),
+                          originator: wallet,
+                          parentClassIndex: null,
+                          newItemIndex: new BN(existingClass.index).add(
+                            new BN(1)
+                          ),
+                          space: new BN(250),
+                          storeMint: true,
+                          storeMetadataFields: true,
+                        },
+                        {
+                          newItemToken: ata,
+                          newItemTokenHolder: wallet,
+                          parentMint: null,
+                          itemClassMint: new web3.PublicKey(existingClass.mint),
+                          metadataUpdateAuthority: wallet,
+                          newItemMint: new PublicKey(existingClass.mint),
+                        },
+                        {}
+                      );
+                    } catch (e) {
+                      console.error(e);
+                      console.log("Ignoring on end build phase ");
+                    }
+
+                    console.log("Attempting to drain the escrow.");
+                    try {
+                      await this.item.drainItemEscrow(
+                        {
+                          classIndex: new BN(existingClass.index),
+                          craftEscrowIndex: new BN(0),
+                          componentScope: "none",
+                          itemClassMint: new web3.PublicKey(existingClass.mint),
+                          amountToMake: new BN(1),
+                          parentClassIndex: null,
+                          newItemMint: new PublicKey(existingClass.mint),
+                          newItemToken: ata,
+                        },
+                        {
+                          originator: wallet,
+                        },
+                        {}
+                      );
+                    } catch (e) {
+                      console.error(e);
+                      console.log("Ignoring on drain item escrow");
+                    }
+
+                    let tries = 0;
+                    console.log(
+                      "Sleeping for 5s before beginning token check."
+                    );
+
+                    do {
+                      const ataAcct =
+                        await this.item.client.provider.connection.getAccountInfo(
+                          ata
+                        );
+                      const ataObj = AccountLayout.decode(ataAcct.data);
+                      const supply = u64.fromBuffer(ataObj.amount).toNumber();
+                      tries++;
+                      console.log(
+                        "Try",
+                        tries,
+                        " on checking mint balance after running item build. Starting bal: ",
+                        currBalance,
+                        " Ending bal:",
+                        supply
+                      );
+                      successful = supply > currBalance;
+                      if (!successful) await sleep(10000);
+                    } while (!successful && tries < 3);
+                  } else {
+                    // if currBalance >= 1, we have enough to deploy a token!
+                    successful = true;
+                  }
                 } else {
                   throw new Error(
                     "No support for creating NFT items yet. You need to first create the NFT that is a child edition of the mint variable, then go through the escrow build process for item. Given this does not match our current business model, we will revisit soon! Why not try SFTs instead? They are more cost effective. NFT Items are only sensible for stateful items!"
