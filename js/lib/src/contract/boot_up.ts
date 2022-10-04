@@ -1262,47 +1262,54 @@ export class BootUp {
 
           console.log("Fetched ", metadataObj.data.uri);
 
-          const player = await this.player.client.account.player.fetch(
-            playerPDA
-          );
-          console.log(
-            "Player exists and is in it's final state already. Updating player permissionlessly."
-          );
+          try {
+            const player = await this.player.client.account.player.fetch(
+              playerPDA
+            );
+            console.log(
+              "Player exists and is in it's final state already. Updating player permissionlessly."
+            );
 
-          if (runDuplicateChecks) {
-            const json = (await (
-              await fetch(metadataObj.data.uri)
-            ).json()) as any;
-            await this.runDuplicateChecks(mint, json, player, args);
-          }
-          if (!skipUpdates) {
-            try {
-              await (
-                await this.player.updatePlayer(
-                  {
-                    index: index,
-                    classIndex: index,
-                    updatePermissivenessToUse:
-                      existingClassDef.updatePermissivenessToUse,
-                    playerClassMint: new web3.PublicKey(existingClassDef.mint),
-                    playerMint: mint,
-                    newData: null,
-                  },
-                  {
-                    metadataUpdateAuthority: wallet,
-                  },
-                  {
-                    permissionless: true,
-                  }
-                )
-              ).rpc();
-            } catch (e) {
-              if (e.toString().match("Timed")) {
-                console.log("Timeout detected but ignoring");
-              } else {
-                throw e;
+            if (runDuplicateChecks) {
+              const json = (await (
+                await fetch(metadataObj.data.uri)
+              ).json()) as any;
+              await this.runDuplicateChecks(mint, json, player, args);
+            }
+            if (!skipUpdates) {
+              try {
+                await (
+                  await this.player.updatePlayer(
+                    {
+                      index: index,
+                      classIndex: index,
+                      updatePermissivenessToUse:
+                        existingClassDef.updatePermissivenessToUse,
+                      playerClassMint: new web3.PublicKey(
+                        existingClassDef.mint
+                      ),
+                      playerMint: mint,
+                      newData: null,
+                    },
+                    {
+                      metadataUpdateAuthority: wallet,
+                    },
+                    {
+                      permissionless: true,
+                    }
+                  )
+                ).rpc();
+              } catch (e) {
+                if (e.toString().match("Timed")) {
+                  console.log("Timeout detected but ignoring");
+                } else {
+                  throw e;
+                }
               }
             }
+          } catch (e) {
+            console.error(e);
+            console.log("Skipping due to error.");
           }
         } else {
           console.log("Skipping updates per config file.");
@@ -1392,7 +1399,7 @@ export class BootUp {
                       "single"
                     );
                   }
-                  if (currBalance < 1) {
+                  if (currBalance < 4) {
                     try {
                       await this.item.createItemEscrow(
                         {
@@ -1538,7 +1545,7 @@ export class BootUp {
                       if (!successful) await sleep(10000);
                     } while (!successful && tries < 3);
                   } else {
-                    // if currBalance >= 1, we have enough to deploy a token!
+                    // if currBalance >= 4, we have enough to deploy a token!
                     successful = true;
                   }
                 } else {
@@ -1736,39 +1743,35 @@ export class BootUp {
                       console.log(
                         "It's likely in an earlier iteration we did add the item and now it's gone. Let's check items in backpack counter, if it's at where j is minus the NA items, then we will skip it and move on."
                       );
-                      let player =
-                        await this.player.client.account.player.fetch(
-                          (
-                            await getPlayerPDA(
-                              new web3.PublicKey(mint),
-                              new BN(index)
-                            )
-                          )[0]
-                        );
 
-                      const itemOffset = playerStates[
+                      const tokenTypesHeld = (
+                        await this.player.client.provider.connection.getTokenAccountsByOwner(
+                          playerPDA,
+                          {
+                            programId: TOKEN_PROGRAM_ID,
+                          }
+                        )
+                      ).value.length;
+
+                      const illegalItemOffset = playerStates[
                         mint.toBase58()
-                      ].itemsMinted.filter((i) => i != "NA").length;
-                      if (
-                        //@ts-ignore
-                        player.itemsInBackpack.toNumber() >=
-                        j - itemOffset
-                      ) {
+                      ].itemsMinted.filter(
+                        (item, index) => index < j && item == "NA"
+                      ).length;
+                      if (tokenTypesHeld >= j - illegalItemOffset) {
                         console.log(
                           "Player has",
-                          //@ts-ignore
-                          player.itemsInBackpack.toNumber(),
+                          tokenTypesHeld,
                           "We are trying to add your",
-                          j - itemOffset,
+                          j - illegalItemOffset,
                           "th item, therefore its likely its already been added."
                         );
                       } else {
                         console.log(
                           "We are trying to add your",
-                          j - itemOffset,
+                          j - illegalItemOffset,
                           "but you only have ",
-                          //@ts-ignore
-                          player.itemsInBackpack.toNumber(),
+                          tokenTypesHeld,
                           "in your backpack. This is bad."
                         );
                         throw e;
@@ -1895,23 +1898,24 @@ export class BootUp {
                         "Looks like maybe this item never got added. Let's wait a pinch for propagation"
                       );
                       await sleep(20000);
-                      let player =
-                        await this.player.client.account.player.fetch(
-                          (
-                            await getPlayerPDA(
-                              new web3.PublicKey(mint),
-                              new BN(index)
-                            )
-                          )[0]
-                        );
+                      const playerPDA = (
+                        await getPlayerPDA(
+                          new web3.PublicKey(mint),
+                          new BN(index)
+                        )
+                      )[0];
                       const realItems = playerStates[
                         mint.toBase58()
                       ].itemsAdded.filter((i) => i != "NA").length;
-
-                      if (
-                        //@ts-ignore
-                        player.itemsInBackpack.toNumber() < realItems
-                      ) {
+                      const tokenTypesHeld = (
+                        await this.player.client.provider.connection.getTokenAccountsByOwner(
+                          playerPDA,
+                          {
+                            programId: TOKEN_PROGRAM_ID,
+                          }
+                        )
+                      ).value.length;
+                      if (tokenTypesHeld < realItems) {
                         console.log(
                           "Yep, you got fucked. Need to re-add that item."
                         );

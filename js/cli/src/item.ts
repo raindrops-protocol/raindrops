@@ -126,7 +126,7 @@ programCommand("create_item_escrow")
           ? new web3.PublicKey(config.newItemToken)
           : null,
         newItemTokenHolder: config.newItemTokenHolder
-          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          ? new web3.PublicKey(config.newItemTokenHolder)
           : null,
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
@@ -244,7 +244,7 @@ programCommand("add_craft_item_to_escrow")
           ? new web3.PublicKey(config.newItemToken)
           : null,
         newItemTokenHolder: config.newItemTokenHolder
-          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          ? new web3.PublicKey(config.newItemTokenHolder)
           : null,
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
@@ -330,7 +330,7 @@ programCommand("remove_craft_item_from_escrow")
           ? new web3.PublicKey(config.newItemToken)
           : null,
         newItemTokenHolder: config.newItemTokenHolder
-          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          ? new web3.PublicKey(config.newItemTokenHolder)
           : null,
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
@@ -388,7 +388,7 @@ programCommand("start_item_escrow_build_phase")
           ? new web3.PublicKey(config.newItemToken)
           : null,
         newItemTokenHolder: config.newItemTokenHolder
-          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          ? new web3.PublicKey(config.newItemTokenHolder)
           : null,
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
@@ -444,7 +444,7 @@ programCommand("complete_item_escrow_build_phase")
           ? new web3.PublicKey(config.newItemToken)
           : null,
         newItemTokenHolder: config.newItemTokenHolder
-          ? new web3.PublicKey(config.config.newItemTokenHolder)
+          ? new web3.PublicKey(config.newItemTokenHolder)
           : null,
         parentMint: config.parent
           ? new web3.PublicKey(config.parent.mint)
