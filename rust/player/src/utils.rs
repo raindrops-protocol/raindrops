@@ -1941,7 +1941,7 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                 } else {
                     remaining_accounts[2].key()
                 };
-
+                msg!("Asserting signer of token holder.");
                 assert_signer(token_holder)?;
 
                 let acct = assert_is_ata(token_account, token_holder.key, &mint, None)?;
