@@ -1504,6 +1504,18 @@ export class BootUp {
           ).json()) as any;
           console.log("Fetched ", metadataObj.data.uri);
 
+          if (!json.attributes) {
+            playerStates[mint.toBase58()] = {
+              state: MintState.FullyLoadedAndEquipped,
+              itemsAdded: [],
+              itemsMinted: [],
+              itemsEquipped: [],
+            };
+            await writeOutState({ ...this.turnToConfig(args), playerStates });
+            console.log("Skipping this guy as it has no attributes.");
+            continue;
+          }
+
           if (!playerStates[mint.toBase58()]) {
             playerStates[mint.toBase58()] = {
               state: MintState.NotBuilt,
