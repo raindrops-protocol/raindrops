@@ -1258,7 +1258,14 @@ pub mod raindrops_player {
             given_account: &player.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &equip_item_permissiveness_to_use,
-            permissiveness_array: if equipping {
+            permissiveness_array: if equipping
+                || (!equipping
+                    && player_class
+                        .data
+                        .settings
+                        .unequip_item_permissiveness
+                        .is_none())
+            {
                 &player_class.data.settings.equip_item_permissiveness
             } else {
                 &player_class.data.settings.unequip_item_permissiveness
