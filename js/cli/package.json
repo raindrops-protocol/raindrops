@@ -1,6 +1,6 @@
 {
   "name": "@raindrops-protocol/raindrops-cli",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "license": "Apache-2.0",
   "bin": {
     "items-cli": "./src/item.ts",
