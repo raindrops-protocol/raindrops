@@ -319,6 +319,7 @@ export interface UpdatePlayerAccounts {
 export interface AddItemAccounts {
   itemMint: PublicKey;
   itemAccount: PublicKey;
+  payer?: PublicKey;
   itemTransferAuthority: null | Keypair;
   validationProgram: null | PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
@@ -328,6 +329,7 @@ export interface RemoveItemAccounts {
   itemMint: PublicKey;
   itemAccount: PublicKey;
   itemAccountOwner?: PublicKey;
+  payer?: PublicKey;
   validationProgram: null | PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
@@ -1145,8 +1147,9 @@ export class Instruction extends SolKitInstruction {
             playerItemAccount: (
               await getPlayerItemAccount({ item, player: playerKey })
             )[0],
-            payer: (this.program.client.provider as AnchorProvider).wallet
-              .publicKey,
+            payer:
+              accounts.payer ||
+              (this.program.client.provider as AnchorProvider).wallet.publicKey,
             systemProgram: SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
@@ -1226,8 +1229,9 @@ export class Instruction extends SolKitInstruction {
             playerItemAccount: (
               await getPlayerItemAccount({ item, player: playerKey })
             )[0],
-            payer: (this.program.client.provider as AnchorProvider).wallet
-              .publicKey,
+            payer:
+              accounts.payer ||
+              (this.program.client.provider as AnchorProvider).wallet.publicKey,
             systemProgram: SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
