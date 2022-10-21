@@ -2,7 +2,7 @@
 
 ## Guide
 
-https://docs.raindropstudios.xyz/raindrops
+https://docs.raindrops.xyz
 
 ## About
 
