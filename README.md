@@ -1,7 +1,5 @@
 # 💦 Raindrops
 
-## _NONE OF THIS CODE IS AUDITED YET USE AT YOUR OWN RISK_
-
 ## Guide
 
 https://docs.raindropstudios.xyz/raindrops
