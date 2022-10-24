@@ -5,7 +5,13 @@
   "redoFailures": true,
   "allowTokenHolder": false,
   "itemClassLookup": {
-    "BODY": { "existingClassDef": null, "address": null, "requiredBalance": 10 }
+    "BODY": {
+      "Trait": {
+        "existingClassDef": null,
+        "address": null,
+        "requiredBalance": 10
+      }
+    }
   },
   "itemImageFile": "/Users/jprince/Documents/pandaItems/",
   "itemCollectionFile": "/Users/jprince/Documents/pandaItemCollectionImage.png",
