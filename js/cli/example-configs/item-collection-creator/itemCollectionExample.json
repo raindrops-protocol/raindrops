@@ -1,0 +1,24 @@
+{
+  "itemsWillBeSFTs": true,
+  "namespaceName": "dtp",
+  "skipUpdates": true,
+  "redoFailures": true,
+  "allowTokenHolder": false,
+  "itemClassLookup": {
+    "BODY": {
+      "Trait": {
+        "existingClassDef": null,
+        "address": null,
+        "requiredBalance": 10
+      }
+    }
+  },
+  "itemImageFile": "/Users/jprince/Documents/pandaItems/",
+  "itemCollectionFile": "/Users/jprince/Documents/pandaItemCollectionImage.png",
+  "hydraWallet": "trshC9cTgL3BPXoAbp5w9UfnUMWEJx5G61vUijXPMLH",
+  "sellerFeeBasisPoints": 0,
+  "itemIndex": 0,
+  "existingItemClassDef": null,
+  "itemsName": "DTP Xmas Items",
+  "existingCollectionForItems": null
+}
