@@ -34,6 +34,7 @@ import { NamespaceProgram } from "./namespace";
 import { RAIN_PAYMENT_AMOUNT } from "../constants/player";
 import { getAccountsByFirstCreatorAddress } from "../utils/candyMachine";
 import { getAccountsByCollectionAddress } from "../utils/collection";
+import axios from "axios";
 const {
   PDA: {
     getAtaForMint,
@@ -106,6 +107,14 @@ export interface BootUpArgs {
   reloadPlayer: () => Promise<PlayerProgram>;
 }
 
+async function fetch(uri: string) {
+  return (
+    await axios({
+      method: "get",
+      url: uri,
+    })
+  ).data;
+}
 export class BootUp {
   player: PlayerProgram;
   item: ItemProgram;
@@ -1441,9 +1450,7 @@ export class BootUp {
             );
 
             if (runDuplicateChecks) {
-              const json = (await (
-                await fetch(metadataObj.data.uri)
-              ).json()) as any;
+              const json = (await fetch(metadataObj.data.uri)) as any;
               await this.runDuplicateChecks(mint, json, player, args);
             }
             if (!skipUpdates) {
@@ -1499,9 +1506,7 @@ export class BootUp {
             );
           const metadataObj = decodeMetadata(metadataAccount.data);
           console.log("Grabbed metadata obj.");
-          const json = (await (
-            await fetch(metadataObj.data.uri)
-          ).json()) as any;
+          const json = (await fetch(metadataObj.data.uri)) as any;
           console.log("Fetched ", metadataObj.data.uri);
 
           if (!json.attributes) {
