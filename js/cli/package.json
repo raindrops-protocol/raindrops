@@ -3,12 +3,12 @@
   "version": "0.1.10",
   "license": "Apache-2.0",
   "bin": {
+    "boot-up": "./src/boot_up.ts",
     "items-cli": "./src/item.ts",
     "matches-cli": "./src/matches.ts",
     "namespace-cli": "./src/namespace.ts",
     "player-cli": "./src/player.ts",
-    "staking-cli": "./src/staking.ts",
-    "boot-up": "./src/boot_up.ts"
+    "staking-cli": "./src/staking.ts"
   },
   "scripts": {
     "build": "tsc -p .",
