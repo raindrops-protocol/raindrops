@@ -2997,6 +2997,11 @@ export type RaindropsPlayer = {
       "code": 6048,
       "name": "RainTokenMintMismatch",
       "msg": "Rain token mint mismatch"
+    },
+    {
+      "code": 6049,
+      "name": "AmountMustBeGreaterThanZero",
+      "msg": "Amount must be greater than zero"
     }
   ]
 };
@@ -6000,6 +6005,11 @@ export const IDL: RaindropsPlayer = {
       "code": 6048,
       "name": "RainTokenMintMismatch",
       "msg": "Rain token mint mismatch"
+    },
+    {
+      "code": 6049,
+      "name": "AmountMustBeGreaterThanZero",
+      "msg": "Amount must be greater than zero"
     }
   ]
 };

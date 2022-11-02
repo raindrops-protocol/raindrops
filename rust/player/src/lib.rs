@@ -569,6 +569,8 @@ pub mod raindrops_player {
             transfer(context.with_signer(&[signer_seeds]), player.tokens_paid_in)?;
         }
 
+        player.tokens_paid_in = 0;
+
         let player_info = player.to_account_info();
         let snapshot: u64 = player_info.lamports();
 
@@ -763,6 +765,8 @@ pub mod raindrops_player {
             index,
             ..
         } = args;
+
+        require!(amount > 0, AmountMustBeGreaterThanZero);
 
         let player = &mut ctx.accounts.player;
         let player_class = &ctx.accounts.player_class;
@@ -1898,7 +1902,13 @@ pub struct RemoveItem<'info> {
 #[derive(Accounts)]
 #[instruction(args: ResetPlayerStatsArgs)]
 pub struct ResetPlayerStats<'info> {
-    #[account(mut)]
+    #[account(mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            args.player_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        bump=player.bump)]
     player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
@@ -1908,7 +1918,13 @@ pub struct ResetPlayerStats<'info> {
 #[derive(Accounts)]
 #[instruction(args: ToggleEquipItemArgs)]
 pub struct ToggleEquipItem<'info> {
-    #[account(mut)]
+    #[account(mut,
+        seeds=[
+            PREFIX.as_bytes(),
+            args.player_mint.key().as_ref(),
+            &args.index.to_le_bytes()
+        ],
+        bump=player.bump)]
     player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
@@ -1939,6 +1955,7 @@ pub struct ToggleEquipItem<'info> {
             item.key().as_ref(),
             player.key().as_ref()
         ],
+        constraint=player_item_account.amount >= args.amount,
         bump
     )]
     player_item_account: Box<Account<'info, TokenAccount>>,
@@ -2043,7 +2060,7 @@ pub struct BuildPlayer<'info> {
     new_player_metadata: UncheckedAccount<'info>,
     new_player_edition: UncheckedAccount<'info>,
     #[account(
-        constraint=new_player_token.mint == new_player_mint.key() && new_player_token.owner == new_player_token_holder.key(),
+        constraint=new_player_token.amount > 0 && new_player_token.mint == new_player_mint.key() && new_player_token.owner == new_player_token_holder.key(),
     )]
     new_player_token: Box<Account<'info, TokenAccount>>,
     rain_token_transfer_authority: UncheckedAccount<'info>,
@@ -2673,4 +2690,6 @@ pub enum ErrorCode {
     UnauthorizedCaller,
     #[msg("Rain token mint mismatch")]
     RainTokenMintMismatch,
+    #[msg("Amount must be greater than zero")]
+    AmountMustBeGreaterThanZero,
 }
