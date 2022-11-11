@@ -606,7 +606,7 @@ pub mod raindrops_player {
                 given_account: &player.to_account_info(),
                 remaining_accounts: ctx.remaining_accounts,
                 permissiveness_to_use: &update_permissiveness_to_use,
-                permissiveness_array: &player_class.data.settings.update_permissiveness,
+                permissiveness_array: &player_class.data.settings.instance_update_permissiveness,
                 index,
                 class_index: Some(class_index),
                 account_mint: Some(&player_mint.key()),
@@ -637,7 +637,7 @@ pub mod raindrops_player {
         let rain_token_program_account = &ctx.accounts.rain_token_program_account;
         let rain_token_mint = &ctx.accounts.rain_token_mint;
         let payer = &ctx.accounts.payer;
-
+        msg!("beginning_build.");
         let BuildPlayerArgs {
             class_index,
             player_class_mint,
