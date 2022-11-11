@@ -606,7 +606,7 @@ pub mod raindrops_player {
                 given_account: &player.to_account_info(),
                 remaining_accounts: ctx.remaining_accounts,
                 permissiveness_to_use: &update_permissiveness_to_use,
-                permissiveness_array: &player_class.data.settings.update_permissiveness,
+                permissiveness_array: &player_class.data.settings.instance_update_permissiveness,
                 index,
                 class_index: Some(class_index),
                 account_mint: Some(&player_mint.key()),
