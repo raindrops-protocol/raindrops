@@ -637,7 +637,7 @@ pub mod raindrops_player {
         let rain_token_program_account = &ctx.accounts.rain_token_program_account;
         let rain_token_mint = &ctx.accounts.rain_token_mint;
         let payer = &ctx.accounts.payer;
-
+        msg!("beginning_build.");
         let BuildPlayerArgs {
             class_index,
             player_class_mint,

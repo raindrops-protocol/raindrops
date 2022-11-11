@@ -113,6 +113,7 @@ async function getConfig(
     collectionMint: config.collectionMint
       ? new PublicKey(config.collectionMint)
       : null,
+    masterMint: config.masterMint ? new PublicKey(config.masterMint) : null,
     index: new BN(config.index),
     itemIndex: new BN(config.itemIndex),
     itemImageFile: await loadItemImageFileFromDir(config.itemImageFile),

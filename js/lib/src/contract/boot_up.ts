@@ -91,6 +91,8 @@ export interface BootUpArgs {
   >;
   itemImageFile: Record<string, Buffer>;
   collectionMint: PublicKey;
+  masterMint: PublicKey;
+  existingMasterClassDef: any;
   index: BN;
   itemIndex: BN;
   existingClassDef: any;
@@ -137,6 +139,107 @@ export class BootUp {
       .replace("/", ":");
   }
 
+  async createNewMint(
+    wallet: PublicKey,
+    name: string,
+    url: string,
+    creators?: { share: number; address: string }[]
+  ) {
+    const keypair = web3.Keypair.generate();
+
+    const ata = (await getAtaForMint(keypair.publicKey, wallet))[0];
+
+    const instructions = [
+      web3.SystemProgram.createAccount({
+        fromPubkey: (this.player.client.provider as AnchorProvider).wallet
+          .publicKey,
+        newAccountPubkey: keypair.publicKey,
+        space: MintLayout.span,
+        lamports:
+          await this.player.client.provider.connection.getMinimumBalanceForRentExemption(
+            MintLayout.span
+          ),
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      await Token.createInitMintInstruction(
+        TOKEN_PROGRAM_ID,
+        keypair.publicKey,
+        0,
+        wallet,
+        wallet
+      ),
+      createAssociatedTokenAccountInstruction(
+        ata,
+        wallet,
+        wallet,
+        keypair.publicKey
+      ),
+      Token.createMintToInstruction(
+        TOKEN_PROGRAM_ID,
+        keypair.publicKey,
+        ata,
+        wallet,
+        [],
+        1
+      ),
+      createMetadataInstruction(
+        await getMetadata(keypair.publicKey),
+        keypair.publicKey,
+        wallet,
+        wallet,
+        wallet,
+        Buffer.from(
+          serialize(
+            METADATA_SCHEMA,
+            new CreateMetadataArgs({
+              data: new DataV2({
+                name: name,
+                symbol: name.substring(0, 4),
+                uri: url,
+                sellerFeeBasisPoints: 0,
+                creators: creators?.map(
+                  (c) =>
+                    new Creator({
+                      address: c.address,
+                      verified: c.address == wallet.toBase58() ? 1 : 0,
+                      share: c.share,
+                    })
+                ),
+                collection: null,
+                uses: null,
+              }),
+              isMutable: true,
+            })
+          )
+        )
+      ),
+      createMasterEditionInstruction(
+        await getMetadata(keypair.publicKey),
+        await getEdition(keypair.publicKey),
+        keypair.publicKey,
+        wallet,
+        wallet,
+        wallet,
+        Buffer.from(
+          serialize(
+            METADATA_SCHEMA,
+            new CreateMasterEditionArgs({ maxSupply: new BN(0) })
+          )
+        )
+      ),
+    ];
+
+    await sendTransactionWithRetry(
+      this.player.client.provider.connection,
+      (this.player.client.provider as AnchorProvider).wallet,
+      instructions,
+      [keypair],
+      "single"
+    );
+
+    return keypair.publicKey;
+  }
+
   async createMainNFTClass(args: BootUpArgs) {
     const {
       // These traits will become bodyparts
@@ -149,10 +252,32 @@ export class BootUp {
       allowTokenHolder,
       existingClassDef,
       index,
+      masterMint,
       writeOutState,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
       .publicKey;
+
+    let masterMintKey = masterMint;
+
+    if (!masterMintKey) {
+      const mint = collectionMint;
+      const metadata = await getMetadata(mint);
+      const metadataAccount =
+        await this.player.client.provider.connection.getAccountInfo(metadata);
+      const metadataObj = decodeMetadata(metadataAccount.data);
+      masterMintKey = await this.createNewMint(
+        wallet,
+        "Master " + metadataObj.data.name,
+        metadataObj.data.uri,
+        [{ share: 100, address: wallet.toBase58() }]
+      );
+
+      await writeOutState({
+        ...this.turnToConfig(args),
+        masterMint: masterMintKey.toBase58(),
+      });
+    }
 
     // how do we determine if class already exists?
     // we build class off collection NFT.
@@ -171,21 +296,23 @@ export class BootUp {
             boolean: false,
             inherited: { notInherited: true },
           },
+          // relative to class
           updatePermissiveness: [
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { tokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
           instanceUpdatePermissiveness: [
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { parentTokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
+          // relative to class
           buildPermissiveness: [
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { tokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
@@ -199,7 +326,7 @@ export class BootUp {
                 ]
               : []),
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { parentTokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
@@ -213,7 +340,7 @@ export class BootUp {
                 ]
               : []),
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { parentTokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
@@ -227,7 +354,7 @@ export class BootUp {
                 ]
               : []),
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { parentTokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
@@ -267,9 +394,9 @@ export class BootUp {
       metadataUpdateAuthority: null,
       storeMint: true,
       storeMetadataFields: true,
-      mint: collectionMint.toBase58(),
+      mint: masterMintKey.toBase58(),
       index,
-      updatePermissivenessToUse: { updateAuthority: true },
+      updatePermissivenessToUse: { parentTokenHolder: true },
       namespaceRequirement: 1,
       /// Rough estimate of bytes needed for class plus buffer
       totalSpaceBytes:
@@ -280,14 +407,14 @@ export class BootUp {
     };
 
     try {
-      await this.player.fetchPlayerClass(collectionMint, index);
+      await this.player.fetchPlayerClass(masterMint, index);
       console.log("Updating player class");
       await (
         await this.player.updatePlayerClass(
           {
             classIndex: index,
             parentClassIndex: null,
-            updatePermissivenessToUse: classDef.updatePermissivenessToUse,
+            updatePermissivenessToUse: { tokenHolder: true },
             playerClassData: classDef.data,
           },
           {
@@ -311,7 +438,7 @@ export class BootUp {
             parentClassIndex: null,
             space: new BN(classDef.totalSpaceBytes),
             desiredNamespaceArraySize: classDef.namespaceRequirement,
-            updatePermissivenessToUse: classDef.updatePermissivenessToUse,
+            updatePermissivenessToUse: { updateAuthority: true },
             storeMint: classDef.storeMint,
             storeMetadataFields: classDef.storeMetadataFields,
             playerClassData: classDef.data,
@@ -361,6 +488,7 @@ export class BootUp {
       // Nested set of URLs for each trait value.
       itemClassLookup: args.itemClassLookup,
       collectionMint: args.collectionMint.toBase58(),
+      masterMint: args.masterMint?.toBase58(),
       index: args.index.toNumber(),
       itemIndex: args.itemIndex.toNumber(),
       existingClassDef: args.existingClassDef,
@@ -447,98 +575,13 @@ export class BootUp {
         }))
       );
       console.log("Uploaded image to", firstUpload);
-
-      const keypair = web3.Keypair.generate();
-      const ata = (await getAtaForMint(keypair.publicKey, wallet))[0];
-
-      const instructions = [
-        web3.SystemProgram.createAccount({
-          fromPubkey: (this.player.client.provider as AnchorProvider).wallet
-            .publicKey,
-          newAccountPubkey: keypair.publicKey,
-          space: MintLayout.span,
-          lamports:
-            await this.player.client.provider.connection.getMinimumBalanceForRentExemption(
-              MintLayout.span
-            ),
-          programId: TOKEN_PROGRAM_ID,
-        }),
-        await Token.createInitMintInstruction(
-          TOKEN_PROGRAM_ID,
-          keypair.publicKey,
-          0,
-          wallet,
-          wallet
-        ),
-        createAssociatedTokenAccountInstruction(
-          ata,
-          wallet,
-          wallet,
-          keypair.publicKey
-        ),
-        Token.createMintToInstruction(
-          TOKEN_PROGRAM_ID,
-          keypair.publicKey,
-          ata,
-          wallet,
-          [],
-          1
-        ),
-        createMetadataInstruction(
-          await getMetadata(keypair.publicKey),
-          keypair.publicKey,
-          wallet,
-          wallet,
-          wallet,
-          Buffer.from(
-            serialize(
-              METADATA_SCHEMA,
-              new CreateMetadataArgs({
-                data: new DataV2({
-                  name: itemsName,
-                  symbol: itemsName.substring(0, 4),
-                  uri: firstUpload,
-                  sellerFeeBasisPoints: 0,
-                  creators: metadataObj.data.creators?.map(
-                    (c) =>
-                      new Creator({
-                        address: c.address,
-                        verified: c.address == wallet.toBase58() ? 1 : 0,
-                        share: c.share,
-                      })
-                  ),
-                  collection: null,
-                  uses: null,
-                }),
-                isMutable: true,
-              })
-            )
-          )
-        ),
-        createMasterEditionInstruction(
-          await getMetadata(keypair.publicKey),
-          await getEdition(keypair.publicKey),
-          keypair.publicKey,
-          wallet,
-          wallet,
-          wallet,
-          Buffer.from(
-            serialize(
-              METADATA_SCHEMA,
-              new CreateMasterEditionArgs({ maxSupply: new BN(0) })
-            )
-          )
-        ),
-      ];
-
-      await sendTransactionWithRetry(
-        this.player.client.provider.connection,
-        (this.player.client.provider as AnchorProvider).wallet,
-        instructions,
-        [keypair],
-        "single"
+      const newItemCollection = await this.createNewMint(
+        wallet,
+        itemsName,
+        firstUpload,
+        metadataObj.data.creators
       );
-      args.existingCollectionForItems = realCollectionMint = keypair.publicKey;
+      args.existingCollectionForItems = realCollectionMint = newItemCollection;
     } else {
       console.log("Collection exists.");
       realCollectionMint = existingCollectionForItems;
@@ -569,13 +612,19 @@ export class BootUp {
           },
           updatePermissiveness: [
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { tokenHolder: true },
+              inherited: { notInherited: true },
+            },
+          ],
+          instanceUpdatePermissiveness: [
+            {
+              permissivenessType: { parentTokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
           buildPermissiveness: [
             {
-              permissivenessType: { updateAuthority: true },
+              permissivenessType: { parentTokenHolder: true },
               inherited: { notInherited: true },
             },
           ],
@@ -584,12 +633,6 @@ export class BootUp {
           stakingPermissiveness: null,
           unstakingPermissiveness: null,
           childUpdatePropagationPermissiveness: [
-            {
-              childUpdatePropagationPermissivenessType: {
-                updatePermissiveness: true,
-              },
-              inherited: { notInherited: true },
-            },
             {
               childUpdatePropagationPermissivenessType: {
                 buildPermissiveness: true,
@@ -645,7 +688,7 @@ export class BootUp {
         await this.item.updateItemClass(
           {
             classIndex: new BN(itemClass.index),
-            updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
+            updatePermissivenessToUse: { tokenHolder: true },
             itemClassData: itemClass.data,
             parentClassIndex: null,
           },
@@ -675,7 +718,7 @@ export class BootUp {
             parentClassIndex: null,
             space: new BN(itemClass.totalSpaceBytes),
             desiredNamespaceArraySize: itemClass.namespaceRequirement,
-            updatePermissivenessToUse: itemClass.updatePermissivenessToUse,
+            updatePermissivenessToUse: { updateAuthority: true },
             storeMint: itemClass.storeMint,
             storeMetadataFields: itemClass.storeMetadataFields,
             itemClassData: itemClass.data,
@@ -885,7 +928,12 @@ export class BootUp {
               freeBuild: null,
               childrenMustBeEditions: null,
               builderMustBeHolder: null,
-              updatePermissiveness: [],
+              updatePermissiveness: [
+                {
+                  permissivenessType: { parentTokenHolder: true },
+                  inherited: { notInherited: true },
+                },
+              ],
               buildPermissiveness: [],
               stakingWarmUpDuration: null,
               stakingCooldownDuration: null,
@@ -901,7 +949,7 @@ export class BootUp {
                 {
                   index: 0,
                   basicItemEffects: null,
-                  usagePermissiveness: [{ updateAuthority: true }],
+                  usagePermissiveness: [{ parentTokenHolder: true }],
                   inherited: { notInherited: true },
                   validation: null,
                   callback: null,
@@ -917,15 +965,15 @@ export class BootUp {
             },
           },
           parent: {
-            index: new BN(existingItemClassDef.index),
+            index: existingItemClassDef.index,
             mint: existingItemClassDef.mint,
           },
           metadataUpdateAuthority: null,
           storeMint: true,
           storeMetadataFields: true,
           mint: itemMint,
-          index: itemIndex,
-          updatePermissivenessToUse: { updateAuthority: true },
+          index: itemIndex.toNumber(),
+          updatePermissivenessToUse: { parentTokenHolder: true },
           namespaceRequirement: 1,
           totalSpaceBytes: 300,
         };
@@ -948,7 +996,6 @@ export class BootUp {
             },
           },
         });
-
         const itemClassObj = await this.item.fetchItemClass(
           new PublicKey(itemMint),
           itemIndex
@@ -1001,8 +1048,8 @@ export class BootUp {
               parentClassIndex: new BN(existingItemClassDef.index),
               space: new BN(existingClass.totalSpaceBytes),
               desiredNamespaceArraySize: existingClass.namespaceRequirement,
-              updatePermissivenessToUse:
-                existingClass.updatePermissivenessToUse,
+              // when providing a parent, update permissiveness points at parent.
+              updatePermissivenessToUse: { tokenHolder: true },
               storeMint: existingClass.storeMint,
               storeMetadataFields: existingClass.storeMetadataFields,
               itemClassData: existingClass.data,
@@ -1068,8 +1115,10 @@ export class BootUp {
             newPlayerIndex: index,
             parentClassIndex: null,
             classIndex: index,
-            buildPermissivenessToUse:
-              existingClassDef.updatePermissivenessToUse,
+            buildPermissivenessToUse: existingClassDef.updatePermissivenessToUse
+              .parentTokenHolder
+              ? { tokenHolder: true }
+              : { updateAuthority: true },
             playerClassMint: new web3.PublicKey(existingClassDef.mint),
             space: new BN(existingClassDef.totalSpaceBytes).add(
               new BN(bodyPartLayers.length * 34)
@@ -1270,13 +1319,13 @@ export class BootUp {
             namespaceIndex: null,
             itemClassMint: new web3.PublicKey(existingClass.mint),
             amountToMake: new BN(1),
-            parentClassIndex: null,
+            parentClassIndex: new BN(existingClass.parent.index),
           },
           {
             newItemMint: new web3.PublicKey(existingClass.mint),
             newItemToken: ata,
             newItemTokenHolder: wallet,
-            parentMint: null,
+            parentMint: new web3.PublicKey(existingClass.parent.mint),
             itemClassMint: new web3.PublicKey(existingClass.mint),
             metadataUpdateAuthority: wallet,
           },
@@ -1300,12 +1349,12 @@ export class BootUp {
             originator: wallet,
             totalSteps: null,
             endNodeProof: null,
-            parentClassIndex: null,
+            parentClassIndex: new BN(existingClass.parent.index),
           },
           {
             newItemToken: ata,
             newItemTokenHolder: wallet,
-            parentMint: null,
+            parentMint: new web3.PublicKey(existingClass.parent.mint),
             itemClassMint: new web3.PublicKey(existingClass.mint),
             metadataUpdateAuthority: wallet,
           },
@@ -1327,7 +1376,7 @@ export class BootUp {
             itemClassMint: new web3.PublicKey(existingClass.mint),
             amountToMake: new BN(1),
             originator: wallet,
-            parentClassIndex: null,
+            parentClassIndex: new BN(existingClass.parent.index),
             newItemIndex: new BN(existingClass.index).add(new BN(1)),
             space: new BN(250),
             storeMint: true,
@@ -1336,7 +1385,7 @@ export class BootUp {
           {
             newItemToken: ata,
             newItemTokenHolder: wallet,
-            parentMint: null,
+            parentMint: new web3.PublicKey(existingClass.parent.mint),
             itemClassMint: new web3.PublicKey(existingClass.mint),
             metadataUpdateAuthority: wallet,
             newItemMint: new PublicKey(existingClass.mint),
@@ -1357,7 +1406,7 @@ export class BootUp {
             componentScope: "none",
             itemClassMint: new web3.PublicKey(existingClass.mint),
             amountToMake: new BN(1),
-            parentClassIndex: null,
+            parentClassIndex: new BN(existingClass.parent.index),
             newItemMint: new PublicKey(existingClass.mint),
             newItemToken: ata,
           },
