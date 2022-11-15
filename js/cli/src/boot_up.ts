@@ -116,6 +116,9 @@ async function getConfig(
     masterMint: config.masterMint ? new PublicKey(config.masterMint) : null,
     index: new BN(config.index),
     itemIndex: new BN(config.itemIndex),
+    masterMintHolder: config.masterMintHolder
+      ? new PublicKey(config.masterMintHolder)
+      : null,
     itemImageFile: await loadItemImageFileFromDir(config.itemImageFile),
     writeOutState: async (f: any) => {
       await fs.writeFileSync(

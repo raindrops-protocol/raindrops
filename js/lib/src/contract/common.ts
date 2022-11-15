@@ -18,6 +18,7 @@ export namespace ContractCommon {
     parentIndex: BN | null;
     parent: web3.PublicKey | null;
     metadataUpdateAuthority: web3.PublicKey | null;
+    parentHolderOrTokenHolder?: web3.PublicKey | undefined;
     program: Program;
   }): Promise<
     { pubkey: web3.PublicKey; isWritable: boolean; isSigner: boolean }[]
@@ -30,6 +31,7 @@ export namespace ContractCommon {
       parent,
       parentIndex,
       metadataUpdateAuthority,
+      parentHolderOrTokenHolder,
     } = args;
 
     const remainingAccounts: {
@@ -41,10 +43,13 @@ export namespace ContractCommon {
       const tokenAccount = (
         await getAtaForMint(
           tokenMint,
-          (program.provider as AnchorProvider).wallet.publicKey
+          parentHolderOrTokenHolder ||
+            (program.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
-      const tokenHolder = (program.provider as AnchorProvider).wallet.publicKey;
+      const tokenHolder =
+        parentHolderOrTokenHolder ||
+        (program.provider as AnchorProvider).wallet.publicKey;
       remainingAccounts.push({
         pubkey: tokenAccount,
         isWritable: false,
@@ -63,11 +68,13 @@ export namespace ContractCommon {
       const parentToken = (
         await getAtaForMint(
           parentMint,
-          (program.provider as AnchorProvider).wallet.publicKey
+          parentHolderOrTokenHolder ||
+            (program.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
-      const parentHolder = (program.provider as AnchorProvider).wallet
-        .publicKey;
+      const parentHolder =
+        parentHolderOrTokenHolder ||
+        (program.provider as AnchorProvider).wallet.publicKey;
       const parentClass =
         parent || (await getItemPDA(parentMint, parentIndex))[0];
 
@@ -224,6 +231,7 @@ export namespace ContractCommon {
     parentOfParentClass: web3.PublicKey | null;
     metadataUpdateAuthority: web3.PublicKey | null;
     parentUpdateAuthority: web3.PublicKey | null;
+    parentHolderOrTokenHolder?: web3.PublicKey | undefined;
     program: SolKitProgram.Program;
   }): Promise<
     { pubkey: web3.PublicKey; isWritable: boolean; isSigner: boolean }[]
@@ -239,6 +247,7 @@ export namespace ContractCommon {
       parentOfParentClassIndex,
       parentOfParentClass,
       parentUpdateAuthority,
+      parentHolderOrTokenHolder,
     } = args;
     const remainingAccounts: {
       pubkey: web3.PublicKey;
@@ -262,11 +271,13 @@ export namespace ContractCommon {
       const tokenAccount = (
         await getAtaForMint(
           parentMint,
-          (program.client.provider as AnchorProvider).wallet.publicKey
+          parentHolderOrTokenHolder ||
+            (program.client.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
-      const tokenHolder = (program.client.provider as AnchorProvider).wallet
-        .publicKey;
+      const tokenHolder =
+        parentHolderOrTokenHolder ||
+        (program.client.provider as AnchorProvider).wallet.publicKey;
       remainingAccounts.push({
         pubkey: tokenAccount,
         isWritable: false,
@@ -290,11 +301,13 @@ export namespace ContractCommon {
       const parentToken = (
         await getAtaForMint(
           parentOfParentClassMint,
-          (program.client.provider as AnchorProvider).wallet.publicKey
+          parentHolderOrTokenHolder ||
+            (program.client.provider as AnchorProvider).wallet.publicKey
         )
       )[0];
-      const parentHolder = (program.client.provider as AnchorProvider).wallet
-        .publicKey;
+      const parentHolder =
+        parentHolderOrTokenHolder ||
+        (program.client.provider as AnchorProvider).wallet.publicKey;
       const parentClass =
         parentOfParentClass ||
         (
