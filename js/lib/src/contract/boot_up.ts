@@ -43,6 +43,7 @@ const {
     getPlayerPDA,
     getPlayerItemAccount,
   },
+  Transactions: { sendSignedTransaction },
 } = Utils;
 
 export enum Scope {
@@ -99,6 +100,9 @@ export interface BootUpArgs {
   existingItemClassDef: any;
   itemsName: string;
   existingCollectionForItems: PublicKey | null;
+  signerFunc?: (
+    transactions: web3.Transaction[]
+  ) => Promise<web3.Transaction[]>;
   writeToImmutableStorage: (
     f: Buffer,
     name: string,
@@ -1096,7 +1100,7 @@ export class BootUp {
   }
 
   async tryBuildPlayer(mint: PublicKey, args: BootUpArgs) {
-    const { existingClassDef, index, bodyPartLayers, env } = args;
+    const { existingClassDef, index, bodyPartLayers, env, signerFunc } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
       .publicKey;
     console.log("Now that we have the tokens, we need to build the player.");
@@ -1109,7 +1113,7 @@ export class BootUp {
     const tokenOwner = new PublicKey(parsed.owner);
     console.log("The token owner of this mint is ", tokenOwner.toBase58());
     try {
-      await (
+      await this.runWithRemoteSigner(
         await this.player.buildPlayer(
           {
             newPlayerIndex: index,
@@ -1137,8 +1141,9 @@ export class BootUp {
             rainAmount:
               env == "mainnet-beta" ? new BN(RAIN_PAYMENT_AMOUNT) : new BN(0),
           }
-        )
-      ).rpc();
+        ),
+        signerFunc
+      );
     } catch (e) {
       if (e.toString().match("Timed")) {
         console.log("Timeout detected but ignoring");
@@ -1158,6 +1163,63 @@ export class BootUp {
     }
   }
 
+  async runWithRemoteSigner(
+    {
+      signers,
+      instructions,
+      rpc,
+    }: {
+      signers: web3.Signer[];
+      instructions: web3.TransactionInstruction[];
+      rpc?: () => Promise<{ txid: string; slot: number }>;
+    },
+    signerFunc?: (
+      transactions: web3.Transaction[]
+    ) => Promise<web3.Transaction[]>
+  ) {
+    if (!rpc || signerFunc) {
+      const wallet = (this.player.client.provider as AnchorProvider).wallet
+        .publicKey;
+      const transaction = new web3.Transaction();
+      instructions.forEach((instruction) => transaction.add(instruction));
+      transaction.recentBlockhash = (
+        await this.player.client.provider.connection.getLatestBlockhashAndContext(
+          "single"
+        )
+      ).value.blockhash;
+
+      transaction.setSigners(
+        // fee payed by the wallet owner
+        wallet,
+        ...signers.map((s) => s.publicKey)
+      );
+
+      if (signers.length > 0) {
+        transaction.partialSign(...signers);
+      }
+
+      (this.player.client.provider as AnchorProvider).wallet.signTransaction(
+        transaction
+      );
+
+      if (signerFunc) {
+        const newTxn = (await signerFunc([transaction]))[0];
+
+        return sendSignedTransaction({
+          connection: this.player.client.provider.connection,
+          signedTransaction: newTxn,
+        });
+      } else {
+        return sendSignedTransaction({
+          connection: this.player.client.provider.connection,
+          signedTransaction: transaction,
+        });
+      }
+    } else if (rpc) {
+      return await rpc();
+    }
+  }
+
   async runDuplicateChecks(
     mint: PublicKey,
     json: any,
@@ -1172,6 +1234,7 @@ export class BootUp {
       itemClassLookup,
       itemsWillBeSFTs,
       playerStates,
+      signerFunc,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
       .publicKey;
@@ -1229,7 +1292,7 @@ export class BootUp {
                 }`
               );
               try {
-                await (
+                await this.runWithRemoteSigner(
                   await this.player.removeItem(
                     {
                       index: index,
@@ -1250,8 +1313,9 @@ export class BootUp {
                       ),
                       itemClassMint: itemClassMint,
                     }
-                  )
-                ).rpc();
+                  ),
+                  signerFunc
+                );
               } catch (e) {
                 console.error(e);
                 console.log(
@@ -1277,8 +1341,10 @@ export class BootUp {
 
   async mintSFTTrait(
     itemClassMint: PublicKey,
-    existingClass: any
+    existingClass: any,
+    args: BootUpArgs
   ): Promise<boolean> {
+    const signerFunc = args.signerFunc;
     let successful = false;
 
     const wallet = (this.player.client.provider as AnchorProvider).wallet
@@ -1310,26 +1376,33 @@ export class BootUp {
     }
     if (currBalance < 4) {
       try {
-        await this.item.createItemEscrow(
+        await this.runWithRemoteSigner(
           {
-            classIndex: new BN(existingClass.index),
-            craftEscrowIndex: new BN(0),
-            componentScope: "none",
-            buildPermissivenessToUse: existingClass.updatePermissivenessToUse,
-            namespaceIndex: null,
-            itemClassMint: new web3.PublicKey(existingClass.mint),
-            amountToMake: new BN(1),
-            parentClassIndex: new BN(existingClass.parent.index),
+            instructions: await this.item.instruction.createItemEscrow(
+              {
+                classIndex: new BN(existingClass.index),
+                craftEscrowIndex: new BN(0),
+                componentScope: "none",
+                buildPermissivenessToUse:
+                  existingClass.updatePermissivenessToUse,
+                namespaceIndex: null,
+                itemClassMint: new web3.PublicKey(existingClass.mint),
+                amountToMake: new BN(1),
+                parentClassIndex: new BN(existingClass.parent.index),
+              },
+              {
+                newItemMint: new web3.PublicKey(existingClass.mint),
+                newItemToken: ata,
+                newItemTokenHolder: wallet,
+                parentMint: new web3.PublicKey(existingClass.parent.mint),
+                itemClassMint: new web3.PublicKey(existingClass.mint),
+                metadataUpdateAuthority: wallet,
+              },
+              {}
+            ),
+            signers: [],
           },
-          {
-            newItemMint: new web3.PublicKey(existingClass.mint),
-            newItemToken: ata,
-            newItemTokenHolder: wallet,
-            parentMint: new web3.PublicKey(existingClass.parent.mint),
-            itemClassMint: new web3.PublicKey(existingClass.mint),
-            metadataUpdateAuthority: wallet,
-          },
-          {}
+          signerFunc
         );
       } catch (e) {
         console.error(e);
@@ -1337,28 +1410,35 @@ export class BootUp {
       }
       console.log("Attempting to start the build phase of the escrow.");
       try {
-        await this.item.startItemEscrowBuildPhase(
+        await this.runWithRemoteSigner(
           {
-            classIndex: new BN(existingClass.index),
-            craftEscrowIndex: new BN(0),
-            componentScope: "none",
-            buildPermissivenessToUse: existingClass.updatePermissivenessToUse,
-            newItemMint: new web3.PublicKey(existingClass.mint),
-            itemClassMint: new web3.PublicKey(existingClass.mint),
-            amountToMake: new BN(1),
-            originator: wallet,
-            totalSteps: null,
-            endNodeProof: null,
-            parentClassIndex: new BN(existingClass.parent.index),
+            instructions: await this.item.instruction.startItemEscrowBuildPhase(
+              {
+                classIndex: new BN(existingClass.index),
+                craftEscrowIndex: new BN(0),
+                componentScope: "none",
+                buildPermissivenessToUse:
+                  existingClass.updatePermissivenessToUse,
+                newItemMint: new web3.PublicKey(existingClass.mint),
+                itemClassMint: new web3.PublicKey(existingClass.mint),
+                amountToMake: new BN(1),
+                originator: wallet,
+                totalSteps: null,
+                endNodeProof: null,
+                parentClassIndex: new BN(existingClass.parent.index),
+              },
+              {
+                newItemToken: ata,
+                newItemTokenHolder: wallet,
+                parentMint: new web3.PublicKey(existingClass.parent.mint),
+                itemClassMint: new web3.PublicKey(existingClass.mint),
+                metadataUpdateAuthority: wallet,
+              },
+              {}
+            ),
+            signers: [],
           },
-          {
-            newItemToken: ata,
-            newItemTokenHolder: wallet,
-            parentMint: new web3.PublicKey(existingClass.parent.mint),
-            itemClassMint: new web3.PublicKey(existingClass.mint),
-            metadataUpdateAuthority: wallet,
-          },
-          {}
+          signerFunc
         );
       } catch (e) {
         console.error(e);
@@ -1367,30 +1447,38 @@ export class BootUp {
 
       console.log("Attempting to end the build phase of the escrow.");
       try {
-        await this.item.completeItemEscrowBuildPhase(
+        await this.runWithRemoteSigner(
           {
-            classIndex: new BN(existingClass.index),
-            craftEscrowIndex: new BN(0),
-            componentScope: "none",
-            buildPermissivenessToUse: existingClass.updatePermissivenessToUse,
-            itemClassMint: new web3.PublicKey(existingClass.mint),
-            amountToMake: new BN(1),
-            originator: wallet,
-            parentClassIndex: new BN(existingClass.parent.index),
-            newItemIndex: new BN(existingClass.index).add(new BN(1)),
-            space: new BN(250),
-            storeMint: true,
-            storeMetadataFields: true,
+            instructions:
+              await this.item.instruction.completeItemEscrowBuildPhase(
+                {
+                  classIndex: new BN(existingClass.index),
+                  craftEscrowIndex: new BN(0),
+                  componentScope: "none",
+                  buildPermissivenessToUse:
+                    existingClass.updatePermissivenessToUse,
+                  itemClassMint: new web3.PublicKey(existingClass.mint),
+                  amountToMake: new BN(1),
+                  originator: wallet,
+                  parentClassIndex: new BN(existingClass.parent.index),
+                  newItemIndex: new BN(existingClass.index).add(new BN(1)),
+                  space: new BN(250),
+                  storeMint: true,
+                  storeMetadataFields: true,
+                },
+                {
+                  newItemToken: ata,
+                  newItemTokenHolder: wallet,
+                  parentMint: new web3.PublicKey(existingClass.parent.mint),
+                  itemClassMint: new web3.PublicKey(existingClass.mint),
+                  metadataUpdateAuthority: wallet,
+                  newItemMint: new PublicKey(existingClass.mint),
+                },
+                {}
+              ),
+            signers: [],
           },
-          {
-            newItemToken: ata,
-            newItemTokenHolder: wallet,
-            parentMint: new web3.PublicKey(existingClass.parent.mint),
-            itemClassMint: new web3.PublicKey(existingClass.mint),
-            metadataUpdateAuthority: wallet,
-            newItemMint: new PublicKey(existingClass.mint),
-          },
-          {}
+          signerFunc
         );
       } catch (e) {
         console.error(e);
@@ -1399,21 +1487,27 @@ export class BootUp {
 
       console.log("Attempting to drain the escrow.");
       try {
-        await this.item.drainItemEscrow(
+        await this.runWithRemoteSigner(
           {
-            classIndex: new BN(existingClass.index),
-            craftEscrowIndex: new BN(0),
-            componentScope: "none",
-            itemClassMint: new web3.PublicKey(existingClass.mint),
-            amountToMake: new BN(1),
-            parentClassIndex: new BN(existingClass.parent.index),
-            newItemMint: new PublicKey(existingClass.mint),
-            newItemToken: ata,
+            instructions: await this.item.instruction.drainItemEscrow(
+              {
+                classIndex: new BN(existingClass.index),
+                craftEscrowIndex: new BN(0),
+                componentScope: "none",
+                itemClassMint: new web3.PublicKey(existingClass.mint),
+                amountToMake: new BN(1),
+                parentClassIndex: new BN(existingClass.parent.index),
+                newItemMint: new PublicKey(existingClass.mint),
+                newItemToken: ata,
+              },
+              {
+                originator: wallet,
+              },
+              {}
+            ),
+            signers: [],
           },
-          {
-            originator: wallet,
-          },
-          {}
+          signerFunc
         );
       } catch (e) {
         console.error(e);
@@ -1461,6 +1555,7 @@ export class BootUp {
       skipUpdates,
       redoFailures,
       runDuplicateChecks,
+      signerFunc,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
       .publicKey;
@@ -1504,7 +1599,7 @@ export class BootUp {
             }
             if (!skipUpdates) {
               try {
-                await (
+                await this.runWithRemoteSigner(
                   await this.player.updatePlayer(
                     {
                       index: index,
@@ -1523,8 +1618,9 @@ export class BootUp {
                     {
                       permissionless: true,
                     }
-                  )
-                ).rpc();
+                  ),
+                  signerFunc
+                );
               } catch (e) {
                 if (e.toString().match("Timed")) {
                   console.log("Timeout detected but ignoring");
@@ -1610,7 +1706,8 @@ export class BootUp {
                 if (itemsWillBeSFTs) {
                   successful = await this.mintSFTTrait(
                     itemClassMint,
-                    existingClass
+                    existingClass,
+                    args
                   );
                 } else {
                   throw new Error(
@@ -1709,7 +1806,7 @@ export class BootUp {
               );
             }
 
-            await (
+            await this.runWithRemoteSigner(
               await this.player.updatePlayer(
                 {
                   index: index,
@@ -1746,8 +1843,9 @@ export class BootUp {
                 {
                   permissionless: false,
                 }
-              )
-            ).rpc();
+              ),
+              signerFunc
+            );
 
             playerStates[mint.toBase58()].state = MintState.Set;
             await writeOutState({ ...this.turnToConfig(args), playerStates });
@@ -1779,7 +1877,7 @@ export class BootUp {
 
                 if (itemsWillBeSFTs) {
                   try {
-                    await (
+                    await this.runWithRemoteSigner(
                       await this.player.addItem(
                         {
                           index: index,
@@ -1800,8 +1898,9 @@ export class BootUp {
                           ),
                           itemClassMint: itemClassMint,
                         }
-                      )
-                    ).rpc();
+                      ),
+                      signerFunc
+                    );
                   } catch (e) {
                     if (
                       e.toString().match("could not find account") ||
@@ -1836,7 +1935,11 @@ export class BootUp {
                           itemClassLookup[bodyPartLayers[j]][myValue]
                             .existingClassDef;
                         try {
-                          await this.mintSFTTrait(itemClassMint, existingClass);
+                          await this.mintSFTTrait(
+                            itemClassMint,
+                            existingClass,
+                            args
+                          );
                         } catch (e) {
                           console.log(
                             "Even though this mint threw an error, we don't want it to end control. Sleeping for a few seconds first."
@@ -1930,7 +2033,7 @@ export class BootUp {
 
                 if (itemsWillBeSFTs) {
                   try {
-                    await (
+                    await this.runWithRemoteSigner(
                       await this.player.toggleEquipItem(
                         {
                           index: index,
@@ -1956,8 +2059,9 @@ export class BootUp {
                             existingClassDef.mint
                           ),
                         }
-                      )
-                    ).rpc();
+                      ),
+                      signerFunc
+                    );
                   } catch (e) {
                     if (e.toString().match("Timed")) {
                       console.log("Timeout detected but ignoring");

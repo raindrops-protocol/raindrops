@@ -723,14 +723,16 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                         // parent class token_holder [signer]
                         // parent class [readable]
                         // parent class mint [readable] OR none if already present in the main array
-
+                        msg!("Doing parent token holder");
                         let class_token_account = &remaining_accounts[0];
                         let class_token_holder = &remaining_accounts[1];
                         let class = &remaining_accounts[2];
                         let class_mint = remaining_accounts[3].key();
 
+                        msg!("Asserting signer {:?}", class_token_holder.key());
                         assert_signer(class_token_holder)?;
 
+                        msg!("Asserting ATA {:?}", class_token_account.key());
                         let acct = assert_is_ata(
                             class_token_account,
                             class_token_holder.key,
@@ -738,10 +740,12 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                             allowed_delegate,
                         )?;
 
+                        msg!("Asserting Amount > 0 on {:?}", class_token_account.key());
                         if acct.amount == 0 {
                             return Err(error!(ErrorCode::InsufficientBalance));
                         }
 
+                        msg!("Asserting derivation of {:?}", class.key());
                         assert_derivation(
                             program_id,
                             class,
@@ -752,6 +756,11 @@ pub fn assert_permissiveness_access(args: AssertPermissivenessAccessArgs) -> Res
                             ],
                         )?;
 
+                        msg!(
+                            "Asserting class {:?} is equal to parent on {:?}",
+                            class.key(),
+                            given_account.key()
+                        );
                         assert_keys_equal(grab_parent(given_account)?, *class.key)?;
                     }
                     PermissivenessType::UpdateAuthority => {
