@@ -98,6 +98,7 @@ export interface UpdateValidForUseIfWarmupPassedOnItemArgs {
 
 export interface UpdateValidForUseIfWarmupPassedOnItemAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface UpdateValidForUseIfWarmupPassedOnItemAdditionalArgs {
@@ -124,6 +125,7 @@ export interface UseItemArgs {
 export interface UseItemAccounts {
   validationProgram: PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface UseItemAdditionalArgs {
@@ -222,12 +224,14 @@ export interface CreatePlayerClassAccounts {
   parentOfParentClassMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
   parentUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface AddItemEffectAccounts {
   itemMint: web3.PublicKey;
   callbackProgram: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface SubtractItemEffectAccounts {
@@ -235,6 +239,7 @@ export interface SubtractItemEffectAccounts {
   playerClass: PublicKey;
   item: PublicKey;
   receiver: PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface SubtractItemEffectAdditionalArgs {
@@ -252,11 +257,13 @@ export interface AddItemEffectAdditionalArgs {
 export interface ToggleEquipItemAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
   validationProgram: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface ResetPlayerStatsAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
   validationProgram: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface ToggleEquipItemAdditionalArgs {
@@ -276,6 +283,7 @@ export interface UpdatePlayerClassAccounts {
   parent: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface DrainPlayerClassAccounts {
@@ -283,11 +291,13 @@ export interface DrainPlayerClassAccounts {
   parent: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface DrainPlayerAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
   rainToken?: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface UpdatePlayerClassAdditionalArgs {
@@ -306,6 +316,7 @@ export interface BuildPlayerAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
   rainToken?: web3.PublicKey | null;
   rainTransferAuthority?: null | Keypair;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface BuildPlayerAdditionalArgs {
@@ -314,6 +325,7 @@ export interface BuildPlayerAdditionalArgs {
 
 export interface UpdatePlayerAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface AddItemAccounts {
@@ -323,6 +335,7 @@ export interface AddItemAccounts {
   itemTransferAuthority: null | Keypair;
   validationProgram: null | PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface RemoveItemAccounts {
@@ -332,6 +345,7 @@ export interface RemoveItemAccounts {
   payer?: PublicKey;
   validationProgram: null | PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface AddItemAdditionalArgs {
@@ -436,6 +450,7 @@ export class Instruction extends SolKitInstruction {
           parentIndex: args.parentClassIndex,
           parent: accounts.parent,
           metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+          parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
           program: this.program.client,
         });
 
@@ -483,6 +498,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: args.parentClassIndex,
         parent: accounts.parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -538,6 +554,7 @@ export class Instruction extends SolKitInstruction {
               )[0]
             : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -643,6 +660,7 @@ export class Instruction extends SolKitInstruction {
           parentIndex: args.classIndex,
           parent,
           metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+          parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
           program: this.program.client,
         });
 
@@ -685,6 +703,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: args.classIndex,
         parent: parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -738,6 +757,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -798,6 +818,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -839,6 +860,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -915,6 +937,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -985,6 +1008,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -1101,6 +1125,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -1194,6 +1219,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: additionalArgs.classIndex,
         parent,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 

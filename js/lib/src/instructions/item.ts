@@ -150,6 +150,7 @@ export class Instruction extends SolKitInstruction {
             parentIndex: args.parentClassIndex,
             parent: accounts.parent,
             metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+            parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
             program: this.program.client,
           });
 
@@ -198,6 +199,7 @@ export class Instruction extends SolKitInstruction {
               )[0]
             : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -289,6 +291,7 @@ export class Instruction extends SolKitInstruction {
               )[0]
             : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -455,6 +458,7 @@ export class Instruction extends SolKitInstruction {
               )[0]
             : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -603,6 +607,7 @@ export class Instruction extends SolKitInstruction {
               )[0]
             : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -717,6 +722,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: args.classIndex,
         parent: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -781,6 +787,7 @@ export class Instruction extends SolKitInstruction {
         parentIndex: args.classIndex,
         parent: (await getItemPDA(args.itemClassMint, args.classIndex))[0],
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -911,6 +918,7 @@ export class Instruction extends SolKitInstruction {
               )[0]
             : null,
         metadataUpdateAuthority: accounts.metadataUpdateAuthority,
+        parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
 
@@ -1012,6 +1020,7 @@ export interface CreateItemClassAccounts {
   metadataUpdateAuthority: web3.PublicKey | null;
   parentUpdateAuthority: web3.PublicKey | null;
   mintAuthority?: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface CreateItemClassAdditionalArgs {}
@@ -1028,6 +1037,7 @@ export interface UpdateItemClassAccounts {
   parent: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface UpdateItemClassAdditionalArgs {
@@ -1053,6 +1063,7 @@ export interface CreateItemEscrowAccounts {
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
   mintAuthority?: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface CreateItemEscrowAdditionalArgs {}
@@ -1079,6 +1090,7 @@ export interface CompleteItemEscrowBuildPhaseAccounts {
   newItemTokenHolder: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface CompleteItemEscrowBuildPhaseAdditionalArgs {}
@@ -1094,7 +1106,9 @@ export interface DeactivateItemEscrowArgs {
   newItemToken: web3.PublicKey;
 }
 
-export interface DeactivateItemEscrowAccounts {}
+export interface DeactivateItemEscrowAccounts {
+  parentHolderOrTokenHolder?: web3.PublicKey;
+}
 
 export interface DeactivateItemEscrowAdditionalArgs {}
 
@@ -1111,6 +1125,7 @@ export interface UpdateValidForUseIfWarmupPassedArgs {
 
 export interface UpdateValidForUseIfWarmupPassedAccounts {
   itemAccount: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface UpdateValidForUseIfWarmupPassedAdditionalArgs {}
@@ -1155,6 +1170,7 @@ export interface AddCraftItemToEscrowAccounts {
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
   craftItemTransferAuthority: web3.PublicKey;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface AddCraftItemToEscrowAdditionalArgs {}
@@ -1189,6 +1205,7 @@ export interface RemoveCraftItemFromEscrowAccounts {
   newItemTokenHolder: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface RemoveCraftItemFromEscrowAdditionalArgs {}
@@ -1210,6 +1227,7 @@ export interface BeginItemActivationArgs {
 export interface BeginItemActivationAccounts {
   itemAccount: null | web3.PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface BeginItemActivationAdditionalArgs {}
@@ -1230,6 +1248,7 @@ export interface EndItemActivationAccounts {
   itemAccount: null | web3.PublicKey;
   itemTransferAuthority: null | web3.Keypair;
   metadataUpdateAuthority: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface EndItemActivationAdditionalArgs {}
@@ -1247,6 +1266,7 @@ export interface DrainItemEscrowArgs {
 
 export interface DrainItemEscrowAccounts {
   originator: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
 }
 
 export interface DrainItemEscrowAdditionalArgs {}
@@ -1270,6 +1290,7 @@ export interface StartItemEscrowBuildPhaseAccounts {
   newItemToken: web3.PublicKey | null;
   newItemTokenHolder: web3.PublicKey | null;
   parentMint: web3.PublicKey | null;
+  parentHolderOrTokenHolder?: web3.PublicKey;
   metadataUpdateAuthority: web3.PublicKey | null;
 }
 

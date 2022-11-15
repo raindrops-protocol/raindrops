@@ -100,6 +100,7 @@ export interface BootUpArgs {
   existingItemClassDef: any;
   itemsName: string;
   existingCollectionForItems: PublicKey | null;
+  masterMintHolder?: PublicKey;
   signerFunc?: (
     transactions: web3.Transaction[]
   ) => Promise<web3.Transaction[]>;
@@ -1100,7 +1101,14 @@ export class BootUp {
   }
 
   async tryBuildPlayer(mint: PublicKey, args: BootUpArgs) {
-    const { existingClassDef, index, bodyPartLayers, env, signerFunc } = args;
+    const {
+      existingClassDef,
+      index,
+      bodyPartLayers,
+      env,
+      signerFunc,
+      masterMintHolder,
+    } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
       .publicKey;
     console.log("Now that we have the tokens, we need to build the player.");
@@ -1136,6 +1144,7 @@ export class BootUp {
             newPlayerMint: mint,
             newPlayerToken: token,
             newPlayerTokenHolder: tokenOwner,
+            parentHolderOrTokenHolder: masterMintHolder,
           },
           {
             rainAmount:
@@ -1233,6 +1242,7 @@ export class BootUp {
       bodyPartLayers,
       itemClassLookup,
       itemsWillBeSFTs,
+      masterMintHolder,
       playerStates,
       signerFunc,
     } = args;
@@ -1305,6 +1315,7 @@ export class BootUp {
                     {
                       itemMint: itemClassMint, // for sfts, is the same
                       metadataUpdateAuthority: wallet,
+                      parentHolderOrTokenHolder: masterMintHolder,
                     },
                     {
                       itemProgram: this.item,
@@ -1345,6 +1356,7 @@ export class BootUp {
     args: BootUpArgs
   ): Promise<boolean> {
     const signerFunc = args.signerFunc;
+    const masterMintHolder = args.masterMintHolder;
     let successful = false;
 
     const wallet = (this.player.client.provider as AnchorProvider).wallet
@@ -1397,6 +1409,7 @@ export class BootUp {
                 parentMint: new web3.PublicKey(existingClass.parent.mint),
                 itemClassMint: new web3.PublicKey(existingClass.mint),
                 metadataUpdateAuthority: wallet,
+                parentHolderOrTokenHolder: masterMintHolder,
               },
               {}
             ),
@@ -1433,6 +1446,7 @@ export class BootUp {
                 parentMint: new web3.PublicKey(existingClass.parent.mint),
                 itemClassMint: new web3.PublicKey(existingClass.mint),
                 metadataUpdateAuthority: wallet,
+                parentHolderOrTokenHolder: masterMintHolder,
               },
               {}
             ),
@@ -1473,6 +1487,7 @@ export class BootUp {
                   itemClassMint: new web3.PublicKey(existingClass.mint),
                   metadataUpdateAuthority: wallet,
                   newItemMint: new PublicKey(existingClass.mint),
+                  parentHolderOrTokenHolder: masterMintHolder,
                 },
                 {}
               ),
@@ -1502,6 +1517,7 @@ export class BootUp {
               },
               {
                 originator: wallet,
+                parentHolderOrTokenHolder: masterMintHolder,
               },
               {}
             ),
@@ -1556,6 +1572,7 @@ export class BootUp {
       redoFailures,
       runDuplicateChecks,
       signerFunc,
+      masterMintHolder,
     } = args;
     const wallet = (this.player.client.provider as AnchorProvider).wallet
       .publicKey;
@@ -1614,6 +1631,7 @@ export class BootUp {
                     },
                     {
                       metadataUpdateAuthority: wallet,
+                      parentHolderOrTokenHolder: masterMintHolder,
                     },
                     {
                       permissionless: true,
@@ -1839,6 +1857,7 @@ export class BootUp {
                 },
                 {
                   metadataUpdateAuthority: wallet,
+                  parentHolderOrTokenHolder: masterMintHolder,
                 },
                 {
                   permissionless: false,
@@ -1890,6 +1909,7 @@ export class BootUp {
                         {
                           itemMint: itemClassMint, // for sfts, is the same
                           metadataUpdateAuthority: wallet,
+                          parentHolderOrTokenHolder: masterMintHolder,
                         },
                         {
                           itemProgram: this.item,
@@ -2052,6 +2072,7 @@ export class BootUp {
                         },
                         {
                           metadataUpdateAuthority: wallet,
+                          parentHolderOrTokenHolder: masterMintHolder,
                         },
                         {
                           itemProgram: this.item,
