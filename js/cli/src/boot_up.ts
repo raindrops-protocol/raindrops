@@ -114,6 +114,9 @@ async function getConfig(
       ? new PublicKey(config.collectionMint)
       : null,
     masterMint: config.masterMint ? new PublicKey(config.masterMint) : null,
+    updateAuthority: config.updateAuthority
+      ? new PublicKey(config.updateAuthority)
+      : null,
     index: new BN(config.index),
     itemIndex: new BN(config.itemIndex),
     masterMintHolder: config.masterMintHolder
