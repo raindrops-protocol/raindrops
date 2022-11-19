@@ -1508,28 +1508,23 @@ export class BootUp {
 
       console.log("Attempting to drain the escrow.");
       try {
-        await this.runWithRemoteSigner(
+        // No remote signer needed here as this is permissionless.
+        await this.item.drainItemEscrow(
           {
-            instructions: await this.item.instruction.drainItemEscrow(
-              {
-                classIndex: new BN(existingClass.index),
-                craftEscrowIndex: new BN(0),
-                componentScope: "none",
-                itemClassMint: new web3.PublicKey(existingClass.mint),
-                amountToMake: new BN(1),
-                parentClassIndex: new BN(existingClass.parent.index),
-                newItemMint: new PublicKey(existingClass.mint),
-                newItemToken: ata,
-              },
-              {
-                originator: wallet,
-                parentHolderOrTokenHolder: masterMintHolder,
-              },
-              {}
-            ),
-            signers: [],
+            classIndex: new BN(existingClass.index),
+            craftEscrowIndex: new BN(0),
+            componentScope: "none",
+            itemClassMint: new web3.PublicKey(existingClass.mint),
+            amountToMake: new BN(1),
+            parentClassIndex: new BN(existingClass.parent.index),
+            newItemMint: new PublicKey(existingClass.mint),
+            newItemToken: ata,
           },
-          signerFunc
+          {
+            originator: wallet,
+            parentHolderOrTokenHolder: masterMintHolder,
+          },
+          {}
         );
       } catch (e) {
         console.error(e);
@@ -1830,7 +1825,6 @@ export class BootUp {
                 )[0]
               );
             }
-
             await this.runWithRemoteSigner(
               await this.player.updatePlayer(
                 {

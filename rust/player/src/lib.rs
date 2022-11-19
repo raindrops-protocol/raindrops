@@ -746,6 +746,7 @@ pub mod raindrops_player {
         msg!("propagate_player_class_data_fields_to_player_data");
         propagate_player_class_data_fields_to_player_data(new_player, player_class);
 
+        msg!("Setting existing children up by 1");
         player_class.existing_children = player_class
             .existing_children
             .checked_add(1)
