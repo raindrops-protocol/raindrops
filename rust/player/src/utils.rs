@@ -365,16 +365,20 @@ pub fn propagate_player_class_data_fields_to_player_data(
     player: &mut Account<Player>,
     player_class: &Account<PlayerClass>,
 ) {
+    msg!("Setting namespaces");
     player.namespaces = player_class.namespaces.clone();
 
+    msg!("Setting stats uri");
     if player.data.stats_uri.is_none() {
         player.data.stats_uri = player_class.data.config.starting_stats_uri.clone()
     }
 
+    msg!("Setting category");
     if player.data.category.is_none() {
         player.data.category = player_class.data.settings.default_category.clone()
     }
 
+    msg!("Building basic stats array");
     if let Some(player_stats) = &player_class.data.config.basic_stats {
         let mut states_length = 0;
         if let Some(states) = &player.data.basic_stats {
@@ -486,6 +490,7 @@ pub fn propagate_player_class_data_fields_to_player_data(
             }
         }
 
+        msg!("Assigning basic stats");
         player.data.basic_stats = Some(new_values);
     }
 }
