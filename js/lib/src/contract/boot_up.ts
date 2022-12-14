@@ -100,6 +100,7 @@ export interface BootUpArgs {
   existingItemClassDef: any;
   itemsName: string;
   existingCollectionForItems: PublicKey | null;
+  itemCollectionFile?: Buffer;
   masterMintHolder?: PublicKey;
   updateAuthority?: PublicKey;
   signerFunc?: (
@@ -547,6 +548,7 @@ export class BootUp {
       scope: { type, values },
       itemClassLookup,
       existingCollectionForItems,
+      itemCollectionFile,
       existingItemClassDef,
       bodyPartLayers,
       itemsName,
@@ -575,7 +577,7 @@ export class BootUp {
         await this.player.client.provider.connection.getAccountInfo(metadata);
       const metadataObj = decodeMetadata(metadataAccount.data);
       const firstUpload = await writeToImmutableStorage(
-        itemImageFile[this.createItemLookupKey(bodyPartLayers[0], traits[0])],
+        itemCollectionFile ?? itemImageFile[this.createItemLookupKey(bodyPartLayers[0], traits[0])],
         itemsName,
         metadataObj.data.creators.map((c) => ({
           address: c.address,
