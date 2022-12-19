@@ -20,6 +20,11 @@ import path = require("path");
 import { Connection } from "@solana/web3.js";
 import { uploadFileToArweave } from "./upload";
 import { Keypair } from "@solana/web3.js";
+import {
+  Permissiveness,
+  InheritanceState,
+  AnchorPermissivenessType,
+} from "../../lib/src/state/common";
 
 const { PublicKey } = web3;
 
@@ -177,4 +182,36 @@ CLI.programCommandWithConfig(
   }
 );
 
+const mint = new CLI.Argument(
+  "<mint>",
+  "mint to mint sft traits from"
+).argParser((mint) => new web3.PublicKey(mint));
+const itemIndex = new CLI.Argument(
+  "<itemIndex>",
+  "the index of the raindrops item class"
+).argParser((amount) => parseInt(amount));
+const mintAmount = new CLI.Argument(
+  "<amount>",
+  "amount of SFTs to mint"
+).argParser((amount) => parseInt(amount));
+CLI.programCommandWithArgs(
+  "simple_sft_trait_mint_tokens",
+  [mint, itemIndex, mintAmount],
+  async (mint, itemIndex, mintAmount, options, _cmd) => {
+    const { keypair, env, rpcUrl } = options;
+
+    console.log(
+      `Minting sft with mint ${mint.toString()} item index ${itemIndex} with amount ${mintAmount}`
+    );
+
+    const itemClass = {
+      mint: mint.toString(),
+      updatePermissivenessToUse: { updateAuthority: true },
+      index: itemIndex,
+    };
+
+    const itemC = await getItemCollectionCreator(options);
+    await itemC.mintSFTTrait(mint, itemClass, mintAmount);
+  }
+);
 CLI.Program.parseAsync(process.argv);
