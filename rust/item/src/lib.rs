@@ -316,22 +316,30 @@ pub mod raindrops_item {
         let ed = edition.to_account_info();
         msg!("1");
 
+        let free_build_enabled = match &item_class_data.settings.free_build {
+            Some(free_build_enabled) => free_build_enabled.boolean,
+            None => false,
+        };
+
         let edition_option = if edition.data_len() > 0 {
             Some(&ed)
         } else {
-            let mint_authority_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 2];
-            let token_program_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 1];
-            assert_keys_equal(*token_program_info.key, spl_token::id())?;
-            assert_mint_authority_matches_mint(&item_mint.mint_authority, mint_authority_info)?;
-            if item_mint.mint_authority != COption::Some(item_class.key()) {
-                transfer_mint_authority(TransferMintAuthorityArgs {
-                    item_class_key: &item_class.key(),
-                    item_class_info: &item_class_info,
-                    mint_authority_info,
-                    token_program_info,
-                    mint: item_mint,
-                })?;
-            }
+            // if free build is enabled, do not transfer mint authority
+            if !free_build_enabled {
+                let mint_authority_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 2];
+                let token_program_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 1];
+                assert_keys_equal(*token_program_info.key, spl_token::id())?;
+                assert_mint_authority_matches_mint(&item_mint.mint_authority, mint_authority_info)?;
+                if item_mint.mint_authority != COption::Some(item_class.key()) {
+                    transfer_mint_authority(TransferMintAuthorityArgs {
+                        item_class_key: &item_class.key(),
+                        item_class_info: &item_class_info,
+                        mint_authority_info,
+                        token_program_info,
+                        mint: item_mint,
+                    })?;
+                }
+            };
             None
         };
         msg!("assert_valid_item_settings_for_edition_type");
@@ -1091,6 +1099,7 @@ pub mod raindrops_item {
 
             if counter == 0 {
                 if let Some(c) = item_class_data.settings.free_build {
+                    msg!("free_build detected");
                     if !c.boolean {
                         return Err(error!(ErrorCode::MustUseRealScope));
                     }

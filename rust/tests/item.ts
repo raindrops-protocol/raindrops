@@ -59,7 +59,7 @@ async function createItemClass(
     storeMetadataFields: true,
     itemClassData: {
       settings: {
-        freeBuild: null,
+        freeBuild: true,
         childrenMustBeEditions: null,
         builderMustBeHolder: null,
         updatePermissiveness: null,
