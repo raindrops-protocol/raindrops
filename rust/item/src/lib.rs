@@ -325,7 +325,7 @@ pub mod raindrops_item {
             msg!("edition exists");
             Some(&ed)
         } else {
-            // if free build is enabled, do not transfer mint authority
+            // if free build is disabled, transfer the mint_authority to the item_class
             if !free_build_enabled {
                 msg!("transferring mint_authority");
                 let mint_authority_info = &ctx.remaining_accounts[0];
