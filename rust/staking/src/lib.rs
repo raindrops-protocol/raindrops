@@ -173,8 +173,14 @@ pub mod raindrops_staking {
             index,
         )?;
 
-        require!(staking_counter.event_type == 0, IncorrectStakingCounterType);
-        require!(staking_counter.event_start > 0, StakingWarmupNotStarted);
+        require!(
+            staking_counter.event_type == 0,
+            ErrorCode::IncorrectStakingCounterType
+        );
+        require!(
+            staking_counter.event_start > 0,
+            ErrorCode::StakingWarmupNotStarted
+        );
 
         if let Some(duration) = artifact_class.data.staking_warm_up_duration {
             require!(
@@ -183,7 +189,7 @@ pub mod raindrops_staking {
                     .checked_add(duration as i64)
                     .ok_or(ErrorCode::NumericalOverflowError)?
                     <= clock.unix_timestamp,
-                StakingWarmupNotFinished
+                ErrorCode::StakingWarmupNotFinished
             )
         }
 
@@ -398,8 +404,14 @@ pub mod raindrops_staking {
             index,
         )?;
 
-        require!(staking_counter.event_type == 1, IncorrectStakingCounterType);
-        require!(staking_counter.event_start > 0, StakingCooldownNotStarted);
+        require!(
+            staking_counter.event_type == 1,
+            ErrorCode::IncorrectStakingCounterType
+        );
+        require!(
+            staking_counter.event_start > 0,
+            ErrorCode::StakingCooldownNotStarted
+        );
 
         if let Some(duration) = artifact_class.data.staking_cooldown_duration {
             require!(
@@ -408,7 +420,7 @@ pub mod raindrops_staking {
                     .checked_add(duration as i64)
                     .ok_or(ErrorCode::NumericalOverflowError)?
                     <= clock.unix_timestamp,
-                StakingCooldownNotFinished
+                ErrorCode::StakingCooldownNotFinished
             )
         }
 

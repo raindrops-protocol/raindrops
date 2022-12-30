@@ -467,7 +467,10 @@ pub mod raindrops_player {
             account_mint: Some(&player_class_mint.key()),
         })?;
 
-        require!(player_class.existing_children == 0, ChildrenStillExist);
+        require!(
+            player_class.existing_children == 0,
+            ErrorCode::ChildrenStillExist
+        );
 
         if !parent.data_is_empty()
             && parent.key() != player_class.key()
@@ -536,12 +539,18 @@ pub mod raindrops_player {
             account_mint: Some(&player_mint.key()),
         })?;
 
-        require!(player.tokens_staked == 0, UnstakeTokensFirst);
-        require!(player.equipped_items.is_empty(), RemoveEquipmentFirst);
-        require!(player.active_item_counter == 0, DeactivateAllItemsFirst);
+        require!(player.tokens_staked == 0, ErrorCode::UnstakeTokensFirst);
+        require!(
+            player.equipped_items.is_empty(),
+            ErrorCode::RemoveEquipmentFirst
+        );
+        require!(
+            player.active_item_counter == 0,
+            ErrorCode::DeactivateAllItemsFirst
+        );
         require!(
             player.items_in_backpack == 0,
-            RemoveAllItemsFromBackpackFirst
+            ErrorCode::RemoveAllItemsFromBackpackFirst
         );
 
         if player_class.existing_children > 0 {
@@ -652,7 +661,7 @@ pub mod raindrops_player {
             msg!("Paying rain fee. {}", RAIN_PAYMENT_AMOUNT);
             require!(
                 rain_token_mint.key() == Pubkey::from_str(RAIN_TOKEN_MINT).unwrap(),
-                RainTokenMintMismatch
+                ErrorCode::RainTokenMintMismatch
             );
 
             if rain_token_program_account.data_len() == 0 {
@@ -689,7 +698,7 @@ pub mod raindrops_player {
 
             require!(
                 rain_token_acct.mint == rain_token_mint.key(),
-                RainTokenMintMismatch
+                ErrorCode::RainTokenMintMismatch
             );
 
             assert_signer(rain_token_transfer_authority)?;
@@ -767,7 +776,7 @@ pub mod raindrops_player {
             ..
         } = args;
 
-        require!(amount > 0, AmountMustBeGreaterThanZero);
+        require!(amount > 0, ErrorCode::AmountMustBeGreaterThanZero);
 
         let player = &mut ctx.accounts.player;
         let player_class = &ctx.accounts.player_class;
@@ -1108,7 +1117,10 @@ pub mod raindrops_player {
         let payer = &ctx.accounts.payer;
         let token_program = &ctx.accounts.token_program;
 
-        require!(item_activation_marker.valid_for_use, NotValidForUseYet);
+        require!(
+            item_activation_marker.valid_for_use,
+            ErrorCode::NotValidForUseYet
+        );
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
@@ -1374,7 +1386,7 @@ pub mod raindrops_player {
 
         require!(
             player.active_item_counter == 0,
-            CannotResetPlayerStatsUntilItemEffectsAreRemoved
+            ErrorCode::CannotResetPlayerStatsUntilItemEffectsAreRemoved
         );
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {

@@ -102,7 +102,7 @@ pub mod raindrops_matches {
 
         let win_oracle = &mut ctx.accounts.oracle;
 
-        require!(!win_oracle.finalized, OracleAlreadyFinalized);
+        require!(!win_oracle.finalized, ErrorCode::OracleAlreadyFinalized);
 
         win_oracle.finalized = finalized;
         win_oracle.token_transfer_root = token_transfer_root;
@@ -133,7 +133,7 @@ pub mod raindrops_matches {
         match_instance.bump = *ctx.bumps.get("match_instance").unwrap();
         require!(
             match_state == MatchState::Draft || match_state == MatchState::Initialized,
-            InvalidStartingMatchState
+            ErrorCode::InvalidStartingMatchState
         );
         match_instance.state = match_state;
         if token_entry_validation.is_some() {
@@ -191,7 +191,7 @@ pub mod raindrops_matches {
                     match_state == MatchState::Initialized
                         || match_state == MatchState::Draft
                         || match_state == MatchState::Deactivated,
-                    InvalidUpdateMatchState
+                    ErrorCode::InvalidUpdateMatchState
                 )
             }
             MatchState::Initialized => {
@@ -199,28 +199,31 @@ pub mod raindrops_matches {
                     match_state == MatchState::Started
                         || match_state == MatchState::Initialized
                         || match_state == MatchState::Deactivated,
-                    InvalidUpdateMatchState
+                    ErrorCode::InvalidUpdateMatchState
                 )
             }
             MatchState::Started => {
                 require!(
                     match_state == MatchState::Deactivated || match_state == MatchState::Started,
-                    InvalidUpdateMatchState
+                    ErrorCode::InvalidUpdateMatchState
                 )
             }
             MatchState::Finalized => {
                 require!(
                     match_state == MatchState::Finalized,
-                    InvalidUpdateMatchState
+                    ErrorCode::InvalidUpdateMatchState
                 )
             }
             MatchState::PaidOut => {
-                require!(match_state == MatchState::PaidOut, InvalidUpdateMatchState)
+                require!(
+                    match_state == MatchState::PaidOut,
+                    ErrorCode::InvalidUpdateMatchState
+                )
             }
             MatchState::Deactivated => {
                 require!(
                     match_state == MatchState::Deactivated,
-                    InvalidUpdateMatchState
+                    ErrorCode::InvalidUpdateMatchState
                 )
             }
         }
@@ -255,14 +258,14 @@ pub mod raindrops_matches {
             require!(
                 clock.unix_timestamp - match_instance.win_oracle_cooldown as i64
                     > match_instance.last_oracle_check as i64,
-                OracleCooldownNotPassed
+                ErrorCode::OracleCooldownNotPassed
             );
         }
 
         require!(
             match_instance.state == MatchState::Started
                 || match_instance.state == MatchState::Initialized,
-            InvalidOracleUpdate
+            ErrorCode::InvalidOracleUpdate
         );
 
         if win_oracle_instance.finalized {
@@ -284,7 +287,7 @@ pub mod raindrops_matches {
 
         require!(
             match_instance.to_account_info().data_is_empty(),
-            MatchMustBeDrained
+            ErrorCode::MatchMustBeDrained
         );
 
         let oracle = &mut ctx.accounts.oracle;
@@ -311,12 +314,12 @@ pub mod raindrops_matches {
         require!(
             match_instance.state == MatchState::Deactivated
                 || match_instance.state == MatchState::PaidOut,
-            CannotDrainYet
+            ErrorCode::CannotDrainYet
         );
 
         require!(
             match_instance.token_types_removed == match_instance.token_types_added,
-            CannotDrainYet
+            ErrorCode::CannotDrainYet
         );
 
         let info = match_instance.to_account_info();
@@ -355,14 +358,14 @@ pub mod raindrops_matches {
                 || match_instance.state == MatchState::PaidOut
                 || match_instance.state == MatchState::Initialized
                 || match_instance.state == MatchState::Started,
-            CannotLeaveMatch
+            ErrorCode::CannotLeaveMatch
         );
 
         if match_instance.state == MatchState::Initialized
             || match_instance.state == MatchState::Started
         {
-            require!(match_instance.leave_allowed, CannotLeaveMatch);
-            require!(receiver.is_signer, ReceiverMustBeSigner)
+            require!(match_instance.leave_allowed, ErrorCode::CannotLeaveMatch);
+            require!(receiver.is_signer, ErrorCode::ReceiverMustBeSigner)
         }
 
         let match_seeds = &[
@@ -415,7 +418,7 @@ pub mod raindrops_matches {
 
         require!(
             match_instance.state == MatchState::Finalized,
-            MatchMustBeInFinalized
+            ErrorCode::MatchMustBeInFinalized
         );
 
         msg!("1");
@@ -434,12 +437,15 @@ pub mod raindrops_matches {
                 ]);
                 require!(
                     verify(&token_delta_proof, &root.root, chief_node.0),
-                    InvalidProof
+                    ErrorCode::InvalidProof
                 );
 
                 let total_node =
                     anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total.to_le_bytes()]);
-                require!(verify(&total_proof, &root.root, total_node.0), InvalidProof);
+                require!(
+                    verify(&total_proof, &root.root, total_node.0),
+                    ErrorCode::InvalidProof
+                );
                 if match_instance.current_token_transfer_index == (total - 1) as u64 {
                     match_instance.state = MatchState::PaidOut;
                 }
@@ -459,18 +465,24 @@ pub mod raindrops_matches {
 
         require!(
             tfer.token_transfer_type == TokenTransferType::Normal,
-            UsePlayerEndpoint
+            ErrorCode::UsePlayerEndpoint
         );
 
         require!(
             token_account_escrow.amount <= tfer.amount,
-            CannotDeltaMoreThanAmountPresent
+            ErrorCode::CannotDeltaMoreThanAmountPresent
         );
         msg!("3");
 
-        require!(tfer.mint == token_mint.key(), DeltaMintDoesNotMatch);
+        require!(
+            tfer.mint == token_mint.key(),
+            ErrorCode::DeltaMintDoesNotMatch
+        );
 
-        require!(tfer.from == original_sender.key(), FromDoesNotMatch);
+        require!(
+            tfer.from == original_sender.key(),
+            ErrorCode::FromDoesNotMatch
+        );
 
         let time_to_close = token_account_escrow.amount == tfer.amount;
         let match_seeds = &[
@@ -561,12 +573,12 @@ pub mod raindrops_matches {
             require!(
                 match_instance.state == MatchState::Initialized
                     || match_instance.state == MatchState::Started,
-                CannotEnterMatch
+                ErrorCode::CannotEnterMatch
             );
         } else {
             require!(
                 match_instance.state == MatchState::Initialized,
-                CannotEnterMatch
+                ErrorCode::CannotEnterMatch
             );
         }
 
@@ -577,7 +589,10 @@ pub mod raindrops_matches {
                         &[0x00],
                         &AnchorSerialize::try_to_vec(&validation)?,
                     ]);
-                    require!(verify(&proof, &root.root, chief_node.0), InvalidProof);
+                    require!(
+                        verify(&proof, &root.root, chief_node.0),
+                        ErrorCode::InvalidProof
+                    );
                     if !is_valid_validation(
                         &validation,
                         source_item_or_player_pda,
