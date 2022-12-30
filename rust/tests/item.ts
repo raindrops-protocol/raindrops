@@ -2,6 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import * as splToken from "@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import * as idls from "../../js/lib/src/idls";
+import { assert } from "chai";
 
 describe.only("item", () => {
   // Configure the client to use the local cluster.
@@ -9,15 +10,15 @@ describe.only("item", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it("create item class", async () => {
+  it("create item class with free build enabled", async () => {
     const payer = await newPayer(connection);
 
-    const itemClass = await createItemClass(payer, connection);
+    const itemClass = await createItemClassFreeBuild(payer, connection);
     console.log("itemClass: %s", itemClass.toString());
   });
 });
 
-async function createItemClass(
+async function createItemClassFreeBuild(
   payer: anchor.web3.Keypair,
   connection: anchor.web3.Connection
 ): Promise<anchor.web3.PublicKey> {
@@ -33,8 +34,11 @@ async function createItemClass(
     provider
   );
   // create item mints and metaplex accounts
-  const [itemMint, itemMetadata, _itemMasterEdition] =
-    await createMintMetadataAndMasterEditionAccounts("item", connection, payer);
+  const [itemMint, itemMetadata] = await createMintMetadataAccounts(
+    "item",
+    connection,
+    payer
+  );
 
   // item class PDA
   const itemClassIndex = new anchor.BN(0);
@@ -59,11 +63,10 @@ async function createItemClass(
     storeMetadataFields: true,
     itemClassData: {
       settings: {
-        freeBuild:
-          {
-            boolean: true,
-            inherited: { notInherited: true },
-          },
+        freeBuild: {
+          boolean: true,
+          inherited: { notInherited: true },
+        },
         childrenMustBeEditions: null,
         builderMustBeHolder: null,
         updatePermissiveness: null,
@@ -84,10 +87,10 @@ async function createItemClass(
     },
   };
 
+  // dummy account
   const noEdition = anchor.web3.Keypair.generate();
 
   const itemMintDataPre = await splToken.getMint(connection, itemMint);
-  console.log("ITEM MINT AUTHORITY PRE: %s", itemMintDataPre.mintAuthority.toString());
 
   // create item class
   const createItemClassTxSig = await itemProgram.methods
@@ -96,7 +99,6 @@ async function createItemClass(
       itemClass: itemClass,
       itemMint: itemMint,
       metadata: itemMetadata,
-      //edition: itemMasterEdition,
       edition: noEdition.publicKey,
       parent: itemClass,
       payer: provider.wallet.publicKey,
@@ -108,22 +110,21 @@ async function createItemClass(
       { pubkey: itemMetadata, isSigner: false, isWritable: false },
       { pubkey: splToken.TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ])
-    .rpc({ skipPreflight: true });
+    .rpc({ skipPreflight: false });
   console.log("createItemClassTxSig: %s", createItemClassTxSig);
 
+  // check that the item mint authority has no changed
   const itemMintDataPost = await splToken.getMint(connection, itemMint);
-  console.log("ITEM MINT AUTHORITY POST: %s", itemMintDataPost.mintAuthority.toString());
+  assert(itemMintDataPre.mintAuthority.equals(itemMintDataPost.mintAuthority));
 
   return itemClass;
 }
 
-async function createMintMetadataAndMasterEditionAccounts(
+async function createMintMetadataAccounts(
   name: string,
   connection: anchor.web3.Connection,
   payer: anchor.web3.Keypair
-): Promise<
-  [anchor.web3.PublicKey, anchor.web3.PublicKey, anchor.web3.PublicKey]
-> {
+): Promise<[anchor.web3.PublicKey, anchor.web3.PublicKey]> {
   const mint = anchor.web3.Keypair.generate();
 
   const createMintAccountIx = await anchor.web3.SystemProgram.createAccount({
@@ -201,53 +202,20 @@ async function createMintMetadataAndMasterEditionAccounts(
     ixArgs
   );
 
-  // master edition
-  const [masterEdition, _masterEditionBump] =
-    await anchor.web3.PublicKey.findProgramAddress(
-      [
-        Buffer.from("metadata"),
-        mpl.PROGRAM_ID.toBuffer(),
-        mint.publicKey.toBuffer(),
-        Buffer.from("edition"),
-      ],
-      mpl.PROGRAM_ID
-    );
-
-  const meAccounts: mpl.CreateMasterEditionV3InstructionAccounts = {
-    metadata: metadata,
-    edition: masterEdition,
-    mint: mint.publicKey,
-    updateAuthority: payer.publicKey,
-    mintAuthority: payer.publicKey,
-    payer: payer.publicKey,
-  };
-
-  const meArgs: mpl.CreateMasterEditionArgs = {
-    maxSupply: new anchor.BN(1),
-  };
-
-  const meIxArgs: mpl.CreateMasterEditionV3InstructionArgs = {
-    createMasterEditionArgs: meArgs,
-  };
-  const masterEditionIx = mpl.createCreateMasterEditionV3Instruction(
-    meAccounts,
-    meIxArgs
-  );
-
   const createMdAndMeAccountsTxSig = await connection.sendTransaction(
     new anchor.web3.Transaction().add(
       createMintAccountIx,
       mintIx,
       payerAtaIx,
       mintToIx,
-      metadataIx,
+      metadataIx
       //masterEditionIx
     ),
     [payer, mint]
   );
   await connection.confirmTransaction(createMdAndMeAccountsTxSig, "confirmed");
 
-  return [mint.publicKey, metadata, masterEdition];
+  return [mint.publicKey, metadata];
 }
 
 async function newPayer(
