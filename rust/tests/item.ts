@@ -2,9 +2,16 @@ import * as anchor from "@project-serum/anchor";
 import * as splToken from "@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import * as idls from "../../js/lib/src/idls";
+import {
+  Utils,
+  State,
+  ItemProgram,
+  Idls,
+  Instructions,
+} from "@raindrops-protocol/raindrops";
 import { assert } from "chai";
 
-describe("item", () => {
+describe.only("item", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -13,15 +20,99 @@ describe("item", () => {
   it("create item class with free build enabled", async () => {
     const payer = await newPayer(connection);
 
-    const itemClass = await createItemClassFreeBuild(payer, connection);
-    console.log("itemClass: %s", itemClass.toString());
+    await createItemClassFreeBuild(payer, connection);
+  });
+
+  it("create item class with free build enabled with client", async () => {
+    const payer = await newPayer(connection);
+
+    await createItemClassFreeBuildWithClient(payer, connection);
   });
 });
+
+async function createItemClassFreeBuildWithClient(payer: anchor.web3.Keypair, connection: anchor.web3.Connection) {
+  // create item mints and metaplex accounts
+  const [itemMint, _itemMetadata] = await createMintMetadataAccounts(
+    "item",
+    connection,
+    payer
+  );
+
+  const itemMintDataPre = await splToken.getMint(connection, itemMint);
+
+  const itemProgram = await ItemProgram.getProgramWithConfig(
+    ItemProgram,
+    {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    }
+  );
+  const itemClassIndex = new anchor.BN(0);
+
+  const itemClassData = {
+    settings: {
+      freeBuild: {
+        boolean: true,
+        inherited: { notInherited: true },
+      },
+      childrenMustBeEditions: null,
+      builderMustBeHolder: null,
+      updatePermissiveness: null,
+      buildPermissiveness: null,
+      stakingWarmUpDuration: null,
+      stakingCooldownDuration: null,
+      stakingPermissiveness: null,
+      unstakingPermissiveness: null,
+      childUpdatePropagationPermissiveness: null,
+    },
+    config: {
+      usageRoot: null,
+      usageStateRoot: null,
+      componentRoot: null,
+      usages: null,
+      components: null,
+    },
+  };
+
+  const args: Instructions.Item.CreateItemClassArgs = {
+    classIndex: new anchor.BN(itemClassIndex),
+    parentClassIndex: null,
+    parentOfParentClassIndex: null,
+    space: new anchor.BN(300),
+    desiredNamespaceArraySize: 2,
+    updatePermissivenessToUse: null,
+    storeMint: false,
+    storeMetadataFields: true,
+    itemClassData,
+  };
+
+  const accounts: Instructions.Item.CreateItemClassAccounts = {
+    itemMint: itemMint,
+    parent: null,
+    parentMint: null,
+    parentOfParentClass: null,
+    parentOfParentClassMint: null,
+    metadataUpdateAuthority: payer.publicKey,
+    parentUpdateAuthority: null,
+  };
+
+  const result = await itemProgram.createItemClass(args, accounts, {});
+  console.log("createItemClassTxSig: %s", result.txid);
+
+  // check that the item mint authority has no changed
+  const itemMintDataPost = await splToken.getMint(connection, itemMint);
+  assert(itemMintDataPre.mintAuthority.equals(itemMintDataPost.mintAuthority));
+}
 
 async function createItemClassFreeBuild(
   payer: anchor.web3.Keypair,
   connection: anchor.web3.Connection
-): Promise<anchor.web3.PublicKey> {
+) {
   const provider = new anchor.AnchorProvider(
     connection,
     new anchor.Wallet(payer),
@@ -116,8 +207,6 @@ async function createItemClassFreeBuild(
   // check that the item mint authority has no changed
   const itemMintDataPost = await splToken.getMint(connection, itemMint);
   assert(itemMintDataPre.mintAuthority.equals(itemMintDataPost.mintAuthority));
-
-  return itemClass;
 }
 
 async function createMintMetadataAccounts(
