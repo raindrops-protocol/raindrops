@@ -1,6 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { BN } from "@project-serum/anchor";
-import * as splToken from "../node_modules/@solana/spl-token";
+import * as splToken from "@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import {
   State,
@@ -11,13 +10,17 @@ import {
   Idls,
 } from "@raindrops-protocol/raindrops";
 import { assert } from "chai";
-import { Avatar } from "../target/types/avatar";
+import { Avatar, IDL } from "../target/types/avatar";
 
 describe.only("avatar", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.Avatar as anchor.Program<Avatar>;
+  const program: anchor.Program<Avatar> = new anchor.Program(
+    IDL,
+    "HPhmNTrxHWs8JzCYxx8c479Ya8wju2roKF61vTCEWQGW",
+    anchor.getProvider()
+  );
   const provider = program.provider as anchor.AnchorProvider;
   const connection = provider.connection;
 
@@ -210,8 +213,8 @@ async function createPlayer(
     space: new anchor.BN(300),
     playerClassMint: playerClassMint,
     buildPermissivenessToUse: { tokenHolder: true },
-    storeMint: false,
-    storeMetadataFields: false,
+    storeMint: true,
+    storeMetadataFields: true,
   };
 
   const buildPlayerAccounts: Instructions.Player.BuildPlayerAccounts = {
@@ -226,7 +229,7 @@ async function createPlayer(
     {
       rainAmount: new anchor.BN(Constants.Player.RAIN_PAYMENT_AMOUNT),
     };
-
+  
   const createPlayerResult = await (
     await playerProgram.buildPlayer(
       buildPlayerArgs,
