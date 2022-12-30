@@ -329,7 +329,6 @@ pub mod raindrops_item {
             if !free_build_enabled {
                 msg!("transferring mint_authority");
                 let mint_authority_info = &ctx.remaining_accounts[0];
-                //let mint_authority_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 2];
                 let token_program_info = &ctx.remaining_accounts[ctx.remaining_accounts.len() - 1];
                 assert_keys_equal(*token_program_info.key, spl_token::id())?;
                 assert_mint_authority_matches_mint(&item_mint.mint_authority, mint_authority_info)?;
