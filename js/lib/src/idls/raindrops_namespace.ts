@@ -487,9 +487,6 @@ export type RaindropsNamespace = {
     },
     {
       "name": "namespace",
-      "docs": [
-        "seed ['namespace', namespace program, mint]"
-      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -586,9 +583,6 @@ export type RaindropsNamespace = {
     },
     {
       "name": "namespaceIndex",
-      "docs": [
-        "seed ['namespace', namespace program, mint, page number]"
-      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -1663,9 +1657,6 @@ export const IDL: RaindropsNamespace = {
     },
     {
       "name": "namespace",
-      "docs": [
-        "seed ['namespace', namespace program, mint]"
-      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -1762,9 +1753,6 @@ export const IDL: RaindropsNamespace = {
     },
     {
       "name": "namespaceIndex",
-      "docs": [
-        "seed ['namespace', namespace program, mint, page number]"
-      ],
       "type": {
         "kind": "struct",
         "fields": [
