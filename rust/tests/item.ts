@@ -4,7 +4,7 @@ import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import * as idls from "../../js/lib/src/idls";
 import { assert } from "chai";
 
-describe.only("item", () => {
+describe("item", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
