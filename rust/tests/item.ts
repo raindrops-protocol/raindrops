@@ -30,7 +30,10 @@ describe("item", () => {
   });
 });
 
-async function createItemClassFreeBuildWithClient(payer: anchor.web3.Keypair, connection: anchor.web3.Connection) {
+async function createItemClassFreeBuildWithClient(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection
+) {
   // create item mints and metaplex accounts
   const [itemMint, _itemMetadata] = await createMintMetadataAccounts(
     "item",
@@ -40,18 +43,13 @@ async function createItemClassFreeBuildWithClient(payer: anchor.web3.Keypair, co
 
   const itemMintDataPre = await splToken.getMint(connection, itemMint);
 
-  const itemProgram = await ItemProgram.getProgramWithConfig(
-    ItemProgram,
-    {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemIDL,
-    }
-  );
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(payer), {
+      commitment: "confirmed",
+    }),
+    idl: Idls.ItemIDL,
+  });
   const itemClassIndex = new anchor.BN(0);
 
   const itemClassData = {
