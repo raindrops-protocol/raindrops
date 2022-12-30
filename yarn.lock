@@ -2536,7 +2536,7 @@ __metadata:
     "@project-serum/anchor": ^0.25.0
     "@project-serum/common": ^0.0.1-beta.3
     "@raindrops-protocol/raindrops": "workspace:^"
-    "@solana/spl-token": ^0.3.1
+    "@solana/spl-token": 0.3.5
     "@types/bn.js": ^5.1.0
     "@types/chai": ^4.3.1
     "@types/mocha": ^9.1.1
@@ -2708,6 +2708,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@solana/spl-token@npm:0.3.5":
+  version: 0.3.5
+  resolution: "@solana/spl-token@npm:0.3.5"
+  dependencies:
+    "@solana/buffer-layout": ^4.0.0
+    "@solana/buffer-layout-utils": ^0.2.0
+    buffer: ^6.0.3
+  peerDependencies:
+    "@solana/web3.js": ^1.47.4
+  checksum: 230c153b886c7dedb09fdd65c4fd71259d37f3c951ab6ea9c099aff875cc595fc9d44c74b4d7ffef59475f7edd7a8a00931bfec8ab2bd3141512ca3f6f828139
+  languageName: node
+  linkType: hard
+
 "@solana/spl-token@npm:^0.1.6, @solana/spl-token@npm:^0.1.8":
   version: 0.1.8
   resolution: "@solana/spl-token@npm:0.1.8"
@@ -2731,19 +2744,6 @@ __metadata:
     "@solana/web3.js": ^1.32.0
     start-server-and-test: ^1.14.0
   checksum: c07f32428985ae67f97ed95d31d9e5c6d9317d26fa81b5df6c6f664152c48c9ad08af32a20d8c6667c636bfc22950a261c5cf57457820cba16c488640169b2f6
-  languageName: node
-  linkType: hard
-
-"@solana/spl-token@npm:^0.3.1":
-  version: 0.3.5
-  resolution: "@solana/spl-token@npm:0.3.5"
-  dependencies:
-    "@solana/buffer-layout": ^4.0.0
-    "@solana/buffer-layout-utils": ^0.2.0
-    buffer: ^6.0.3
-  peerDependencies:
-    "@solana/web3.js": ^1.47.4
-  checksum: 230c153b886c7dedb09fdd65c4fd71259d37f3c951ab6ea9c099aff875cc595fc9d44c74b4d7ffef59475f7edd7a8a00931bfec8ab2bd3141512ca3f6f828139
   languageName: node
   linkType: hard
 
