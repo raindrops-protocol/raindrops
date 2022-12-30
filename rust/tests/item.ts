@@ -11,7 +11,7 @@ import {
 } from "@raindrops-protocol/raindrops";
 import { assert } from "chai";
 
-describe.only("item", () => {
+describe("item", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
