@@ -25,7 +25,7 @@
     "lint:check": "cargo clippy"
   },
   "dependencies": {
-    "@metaplex-foundation/mpl-token-metadata": "^2.2.2",
+    "@metaplex-foundation/mpl-token-metadata": "^2.5.2",
     "@project-serum/anchor": "^0.25.0",
     "@project-serum/common": "^0.0.1-beta.3",
     "@raindrops-protocol/raindrops": "workspace:^",

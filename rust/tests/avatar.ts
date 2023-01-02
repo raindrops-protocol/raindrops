@@ -66,24 +66,61 @@ describe.only("avatar", () => {
 
     const player = await createPlayer(payer, connection, playerClassMint);
 
-    const [avatar, _avatarBump] =
-      await anchor.web3.PublicKey.findProgramAddress(
-        [playerClass.toBuffer()],
-        program.programId
-      );
+    //const [avatar, _avatarBump] =
+    //  await anchor.web3.PublicKey.findProgramAddress(
+    //    [playerClass.toBuffer()],
+    //    program.programId
+    //  );
 
-    const createAvatarTxSig = await program.methods
-      .createAvatar()
+    //const createAvatarTxSig = await program.methods
+    //  .createAvatar()
+    //  .accounts({
+    //    avatar: avatar,
+    //    //playerClass: playerClass,
+    //    playerAuthority: payer.publicKey,
+    //    rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    //    systemProgram: anchor.web3.SystemProgram.programId,
+    //    playerProgram: Constants.ProgramIds.PLAYER_ID,
+    //  })
+    //  .rpc();
+    //console.log("createAvatarTxSig: %s", createAvatarTxSig);
+  });
+
+  it.only("create avatar2", async () => {
+    const playerClassMint = anchor.web3.Keypair.generate();
+    const authorityAta = splToken.getAssociatedTokenAddressSync(
+      playerClassMint.publicKey,
+      provider.publicKey
+    );
+
+    const [playerClass, _playerClassBump] = await Utils.PDA.getPlayerPDA(
+      playerClassMint.publicKey,
+      new anchor.BN(0)
+    );
+    const playerClassMetadata = await Utils.PDA.getMetadata(
+      playerClassMint.publicKey
+    );
+    const playerClassMe = await Utils.PDA.getEdition(playerClassMint.publicKey);
+
+    const createPlayerTxSig = await program.methods
+      .createPlayerClass()
       .accounts({
-        avatar: avatar,
         playerClass: playerClass,
-        playerAuthority: payer.publicKey,
+        playerClassMint: playerClassMint.publicKey,
+        playerClassMetadata: playerClassMetadata,
+        playerClassMe: playerClassMe,
+        authorityAta: authorityAta,
+        authority: provider.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
         playerProgram: Constants.ProgramIds.PLAYER_ID,
+        metadataProgram: mpl.PROGRAM_ID,
       })
-      .rpc();
-    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+      .signers([playerClassMint])
+      .rpc({ skipPreflight: false });
+    console.log("createPlayerTxSig: %s", createPlayerTxSig);
   });
 });
 
@@ -154,7 +191,7 @@ async function createPlayerClass(
       parent: null,
       parentMint: null,
       parentOfParentClassMint: null,
-      metadataUpdateAuthority: null,
+      metadataUpdateAuthority: payer.publicKey,
       parentUpdateAuthority: null,
     };
 
@@ -210,11 +247,11 @@ async function createPlayer(
     classIndex: new anchor.BN(0),
     parentClassIndex: null,
     newPlayerIndex: new anchor.BN(0),
-    space: new anchor.BN(300),
+    space: new anchor.BN(400),
     playerClassMint: playerClassMint,
     buildPermissivenessToUse: { tokenHolder: true },
-    storeMint: true,
-    storeMetadataFields: true,
+    storeMint: false,
+    storeMetadataFields: false,
   };
 
   const buildPlayerAccounts: Instructions.Player.BuildPlayerAccounts = {
@@ -222,21 +259,20 @@ async function createPlayer(
     newPlayerToken: playerAta.address,
     newPlayerTokenHolder: payer.publicKey,
     parentMint: playerClassMint,
-    metadataUpdateAuthority: payer.publicKey,
+    metadataUpdateAuthority: _playerMasterEdition,
   };
 
   const buildPlayerAdditionalArgs: Instructions.Player.BuildPlayerAdditionalArgs =
     {
       rainAmount: new anchor.BN(Constants.Player.RAIN_PAYMENT_AMOUNT),
     };
-  
-  const createPlayerResult = await (
-    await playerProgram.buildPlayer(
-      buildPlayerArgs,
-      buildPlayerAccounts,
-      buildPlayerAdditionalArgs
-    )
-  ).rpc();
+
+  const createPlayerTx = await playerProgram.buildPlayer(
+    buildPlayerArgs,
+    buildPlayerAccounts,
+    buildPlayerAdditionalArgs
+  );
+  const createPlayerResult = await createPlayerTx.rpc();
   console.log("createPlayerTxSig: %s", createPlayerResult.txid);
 
   const [player, _playerBump] = await Utils.PDA.getPlayerPDA(

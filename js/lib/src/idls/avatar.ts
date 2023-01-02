@@ -11,7 +11,7 @@ export type Avatar = {
           "isSigner": false
         },
         {
-          "name": "playerClass",
+          "name": "player",
           "isMut": false,
           "isSigner": false
         },
@@ -37,6 +37,72 @@ export type Avatar = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "createPlayerClass",
+      "accounts": [
+        {
+          "name": "playerClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "playerClassMint",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "playerClassMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "playerClassMe",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authorityAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "playerProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "metadataProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -46,7 +112,7 @@ export type Avatar = {
         "kind": "struct",
         "fields": [
           {
-            "name": "playerClass",
+            "name": "player",
             "type": "publicKey"
           }
         ]
@@ -68,7 +134,7 @@ export const IDL: Avatar = {
           "isSigner": false
         },
         {
-          "name": "playerClass",
+          "name": "player",
           "isMut": false,
           "isSigner": false
         },
@@ -94,6 +160,72 @@ export const IDL: Avatar = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "createPlayerClass",
+      "accounts": [
+        {
+          "name": "playerClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "playerClassMint",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "playerClassMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "playerClassMe",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authorityAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "playerProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "metadataProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -103,7 +235,7 @@ export const IDL: Avatar = {
         "kind": "struct",
         "fields": [
           {
-            "name": "playerClass",
+            "name": "player",
             "type": "publicKey"
           }
         ]

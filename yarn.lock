@@ -2251,6 +2251,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@metaplex-foundation/beet-solana@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@metaplex-foundation/beet-solana@npm:0.4.0"
+  dependencies:
+    "@metaplex-foundation/beet": ">=0.1.0"
+    "@solana/web3.js": ^1.56.2
+    bs58: ^5.0.0
+    debug: ^4.3.4
+  checksum: ee746c2d15f985c31d133d4ee29efbda445877473cc32aafa4b684ce3fa9a916ddff30d0e3cfef7654ff5725adff59a62a635c76bc781a6e1362c5b5d3137ed0
+  languageName: node
+  linkType: hard
+
 "@metaplex-foundation/beet@npm:>=0.1.0, @metaplex-foundation/beet@npm:^0.4.0":
   version: 0.4.0
   resolution: "@metaplex-foundation/beet@npm:0.4.0"
@@ -2259,6 +2271,17 @@ __metadata:
     bn.js: ^5.2.0
     debug: ^4.3.3
   checksum: f0cd43da9a707d88852d8b51413ab46b18b1f9fe36a80a75ec1408a2b04544785c428aee76c94d288717e8a6ed3dfc0f3989f1eb206e4e441574cc0a573149d3
+  languageName: node
+  linkType: hard
+
+"@metaplex-foundation/beet@npm:^0.7.1":
+  version: 0.7.1
+  resolution: "@metaplex-foundation/beet@npm:0.7.1"
+  dependencies:
+    ansicolors: ^0.3.2
+    bn.js: ^5.2.0
+    debug: ^4.3.3
+  checksum: f8a330073ab1a0976478e9847c0e63e32f7bee67ea6306e1f89784e8275e30daaecba7cbc5f3424e5d96c411aa3bfbc2b638c105a90067a985acdfbd33a1a287
   languageName: node
   linkType: hard
 
@@ -2281,6 +2304,21 @@ __metadata:
     bn.js: ^5.2.0
     debug: ^4.3.3
   checksum: 4ad8ce73609ce7bb6ff229c29e90ae1abd25164510af5cf997bccb77347ef1406aa209ef3f0da709287025b3cc24f85f55d83d6afeb07c5988542821ddbb3969
+  languageName: node
+  linkType: hard
+
+"@metaplex-foundation/mpl-token-metadata@npm:^2.5.2":
+  version: 2.5.2
+  resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.5.2"
+  dependencies:
+    "@metaplex-foundation/beet": ^0.7.1
+    "@metaplex-foundation/beet-solana": ^0.4.0
+    "@metaplex-foundation/cusper": ^0.0.2
+    "@solana/spl-token": ^0.3.6
+    "@solana/web3.js": ^1.66.2
+    bn.js: ^5.2.0
+    debug: ^4.3.4
+  checksum: d263ad9faf0cb653783a68f0859ef35a8347b1d4b9cfccc354f9299712238cb823823ce41bc6dc223631da516e3f539ec7e0020ab58acfa2208662fb6b4a5051
   languageName: node
   linkType: hard
 
@@ -2532,7 +2570,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@raindrops-protocol/raindrops-programs@workspace:rust"
   dependencies:
-    "@metaplex-foundation/mpl-token-metadata": ^2.2.2
+    "@metaplex-foundation/mpl-token-metadata": ^2.5.2
     "@project-serum/anchor": ^0.25.0
     "@project-serum/common": ^0.0.1-beta.3
     "@raindrops-protocol/raindrops": "workspace:^"
@@ -2747,6 +2785,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@solana/spl-token@npm:^0.3.6":
+  version: 0.3.6
+  resolution: "@solana/spl-token@npm:0.3.6"
+  dependencies:
+    "@solana/buffer-layout": ^4.0.0
+    "@solana/buffer-layout-utils": ^0.2.0
+    buffer: ^6.0.3
+  peerDependencies:
+    "@solana/web3.js": ^1.47.4
+  checksum: e213db12ff6e443d07033898457854c5659189a00fc58f7cfd1b27229fdafd26edb7f1dcdcd21f76e703a8932b465cd6f418268c04f1b00996802f9894c280e7
+  languageName: node
+  linkType: hard
+
 "@solana/wallet-adapter-base@npm:^0.9.2":
   version: 0.9.17
   resolution: "@solana/wallet-adapter-base@npm:0.9.17"
@@ -2850,6 +2901,30 @@ __metadata:
     superstruct: ^0.14.2
     tweetnacl: ^1.0.0
   checksum: 4e7e63e15a276e1b4d08c232ba5b83de7b01cfdaaa0c973ea7742a28d2172c6e2487449e5c7cfc95badac60e7adeb21486172626b8e574cc1b1655ec36b7e690
+  languageName: node
+  linkType: hard
+
+"@solana/web3.js@npm:^1.56.2, @solana/web3.js@npm:^1.66.2":
+  version: 1.73.0
+  resolution: "@solana/web3.js@npm:1.73.0"
+  dependencies:
+    "@babel/runtime": ^7.12.5
+    "@noble/ed25519": ^1.7.0
+    "@noble/hashes": ^1.1.2
+    "@noble/secp256k1": ^1.6.3
+    "@solana/buffer-layout": ^4.0.0
+    agentkeepalive: ^4.2.1
+    bigint-buffer: ^1.1.5
+    bn.js: ^5.0.0
+    borsh: ^0.7.0
+    bs58: ^4.0.1
+    buffer: 6.0.1
+    fast-stable-stringify: ^1.0.0
+    jayson: ^3.4.4
+    node-fetch: 2
+    rpc-websockets: ^7.5.0
+    superstruct: ^0.14.2
+  checksum: 8bd212d3fce35ad4ad4bc2490181c3d18b6abda10b253fde5a7c6b1620cdb27f37f96d5739d3058abeded76e736b35439cae2deddb3dfd4aae8ffcdf7233223c
   languageName: node
   linkType: hard
 

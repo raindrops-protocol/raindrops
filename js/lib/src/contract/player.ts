@@ -87,6 +87,8 @@ export class PlayerProgram extends Program.Program {
       additionalArgs
     );
 
+    console.log("signers: []", signers);
+
     return {
       instructions,
       signers,
