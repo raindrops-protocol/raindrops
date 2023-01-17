@@ -12,11 +12,11 @@ pub const PREFIX: &str = "matches";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateOrUpdateOracleArgs {
-    token_transfer_root: Option<Root>,
-    token_transfers: Option<Vec<TokenDelta>>,
-    seed: Pubkey,
-    space: u64,
-    finalized: bool,
+    pub token_transfer_root: Option<Root>,
+    pub token_transfers: Option<Vec<TokenDelta>>,
+    pub seed: Pubkey,
+    pub space: u64,
+    pub finalized: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
