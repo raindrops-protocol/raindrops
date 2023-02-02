@@ -740,9 +740,10 @@ export class Instruction extends SolKitInstruction {
 
     const itemKey = (await getItemPDA(args.itemMint, args.index))[0];
 
-    const validationKey =
-      args.itemClass.object.itemClassData.config.usages?.[args.usageIndex]
-        .validation?.key;
+    const usages = args.itemClass.object.itemClassData.config?.usages;
+    const maybeSelectedUsage = usages ? usages[args.usageIndex] : null;
+    const validationKey = maybeSelectedUsage?.validation?.key;
+
     const validationProgram: PublicKey = validationKey
       ? new web3.PublicKey(validationKey)
       : SystemProgram.programId;
