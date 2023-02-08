@@ -933,6 +933,11 @@ export type RaindropsItem = {
           },
           {
             "name": "edition",
+            "docs": [
+              "If not present, only Destruction/Infinite consumption types are allowed,",
+              "And no cooldowns because we can't easily track a cooldown",
+              "on a mint with more than 1 coin."
+            ],
             "type": {
               "option": "publicKey"
             }
@@ -1081,6 +1086,11 @@ export type RaindropsItem = {
           },
           {
             "name": "edition",
+            "docs": [
+              "If not present, only Destruction/Infinite consumption types are allowed,",
+              "And no cooldowns because we can't easily track a cooldown",
+              "on a mint with more than 1 coin."
+            ],
             "type": {
               "option": "publicKey"
             }
@@ -4268,6 +4278,11 @@ export const IDL: RaindropsItem = {
           },
           {
             "name": "edition",
+            "docs": [
+              "If not present, only Destruction/Infinite consumption types are allowed,",
+              "And no cooldowns because we can't easily track a cooldown",
+              "on a mint with more than 1 coin."
+            ],
             "type": {
               "option": "publicKey"
             }
@@ -4416,6 +4431,11 @@ export const IDL: RaindropsItem = {
           },
           {
             "name": "edition",
+            "docs": [
+              "If not present, only Destruction/Infinite consumption types are allowed,",
+              "And no cooldowns because we can't easily track a cooldown",
+              "on a mint with more than 1 coin."
+            ],
             "type": {
               "option": "publicKey"
             }

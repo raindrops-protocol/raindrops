@@ -748,7 +748,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -769,7 +772,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -790,7 +796,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -816,7 +825,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -830,6 +842,9 @@ export type RaindropsPlayer = {
   "accounts": [
     {
       "name": "playerClass",
+      "docs": [
+        "seed ['player', player program, mint, namespace]"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -886,6 +901,9 @@ export type RaindropsPlayer = {
     },
     {
       "name": "player",
+      "docs": [
+        "seed ['player', player program, mint, namespace] also"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3756,7 +3774,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3777,7 +3798,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3798,7 +3822,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3824,7 +3851,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3838,6 +3868,9 @@ export const IDL: RaindropsPlayer = {
   "accounts": [
     {
       "name": "playerClass",
+      "docs": [
+        "seed ['player', player program, mint, namespace]"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3894,6 +3927,9 @@ export const IDL: RaindropsPlayer = {
     },
     {
       "name": "player",
+      "docs": [
+        "seed ['player', player program, mint, namespace] also"
+      ],
       "type": {
         "kind": "struct",
         "fields": [

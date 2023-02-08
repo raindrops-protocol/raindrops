@@ -11,7 +11,7 @@ pub fn assert_is_proper_class<'info>(
     require!(
         artifact_class.owner == &raindrops_player::id()
             || artifact_class.owner == &raindrops_item::id(),
-        InvalidProgramOwner
+        ErrorCode::InvalidProgramOwner
     );
 
     let prefix = if artifact_class.owner == &raindrops_player::id() {
@@ -26,7 +26,7 @@ pub fn assert_is_proper_class<'info>(
         "ItemClass"
     };
 
-    require!(!artifact_class.data_is_empty(), NotInitialized);
+    require!(!artifact_class.data_is_empty(), ErrorCode::NotInitialized);
 
     // let mut arr = vec![];
     let data = artifact_class.data.borrow();
@@ -39,11 +39,11 @@ pub fn assert_is_proper_class<'info>(
 
     require!(
         expected_discriminator_as_u64 == discriminator,
-        DiscriminatorMismatch
+        ErrorCode::DiscriminatorMismatch
     );
 
     // FIXME: Remove it after the player contract is done.
-    require!(class_name != "PlayerClass", StakingForPlayerComingSoon);
+    require!(class_name != "PlayerClass", ErrorCode::StakingForPlayerComingSoon);
 
     let item_class_deserialized: Account<ItemClass> = Account::try_from(artifact_class)?;
     let item_class_data = item_class_deserialized.item_class_data(&artifact_class.data)?;
@@ -93,7 +93,7 @@ pub fn assert_is_proper_instance<'info>(
 ) -> Result<()> {
     require!(
         artifact.owner == &raindrops_player::id() || artifact.owner == &raindrops_item::id(),
-        InvalidProgramOwner
+        ErrorCode::InvalidProgramOwner
     );
 
     let prefix = if artifact.owner == &raindrops_player::id() {
@@ -108,7 +108,7 @@ pub fn assert_is_proper_instance<'info>(
         "Item"
     };
 
-    require!(!artifact.data_is_empty(), NotInitialized);
+    require!(!artifact.data_is_empty(), ErrorCode::NotInitialized);
 
     // let mut arr = vec![];
     let data = artifact.data.borrow();
@@ -122,11 +122,11 @@ pub fn assert_is_proper_instance<'info>(
 
     require!(
         expected_discriminator_as_u64 == discriminator,
-        DiscriminatorMismatch
+        ErrorCode::DiscriminatorMismatch
     );
 
     // FIXME: Remove it after the player contract is done.
-    require!(instance_name != "Player", StakingForPlayerComingSoon);
+    require!(instance_name != "Player", ErrorCode::StakingForPlayerComingSoon);
 
     let item_deserialized: Account<Item> = Account::try_from(artifact)?;
 
@@ -153,7 +153,7 @@ pub fn assert_is_proper_instance<'info>(
 
     require!(
         instance_deserialized.parent == *artifact_class,
-        PublicKeyMismatch
+        ErrorCode::PublicKeyMismatch
     );
 
     Ok(())

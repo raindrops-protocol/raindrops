@@ -37,10 +37,10 @@ pub fn assert_is_ata(
     if let Some(delegate) = expected_delegate {
         require!(
             ata_account.delegate.unwrap() == *delegate,
-            AtaDelegateMismatch
+            ErrorCode::AtaDelegateMismatch
         );
     } else {
-        require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+        require!(ata_account.delegate.is_none(), ErrorCode::AtaShouldNotHaveDelegate);
     }
     Ok(ata_account)
 }
