@@ -827,7 +827,10 @@ export class Instruction extends SolKitInstruction {
       itemTransferAuthority.publicKey,
       args.usageIndex
     );
-    instructions.push(itemBurnIx);
+
+    if (itemBurnIx) {
+      instructions.push(itemBurnIx);
+    }    
 
     if (itemTransferAuthority) {
       instructions.push(
@@ -1025,7 +1028,7 @@ export class Instruction extends SolKitInstruction {
     itemActivationMarker: PublicKey,
     itemBurnAuthority: PublicKey,
     usageIndex: number
-  ): Promise<web3.TransactionInstruction> {
+  ): Promise<web3.TransactionInstruction | null> {
     // fetch marker data
     const itemActivationMarkerData =
       await this.program.client.account.itemActivationMarker.fetch(
@@ -1055,7 +1058,7 @@ export class Instruction extends SolKitInstruction {
       }
     }
 
-    let itemBurnIx: web3.TransactionInstruction;
+    let itemBurnIx: web3.TransactionInstruction | null = null;
 
     // if itemUsage exists and is a consumable
     if (
