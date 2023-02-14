@@ -2098,15 +2098,7 @@ pub fn uncache_namespace(
     Ok(new_namespaces)
 }
 
-// check that events instruction exists within function matching given 'name'
-// TODO: instead of passing in an `account_index`, could search through the entire account slice instead, less brittle but maybe more compute intesive
-pub fn find_instruction_by_name(
-    instructions_sysvar: &AccountInfo,
-    program_id: &Pubkey,
-    name: &str,
-    account: &Pubkey,
-    account_index: u8,
-) -> bool {
+pub fn find_burn_ix(instructions_sysvar: &AccountInfo, mint: &Pubkey, burn_amount: u64) -> bool {
     let mut current_index: i64 = -1; // so on loop iteration we start at 0, safety to make sure we always increment
     let mut found = false;
     loop {
@@ -2116,20 +2108,25 @@ pub fn find_instruction_by_name(
             instructions_sysvar,
         ) {
             Ok(ixn) => {
-                // check that ix is an events program instruction
-                if !ixn.program_id.eq(program_id) {
+                // check program id
+                if !ixn.program_id.eq(&anchor_spl::token::ID) {
                     continue;
                 }
 
-                // check account matches expected
-                if !ixn.accounts[account_index as usize].pubkey.eq(account) {
-                    continue;
-                }
+                let token_instruction =
+                    match spl_token::instruction::TokenInstruction::unpack(&ixn.data) {
+                        Ok(token_instruction) => token_instruction,
+                        Err(_e) => continue,
+                    };
 
-                // check that the instruction name matches expected
-                if ixn.data == sighash("global", name) {
-                    found = true;
-                    break;
+                match token_instruction {
+                    spl_token::instruction::TokenInstruction::Burn { amount } => {
+                        // burn mint account is the second item in the accounts vector
+                        if amount == burn_amount && mint.eq(&ixn.accounts[1].pubkey) {
+                            found = true;
+                        }
+                    }
+                    _ => continue,
                 }
             }
             Err(_e) => {
@@ -2138,5 +2135,5 @@ pub fn find_instruction_by_name(
         }
     }
 
-    found
+    return found;
 }

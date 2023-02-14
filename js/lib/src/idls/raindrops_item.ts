@@ -289,6 +289,11 @@ export type RaindropsItem = {
           "name": "clock",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -657,6 +662,11 @@ export type RaindropsItem = {
         {
           "name": "receiver",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
           "isSigner": false
         }
       ],
@@ -3339,6 +3349,11 @@ export type RaindropsItem = {
       "code": 6068,
       "name": "MintAuthorityRequiredForSFTs",
       "msg": "Cannot mint an SFT without mint auth"
+    },
+    {
+      "code": 6069,
+      "name": "BurnIxNotFound",
+      "msg": "Burn Instruction Not Found"
     }
   ]
 };
@@ -3634,6 +3649,11 @@ export const IDL: RaindropsItem = {
           "name": "clock",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -4002,6 +4022,11 @@ export const IDL: RaindropsItem = {
         {
           "name": "receiver",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
           "isSigner": false
         }
       ],
@@ -6684,6 +6709,11 @@ export const IDL: RaindropsItem = {
       "code": 6068,
       "name": "MintAuthorityRequiredForSFTs",
       "msg": "Cannot mint an SFT without mint auth"
+    },
+    {
+      "code": 6069,
+      "name": "BurnIxNotFound",
+      "msg": "Burn Instruction Not Found"
     }
   ]
 };

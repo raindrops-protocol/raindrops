@@ -106,7 +106,7 @@ describe("matches", () => {
     const [match, _matchBump] = await Utils.PDA.getMatch(oracle);
 
     // assert match is initialized
-    const matchData = await matchesProgram.fetchMatch(match)
+    const matchData = await matchesProgram.fetchMatch(match);
     assert.deepStrictEqual(matchData.state, { initialized: {} });
 
     const joinMatchArgs: Instructions.Matches.JoinMatchArgs = {
@@ -151,7 +151,7 @@ describe("matches", () => {
           mint: matchMint,
           amount: new anchor.BN(1_000_000),
         },
-      ]
+      ],
     };
 
     const updateOracleResult = await matchesProgram.createOrUpdateOracle(
@@ -176,7 +176,7 @@ describe("matches", () => {
     );
 
     // assert match is finalized
-    const matchDataUpdated = await matchesProgram.fetchMatch(match)
+    const matchDataUpdated = await matchesProgram.fetchMatch(match);
     assert.deepStrictEqual(matchDataUpdated.state, { finalized: {} });
 
     const disburseTokensByOracleArgs: Instructions.Matches.DisburseTokensByOracleArgs =
@@ -451,7 +451,7 @@ describe("matches", () => {
     const [match, _matchBump] = await Utils.PDA.getMatch(oracle);
 
     // assert match is initialized
-    const matchData = await matchesProgram.fetchMatch(match)
+    const matchData = await matchesProgram.fetchMatch(match);
     assert.deepStrictEqual(matchData.state, { initialized: {} });
     assert.equal(matchData.leaveAllowed, false);
     assert.equal(matchData.winOracleCooldown, 100);
@@ -465,17 +465,20 @@ describe("matches", () => {
       leaveAllowed: true,
       joinAllowedDuringStart: false,
       minimumAllowedEntryTime: new anchor.BN(1000),
-    }
+    };
 
     const updateMatchAccounts: Instructions.Matches.UpdateMatchAccounts = {
       winOracle: oracle,
-    }
+    };
 
-    const updateMatchResult = await matchesProgram.updateMatch(updateMatchArgs, updateMatchAccounts);
+    const updateMatchResult = await matchesProgram.updateMatch(
+      updateMatchArgs,
+      updateMatchAccounts
+    );
     console.log("updateMatchResult: %s", updateMatchResult.txid);
 
     // assert match is initialized
-    const matchDataUpdated = await matchesProgram.fetchMatch(match)
+    const matchDataUpdated = await matchesProgram.fetchMatch(match);
     assert.equal(matchDataUpdated.leaveAllowed, true);
     assert.equal(matchDataUpdated.winOracleCooldown, 1000);
   });

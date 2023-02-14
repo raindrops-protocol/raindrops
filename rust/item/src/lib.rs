@@ -6,10 +6,10 @@ use crate::utils::{
     assert_valid_item_settings_for_edition_type, check_data_for_duplicate_item_effects,
     close_token_account, get_item_usage, get_item_usage_and_item_usage_state,
     is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
-    spl_token_burn, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+    find_burn_ix, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
     update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
     verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
-    GetItemUsageAndItemUsageStateArgs, GetItemUsageArgs, TokenBurnParams, TokenTransferParams,
+    GetItemUsageAndItemUsageStateArgs, GetItemUsageArgs, TokenTransferParams,
     TransferMintAuthorityArgs, VerifyAndAffectItemStateUpdateArgs, VerifyComponentArgs,
     VerifyCooldownArgs,
 };
@@ -290,8 +290,8 @@ pub mod raindrops_item {
     use std::borrow::Borrow;
 
     use crate::utils::{
-        cache_namespace, find_instruction_by_name, join_to_namespace, leave_namespace,
-        uncache_namespace,
+        cache_namespace, join_to_namespace,
+        leave_namespace, uncache_namespace,
     };
     use anchor_lang::Discriminator;
 
@@ -881,13 +881,11 @@ pub mod raindrops_item {
             if chosen_component.condition == ComponentCondition::Consumed
                 || chosen_component.condition == ComponentCondition::CooldownAndConsume
             {
-                // check that a burn instruction for this craft item exists in the transaction, fail if otherwise
-                let found = find_instruction_by_name(
+                // find and validate the burn instruction that must be included in this transaction
+                let found = find_burn_ix(
                     &ctx.accounts.instructions.to_account_info(),
-                    &ctx.accounts.token_program.key(),
-                    "burn",
                     &craft_item_token_mint.key(),
-                    1,
+                    amount_to_contribute_from_this_contributor,
                 );
                 require!(found, ErrorCode::BurnIxNotFound);
             } else {
@@ -1491,9 +1489,7 @@ pub mod raindrops_item {
         let item = &mut ctx.accounts.item;
         let item_mint = &mut ctx.accounts.item_mint;
         let item_activation_marker = &mut ctx.accounts.item_activation_marker;
-        let item_account = &ctx.accounts.item_account;
         let item_transfer_authority = &ctx.accounts.item_transfer_authority;
-        let token_program = &ctx.accounts.token_program;
         let receiver = &mut ctx.accounts.receiver;
 
         require!(
@@ -1547,14 +1543,13 @@ pub mod raindrops_item {
             if let Some(max) = max_uses {
                 if max <= &usage_state.uses && item_usage_type == &ItemUsageType::Destruction {
                     msg!("1");
-                    spl_token_burn(TokenBurnParams {
-                        mint: item_mint.to_account_info(),
-                        source: item_account.to_account_info(),
-                        amount: item_activation_marker.amount,
-                        authority: item_transfer_authority.to_account_info(),
-                        authority_signer_seeds: None,
-                        token_program: token_program.to_account_info(),
-                    })?;
+                    // find and validate the burn instruction that must be included in this transaction
+                    let found = find_burn_ix(
+                        &ctx.accounts.instructions.to_account_info(),
+                        &item_mint.key(),
+                        item_activation_marker.amount,
+                    );
+                    require!(found, ErrorCode::BurnIxNotFound);
                     msg!("2");
                 }
             }
@@ -2772,6 +2767,8 @@ pub struct EndItemActivation<'info> {
     token_program: Program<'info, Token>,
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
+    #[account(constraint = instructions.key().eq(&InstructionsSysvarID))]
+    instructions: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 

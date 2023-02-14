@@ -25,6 +25,7 @@ import { TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
+import { Consumable, ItemUsage, ItemUsageType, decodeItemClass } from "../state/item";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -791,22 +792,62 @@ export class Instruction extends SolKitInstruction {
         parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
+    
+      const itemActivationMarker = (
+        await getItemActivationMarker({
+          itemMint: accounts.itemMint,
+          itemAccount: accounts.itemAccount,
+          index: args.index,
+          usageIndex: new BN(args.usageIndex),
+          amount: args.amount,
+        })
+      )[0];
 
+    const itemActivationMarkerData = await this.program.client.account.itemActivationMarker.fetch(itemActivationMarker, "confirmed");
+    
+    const itemKey = (await getItemPDA(accounts.itemMint, args.index))[0];
+
+    // fetch item data
+    const itemData = await this.program.client.account.item.fetch(itemKey, "confirmed");
+
+    // fetch item class data
     const itemClassKey = (
       await getItemPDA(args.itemClassMint, args.classIndex)
     )[0];
 
-    const itemActivationMarker = (
-      await getItemActivationMarker({
-        itemMint: accounts.itemMint,
-        itemAccount: accounts.itemAccount,
-        index: args.index,
-        usageIndex: new BN(args.usageIndex),
-        amount: args.amount,
-      })
-    )[0];
+    let itemClassAccount = await (
+      this.program.client.provider as AnchorProvider
+    ).connection.getAccountInfo(itemClassKey);
 
-    const itemKey = (await getItemPDA(accounts.itemMint, args.index))[0];
+    if (!itemClassAccount?.data) {
+      return Promise.resolve(null);
+    }
+    const itemClassData = decodeItemClass(itemClassAccount.data);
+
+    let itemUsage: ItemUsage | null = null;
+    for (let itemUsageField of itemClassData.itemClassData.config.usages) {
+      if (itemUsageField.index === args.usageIndex) {
+        itemUsage = itemUsageField;
+      }
+    }
+
+    let itemBurnIx: web3.TransactionInstruction | null = null;
+    // if itemUsage exists and is a consumable
+    if (itemUsage !== null && itemUsage.itemClassType.consumable !== undefined) {
+      // if type usage type is destruction
+      if (itemUsage.itemClassType.consumable.itemUsageType == ItemUsageType.Destruction) {
+        // find corresponding item state
+        for (let usageState of (itemData.data as any).usageStates) {
+          if (usageState.index === itemUsage.index) {
+            // if the item uses are greater or equal to the max allowed, create a burn ix
+            if (itemUsage.itemClassType.consumable.maxUses.toNumber() <= usageState.uses as unknown as number) {
+              let burnAmt = new BN(itemActivationMarkerData.amount as string);
+              itemBurnIx = Token.createBurnInstruction(TOKEN_PROGRAM_ID, accounts.itemMint, accounts.itemAccount, accounts.itemTransferAuthority.publicKey, [], burnAmt.toNumber())
+            }
+          }
+        }
+      }
+    };
 
     const instructions: TransactionInstruction[] = [];
     const itemTransferAuthority = accounts.itemTransferAuthority;
@@ -826,6 +867,7 @@ export class Instruction extends SolKitInstruction {
     instructions.push(
       await this.program.client.methods
         .endItemActivation(args)
+        .preInstructions([itemBurnIx])
         .accounts({
           itemClass: itemClassKey,
           item: itemKey,
@@ -843,6 +885,7 @@ export class Instruction extends SolKitInstruction {
           receiver:
             accounts.originator ||
             (this.program.client.provider as AnchorProvider).wallet.publicKey,
+          instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .remainingAccounts(remainingAccounts)
         .instruction()
@@ -1005,7 +1048,7 @@ export interface CreateItemClassArgs {
   parentOfParentClassIndex: null | BN;
   parentClassIndex: null | BN;
   space: BN;
-  desiredNamespaceArraySize: number;
+  desiredNamespaceArraySize: BN;
   updatePermissivenessToUse: null | AnchorPermissivenessType;
   storeMint: boolean;
   storeMetadataFields: boolean;
