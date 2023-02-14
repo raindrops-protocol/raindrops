@@ -630,7 +630,10 @@ pub fn assert_builder_must_be_holder_check(
 ) -> Result<()> {
     if let Some(b) = &item_class_data.settings.builder_must_be_holder {
         if b.boolean {
-            require!(new_item_token_holder.is_signer, ErrorCode::MustBeHolderToBuild)
+            require!(
+                new_item_token_holder.is_signer,
+                ErrorCode::MustBeHolderToBuild
+            )
         }
     }
 
@@ -1130,7 +1133,10 @@ pub fn assert_is_ata(
             ErrorCode::ExpectedDelegateToMatchProvided
         );
     } else {
-        require!(ata_account.delegate.is_none(), ErrorCode::AtaShouldNotHaveDelegate);
+        require!(
+            ata_account.delegate.is_none(),
+            ErrorCode::AtaShouldNotHaveDelegate
+        );
     }
     Ok(ata_account)
 }
@@ -1154,7 +1160,10 @@ pub fn assert_is_player_pda(
     assert_keys_equal(ata_account.owner, *player)?;
     assert_keys_equal(ata_account.mint, mint.key())?;
     assert_keys_equal(get_player_token_pda(item, player)?, *ata.key)?;
-    require!(ata_account.delegate.is_none(), ErrorCode::AtaShouldNotHaveDelegate);
+    require!(
+        ata_account.delegate.is_none(),
+        ErrorCode::AtaShouldNotHaveDelegate
+    );
     Ok(ata_account)
 }
 
@@ -1494,7 +1503,10 @@ pub fn verify_component(args: VerifyComponentArgs) -> Result<Component> {
                     &craft_item_token_mint.to_bytes(),
                     &AnchorSerialize::try_to_vec(&c)?,
                 ]);
-                require!(verify(&p, &component_root.root, node.0), ErrorCode::InvalidProof);
+                require!(
+                    verify(&p, &component_root.root, node.0),
+                    ErrorCode::InvalidProof
+                );
                 c
             } else {
                 return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1761,7 +1773,10 @@ pub fn verify_and_affect_item_state_update(
 
             // Require that the index matches up to what you sent
 
-            require!(usage_state.index == usage_index, ErrorCode::UsageIndexMismatch);
+            require!(
+                usage_state.index == usage_index,
+                ErrorCode::UsageIndexMismatch
+            );
 
             // Check that both states have the same total states
             let node =
@@ -1851,7 +1866,10 @@ pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
                     &AnchorSerialize::try_to_vec(&usage)?,
                 ]);
                 require!(us.index == usage_index, ErrorCode::UsageIndexMismatch);
-                require!(verify(usage_proof, &usage_root.root, node.0), ErrorCode::InvalidProof);
+                require!(
+                    verify(usage_proof, &usage_root.root, node.0),
+                    ErrorCode::InvalidProof
+                );
                 us.clone()
             } else {
                 return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1947,7 +1965,10 @@ pub fn get_item_usage_and_item_usage_state(
 
             // Require that the index matches up to what you sent
 
-            require!(craft_usage_state.index == usage_index, ErrorCode::UsageIndexMismatch);
+            require!(
+                craft_usage_state.index == usage_index,
+                ErrorCode::UsageIndexMismatch
+            );
 
             craft_usage_state
         } else {

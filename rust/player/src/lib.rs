@@ -467,7 +467,10 @@ pub mod raindrops_player {
             account_mint: Some(&player_class_mint.key()),
         })?;
 
-        require!(player_class.existing_children == 0, ErrorCode::ChildrenStillExist);
+        require!(
+            player_class.existing_children == 0,
+            ErrorCode::ChildrenStillExist
+        );
 
         if !parent.data_is_empty()
             && parent.key() != player_class.key()
@@ -537,8 +540,14 @@ pub mod raindrops_player {
         })?;
 
         require!(player.tokens_staked == 0, ErrorCode::UnstakeTokensFirst);
-        require!(player.equipped_items.is_empty(), ErrorCode::RemoveEquipmentFirst);
-        require!(player.active_item_counter == 0, ErrorCode::DeactivateAllItemsFirst);
+        require!(
+            player.equipped_items.is_empty(),
+            ErrorCode::RemoveEquipmentFirst
+        );
+        require!(
+            player.active_item_counter == 0,
+            ErrorCode::DeactivateAllItemsFirst
+        );
         require!(
             player.items_in_backpack == 0,
             ErrorCode::RemoveAllItemsFromBackpackFirst
@@ -1108,7 +1117,10 @@ pub mod raindrops_player {
         let payer = &ctx.accounts.payer;
         let token_program = &ctx.accounts.token_program;
 
-        require!(item_activation_marker.valid_for_use, ErrorCode::NotValidForUseYet);
+        require!(
+            item_activation_marker.valid_for_use,
+            ErrorCode::NotValidForUseYet
+        );
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,

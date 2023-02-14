@@ -40,7 +40,10 @@ pub fn assert_is_ata(
             ErrorCode::AtaDelegateMismatch
         );
     } else {
-        require!(ata_account.delegate.is_none(), ErrorCode::AtaShouldNotHaveDelegate);
+        require!(
+            ata_account.delegate.is_none(),
+            ErrorCode::AtaShouldNotHaveDelegate
+        );
     }
     Ok(ata_account)
 }

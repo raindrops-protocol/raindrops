@@ -43,7 +43,10 @@ pub fn assert_is_proper_class<'info>(
     );
 
     // FIXME: Remove it after the player contract is done.
-    require!(class_name != "PlayerClass", ErrorCode::StakingForPlayerComingSoon);
+    require!(
+        class_name != "PlayerClass",
+        ErrorCode::StakingForPlayerComingSoon
+    );
 
     let item_class_deserialized: Account<ItemClass> = Account::try_from(artifact_class)?;
     let item_class_data = item_class_deserialized.item_class_data(&artifact_class.data)?;
@@ -126,7 +129,10 @@ pub fn assert_is_proper_instance<'info>(
     );
 
     // FIXME: Remove it after the player contract is done.
-    require!(instance_name != "Player", ErrorCode::StakingForPlayerComingSoon);
+    require!(
+        instance_name != "Player",
+        ErrorCode::StakingForPlayerComingSoon
+    );
 
     let item_deserialized: Account<Item> = Account::try_from(artifact)?;
 

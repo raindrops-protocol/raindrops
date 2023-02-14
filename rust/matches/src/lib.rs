@@ -215,7 +215,10 @@ pub mod raindrops_matches {
                 )
             }
             MatchState::PaidOut => {
-                require!(match_state == MatchState::PaidOut, ErrorCode::InvalidUpdateMatchState)
+                require!(
+                    match_state == MatchState::PaidOut,
+                    ErrorCode::InvalidUpdateMatchState
+                )
             }
             MatchState::Deactivated => {
                 require!(
@@ -439,7 +442,10 @@ pub mod raindrops_matches {
 
                 let total_node =
                     anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total.to_le_bytes()]);
-                require!(verify(&total_proof, &root.root, total_node.0), ErrorCode::InvalidProof);
+                require!(
+                    verify(&total_proof, &root.root, total_node.0),
+                    ErrorCode::InvalidProof
+                );
                 if match_instance.current_token_transfer_index == (total - 1) as u64 {
                     match_instance.state = MatchState::PaidOut;
                 }
@@ -468,9 +474,15 @@ pub mod raindrops_matches {
         );
         msg!("3");
 
-        require!(tfer.mint == token_mint.key(), ErrorCode::DeltaMintDoesNotMatch);
+        require!(
+            tfer.mint == token_mint.key(),
+            ErrorCode::DeltaMintDoesNotMatch
+        );
 
-        require!(tfer.from == original_sender.key(), ErrorCode::FromDoesNotMatch);
+        require!(
+            tfer.from == original_sender.key(),
+            ErrorCode::FromDoesNotMatch
+        );
 
         let time_to_close = token_account_escrow.amount == tfer.amount;
         let match_seeds = &[
@@ -577,7 +589,10 @@ pub mod raindrops_matches {
                         &[0x00],
                         &AnchorSerialize::try_to_vec(&validation)?,
                     ]);
-                    require!(verify(&proof, &root.root, chief_node.0), ErrorCode::InvalidProof);
+                    require!(
+                        verify(&proof, &root.root, chief_node.0),
+                        ErrorCode::InvalidProof
+                    );
                     if !is_valid_validation(
                         &validation,
                         source_item_or_player_pda,

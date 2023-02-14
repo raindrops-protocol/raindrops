@@ -173,8 +173,14 @@ pub mod raindrops_staking {
             index,
         )?;
 
-        require!(staking_counter.event_type == 0, ErrorCode::IncorrectStakingCounterType);
-        require!(staking_counter.event_start > 0, ErrorCode::StakingWarmupNotStarted);
+        require!(
+            staking_counter.event_type == 0,
+            ErrorCode::IncorrectStakingCounterType
+        );
+        require!(
+            staking_counter.event_start > 0,
+            ErrorCode::StakingWarmupNotStarted
+        );
 
         if let Some(duration) = artifact_class.data.staking_warm_up_duration {
             require!(
@@ -398,8 +404,14 @@ pub mod raindrops_staking {
             index,
         )?;
 
-        require!(staking_counter.event_type == 1, ErrorCode::IncorrectStakingCounterType);
-        require!(staking_counter.event_start > 0, ErrorCode::StakingCooldownNotStarted);
+        require!(
+            staking_counter.event_type == 1,
+            ErrorCode::IncorrectStakingCounterType
+        );
+        require!(
+            staking_counter.event_start > 0,
+            ErrorCode::StakingCooldownNotStarted
+        );
 
         if let Some(duration) = artifact_class.data.staking_cooldown_duration {
             require!(
