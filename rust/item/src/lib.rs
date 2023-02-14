@@ -16,8 +16,11 @@ use crate::utils::{
 use anchor_lang::{
     prelude::*,
     solana_program::{
-        instruction::Instruction, program::invoke, program_option::COption, sysvar,
-        sysvar::instructions::get_instruction_relative,
+        instruction::Instruction,
+        program::invoke,
+        program_option::COption,
+        sysvar,
+        sysvar::instructions::{get_instruction_relative, ID as InstructionsSysvarID},
     },
 };
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -286,7 +289,10 @@ pub mod raindrops_item {
 
     use std::borrow::Borrow;
 
-    use crate::utils::{cache_namespace, join_to_namespace, leave_namespace, uncache_namespace};
+    use crate::utils::{
+        cache_namespace, find_instruction_by_name, join_to_namespace, leave_namespace,
+        uncache_namespace,
+    };
     use anchor_lang::Discriminator;
 
     use super::*;
@@ -552,7 +558,10 @@ pub mod raindrops_item {
             allowed_delegate: None,
         })?;
 
-        require!(item_class.existing_children == 0, ErrorCode::ChildrenStillExist);
+        require!(
+            item_class.existing_children == 0,
+            ErrorCode::ChildrenStillExist
+        );
 
         if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
             let mut parent_deserialized: Account<'_, ItemClass> =
@@ -687,7 +696,10 @@ pub mod raindrops_item {
                     let parent = array_ref![data, 1, 32];
                     let parent_key = Pubkey::new_from_array(*parent);
 
-                    require!(parent_key == item_class_metadata.key(), ErrorCode::MustBeChild);
+                    require!(
+                        parent_key == item_class_metadata.key(),
+                        ErrorCode::MustBeChild
+                    );
 
                     // Make sure they arent lying about the metadata
                     assert_metadata_valid(item_class_metadata, None, &item_class_mint)?;
@@ -809,7 +821,10 @@ pub mod raindrops_item {
         })?;
         require!(!item_escrow.deactivated, ErrorCode::DeactivatedItemEscrow);
 
-        require!(item_escrow.build_began.is_none(), ErrorCode::BuildPhaseAlreadyStarted);
+        require!(
+            item_escrow.build_began.is_none(),
+            ErrorCode::BuildPhaseAlreadyStarted
+        );
 
         let chosen_component = verify_component(VerifyComponentArgs {
             item_class,
@@ -866,14 +881,15 @@ pub mod raindrops_item {
             if chosen_component.condition == ComponentCondition::Consumed
                 || chosen_component.condition == ComponentCondition::CooldownAndConsume
             {
-                spl_token_burn(TokenBurnParams {
-                    mint: craft_item_token_mint.to_account_info(),
-                    source: craft_item_token_account.to_account_info(),
-                    amount: amount_to_contribute_from_this_contributor,
-                    authority: craft_item_transfer_authority.to_account_info(),
-                    authority_signer_seeds: None,
-                    token_program: token_program.to_account_info(),
-                })?;
+                // check that a burn instruction for this craft item exists in the transaction, fail if otherwise
+                let found = find_instruction_by_name(
+                    &ctx.accounts.instructions.to_account_info(),
+                    &ctx.accounts.token_program.key(),
+                    "burn",
+                    &craft_item_token_mint.key(),
+                    1,
+                );
+                require!(found, ErrorCode::BurnIxNotFound);
             } else {
                 spl_token_transfer(TokenTransferParams {
                     source: craft_item_token_account.to_account_info(),
@@ -894,7 +910,10 @@ pub mod raindrops_item {
             // to truly make it work and avoid workarounds. This means while you can technically have a fungible
             // be absence, the user must find and burn all tokens to get this condition satisfied.
 
-            require!(craft_item_token_mint.supply == 0, ErrorCode::BalanceNeedsToBeZero);
+            require!(
+                craft_item_token_mint.supply == 0,
+                ErrorCode::BalanceNeedsToBeZero
+            );
             require!(
                 amount_to_contribute_from_this_contributor == 0,
                 ErrorCode::BalanceNeedsToBeZero
@@ -1079,7 +1098,10 @@ pub mod raindrops_item {
 
         require!(!item_escrow.deactivated, ErrorCode::DeactivatedItemEscrow);
 
-        require!(item_escrow.build_began.is_none(), ErrorCode::BuildPhaseAlreadyStarted);
+        require!(
+            item_escrow.build_began.is_none(),
+            ErrorCode::BuildPhaseAlreadyStarted
+        );
 
         if let Some(components) = &item_class_data.config.components {
             let mut counter = 0;
@@ -1096,7 +1118,10 @@ pub mod raindrops_item {
                     }
                 }
             } else {
-                require!(counter == item_escrow.step as usize, ErrorCode::StillMissingComponents);
+                require!(
+                    counter == item_escrow.step as usize,
+                    ErrorCode::StillMissingComponents
+                );
             }
         } else if let Some(component_root) = &item_class_data.config.component_root {
             if let Some(en_proof) = end_node_proof {
@@ -1119,7 +1144,10 @@ pub mod raindrops_item {
                             verify(&en_proof, &component_root.root, node.0),
                             ErrorCode::InvalidProof
                         );
-                        require!(total_s == item_escrow.step, ErrorCode::StillMissingComponents);
+                        require!(
+                            total_s == item_escrow.step,
+                            ErrorCode::StillMissingComponents
+                        );
                     }
                 } else {
                     return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1375,8 +1403,14 @@ pub mod raindrops_item {
         } = args;
 
         require!(amount > 0, ErrorCode::MustBeGreaterThanZero);
-        require!(item_account.amount >= amount, ErrorCode::InsufficientBalance);
-        require!(item_account.delegate.is_none(), ErrorCode::AtaShouldNotHaveDelegate);
+        require!(
+            item_account.amount >= amount,
+            ErrorCode::InsufficientBalance
+        );
+        require!(
+            item_account.delegate.is_none(),
+            ErrorCode::AtaShouldNotHaveDelegate
+        );
 
         item_activation_marker.bump = *ctx.bumps.get("item_activation_marker").unwrap();
         item_activation_marker.target = target;
@@ -1671,8 +1705,14 @@ pub mod raindrops_item {
                             &AnchorSerialize::try_to_vec(&state)?,
                         ]);
                         // Since these states were not altered by activation, they should be in both.
-                        require!(verify(proof, &usage_state_root.root, node.0), ErrorCode::InvalidProof);
-                        require!(verify(new_proof, &new_root, node.0), ErrorCode::InvalidProof);
+                        require!(
+                            verify(proof, &usage_state_root.root, node.0),
+                            ErrorCode::InvalidProof
+                        );
+                        require!(
+                            verify(new_proof, &new_root, node.0),
+                            ErrorCode::InvalidProof
+                        );
 
                         if state
                             .index
@@ -2147,6 +2187,10 @@ pub struct AddCraftItemToEscrow<'info> {
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
     clock: Sysvar<'info, Clock>,
+
+    /// CHECK: checked with constraint
+    #[account(constraint = instructions.key().eq(&InstructionsSysvarID))]
+    instructions: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
 
@@ -3369,4 +3413,6 @@ pub enum ErrorCode {
     CannotEffectTheSameStatTwice,
     #[msg("Cannot mint an SFT without mint auth")]
     MintAuthorityRequiredForSFTs,
+    #[msg("Burn Instruction Not Found")]
+    BurnIxNotFound,
 }

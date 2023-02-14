@@ -192,7 +192,10 @@ pub fn assert_builder_must_be_holder_check(
 ) -> Result<()> {
     if let Some(b) = &player_class_data.settings.builder_must_be_holder {
         if b.boolean {
-            require!(new_player_token_holder.is_signer, ErrorCode::MustBeHolderToBuild)
+            require!(
+                new_player_token_holder.is_signer,
+                ErrorCode::MustBeHolderToBuild
+            )
         }
     }
 
