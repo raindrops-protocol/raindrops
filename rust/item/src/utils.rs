@@ -2098,6 +2098,7 @@ pub fn uncache_namespace(
     Ok(new_namespaces)
 }
 
+// returns true if a burn instruction with a matching 'burn_amount' & 'mint' exists within the transaction
 pub fn find_burn_ix(instructions_sysvar: &AccountInfo, mint: &Pubkey, burn_amount: u64) -> bool {
     let mut current_index: i64 = -1; // so on loop iteration we start at 0, safety to make sure we always increment
     let mut found = false;
@@ -2113,12 +2114,14 @@ pub fn find_burn_ix(instructions_sysvar: &AccountInfo, mint: &Pubkey, burn_amoun
                     continue;
                 }
 
+                // unpack data into a token instruction
                 let token_instruction =
                     match spl_token::instruction::TokenInstruction::unpack(&ixn.data) {
                         Ok(token_instruction) => token_instruction,
                         Err(_e) => continue,
                     };
 
+                // assert token instruction is a burn
                 match token_instruction {
                     spl_token::instruction::TokenInstruction::Burn { amount } => {
                         // burn mint account is the second item in the accounts vector

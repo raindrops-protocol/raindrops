@@ -5,7 +5,7 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { Token } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import {
   Program,
   Instruction as SolKitInstruction,
@@ -25,7 +25,12 @@ import { TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
-import { Consumable, ItemUsage, ItemUsageType, decodeItemClass } from "../state/item";
+import {
+  Consumable,
+  ItemUsage,
+  ItemUsageType,
+  decodeItemClass,
+} from "../state/item";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -792,65 +797,37 @@ export class Instruction extends SolKitInstruction {
         parentHolderOrTokenHolder: accounts.parentHolderOrTokenHolder,
         program: this.program.client,
       });
-    
-      const itemActivationMarker = (
-        await getItemActivationMarker({
-          itemMint: accounts.itemMint,
-          itemAccount: accounts.itemAccount,
-          index: args.index,
-          usageIndex: new BN(args.usageIndex),
-          amount: args.amount,
-        })
-      )[0];
 
-    const itemActivationMarkerData = await this.program.client.account.itemActivationMarker.fetch(itemActivationMarker, "confirmed");
-    
+    const itemActivationMarker = (
+      await getItemActivationMarker({
+        itemMint: accounts.itemMint,
+        itemAccount: accounts.itemAccount,
+        index: args.index,
+        usageIndex: new BN(args.usageIndex),
+        amount: args.amount,
+      })
+    )[0];
+
     const itemKey = (await getItemPDA(accounts.itemMint, args.index))[0];
 
-    // fetch item data
-    const itemData = await this.program.client.account.item.fetch(itemKey, "confirmed");
-
-    // fetch item class data
     const itemClassKey = (
       await getItemPDA(args.itemClassMint, args.classIndex)
     )[0];
 
-    let itemClassAccount = await (
-      this.program.client.provider as AnchorProvider
-    ).connection.getAccountInfo(itemClassKey);
-
-    if (!itemClassAccount?.data) {
-      return Promise.resolve(null);
-    }
-    const itemClassData = decodeItemClass(itemClassAccount.data);
-
-    let itemUsage: ItemUsage | null = null;
-    for (let itemUsageField of itemClassData.itemClassData.config.usages) {
-      if (itemUsageField.index === args.usageIndex) {
-        itemUsage = itemUsageField;
-      }
-    }
-
-    let itemBurnIx: web3.TransactionInstruction | null = null;
-    // if itemUsage exists and is a consumable
-    if (itemUsage !== null && itemUsage.itemClassType.consumable !== undefined) {
-      // if type usage type is destruction
-      if (itemUsage.itemClassType.consumable.itemUsageType == ItemUsageType.Destruction) {
-        // find corresponding item state
-        for (let usageState of (itemData.data as any).usageStates) {
-          if (usageState.index === itemUsage.index) {
-            // if the item uses are greater or equal to the max allowed, create a burn ix
-            if (itemUsage.itemClassType.consumable.maxUses.toNumber() <= usageState.uses as unknown as number) {
-              let burnAmt = new BN(itemActivationMarkerData.amount as string);
-              itemBurnIx = Token.createBurnInstruction(TOKEN_PROGRAM_ID, accounts.itemMint, accounts.itemAccount, accounts.itemTransferAuthority.publicKey, [], burnAmt.toNumber())
-            }
-          }
-        }
-      }
-    };
+    const itemTransferAuthority = accounts.itemTransferAuthority;
 
     const instructions: TransactionInstruction[] = [];
-    const itemTransferAuthority = accounts.itemTransferAuthority;
+
+    // optionally create a spl token burn instruction
+    const itemBurnIx = await this.createEndItemActivationBurnIx(
+      itemClassKey,
+      itemKey,
+      accounts.itemMint,
+      itemActivationMarker,
+      itemTransferAuthority.publicKey,
+      args.usageIndex
+    );
+    instructions.push(itemBurnIx);
 
     if (itemTransferAuthority) {
       instructions.push(
@@ -867,7 +844,6 @@ export class Instruction extends SolKitInstruction {
     instructions.push(
       await this.program.client.methods
         .endItemActivation(args)
-        .preInstructions([itemBurnIx])
         .accounts({
           itemClass: itemClassKey,
           item: itemKey,
@@ -1040,6 +1016,83 @@ export class Instruction extends SolKitInstruction {
         })
         .instruction(),
     ];
+  }
+
+  private async createEndItemActivationBurnIx(
+    itemClass: PublicKey,
+    item: PublicKey,
+    itemMint: PublicKey,
+    itemActivationMarker: PublicKey,
+    itemBurnAuthority: PublicKey,
+    usageIndex: number
+  ): Promise<web3.TransactionInstruction> {
+    // fetch marker data
+    const itemActivationMarkerData =
+      await this.program.client.account.itemActivationMarker.fetch(
+        itemActivationMarker,
+        "confirmed"
+      );
+
+    // fetch item data
+    const itemData = await this.program.client.account.item.fetch(
+      item,
+      "confirmed"
+    );
+
+    let itemClassAccount = await (
+      this.program.client.provider as AnchorProvider
+    ).connection.getAccountInfo(itemClass);
+
+    if (!itemClassAccount?.data) {
+      return Promise.resolve(null);
+    }
+    const itemClassData = decodeItemClass(itemClassAccount.data);
+
+    let itemUsage: ItemUsage | null = null;
+    for (let itemUsageField of itemClassData.itemClassData.config.usages) {
+      if (itemUsageField.index === usageIndex) {
+        itemUsage = itemUsageField;
+      }
+    }
+
+    let itemBurnIx: web3.TransactionInstruction;
+
+    // if itemUsage exists and is a consumable
+    if (
+      itemUsage !== null &&
+      itemUsage.itemClassType.consumable !== undefined
+    ) {
+      // if type usage type is destruction
+      if (
+        itemUsage.itemClassType.consumable.itemUsageType ==
+        ItemUsageType.Destruction
+      ) {
+        // find corresponding item state
+        for (let usageState of (itemData.data as any).usageStates) {
+          if (usageState.index === itemUsage.index) {
+            // if the item uses are greater or equal to the max allowed, create a burn ix
+            if (
+              (itemUsage.itemClassType.consumable.maxUses.toNumber() <=
+                usageState.uses) as unknown as number
+            ) {
+              let burnAmt = new BN(itemActivationMarkerData.amount as string);
+              itemBurnIx = Token.createBurnInstruction(
+                TOKEN_PROGRAM_ID,
+                itemMint,
+                (
+                  await getAtaForMint(itemMint, itemBurnAuthority)
+                )[0],
+                itemBurnAuthority,
+                [],
+                burnAmt.toNumber()
+              );
+            }
+          }
+        }
+      }
+    }
+
+    return itemBurnIx;
   }
 }
 
