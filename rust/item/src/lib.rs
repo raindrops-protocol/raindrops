@@ -4,9 +4,9 @@ use crate::utils::{
     assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
     assert_mint_authority_matches_mint, assert_permissiveness_access,
     assert_valid_item_settings_for_edition_type, check_data_for_duplicate_item_effects,
-    close_token_account, get_item_usage, get_item_usage_and_item_usage_state,
+    close_token_account, find_burn_ix, get_item_usage, get_item_usage_and_item_usage_state,
     is_namespace_program_caller, propagate_item_class_data_fields_to_item_data, sighash,
-    find_burn_ix, spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
+    spl_token_mint_to, spl_token_transfer, transfer_mint_authority,
     update_item_class_with_inherited_information, verify, verify_and_affect_item_state_update,
     verify_component, verify_cooldown, write_data, AssertPermissivenessAccessArgs,
     GetItemUsageAndItemUsageStateArgs, GetItemUsageArgs, TokenTransferParams,
@@ -290,8 +290,7 @@ pub mod raindrops_item {
     use std::borrow::Borrow;
 
     use crate::utils::{
-        cache_namespace, join_to_namespace,
-        leave_namespace, uncache_namespace,
+        cache_namespace, find_transfer_ix, join_to_namespace, leave_namespace, uncache_namespace,
     };
     use anchor_lang::Discriminator;
 
@@ -775,11 +774,11 @@ pub mod raindrops_item {
         let new_item_token_holder = &ctx.accounts.new_item_token_holder;
         let craft_item_token_mint = &ctx.accounts.craft_item_token_mint;
         let craft_item_token_account_escrow = &ctx.accounts.craft_item_token_account_escrow;
-        let craft_item_transfer_authority = &ctx.accounts.craft_item_transfer_authority;
-        let craft_item_token_account = &ctx.accounts.craft_item_token_account;
+        //let craft_item_transfer_authority = &ctx.accounts.craft_item_transfer_authority;
+        //let craft_item_token_account = &ctx.accounts.craft_item_token_account;
         let craft_item = &ctx.accounts.craft_item;
         let craft_item_class = &ctx.accounts.craft_item_class;
-        let token_program = &ctx.accounts.token_program;
+        //let token_program = &ctx.accounts.token_program;
         let clock = &ctx.accounts.clock;
 
         let AddCraftItemToEscrowArgs {
@@ -889,14 +888,13 @@ pub mod raindrops_item {
                 );
                 require!(found, ErrorCode::BurnIxNotFound);
             } else {
-                spl_token_transfer(TokenTransferParams {
-                    source: craft_item_token_account.to_account_info(),
-                    destination: craft_item_token_account_escrow.to_account_info(),
-                    amount: amount_to_contribute_from_this_contributor,
-                    authority: craft_item_transfer_authority.to_account_info(),
-                    authority_signer_seeds: &[],
-                    token_program: token_program.to_account_info(),
-                })?;
+                // find and validate the transfer instruction that must be included in this transaction
+                let found = find_transfer_ix(
+                    &ctx.accounts.instructions.to_account_info(),
+                    &craft_item_token_account_escrow.key(),
+                    amount_to_contribute_from_this_contributor,
+                );
+                require!(found, ErrorCode::TransferIxNotFound);
             }
 
             craft_item_counter.amount_loaded = craft_item_counter
@@ -3412,4 +3410,6 @@ pub enum ErrorCode {
     MintAuthorityRequiredForSFTs,
     #[msg("Burn Instruction Not Found")]
     BurnIxNotFound,
+    #[msg("Transfer Instruction Not Found")]
+    TransferIxNotFound,
 }

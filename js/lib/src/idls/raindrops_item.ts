@@ -3354,6 +3354,11 @@ export type RaindropsItem = {
       "code": 6069,
       "name": "BurnIxNotFound",
       "msg": "Burn Instruction Not Found"
+    },
+    {
+      "code": 6070,
+      "name": "TransferIxNotFound",
+      "msg": "Transfer Instruction Not Found"
     }
   ]
 };
@@ -6714,6 +6719,11 @@ export const IDL: RaindropsItem = {
       "code": 6069,
       "name": "BurnIxNotFound",
       "msg": "Burn Instruction Not Found"
+    },
+    {
+      "code": 6070,
+      "name": "TransferIxNotFound",
+      "msg": "Transfer Instruction Not Found"
     }
   ]
 };

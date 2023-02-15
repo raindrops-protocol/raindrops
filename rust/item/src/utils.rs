@@ -2140,3 +2140,50 @@ pub fn find_burn_ix(instructions_sysvar: &AccountInfo, mint: &Pubkey, burn_amoun
 
     return found;
 }
+
+// returns true if a transfer instruction with a matching 'transfer_amount' & 'destination' ata exists within the transaction
+pub fn find_transfer_ix(
+    instructions_sysvar: &AccountInfo,
+    destination: &Pubkey,
+    transfer_amount: u64,
+) -> bool {
+    let mut current_index: i64 = -1; // so on loop iteration we start at 0, safety to make sure we always increment
+    let mut found = false;
+    loop {
+        current_index += 1;
+        match sysvar::instructions::load_instruction_at_checked(
+            current_index as usize,
+            instructions_sysvar,
+        ) {
+            Ok(ixn) => {
+                // check program id
+                if !ixn.program_id.eq(&anchor_spl::token::ID) {
+                    continue;
+                }
+
+                // unpack data into a token instruction
+                let token_instruction =
+                    match spl_token::instruction::TokenInstruction::unpack(&ixn.data) {
+                        Ok(token_instruction) => token_instruction,
+                        Err(_e) => continue,
+                    };
+
+                // assert token instruction is a transfer
+                match token_instruction {
+                    spl_token::instruction::TokenInstruction::Transfer { amount } => {
+                        // destination account is the second item in the accounts vector
+                        if amount == transfer_amount && destination.eq(&ixn.accounts[1].pubkey) {
+                            found = true;
+                        }
+                    }
+                    _ => continue,
+                }
+            }
+            Err(_e) => {
+                break;
+            }
+        }
+    }
+
+    return found;
+}

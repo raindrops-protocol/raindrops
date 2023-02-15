@@ -9,6 +9,10 @@ import {
   Idls,
 } from "@raindrops-protocol/raindrops";
 import { assert } from "chai";
+import {
+  AddCraftItemToEscrowAccounts,
+  AddCraftItemToEscrowArgs,
+} from "@raindrops-protocol/raindrops/build/instructions/item";
 
 describe.only("item", () => {
   // Configure the client to use the local cluster.
@@ -135,6 +139,80 @@ describe.only("item", () => {
     // expect a balance of 1, no burn because max uses not reached
     assertTokenBalance(connection, itemMint, payer.publicKey, new BN(1));
   });
+
+  it.only("add craft item to token escrow", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // create item class with max uses 1
+    const [itemClassMint, _itemClassMetadata, _itemClassMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "itemClass",
+        connection,
+        payer
+      );
+
+    const itemClassIndex = 0;
+
+    await createItemClass(
+      itemProgram,
+      itemClassMint,
+      payer.publicKey,
+      itemClassIndex,
+      5
+    );
+
+    const [itemMint, _itemMetadata, _itemMasterEdition] =
+      await createMintMetadataAndMasterEditionAccounts(
+        "item",
+        connection,
+        payer
+      );
+
+    const craftItemIndex = 0;
+    await createItemEscrow(
+      itemProgram,
+      itemClassMint,
+      itemMint,
+      payer.publicKey,
+      itemClassIndex,
+      craftItemIndex
+    );
+
+    await startItemBuild(
+      itemProgram,
+      itemClassMint,
+      itemMint,
+      payer.publicKey,
+      new BN(itemClassIndex),
+      new BN(craftItemIndex)
+    );
+
+    //const [craftItemMint, _craftItemMetadata, _craftItemMasterEdition] =
+    //  await createMintMetadataAndMasterEditionAccounts(
+    //    "craftItem",
+    //    connection,
+    //    payer
+    //  );
+
+    await addItemToEscrow(
+      itemProgram,
+      itemClassMint,
+      itemMint,
+      payer.publicKey,
+      itemClassIndex,
+      craftItemIndex
+    );
+  });
 });
 
 async function activateItem(
@@ -226,88 +304,26 @@ async function buildItem(
   authority: anchor.web3.PublicKey,
   itemClassIndex: number
 ) {
-  // create item escrow
   const craftItemEscrowIndex = 0;
-  let componentScope = "none";
 
-  // create the item escrow
-  const createItemEscrowArgs: Instructions.Item.CreateItemEscrowArgs = {
-    classIndex: new BN(itemClassIndex),
-    craftEscrowIndex: new BN(craftItemEscrowIndex),
-    componentScope,
-    buildPermissivenessToUse: { tokenHolder: true },
-    namespaceIndex: null,
-    itemClassMint: itemClassMint,
-    amountToMake: new BN(1),
-    parentClassIndex: null,
-  };
-
-  const createItemEscrowAccounts: Instructions.Item.CreateItemEscrowAccounts = {
-    newItemMint: itemMint,
-    newItemToken: null, // item ATA
-    newItemTokenHolder: authority,
-    parentMint: null,
-    itemClassMint: itemClassMint,
-    metadataUpdateAuthority: authority,
-  };
-
-  const createItemEscrowAdditionalArgs: Instructions.Item.CreateItemEscrowAdditionalArgs =
-    {};
-
-  const createItemEscrowResult = await itemProgram.createItemEscrow(
-    createItemEscrowArgs,
-    createItemEscrowAccounts,
-    createItemEscrowAdditionalArgs,
-    { commitment: "confirmed" }
+  // create the item escrow accounts
+  await createItemEscrow(
+    itemProgram,
+    itemClassMint,
+    itemMint,
+    authority,
+    itemClassIndex,
+    craftItemEscrowIndex
   );
-  console.log("createItemEscrowTxSig: %s", createItemEscrowResult.txid);
 
-  const [itemEscrowPDA] = await Utils.PDA.getItemEscrow({
-    itemClassMint: itemClassMint,
-    payer: authority,
-    newItemMint: itemMint,
-    newItemToken: (await Utils.PDA.getAtaForMint(itemMint, authority))[0],
-    amountToMake: new BN(1),
-    componentScope,
-    craftEscrowIndex: new BN(craftItemEscrowIndex),
-    classIndex: new BN(itemClassIndex),
-  });
-
-  // start the item build phase
-  const startItemEscrowBuildPhaseArgs: Instructions.Item.StartItemEscrowBuildPhaseArgs =
-    {
-      classIndex: new BN(itemClassIndex),
-      parentClassIndex: null,
-      craftEscrowIndex: new BN(craftItemEscrowIndex),
-      componentScope: "none",
-      amountToMake: new BN(1),
-      itemClassMint: itemClassMint,
-      originator: authority,
-      newItemMint: itemMint,
-      buildPermissivenessToUse: { tokenHolder: true },
-      endNodeProof: null,
-      totalSteps: null,
-    };
-
-  const startItemEscrowBuildPhaseAccounts: Instructions.Item.StartItemEscrowBuildPhaseAccounts =
-    {
-      itemClassMint: itemClassMint,
-      newItemToken: (await Utils.PDA.getAtaForMint(itemMint, authority))[0],
-      newItemTokenHolder: authority,
-      parentMint: null,
-      metadataUpdateAuthority: authority,
-    };
-
-  const startItemEscrowBuildPhaseAdditionalArgs: Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs =
-    {};
-
-  const startItemEscrowResult = await itemProgram.startItemEscrowBuildPhase(
-    startItemEscrowBuildPhaseArgs,
-    startItemEscrowBuildPhaseAccounts,
-    startItemEscrowBuildPhaseAdditionalArgs,
-    { commitment: "confirmed" }
+  await startItemBuild(
+    itemProgram,
+    itemClassMint,
+    itemMint,
+    authority,
+    new BN(itemClassIndex),
+    new BN(craftItemEscrowIndex)
   );
-  console.log("startItemEscrowTxSig: %s", startItemEscrowResult.txid);
 
   // complete item build phase
   const itemIndex = 0;
@@ -356,6 +372,138 @@ async function buildItem(
   console.log("completeItemEscrowTxSig: %s", completeItemEscrowResult.txid);
 }
 
+async function startItemBuild(
+  itemProgram: ItemProgram,
+  itemClassMint: anchor.web3.PublicKey,
+  itemMint: anchor.web3.PublicKey,
+  authority: anchor.web3.PublicKey,
+  itemClassIndex: BN,
+  craftItemEscrowIndex: BN
+) {
+  // start the item build phase
+  const startItemEscrowBuildPhaseArgs: Instructions.Item.StartItemEscrowBuildPhaseArgs =
+    {
+      classIndex: itemClassIndex,
+      parentClassIndex: null,
+      craftEscrowIndex: craftItemEscrowIndex,
+      componentScope: "none",
+      amountToMake: new BN(1),
+      itemClassMint: itemClassMint,
+      originator: authority,
+      newItemMint: itemMint,
+      buildPermissivenessToUse: { tokenHolder: true },
+      endNodeProof: null,
+      totalSteps: null,
+    };
+
+  const startItemEscrowBuildPhaseAccounts: Instructions.Item.StartItemEscrowBuildPhaseAccounts =
+    {
+      itemClassMint: itemClassMint,
+      newItemToken: (await Utils.PDA.getAtaForMint(itemMint, authority))[0],
+      newItemTokenHolder: authority,
+      parentMint: null,
+      metadataUpdateAuthority: authority,
+    };
+
+  const startItemEscrowBuildPhaseAdditionalArgs: Instructions.Item.StartItemEscrowBuildPhaseAdditionalArgs =
+    {};
+
+  const startItemEscrowResult = await itemProgram.startItemEscrowBuildPhase(
+    startItemEscrowBuildPhaseArgs,
+    startItemEscrowBuildPhaseAccounts,
+    startItemEscrowBuildPhaseAdditionalArgs,
+    { commitment: "confirmed" }
+  );
+  console.log("startItemEscrowTxSig: %s", startItemEscrowResult.txid);
+}
+
+async function createItemEscrow(
+  itemProgram: ItemProgram,
+  itemClassMint: anchor.web3.PublicKey,
+  itemMint: anchor.web3.PublicKey,
+  authority: anchor.web3.PublicKey,
+  itemClassIndex: number,
+  craftItemEscrowIndex: number
+) {
+  // create item escrow
+  let componentScope = "none";
+
+  // create the item escrow
+  const createItemEscrowArgs: Instructions.Item.CreateItemEscrowArgs = {
+    classIndex: new BN(itemClassIndex),
+    craftEscrowIndex: new BN(craftItemEscrowIndex),
+    componentScope,
+    buildPermissivenessToUse: { tokenHolder: true },
+    namespaceIndex: null,
+    itemClassMint: itemClassMint,
+    amountToMake: new BN(1),
+    parentClassIndex: null,
+  };
+
+  const createItemEscrowAccounts: Instructions.Item.CreateItemEscrowAccounts = {
+    newItemMint: itemMint,
+    newItemToken: null, // item ATA
+    newItemTokenHolder: authority,
+    parentMint: null,
+    itemClassMint: itemClassMint,
+    metadataUpdateAuthority: authority,
+  };
+
+  const createItemEscrowAdditionalArgs: Instructions.Item.CreateItemEscrowAdditionalArgs =
+    {};
+
+  const createItemEscrowResult = await itemProgram.createItemEscrow(
+    createItemEscrowArgs,
+    createItemEscrowAccounts,
+    createItemEscrowAdditionalArgs,
+    { commitment: "confirmed" }
+  );
+  console.log("createItemEscrowTxSig: %s", createItemEscrowResult.txid);
+}
+
+async function addItemToEscrow(
+  itemProgram: ItemProgram,
+  itemClassMint: anchor.web3.PublicKey,
+  itemMint: anchor.web3.PublicKey,
+  //craftItemMint: anchor.web3.PublicKey,
+  authority: anchor.web3.PublicKey,
+  itemClassIndex: number,
+  craftItemEscrowIndex: number
+) {
+  const accounts: AddCraftItemToEscrowAccounts = {
+    itemClassMint: itemClassMint,
+    newItemToken: (await Utils.PDA.getAtaForMint(itemMint, authority))[0],
+    newItemTokenHolder: authority,
+    craftItemTokenMint: itemMint,
+    parentMint: null,
+    metadataUpdateAuthority: authority,
+    craftItemTransferAuthority: authority,
+  };
+
+  const args: AddCraftItemToEscrowArgs = {
+    classIndex: new BN(itemClassIndex),
+    parentClassIndex: null,
+    craftItemIndex: new BN(0),
+    craftEscrowIndex: new BN(craftItemEscrowIndex),
+    craftItemClassIndex: new BN(itemClassIndex),
+    craftItemClassMint: itemClassMint,
+    componentScope: "none",
+    amountToMake: new BN(1),
+    amountToContributeFromThisContributor: new BN(1),
+    newItemMint: itemMint,
+    originator: authority,
+    namespaceIndex: null,
+    buildPermissivenessToUse: { tokenHolder: true },
+    itemClassMint: itemClassMint,
+    componentProof: null,
+    component: "none",
+    craftUsageInfo: null,
+  };
+
+  const result = await itemProgram.addCraftItemToEscrow(args, accounts, {});
+  console.log("addCraftItemToEscrowTxSig: %s", result.txid);
+}
+
 // create a new item class
 async function createItemClass(
   itemProgram: ItemProgram,
@@ -364,7 +512,6 @@ async function createItemClass(
   index: number,
   maxUses: number
 ) {
-  const itemClassIndex = 0;
   const itemClassData = {
     settings: {
       freeBuild: {

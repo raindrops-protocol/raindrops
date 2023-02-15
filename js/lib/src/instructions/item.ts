@@ -492,6 +492,7 @@ export class Instruction extends SolKitInstruction {
         args.amountToContributeFromThisContributor,
       componentScope: args.componentScope,
     });
+    console.log("craftItemEscrow: %s", craftItemEscrow.toString());
 
     const [craftItemCounter, _craftBump] = await getCraftItemCounter({
       itemClassMint: accounts.itemClassMint,
@@ -526,6 +527,7 @@ export class Instruction extends SolKitInstruction {
         componentScope: args.componentScope,
       })
     )[0];
+    console.log("itemEscrow: %s", itemEscrow.toString());
 
     const craftItem = (
       await getItemPDA(accounts.craftItemTokenMint, args.craftItemIndex)
@@ -578,6 +580,7 @@ export class Instruction extends SolKitInstruction {
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: web3.SYSVAR_RENT_PUBKEY,
           clock: web3.SYSVAR_CLOCK_PUBKEY,
+          instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         })
         .remainingAccounts(remainingAccounts)
         .instruction()
