@@ -893,6 +893,33 @@ export type RaindropsItem = {
   ],
   "accounts": [
     {
+      "name": "itemClassV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "autoActivate",
+            "type": "bool"
+          },
+          {
+            "name": "itemClassMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "schemaIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "componentV1",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
       "name": "itemClass",
       "type": {
         "kind": "struct",
@@ -4237,6 +4264,33 @@ export const IDL: RaindropsItem = {
     }
   ],
   "accounts": [
+    {
+      "name": "itemClassV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "autoActivate",
+            "type": "bool"
+          },
+          {
+            "name": "itemClassMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "schemaIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "componentV1",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
     {
       "name": "itemClass",
       "type": {
