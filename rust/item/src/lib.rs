@@ -689,7 +689,7 @@ pub mod raindrops_item {
                     let mut borrowed_data = ed.data.borrow_mut();
                     let data: &mut [u8] = *borrowed_data;
                     require!(
-                        data[0] == metaplex_token_metadata::state::Key::EditionV1 as u8,
+                        data[0] == mpl_token_metadata::state::Key::EditionV1 as u8,
                         ErrorCode::MustBeChild
                     );
                     let parent = array_ref![data, 1, 32];
@@ -1961,6 +1961,22 @@ pub mod raindrops_item {
         }
 
         Ok(())
+    }
+
+    pub fn create_item_class_v1(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
+        create_item_class_v1::handler(ctx, args)
+    }
+
+    pub fn start_build(ctx: Context<StartBuild>) -> Result<()> {
+        start_build::handler(ctx)
+    }
+
+    pub fn add_build_material(ctx: Context<AddBuildMaterial>) -> Result<()> {
+        add_build_material::handler(ctx)
+    }
+
+    pub fn complete_build(ctx: Context<CompleteBuild>) -> Result<()> {
+        complete_build::handler(ctx)
     }
 }
 

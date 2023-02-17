@@ -1189,11 +1189,11 @@ pub fn assert_metadata_valid(
     mint: &Pubkey,
 ) -> Result<()> {
     assert_derivation(
-        &metaplex_token_metadata::id(),
+        &mpl_token_metadata::id(),
         metadata,
         &[
-            metaplex_token_metadata::state::PREFIX.as_bytes(),
-            metaplex_token_metadata::id().as_ref(),
+            mpl_token_metadata::state::PREFIX.as_bytes(),
+            mpl_token_metadata::id().as_ref(),
             mint.as_ref(),
         ],
     )?;
@@ -1203,13 +1203,13 @@ pub fn assert_metadata_valid(
 
     if let Some(ed) = edition {
         assert_derivation(
-            &metaplex_token_metadata::id(),
+            &mpl_token_metadata::id(),
             ed,
             &[
-                metaplex_token_metadata::state::PREFIX.as_bytes(),
-                metaplex_token_metadata::id().as_ref(),
+                mpl_token_metadata::state::PREFIX.as_bytes(),
+                mpl_token_metadata::id().as_ref(),
                 mint.as_ref(),
-                metaplex_token_metadata::state::EDITION.as_bytes(),
+                mpl_token_metadata::state::EDITION.as_bytes(),
             ],
         )?;
         if ed.data_is_empty() {

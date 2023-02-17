@@ -1,72 +1,77 @@
 use anchor_lang::prelude::*;
 
-// seeds = ['item_class_v1', item_class_mint.key().as_ref()]
+// seeds = ['item_class_v1', membership_tree.key().as_ref()]
 #[account]
 pub struct ItemClassV1 {
-    // schema index
-    pub schema_index: u64,
+    // merkle tree containing all the mints which belong to this item class
+    pub members: Pubkey,
 }
 
 impl ItemClassV1 {
     pub const PREFIX: &'static str = "item_class_v1";
     pub const SPACE: usize = 8 + // anchor
-    8; // schema_index 
+    32; // members
 }
 
-// seeds = ['item_v1', item_class_mint.key(), item_mint.key()]
+// a schema contains all materials and build information for an item class v1
+// seeds = ['schema', item_class.key()]
 #[account]
-pub struct ItemV1 {}
+pub struct Schema {
+    pub item_class: Pubkey,
 
-impl ItemV1 {
-    pub const PREFIX: &'static str = "item_v1";
-    pub const SPACE: usize = 8 + // anchor
-    8; // schema_index 
+    // if true, activate the item class within the build instruction
+    pub auto_activate: bool,
+
+    // list of materials required to use this schema to build the item class v1
+    pub materials: Vec<Material>,
 }
 
-// a component in a schema
-// seeds = ['component_v1', item_class_mint.key().as_ref(), component_mint.key().as_ref()]
-#[account]
-pub struct ComponentV1 {}
-
-impl ComponentV1 {
-    pub const PREFIX: &'static str = "component_v1";
-    pub const SPACE: usize = 8; // anchor bytes
-}
-
-// each schema links to a list of components which can be used to build the ItemClassV1
-// seeds = ['schema', item_class_mint.key(), schema_index]
-#[account]
-pub struct SchemaV1 {
-    // if true, schema is allowed to be used to build the item class v1
-    pub enabled: bool,
-
-    // if true, activate the item within the build instruction
-    pub auto_activate_item: bool,
-
-    // the list of component mints required by the schema to build the item class
-    pub components: Vec<Pubkey>,
-}
-
-impl SchemaV1 {
+impl Schema {
     pub const PREFIX: &'static str = "schema";
-    pub fn space(component_count: usize) -> usize {
+    pub fn space(materials: Vec<Material>) -> usize {
         8 + // anchor
-        4 + (32 * component_count) // components
+        32 + // item_class
+        1 + // auto_activate
+        4 + (Material::SPACE * materials.len()) // materials
     }
 }
 
-// manages the escrowing of components during the build process
-// seeds = ['build_escrow', item_class_mint.key(), schema.key().as_ref(), builder.key().as_ref()]
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+pub struct Material {
+    pub item_class: Pubkey,
+    pub amount: u64,
+}
+
+impl Material {
+    pub const SPACE: usize = 32 + // item class
+    8; // amount
+}
+
+// manages the lifecycle of the item class build process for a builder
+// seeds = ['build', item_class.key(), builder.key().as_ref()]
 #[account]
-pub struct BuildEscrow {
-    // list of mints escrowed
-    pub escrowed_components: Pubkey,
+pub struct Build {
+    pub builder: Pubkey,
+
+    // current build materials
+    pub materials: Vec<Material>,
 }
 
-impl BuildEscrow {
-    pub const PREFIX: &'static str = "build_escrow";
-    pub fn space(component_count: usize) -> usize {
+impl Build {
+    pub const PREFIX: &'static str = "build";
+    pub fn space(material_count: usize) -> usize {
         8 + // anchor
-        4 + (32 * component_count) // components
+        4 + (Material::SPACE * material_count) // materials
     }
-} 
+}
+
+
+// anchor wrapper for Noop Program required for spl-account-compression
+#[derive(Clone)]
+pub struct NoopProgram;
+
+impl anchor_lang::Id for NoopProgram {
+    fn id() -> Pubkey {
+        spl_noop::ID
+    }
+}

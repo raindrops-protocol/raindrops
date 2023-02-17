@@ -898,14 +898,6 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "autoActivate",
-            "type": "bool"
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
             "name": "schemaIndex",
             "type": "u64"
           }
@@ -913,10 +905,51 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "itemV1",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
       "name": "componentV1",
       "type": {
         "kind": "struct",
         "fields": []
+      }
+    },
+    {
+      "name": "schemaV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "autoActivateItem",
+            "type": "bool"
+          },
+          {
+            "name": "components",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "buildEscrow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrowedComponents",
+            "type": "publicKey"
+          }
+        ]
       }
     },
     {
@@ -4270,14 +4303,6 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "autoActivate",
-            "type": "bool"
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
             "name": "schemaIndex",
             "type": "u64"
           }
@@ -4285,10 +4310,51 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "itemV1",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
       "name": "componentV1",
       "type": {
         "kind": "struct",
         "fields": []
+      }
+    },
+    {
+      "name": "schemaV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "autoActivateItem",
+            "type": "bool"
+          },
+          {
+            "name": "components",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "buildEscrow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrowedComponents",
+            "type": "publicKey"
+          }
+        ]
       }
     },
     {
