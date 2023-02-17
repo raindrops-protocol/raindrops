@@ -25,6 +25,7 @@ import { TOKEN_PROGRAM_ID } from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
+import * as cmp from "@solana/spl-account-compression";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -998,6 +999,57 @@ export class Instruction extends SolKitInstruction {
         .instruction(),
     ];
   }
+
+  async createItemClassV1(
+    args: CreateItemClassV1Args
+  ): Promise<[web3.PublicKey, web3.Keypair, web3.TransactionInstruction[]]> {
+    const members = web3.Keypair.generate();
+
+    const maxDepth = 14;
+    const maxBufferSize = 64;
+
+    const treeSpace = cmp.getConcurrentMerkleTreeAccountSize(
+      maxDepth,
+      maxBufferSize
+    );
+    const treeLamports =
+      await this.program.client.provider.connection.getMinimumBalanceForRentExemption(treeSpace);
+
+    const createMembersAccountIx =
+      await web3.SystemProgram.createAccount({
+        fromPubkey: this.program.client.provider.publicKey!,
+        newAccountPubkey: members.publicKey,
+        lamports: treeLamports,
+        space: treeSpace,
+        programId: cmp.PROGRAM_ID,
+      });
+
+    const [itemClass, _itemClassBump] = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("item_class_v1"), members.publicKey.toBuffer()],
+      this.program.id
+    );
+
+    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("schema"), itemClass.toBuffer()],
+      this.program.id
+    );
+
+    const ix = await this.program.client.methods
+      .createItemClassV1(args)
+      .accounts({
+        members: members.publicKey,
+        itemClass: itemClass,
+        schema: schema,
+        authority: this.program.client.provider.publicKey!,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        accountCompressionProgram: cmp.PROGRAM_ID,
+        logWrapperProgram: cmp.SPL_NOOP_PROGRAM_ID,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return [itemClass, members, [createMembersAccountIx, ix]];
+  }
 }
 
 export interface CreateItemClassArgs {
@@ -1307,3 +1359,19 @@ export interface UpdateItemArgs {
 export interface UpdateItemAccounts {}
 
 export interface UpdateItemAdditionalArgs {}
+
+export interface CreateItemClassV1Accounts {}
+
+export interface CreateItemClassV1Args {
+  schemaArgs: CreateItemClassV1SchemaArgs,
+}
+
+export interface CreateItemClassV1SchemaArgs {
+  autoActivate: boolean,
+  materials: Material[],
+}
+
+export interface Material {
+  itemClass: web3.PublicKey,
+  amount: BN,
+}

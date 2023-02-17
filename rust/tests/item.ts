@@ -7,13 +7,12 @@ import {
   Instructions,
   Utils,
   Constants,
-  StakingProgram,
   Idls,
   ItemProgram,
 } from "@raindrops-protocol/raindrops";
 import assert = require("assert");
 
-describe("item", () => {
+describe.only("item", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -22,7 +21,7 @@ describe("item", () => {
   it("pNFT item smoke test", async () => {
     const payer = await newPayer(connection);
 
-    const _itemProgram = await ItemProgram.getProgramWithConfig(
+    const itemProgram = await ItemProgram.getProgramWithConfig(
       ItemProgram,
       {
         asyncSigning: false,
@@ -34,6 +33,16 @@ describe("item", () => {
         idl: Idls.ItemIDL,
       }
     );
+
+    const createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
+      schemaArgs: {
+        autoActivate: true,
+        materials: [],
+      },
+    };
+
+    const [itemClass, createItemClassResult] = await itemProgram.createItemClassV1(createItemClassArgs);
+    console.log("createItemClassTxSig: %s", createItemClassResult.txid);
   });
 });
 

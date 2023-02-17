@@ -1,12 +1,10 @@
 use anchor_lang::prelude::*;
 use spl_account_compression::{
     cpi::{
-        accounts::{Initialize, Modify, VerifyLeaf},
-        append, init_empty_merkle_tree, verify_leaf,
+        accounts::Initialize,
+        init_empty_merkle_tree,
     },
     program::SplAccountCompression,
-    ConcurrentMerkleTree,
-    zero_copy::ZeroCopy,
 };
 
 use crate::state::{ItemClassV1, Material, Schema, NoopProgram};
@@ -14,7 +12,7 @@ use crate::state::{ItemClassV1, Material, Schema, NoopProgram};
 #[derive(Accounts)]
 #[instruction(args: CreateItemClassV1Args)]
 pub struct CreateItemClassV1<'info> {
-    /// CHECK: Done by account compression
+    /// CHECK: initialized by spl-account-compression program
     #[account(zero)]
     pub members: UncheckedAccount<'info>,
 
@@ -25,18 +23,18 @@ pub struct CreateItemClassV1<'info> {
 
     #[account(init,
         payer = authority,
-        space = Schema::space(args.schema_args.materials),
+        space = Schema::space(args.schema_args.materials.len()),
         seeds = [Schema::PREFIX.as_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    pub account_compression: Program<'info, SplAccountCompression>,
-
-    pub log_wrapper: Program<'info, NoopProgram>,
-
     pub rent: Sysvar<'info, Rent>,
+
+    pub account_compression_program: Program<'info, SplAccountCompression>,
+
+    pub log_wrapper_program: Program<'info, NoopProgram>,
 
     pub system_program: Program<'info, System>,
 }
@@ -68,15 +66,16 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
     let init_empty_merkle_tree_accounts = Initialize {
         merkle_tree: ctx.accounts.members.to_account_info(),
         authority: ctx.accounts.item_class.to_account_info(),
-        noop: ctx.accounts.log_wrapper.to_account_info(),
+        noop: ctx.accounts.log_wrapper_program.to_account_info(),
     };
 
     // initialize merkle tree account
     init_empty_merkle_tree(
         CpiContext::new_with_signer(
-            ctx.accounts.account_compression.to_account_info(),
+            ctx.accounts.account_compression_program.to_account_info(),
             init_empty_merkle_tree_accounts,
             &[&[
+                ItemClassV1::PREFIX.as_bytes(),
                 ctx.accounts.members.key().as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],

@@ -889,6 +889,202 @@ export type RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "createItemClassV1",
+      "accounts": [
+        {
+          "name": "members",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "logWrapperProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateItemClassV1Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "startBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addBuildMaterial",
+      "accounts": [
+        {
+          "name": "materialMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "materialDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "members",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "completeBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -898,56 +1094,52 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
-            "type": "u64"
+            "name": "members",
+            "type": "publicKey"
           }
         ]
       }
     },
     {
-      "name": "itemV1",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
-    {
-      "name": "componentV1",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
-    {
-      "name": "schemaV1",
+      "name": "schema",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "enabled",
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "autoActivate",
             "type": "bool"
           },
           {
-            "name": "autoActivateItem",
-            "type": "bool"
-          },
-          {
-            "name": "components",
+            "name": "materials",
             "type": {
-              "vec": "publicKey"
+              "vec": {
+                "defined": "Material"
+              }
             }
           }
         ]
       }
     },
     {
-      "name": "buildEscrow",
+      "name": "build",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "escrowedComponents",
+            "name": "builder",
             "type": "publicKey"
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "Material"
+              }
+            }
           }
         ]
       }
@@ -1174,6 +1366,56 @@ export type RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "CreateItemClassV1Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "schemaArgs",
+            "type": {
+              "defined": "SchemaArgs"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SchemaArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "autoActivate",
+            "type": "bool"
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "Material"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Material",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "CreateItemClassArgs",
       "type": {
@@ -4294,6 +4536,202 @@ export const IDL: RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "createItemClassV1",
+      "accounts": [
+        {
+          "name": "members",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompressionProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "logWrapperProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateItemClassV1Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "startBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addBuildMaterial",
+      "accounts": [
+        {
+          "name": "materialMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "materialDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "members",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "completeBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "schema",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -4303,56 +4741,52 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
-            "type": "u64"
+            "name": "members",
+            "type": "publicKey"
           }
         ]
       }
     },
     {
-      "name": "itemV1",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
-    {
-      "name": "componentV1",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
-    {
-      "name": "schemaV1",
+      "name": "schema",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "enabled",
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "autoActivate",
             "type": "bool"
           },
           {
-            "name": "autoActivateItem",
-            "type": "bool"
-          },
-          {
-            "name": "components",
+            "name": "materials",
             "type": {
-              "vec": "publicKey"
+              "vec": {
+                "defined": "Material"
+              }
             }
           }
         ]
       }
     },
     {
-      "name": "buildEscrow",
+      "name": "build",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "escrowedComponents",
+            "name": "builder",
             "type": "publicKey"
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "Material"
+              }
+            }
           }
         ]
       }
@@ -4579,6 +5013,56 @@ export const IDL: RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "CreateItemClassV1Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "schemaArgs",
+            "type": {
+              "defined": "SchemaArgs"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SchemaArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "autoActivate",
+            "type": "bool"
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "Material"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Material",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "CreateItemClassArgs",
       "type": {

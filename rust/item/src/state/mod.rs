@@ -28,11 +28,11 @@ pub struct Schema {
 
 impl Schema {
     pub const PREFIX: &'static str = "schema";
-    pub fn space(materials: Vec<Material>) -> usize {
+    pub fn space(material_count: usize) -> usize {
         8 + // anchor
         32 + // item_class
         1 + // auto_activate
-        4 + (Material::SPACE * materials.len()) // materials
+        4 + (Material::SPACE * material_count) // materials
     }
 }
 

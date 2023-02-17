@@ -21,6 +21,6 @@ arrayref = "0.3.6"
 spl-associated-token-account = { version="1.0.3", features = [ "no-entrypoint" ] }
 spl-token = { version="3.1.1", features = [ "no-entrypoint" ] }
 mpl-token-metadata = { version="1.8.3", features = [ "no-entrypoint" ] }
-spl-account-compression = { version  = "0.1.8", features = ["no-entrypoint", "cpi"] }
-spl-noop = "0.1.3"
+spl-account-compression = { version  = "0.1.8", features = ["cpi"] }
+spl-noop = { version = "0.1.3", features = ["cpi"] }
 

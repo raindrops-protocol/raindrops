@@ -268,6 +268,12 @@ export class ItemProgram extends Program.Program {
     );
     return this.sendWithRetry(instruction, [], options);
   }
+
+  async createItemClassV1(args: ItemInstruction.CreateItemClassV1Args, options?: SendOptions): Promise<[web3.PublicKey, Transaction.SendTransactionResult]> {
+    const [itemClass, membersKp, instructions] = await this.instruction.createItemClassV1(args);
+    const result = await this.sendWithRetry(instructions, [membersKp], options);
+    return [itemClass, result]
+  }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
   program: ItemProgram;
