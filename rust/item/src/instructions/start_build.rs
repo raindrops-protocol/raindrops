@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token;
 
-use crate::state::{Build, ItemClassV1, Schema};
+use crate::state::{errors::ErrorCode, Build, ItemClassV1, Material, Schema};
 
 #[derive(Accounts)]
 pub struct StartBuild<'info> {
@@ -14,7 +13,7 @@ pub struct StartBuild<'info> {
     #[account(seeds = [Schema::PREFIX.as_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
-    #[account(mut, seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.members.key().as_ref()], bump)]
+    #[account(mut, seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
 
     #[account(mut)]
@@ -25,6 +24,15 @@ pub struct StartBuild<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(_ctx: Context<StartBuild>) -> Result<()> {
+pub fn handler(ctx: Context<StartBuild>) -> Result<()> {
+    require!(ctx.accounts.schema.build_enabled, ErrorCode::BuildDisabled);
+    let build = &mut ctx.accounts.build;
+    for required_material in &ctx.accounts.schema.materials {
+        build.materials.push(Material {
+            item_class: required_material.item_class,
+            amount: 0,
+        });
+    }
+    msg!("{:?}", build.materials);
     Ok(())
 }

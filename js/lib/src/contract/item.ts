@@ -270,9 +270,29 @@ export class ItemProgram extends Program.Program {
   }
 
   async createItemClassV1(args: ItemInstruction.CreateItemClassV1Args, options?: SendOptions): Promise<[web3.PublicKey, Transaction.SendTransactionResult]> {
-    const [itemClass, membersKp, instructions] = await this.instruction.createItemClassV1(args);
-    const result = await this.sendWithRetry(instructions, [membersKp], options);
+    const [itemClass, itemsKp, instructions] = await this.instruction.createItemClassV1(args);
+    const result = await this.sendWithRetry(instructions, [itemsKp], options);
     return [itemClass, result]
+  }
+
+  async startBuild(accounts: ItemInstruction.StartBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.startBuild(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.addBuildMaterial(accounts);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async completeBuild(accounts: ItemInstruction.CompleteBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.completeBuild(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async receiveItem(accounts: ItemInstruction.ReceiveItemAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.receiveItem(accounts);
+    return await this.sendWithRetry([ix], [], options);
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

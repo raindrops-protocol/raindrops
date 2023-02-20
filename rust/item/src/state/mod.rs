@@ -1,10 +1,13 @@
 use anchor_lang::prelude::*;
+use mpl_token_metadata::ID as TokenMetadataPID;
+
+pub mod errors;
 
 // seeds = ['item_class_v1', membership_tree.key().as_ref()]
 #[account]
 pub struct ItemClassV1 {
-    // merkle tree containing all the mints which belong to this item class
-    pub members: Pubkey,
+    // merkle tree containing all item addresses belonging to this item class
+    pub items: Pubkey,
 }
 
 impl ItemClassV1 {
@@ -19,6 +22,9 @@ impl ItemClassV1 {
 pub struct Schema {
     pub item_class: Pubkey,
 
+    // if false building is disabled for this item class
+    pub build_enabled: bool,
+
     // if true, activate the item class within the build instruction
     pub auto_activate: bool,
 
@@ -31,6 +37,7 @@ impl Schema {
     pub fn space(material_count: usize) -> usize {
         8 + // anchor
         32 + // item_class
+        1 + // enabled
         1 + // auto_activate
         4 + (Material::SPACE * material_count) // materials
     }
@@ -48,23 +55,31 @@ impl Material {
 }
 
 // manages the lifecycle of the item class build process for a builder
-// seeds = ['build', item_class.key(), builder.key().as_ref()]
+// seeds = ['build', item_class.key(), schema.key().as_ref(), builder.key().as_ref()]
 #[account]
 pub struct Build {
     pub builder: Pubkey,
 
     // current build materials
     pub materials: Vec<Material>,
+
+    // if true, building is complete
+    pub complete: bool,
+
+    // if true, item has been distributed to the builder
+    pub item_distributed: bool,
 }
 
 impl Build {
     pub const PREFIX: &'static str = "build";
     pub fn space(material_count: usize) -> usize {
         8 + // anchor
+        32 + // builder
+        1 + // complete
+        1 + // item_distributed
         4 + (Material::SPACE * material_count) // materials
     }
 }
-
 
 // anchor wrapper for Noop Program required for spl-account-compression
 #[derive(Clone)]
@@ -73,5 +88,15 @@ pub struct NoopProgram;
 impl anchor_lang::Id for NoopProgram {
     fn id() -> Pubkey {
         spl_noop::ID
+    }
+}
+
+// anchor wrapper for Token Metadata Program
+#[derive(Clone)]
+pub struct TokenMetadataProgram;
+
+impl anchor_lang::Id for TokenMetadataProgram {
+    fn id() -> Pubkey {
+        TokenMetadataPID
     }
 }

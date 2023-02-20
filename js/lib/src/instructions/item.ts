@@ -5,7 +5,7 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { Token } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import {
   Program,
   Instruction as SolKitInstruction,
@@ -21,11 +21,15 @@ import {
   getItemPDA,
   getMetadata,
 } from "../utils/pda";
-import { TOKEN_PROGRAM_ID } from "../constants/programIds";
+import {
+  TOKEN_METADATA_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
 import * as cmp from "@solana/spl-account-compression";
+import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1003,7 +1007,7 @@ export class Instruction extends SolKitInstruction {
   async createItemClassV1(
     args: CreateItemClassV1Args
   ): Promise<[web3.PublicKey, web3.Keypair, web3.TransactionInstruction[]]> {
-    const members = web3.Keypair.generate();
+    const items = web3.Keypair.generate();
 
     const maxDepth = 14;
     const maxBufferSize = 64;
@@ -1013,19 +1017,20 @@ export class Instruction extends SolKitInstruction {
       maxBufferSize
     );
     const treeLamports =
-      await this.program.client.provider.connection.getMinimumBalanceForRentExemption(treeSpace);
+      await this.program.client.provider.connection.getMinimumBalanceForRentExemption(
+        treeSpace
+      );
 
-    const createMembersAccountIx =
-      await web3.SystemProgram.createAccount({
-        fromPubkey: this.program.client.provider.publicKey!,
-        newAccountPubkey: members.publicKey,
-        lamports: treeLamports,
-        space: treeSpace,
-        programId: cmp.PROGRAM_ID,
-      });
+    const createMembersAccountIx = await web3.SystemProgram.createAccount({
+      fromPubkey: this.program.client.provider.publicKey!,
+      newAccountPubkey: items.publicKey,
+      lamports: treeLamports,
+      space: treeSpace,
+      programId: cmp.PROGRAM_ID,
+    });
 
     const [itemClass, _itemClassBump] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("item_class_v1"), members.publicKey.toBuffer()],
+      [Buffer.from("item_class_v1"), items.publicKey.toBuffer()],
       this.program.id
     );
 
@@ -1037,7 +1042,7 @@ export class Instruction extends SolKitInstruction {
     const ix = await this.program.client.methods
       .createItemClassV1(args)
       .accounts({
-        members: members.publicKey,
+        items: items.publicKey,
         itemClass: itemClass,
         schema: schema,
         authority: this.program.client.provider.publicKey!,
@@ -1048,7 +1053,301 @@ export class Instruction extends SolKitInstruction {
       })
       .instruction();
 
-    return [itemClass, members, [createMembersAccountIx, ix]];
+    return [itemClass, items, [createMembersAccountIx, ix]];
+  }
+
+  async startBuild(
+    accounts: StartBuildAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("schema"), accounts.itemClass.toBuffer()],
+      this.program.id
+    );
+
+    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        accounts.itemClass.toBuffer(),
+        schema.toBuffer(),
+        this.program.client.provider.publicKey!.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const ix = await this.program.client.methods
+      .startBuild()
+      .accounts({
+        build: build,
+        schema: schema,
+        itemClass: accounts.itemClass,
+        builder: this.program.client.provider.publicKey!,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  async addBuildMaterial(
+    accounts: AddBuildMaterialAccounts
+  ): Promise<web3.TransactionInstruction[]> {
+    const materialItemClassData =
+      await this.program.client.account.itemClassV1.fetch(
+        accounts.materialItemClass
+      );
+    const materialClassItemClassItems = new web3.PublicKey(
+      materialItemClassData.items
+    );
+
+    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("schema"), accounts.itemClass.toBuffer()],
+      this.program.id
+    );
+
+    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        accounts.itemClass.toBuffer(),
+        schema.toBuffer(),
+        this.program.client.provider.publicKey!.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const [materialMetadata, _materialMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.materialMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [materialME, _materialMEBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.materialMint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const materialSource = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.materialMint,
+      this.program.client.provider.publicKey!
+    );
+    const materialDestination = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.materialMint,
+      build,
+      true
+    );
+
+    const [materialSourceTokenRecord, _materialSourceTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.materialMint.toBuffer(),
+          Buffer.from("token_record"),
+          materialSource.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [
+      materialDestinationTokenRecord,
+      _materialDestinationTokenRecordBump,
+    ] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.materialMint.toBuffer(),
+        Buffer.from("token_record"),
+        materialDestination.toBuffer(),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    //const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+    //  units: 1000000,
+    //});
+
+    //const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+    //  microLamports: 5000,
+    //});
+
+    const ix = await this.program.client.methods
+      .addBuildMaterial()
+      .accounts({
+        materialMint: accounts.materialMint,
+        materialMetadata: materialMetadata,
+        materialEdition: materialME,
+        materialSource: materialSource,
+        materialSourceTokenRecord: materialSourceTokenRecord,
+        materialDestination: materialDestination,
+        materialDestinationTokenRecord: materialDestinationTokenRecord,
+        materialItemClass: accounts.materialItemClass,
+        materialItemClassItems: materialClassItemClassItems,
+        build: build,
+        schema: schema,
+        itemClass: accounts.itemClass,
+        builder: this.program.client.provider.publicKey!,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+      })
+      .instruction();
+
+    return [ix];
+  }
+
+  async completeBuild(
+    accounts: CompleteBuildAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("schema"), accounts.itemClass.toBuffer()],
+      this.program.id
+    );
+
+    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        accounts.itemClass.toBuffer(),
+        schema.toBuffer(),
+        this.program.client.provider.publicKey!.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const ix = await this.program.client.methods
+      .completeBuild()
+      .accounts({
+        build: build,
+        schema: schema,
+        itemClass: accounts.itemClass,
+        builder: this.program.client.provider.publicKey!,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  async receiveItem(
+    accounts: ReceiveItemAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+    const items = new web3.PublicKey(itemClassData.items);
+
+    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("schema"), accounts.itemClass.toBuffer()],
+      this.program.id
+    );
+
+    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        accounts.itemClass.toBuffer(),
+        schema.toBuffer(),
+        this.program.client.provider.publicKey!.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const [itemMetadata, _itemMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.itemMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.itemMint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const itemSource = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.itemMint,
+      accounts.itemClass,
+      true
+    );
+    const itemDestination = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.itemMint,
+      this.program.client.provider.publicKey!
+    );
+
+    const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.itemMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemSource.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemDestinationTokenRecord, _itemDestinationTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.itemMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemDestination.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const ix = await this.program.client.methods
+      .receiveItem()
+      .accounts({
+        itemMint: accounts.itemMint,
+        itemMetadata: itemMetadata,
+        itemEdition: itemME,
+        itemSource: itemSource,
+        itemSourceTokenRecord: itemSourceTokenRecord,
+        itemDestination: itemDestination,
+        itemDestinationTokenRecord: itemDestinationTokenRecord,
+        itemClass: accounts.itemClass,
+        items: items,
+        build: build,
+        schema: schema,
+        builder: this.program.client.provider.publicKey!,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+      })
+      .instruction();
+
+    return ix;
   }
 }
 
@@ -1360,18 +1659,36 @@ export interface UpdateItemAccounts {}
 
 export interface UpdateItemAdditionalArgs {}
 
-export interface CreateItemClassV1Accounts {}
-
 export interface CreateItemClassV1Args {
-  schemaArgs: CreateItemClassV1SchemaArgs,
+  schemaArgs: CreateItemClassV1SchemaArgs;
 }
 
 export interface CreateItemClassV1SchemaArgs {
-  autoActivate: boolean,
-  materials: Material[],
+  buildEnabled: boolean;
+  autoActivate: boolean;
+  materials: Material[];
 }
 
 export interface Material {
-  itemClass: web3.PublicKey,
-  amount: BN,
+  itemClass: web3.PublicKey;
+  amount: BN;
+}
+
+export interface StartBuildAccounts {
+  itemClass: web3.PublicKey;
+}
+
+export interface AddBuildMaterialAccounts {
+  materialMint: web3.PublicKey;
+  materialItemClass: web3.PublicKey;
+  itemClass: web3.PublicKey;
+}
+
+export interface CompleteBuildAccounts {
+  itemClass: web3.PublicKey;
+}
+
+export interface ReceiveItemAccounts {
+  itemMint: web3.PublicKey;
+  itemClass: web3.PublicKey;
 }

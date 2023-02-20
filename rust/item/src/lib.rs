@@ -1963,7 +1963,10 @@ pub mod raindrops_item {
         Ok(())
     }
 
-    pub fn create_item_class_v1(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
+    pub fn create_item_class_v1(
+        ctx: Context<CreateItemClassV1>,
+        args: CreateItemClassV1Args,
+    ) -> Result<()> {
         create_item_class_v1::handler(ctx, args)
     }
 
@@ -1977,6 +1980,10 @@ pub mod raindrops_item {
 
     pub fn complete_build(ctx: Context<CompleteBuild>) -> Result<()> {
         complete_build::handler(ctx)
+    }
+
+    pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
+        receive_item::handler(ctx)
     }
 }
 
