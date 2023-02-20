@@ -8,6 +8,7 @@ import {
   ItemProgram,
 } from "@raindrops-protocol/raindrops";
 import * as splToken from "@solana/spl-token";
+import * as cmp from "@solana/spl-account-compression";
 import { assert } from "chai";
 
 describe.only("item", () => {
@@ -33,7 +34,7 @@ describe.only("item", () => {
     );
 
     // build all the material item classes
-    const materialItemClasses: anchor.web3.PublicKey[] = [];
+    const materials: [anchor.web3.PublicKey, cmp.MerkleTree][] = [];
     for (let i = 0; i < 3; i++) {
       let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
         schemaArgs: {
@@ -46,7 +47,10 @@ describe.only("item", () => {
       let [itemClass, createItemClassResult] = await itemProgram.createItemClassV1(createItemClassArgs);
       console.log("createItemClassTxSig: %s", createItemClassResult.txid);
 
-      materialItemClasses.push(itemClass)
+      // TODO: currently these are hardcoded in the contract
+      let offchainTree = initTree({maxBufferSize: 64, maxDepth: 14});
+
+      materials.push([itemClass, offchainTree])
     }
 
     // create the item class which will be built using the materials
@@ -56,15 +60,15 @@ describe.only("item", () => {
         autoActivate: true,
         materials: [
           {
-            itemClass: materialItemClasses[0],
+            itemClass: materials[0][0],
             amount: new BN(1),
           },
           {
-            itemClass: materialItemClasses[1],
+            itemClass: materials[1][0],
             amount: new BN(1),
           },
           {
-            itemClass: materialItemClasses[2],
+            itemClass: materials[2][0],
             amount: new BN(1),
           }
         ]
@@ -83,7 +87,7 @@ describe.only("item", () => {
     console.log("startBuildTxSig: %s", startBuildResult.txid);
 
     // escrow the materials with the build pda
-    for (let materialItemClass of materialItemClasses) {
+    for (let material of materials) {
 
       // create pNFTs which represent the material item classes
       const client = new metaplex.Metaplex(connection, {}).use(
@@ -99,13 +103,31 @@ describe.only("item", () => {
       });
       console.log("createPNftTxSig: %s", materialMintPNftOutput.response.signature)
 
+      // add mint to the items tree on chain
+      const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass = {
+        itemClass: itemClass,
+        itemMints: [materialMintPNftOutput.mintAddress],
+      };
+
+      const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(addItemsToItemClassAccounts)
+      console.log("addItemsToItemClassTxSig: %s", addItemsToItemClassResult.txid);
+
+      // add mint to the off chain tree, eventually this won't be a manual operation when we have an indexer
+      // right now index 0 because we are only adding 1 item
+      material[1].updateLeaf(0, materialMintPNftOutput.mintAddress.toBuffer());
+
       const addBuildMaterialAccounts: Instructions.Item.AddBuildMaterialAccounts = {
         itemClass: itemClass,
         materialMint: materialMintPNftOutput.mintAddress,
-        materialItemClass: materialItemClass,
+        materialItemClass: material[0],
       }
+
+      const addBuildMaterialArgs: Instructions.Item.AddBuildMaterialArgs = {
+        root: material[1].getRoot(),
+        leafIndex: 0,
+      };
   
-      const addBuildMaterialResult = await itemProgram.addBuildMaterial(addBuildMaterialAccounts);
+      const addBuildMaterialResult = await itemProgram.addBuildMaterial(addBuildMaterialAccounts, addBuildMaterialArgs);
       console.log("addBuildMaterialTxSig: %s", addBuildMaterialResult.txid);
     }
 
@@ -130,12 +152,12 @@ describe.only("item", () => {
     });
     console.log("createPNftTxSig: %s", itemMintPNftOutput.response.signature)
 
-    const nftOrSft = await client.nfts().findByMint({
+    const pNft = await client.nfts().findByMint({
       mintAddress: itemMintPNftOutput.mintAddress,
     });
 
     const itemTransferOutput = await client.nfts().transfer({
-      nftOrSft: nftOrSft,
+      nftOrSft: pNft,
       authority: payer,
       fromOwner: payer.publicKey,
       toOwner: itemClass,
@@ -164,9 +186,19 @@ async function newPayer(
 
   const txSig = await connection.requestAirdrop(
     payer.publicKey,
-    10 * anchor.web3.LAMPORTS_PER_SOL
+    100 * anchor.web3.LAMPORTS_PER_SOL
   );
   await connection.confirmTransaction(txSig);
 
   return payer;
+}
+
+function initTree(depthSizePair: cmp.ValidDepthSizePair): cmp.MerkleTree {
+  const leaves = Array(2 ** depthSizePair.maxDepth).fill(Buffer.alloc(32));
+  const tree = new cmp.MerkleTree(leaves);
+  return tree
+}
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
 }

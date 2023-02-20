@@ -1970,12 +1970,16 @@ pub mod raindrops_item {
         create_item_class_v1::handler(ctx, args)
     }
 
+    pub fn add_item_to_item_class(ctx: Context<AddItemToItemClass>) -> Result<()> {
+        add_item_to_item_class::handler(ctx)
+    }
+
     pub fn start_build(ctx: Context<StartBuild>) -> Result<()> {
         start_build::handler(ctx)
     }
 
-    pub fn add_build_material(ctx: Context<AddBuildMaterial>) -> Result<()> {
-        add_build_material::handler(ctx)
+    pub fn add_build_material(ctx: Context<AddBuildMaterial>, args: AddBuildMaterialArgs) -> Result<()> {
+        add_build_material::handler(ctx, args)
     }
 
     pub fn complete_build(ctx: Context<CompleteBuild>) -> Result<()> {

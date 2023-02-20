@@ -59,6 +59,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
 
     // init item class
     ctx.accounts.item_class.set_inner(ItemClassV1 {
+        authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
     });
 
@@ -69,7 +70,6 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
     };
 
     // initialize merkle tree
-    // TODO: init with data instead
     init_empty_merkle_tree(
         CpiContext::new_with_signer(
             ctx.accounts.account_compression_program.to_account_info(),

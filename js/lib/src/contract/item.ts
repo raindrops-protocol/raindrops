@@ -275,13 +275,19 @@ export class ItemProgram extends Program.Program {
     return [itemClass, result]
   }
 
+  // TODO: chunk the returned instructions
+  async addItemsToItemClass(accounts: ItemInstruction.AddItemsToItemClass, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.addItemsToItemClass(accounts);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
   async startBuild(accounts: ItemInstruction.StartBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.startBuild(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.addBuildMaterial(accounts);
+  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, args: ItemInstruction.AddBuildMaterialArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.addBuildMaterial(accounts, args);
     return await this.sendWithRetry(ixns, [], options);
   }
 

@@ -6,6 +6,9 @@ pub mod errors;
 // seeds = ['item_class_v1', membership_tree.key().as_ref()]
 #[account]
 pub struct ItemClassV1 {
+    // controls the item class
+    pub authority: Pubkey,
+
     // merkle tree containing all item addresses belonging to this item class
     pub items: Pubkey,
 }
@@ -13,6 +16,7 @@ pub struct ItemClassV1 {
 impl ItemClassV1 {
     pub const PREFIX: &'static str = "item_class_v1";
     pub const SPACE: usize = 8 + // anchor
+    32 + // authority
     32; // members
 }
 

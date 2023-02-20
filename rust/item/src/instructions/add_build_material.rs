@@ -1,8 +1,14 @@
-use anchor_lang::{prelude::*, solana_program::program::invoke};
+use std::convert::TryInto;
+
+use anchor_lang::{prelude::*, solana_program::{keccak::hashv, program::invoke}};
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
+use spl_account_compression::{
+    cpi::{accounts::VerifyLeaf, verify_leaf},
+    program::SplAccountCompression, ConcurrentMerkleTree, zero_copy::ZeroCopy,
+};
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema, TokenMetadataProgram};
+use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema, TokenMetadataProgram, NoopProgram};
 
 #[derive(Accounts)]
 pub struct AddBuildMaterial<'info> {
@@ -31,11 +37,10 @@ pub struct AddBuildMaterial<'info> {
     pub material_destination_token_record: UncheckedAccount<'info>,
 
     #[account(
-        constraint = material_item_class_items.key().eq(&material_item_class.items.key()),
-        seeds = [ItemClassV1::PREFIX.as_bytes(), material_item_class.items.key().as_ref()], bump)]
+        seeds = [ItemClassV1::PREFIX.as_bytes(), material_item_class_items.key().as_ref()], bump)]
     pub material_item_class: Box<Account<'info, ItemClassV1>>,
 
-    /// CHECK: todo
+    /// CHECK: checked by spl-account-compression
     pub material_item_class_items: UncheckedAccount<'info>,
 
     #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
@@ -57,6 +62,10 @@ pub struct AddBuildMaterial<'info> {
     #[account()]
     pub instructions: UncheckedAccount<'info>,
 
+    pub noop: Program<'info, NoopProgram>,
+
+    pub account_compression: Program<'info, SplAccountCompression>,
+
     pub system_program: Program<'info, System>,
 
     pub token_program: Program<'info, token::Token>,
@@ -66,8 +75,33 @@ pub struct AddBuildMaterial<'info> {
     pub token_metadata: Program<'info, TokenMetadataProgram>,
 }
 
-pub fn handler(ctx: Context<AddBuildMaterial>) -> Result<()> {
-    // TODO: check if material_mint exists in item_class.items tree
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct AddBuildMaterialArgs {
+    pub root: [u8; 32],
+    pub leaf_index: u32,
+}
+
+pub fn handler(ctx: Context<AddBuildMaterial>, args: AddBuildMaterialArgs) -> Result<()> {
+    let verify_item_accounts = VerifyLeaf {
+        merkle_tree: ctx.accounts.material_item_class_items.to_account_info(),
+    };
+
+    //let node = hashv(&[]);
+
+    //// parse merkle tree
+    //let items_tree_data = &ctx.accounts.material_item_class_items.try_borrow_mut_data().unwrap();
+    //let items_tree = ConcurrentMerkleTree::<14, 64>::load_bytes(items_tree_data)?;
+
+    verify_leaf(
+        CpiContext::new(
+            ctx.accounts.account_compression.to_account_info(),
+            verify_item_accounts,
+        ).with_remaining_accounts(vec![]),
+        args.root,
+        ctx.accounts.material_mint.key().as_ref().try_into().unwrap(),
+        args.leaf_index,
+    )?;
 
     // update build pda with material data
     let build = &mut ctx.accounts.build;

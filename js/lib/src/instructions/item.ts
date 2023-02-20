@@ -1014,8 +1014,10 @@ export class Instruction extends SolKitInstruction {
 
     const treeSpace = cmp.getConcurrentMerkleTreeAccountSize(
       maxDepth,
-      maxBufferSize
+      maxBufferSize,
+      //maxDepth // store max depth of tree in the canopy
     );
+
     const treeLamports =
       await this.program.client.provider.connection.getMinimumBalanceForRentExemption(
         treeSpace
@@ -1056,6 +1058,34 @@ export class Instruction extends SolKitInstruction {
     return [itemClass, items, [createMembersAccountIx, ix]];
   }
 
+  async addItemsToItemClass(
+    accounts: AddItemsToItemClass
+  ): Promise<web3.TransactionInstruction[]> {
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+    const itemClassItems = new web3.PublicKey(itemClassData.items);
+
+    const ixns: web3.TransactionInstruction[] = [];
+    for (let itemMint of accounts.itemMints) {
+      const ix = await this.program.client.methods
+        .addItemToItemClass()
+        .accounts({
+          itemMint: itemMint,
+          itemClass: accounts.itemClass,
+          items: itemClassItems,
+          authority: this.program.client.provider.publicKey!,
+          noop: cmp.SPL_NOOP_PROGRAM_ID,
+          accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        })
+        .instruction();
+
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
   async startBuild(
     accounts: StartBuildAccounts
   ): Promise<web3.TransactionInstruction> {
@@ -1090,7 +1120,8 @@ export class Instruction extends SolKitInstruction {
   }
 
   async addBuildMaterial(
-    accounts: AddBuildMaterialAccounts
+    accounts: AddBuildMaterialAccounts,
+    args: AddBuildMaterialArgs
   ): Promise<web3.TransactionInstruction[]> {
     const materialItemClassData =
       await this.program.client.account.itemClassV1.fetch(
@@ -1175,16 +1206,18 @@ export class Instruction extends SolKitInstruction {
       mpl.PROGRAM_ID
     );
 
-    //const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
-    //  units: 1000000,
-    //});
+    // double CU and fee
 
-    //const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
-    //  microLamports: 5000,
-    //});
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
 
     const ix = await this.program.client.methods
-      .addBuildMaterial()
+      .addBuildMaterial(args)
       .accounts({
         materialMint: accounts.materialMint,
         materialMetadata: materialMetadata,
@@ -1205,10 +1238,12 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        noop: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
       .instruction();
 
-    return [ix];
+    return [increaseCUIx, addPriorityFeeIx, ix];
   }
 
   async completeBuild(
@@ -1684,6 +1719,11 @@ export interface AddBuildMaterialAccounts {
   itemClass: web3.PublicKey;
 }
 
+export interface AddBuildMaterialArgs {
+  root: Buffer;
+  leafIndex: number;
+}
+
 export interface CompleteBuildAccounts {
   itemClass: web3.PublicKey;
 }
@@ -1691,4 +1731,9 @@ export interface CompleteBuildAccounts {
 export interface ReceiveItemAccounts {
   itemMint: web3.PublicKey;
   itemClass: web3.PublicKey;
+}
+
+export interface AddItemsToItemClass {
+  itemClass: web3.PublicKey;
+  itemMints: web3.PublicKey[];
 }

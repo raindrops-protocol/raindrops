@@ -944,6 +944,42 @@ export type RaindropsItem = {
       ]
     },
     {
+      "name": "addItemToItemClass",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "items",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "startBuild",
       "accounts": [
         {
@@ -1058,6 +1094,16 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -1078,7 +1124,14 @@ export type RaindropsItem = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddBuildMaterialArgs"
+          }
+        }
+      ]
     },
     {
       "name": "completeBuild",
@@ -1209,6 +1262,10 @@ export type RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
           {
             "name": "items",
             "type": "publicKey"
@@ -1494,6 +1551,27 @@ export type RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "AddBuildMaterialArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
     {
       "name": "CreateItemClassV1Args",
       "type": {
@@ -4398,6 +4476,42 @@ export const IDL: RaindropsItem = {
       ]
     },
     {
+      "name": "addItemToItemClass",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "items",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "startBuild",
       "accounts": [
         {
@@ -4512,6 +4626,16 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -4532,7 +4656,14 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddBuildMaterialArgs"
+          }
+        }
+      ]
     },
     {
       "name": "completeBuild",
@@ -4663,6 +4794,10 @@ export const IDL: RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
           {
             "name": "items",
             "type": "publicKey"
@@ -4948,6 +5083,27 @@ export const IDL: RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "AddBuildMaterialArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
     {
       "name": "CreateItemClassV1Args",
       "type": {
