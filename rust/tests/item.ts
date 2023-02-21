@@ -105,7 +105,7 @@ describe.only("item", () => {
 
       // add mint to the items tree on chain
       const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass = {
-        itemClass: itemClass,
+        itemClass: material[0],
         itemMints: [materialMintPNftOutput.mintAddress],
       };
 
@@ -116,6 +116,8 @@ describe.only("item", () => {
       // right now index 0 because we are only adding 1 item
       material[1].updateLeaf(0, materialMintPNftOutput.mintAddress.toBuffer());
 
+      const materialProof = material[1].getProof(0);
+
       const addBuildMaterialAccounts: Instructions.Item.AddBuildMaterialAccounts = {
         itemClass: itemClass,
         materialMint: materialMintPNftOutput.mintAddress,
@@ -123,8 +125,8 @@ describe.only("item", () => {
       }
 
       const addBuildMaterialArgs: Instructions.Item.AddBuildMaterialArgs = {
-        root: material[1].getRoot(),
-        leafIndex: 0,
+        root: materialProof.root,
+        leafIndex: materialProof.leafIndex,
       };
   
       const addBuildMaterialResult = await itemProgram.addBuildMaterial(addBuildMaterialAccounts, addBuildMaterialArgs);

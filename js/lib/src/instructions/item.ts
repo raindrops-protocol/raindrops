@@ -1015,7 +1015,7 @@ export class Instruction extends SolKitInstruction {
     const treeSpace = cmp.getConcurrentMerkleTreeAccountSize(
       maxDepth,
       maxBufferSize,
-      //maxDepth // store max depth of tree in the canopy
+      maxDepth // store max depth of tree in the canopy
     );
 
     const treeLamports =

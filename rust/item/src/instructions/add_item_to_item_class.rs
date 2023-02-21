@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 
-use anchor_lang::{prelude::*, solana_program::keccak::hashv};
+use anchor_lang::prelude::*;
 use anchor_spl::token;
 use spl_account_compression::{
     cpi::{accounts::Modify, append},
@@ -31,18 +31,16 @@ pub struct AddItemToItemClass<'info> {
 }
 
 pub fn handler(ctx: Context<AddItemToItemClass>) -> Result<()> {
-    let insert_or_append_accounts = Modify {
+    let append_accounts = Modify {
         merkle_tree: ctx.accounts.items.to_account_info(),
         authority: ctx.accounts.item_class.to_account_info(),
         noop: ctx.accounts.noop.to_account_info(),
     };
 
-    //let node = hashv(&[ctx.accounts.item_mint.key().as_ref()]);
-
     append(
         CpiContext::new_with_signer(
             ctx.accounts.account_compression.to_account_info(),
-            insert_or_append_accounts,
+            append_accounts,
             &[&[
                 ItemClassV1::PREFIX.as_bytes(),
                 ctx.accounts.items.key().as_ref(),

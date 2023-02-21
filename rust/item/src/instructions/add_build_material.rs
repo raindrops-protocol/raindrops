@@ -1,11 +1,11 @@
 use std::convert::TryInto;
 
-use anchor_lang::{prelude::*, solana_program::{keccak::hashv, program::invoke}};
+use anchor_lang::{prelude::*, solana_program::program::invoke};
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 use spl_account_compression::{
     cpi::{accounts::VerifyLeaf, verify_leaf},
-    program::SplAccountCompression, ConcurrentMerkleTree, zero_copy::ZeroCopy,
+    program::SplAccountCompression,
 };
 
 use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema, TokenMetadataProgram, NoopProgram};
@@ -87,17 +87,11 @@ pub fn handler(ctx: Context<AddBuildMaterial>, args: AddBuildMaterialArgs) -> Re
         merkle_tree: ctx.accounts.material_item_class_items.to_account_info(),
     };
 
-    //let node = hashv(&[]);
-
-    //// parse merkle tree
-    //let items_tree_data = &ctx.accounts.material_item_class_items.try_borrow_mut_data().unwrap();
-    //let items_tree = ConcurrentMerkleTree::<14, 64>::load_bytes(items_tree_data)?;
-
     verify_leaf(
         CpiContext::new(
             ctx.accounts.account_compression.to_account_info(),
             verify_item_accounts,
-        ).with_remaining_accounts(vec![]),
+        ),
         args.root,
         ctx.accounts.material_mint.key().as_ref().try_into().unwrap(),
         args.leaf_index,
