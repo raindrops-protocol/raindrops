@@ -24,8 +24,5 @@
   "devDependencies": {
     "@metaplex-foundation/amman": "^0.10.0",
     "turbo": "^1.4.3"
-  },
-  "dependencies": {
-    "@solana/spl-account-compression": "^0.1.6"
   }
 }
