@@ -1978,8 +1978,15 @@ pub mod raindrops_item {
         start_build::handler(ctx)
     }
 
-    pub fn add_build_material(ctx: Context<AddBuildMaterial>, args: AddBuildMaterialArgs) -> Result<()> {
-        add_build_material::handler(ctx, args)
+    pub fn add_build_material(ctx: Context<AddBuildMaterial>) -> Result<()> {
+        add_build_material::handler(ctx)
+    }
+
+    pub fn verify_build_material<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, VerifyBuildMaterial<'info>>,
+        args: VerifyBuildMaterialArgs,
+    ) -> Result<()> {
+        verify_build_material::handler(ctx, args)
     }
 
     pub fn complete_build(ctx: Context<CompleteBuild>) -> Result<()> {
@@ -1988,6 +1995,13 @@ pub mod raindrops_item {
 
     pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
         receive_item::handler(ctx)
+    }
+
+    pub fn set_build_output<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, SetBuildOutput<'info>>,
+        args: SetBuildOutputArgs,
+    ) -> Result<()> {
+        set_build_output::handler(ctx, args)
     }
 }
 

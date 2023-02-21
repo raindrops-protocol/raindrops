@@ -286,9 +286,14 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, args: ItemInstruction.AddBuildMaterialArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.addBuildMaterial(accounts, args);
+  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.addBuildMaterial(accounts);
     return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async verifyBuildMaterial(accounts: ItemInstruction.VerifyBuildMaterialAccounts, args: ItemInstruction.VerifyBuildMaterialArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.verifyBuildMaterial(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
   }
 
   async completeBuild(accounts: ItemInstruction.CompleteBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
@@ -298,6 +303,11 @@ export class ItemProgram extends Program.Program {
 
   async receiveItem(accounts: ItemInstruction.ReceiveItemAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.receiveItem(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async setBuildOutput(accounts: ItemInstruction.SetBuildOutputAccounts, args: ItemInstruction.SetBuildOutputArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.setBuildOutput(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 }

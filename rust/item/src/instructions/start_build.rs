@@ -29,6 +29,7 @@ pub fn handler(ctx: Context<StartBuild>) -> Result<()> {
     let build = &mut ctx.accounts.build;
     for required_material in &ctx.accounts.schema.materials {
         build.materials.push(Material {
+            item_mint: None,
             item_class: required_material.item_class,
             amount: 0,
         });

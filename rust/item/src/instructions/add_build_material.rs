@@ -1,14 +1,8 @@
-use std::convert::TryInto;
-
 use anchor_lang::{prelude::*, solana_program::program::invoke};
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
-use spl_account_compression::{
-    cpi::{accounts::VerifyLeaf, verify_leaf},
-    program::SplAccountCompression,
-};
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema, TokenMetadataProgram, NoopProgram};
+use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema, TokenMetadataProgram};
 
 #[derive(Accounts)]
 pub struct AddBuildMaterial<'info> {
@@ -36,13 +30,6 @@ pub struct AddBuildMaterial<'info> {
     #[account(mut)]
     pub material_destination_token_record: UncheckedAccount<'info>,
 
-    #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), material_item_class_items.key().as_ref()], bump)]
-    pub material_item_class: Box<Account<'info, ItemClassV1>>,
-
-    /// CHECK: checked by spl-account-compression
-    pub material_item_class_items: UncheckedAccount<'info>,
-
     #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
@@ -58,13 +45,9 @@ pub struct AddBuildMaterial<'info> {
 
     pub rent: Sysvar<'info, Rent>,
 
-    /// CHECK: checked with constraint
+    /// CHECK: TODO
     #[account()]
     pub instructions: UncheckedAccount<'info>,
-
-    pub noop: Program<'info, NoopProgram>,
-
-    pub account_compression: Program<'info, SplAccountCompression>,
 
     pub system_program: Program<'info, System>,
 
@@ -75,35 +58,15 @@ pub struct AddBuildMaterial<'info> {
     pub token_metadata: Program<'info, TokenMetadataProgram>,
 }
 
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct AddBuildMaterialArgs {
-    pub root: [u8; 32],
-    pub leaf_index: u32,
-}
-
-pub fn handler(ctx: Context<AddBuildMaterial>, args: AddBuildMaterialArgs) -> Result<()> {
-    let verify_item_accounts = VerifyLeaf {
-        merkle_tree: ctx.accounts.material_item_class_items.to_account_info(),
-    };
-
-    verify_leaf(
-        CpiContext::new(
-            ctx.accounts.account_compression.to_account_info(),
-            verify_item_accounts,
-        ),
-        args.root,
-        ctx.accounts.material_mint.key().as_ref().try_into().unwrap(),
-        args.leaf_index,
-    )?;
-
+pub fn handler(ctx: Context<AddBuildMaterial>) -> Result<()> {
     // update build pda with material data
     let build = &mut ctx.accounts.build;
     let mut material_added = false;
     for material in build.materials.iter_mut() {
         if material
-            .item_class
-            .eq(&ctx.accounts.material_item_class.key())
+            .item_mint
+            .unwrap()
+            .eq(&ctx.accounts.material_mint.key())
         {
             // TODO: fail if added amount is > required amount
             material.amount += 1;
@@ -164,6 +127,5 @@ pub fn handler(ctx: Context<AddBuildMaterial>, args: AddBuildMaterialArgs) -> Re
 
     invoke(&transfer_ix.instruction(), &transfer_accounts)?;
 
-    // update build pda
     Ok(())
 }

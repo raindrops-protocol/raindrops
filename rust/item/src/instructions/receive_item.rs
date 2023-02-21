@@ -30,20 +30,17 @@ pub struct ReceiveItem<'info> {
     #[account(mut)]
     pub item_destination_token_record: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(
+        constraint = item_mint.key().eq(&build.output_mint.unwrap()),
+        mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
     #[account(seeds = [Schema::PREFIX.as_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
     #[account(
-        has_one = items,
-        seeds = [ItemClassV1::PREFIX.as_bytes(), items.key().as_ref()], bump)]
+        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
-
-    /// CHECK: checked by spl-account-compression
-    #[account()]
-    pub items: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub builder: Signer<'info>,
@@ -73,8 +70,6 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
 
     let build = &mut ctx.accounts.build;
     build.item_distributed = true;
-
-    // TODO: check that item_mint exists in item class items tree
 
     // transfer the pNFT to the builder
     // transfer item_mint to destination
@@ -127,7 +122,7 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
         &transfer_accounts,
         &[&[
             ItemClassV1::PREFIX.as_bytes(),
-            ctx.accounts.items.key().as_ref(),
+            ctx.accounts.item_class.items.as_ref(),
             &[*ctx.bumps.get("item_class").unwrap()],
         ]],
     )?;

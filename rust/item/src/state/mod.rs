@@ -49,12 +49,14 @@ impl Schema {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
 pub struct Material {
+    pub item_mint: Option<Pubkey>,
     pub item_class: Pubkey,
     pub amount: u64,
 }
 
 impl Material {
     pub const SPACE: usize = 32 + // item class
+    (1 + 32) + // item mint
     8; // amount
 }
 
@@ -63,6 +65,9 @@ impl Material {
 #[account]
 pub struct Build {
     pub builder: Pubkey,
+
+    // this is set in set_build_output, its the mint that gets transferred to the builder
+    pub output_mint: Option<Pubkey>,
 
     // current build materials
     pub materials: Vec<Material>,
@@ -79,6 +84,7 @@ impl Build {
     pub fn space(material_count: usize) -> usize {
         8 + // anchor
         32 + // builder
+        (1 + 32) + // output mint
         1 + // complete
         1 + // item_distributed
         4 + (Material::SPACE * material_count) // materials
