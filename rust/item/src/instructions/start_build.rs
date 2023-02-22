@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, Material, Schema};
+use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, Material};
 
 #[derive(Accounts)]
 pub struct StartBuild<'info> {

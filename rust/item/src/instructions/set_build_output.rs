@@ -7,7 +7,7 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, NoopProgram, Schema};
+use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, NoopProgram, BuildStatus};
 
 #[derive(Accounts)]
 pub struct SetBuildOutput<'info> {
@@ -45,9 +45,8 @@ pub fn handler<'a, 'b, 'c, 'info>(
     args: SetBuildOutputArgs,
 ) -> Result<()> {
     // check that the build is complete
-    // TODO: convert these bools into a build stages enum
     require!(
-        ctx.accounts.build.complete && !ctx.accounts.build.item_distributed,
+        ctx.accounts.build.status.eq(&BuildStatus::Complete),
         ErrorCode::BuildIncomplete
     );
 
@@ -69,7 +68,7 @@ pub fn handler<'a, 'b, 'c, 'info>(
 
     // set the item mint as the output mint for the build
     let build = &mut ctx.accounts.build;
-    build.output_mint = Some(ctx.accounts.item_mint.key());
+    build.item_mint = Some(ctx.accounts.item_mint.key());
 
     Ok(())
 }

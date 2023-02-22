@@ -2,7 +2,7 @@ use anchor_lang::{prelude::*, solana_program::program::invoke_signed};
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema, TokenMetadataProgram};
+use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, TokenMetadataProgram, BuildStatus};
 
 #[derive(Accounts)]
 pub struct ReceiveItem<'info> {
@@ -31,7 +31,7 @@ pub struct ReceiveItem<'info> {
     pub item_destination_token_record: UncheckedAccount<'info>,
 
     #[account(
-        constraint = item_mint.key().eq(&build.output_mint.unwrap()),
+        constraint = item_mint.key().eq(&build.item_mint.unwrap()),
         mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
@@ -62,14 +62,13 @@ pub struct ReceiveItem<'info> {
 
 pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
     // check that the build is complete
-    // TODO: convert these bools into a build stages enum
     require!(
-        ctx.accounts.build.complete && !ctx.accounts.build.item_distributed,
+        ctx.accounts.build.status.eq(&BuildStatus::Complete),
         ErrorCode::BuildIncomplete
     );
 
-    let build = &mut ctx.accounts.build;
-    build.item_distributed = true;
+    // set build to final state
+    ctx.accounts.build.status = BuildStatus::ItemReceived;
 
     // transfer the pNFT to the builder
     // transfer item_mint to destination

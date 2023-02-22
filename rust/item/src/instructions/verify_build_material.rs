@@ -7,7 +7,7 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, NoopProgram, Schema};
+use crate::state::{errors::ErrorCode, accounts::{Build, Schema, ItemClassV1}, NoopProgram};
 
 #[derive(Accounts)]
 pub struct VerifyBuildMaterial<'info> {

@@ -2,7 +2,7 @@ use anchor_lang::{prelude::*, solana_program::program::invoke};
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema, TokenMetadataProgram};
+use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, TokenMetadataProgram};
 
 #[derive(Accounts)]
 pub struct AddBuildMaterial<'info> {

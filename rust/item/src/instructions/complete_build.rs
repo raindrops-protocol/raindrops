@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{errors::ErrorCode, Build, ItemClassV1, Schema};
+use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, BuildStatus};
 
 #[derive(Accounts)]
 pub struct CompleteBuild<'info> {
@@ -36,7 +36,7 @@ pub fn handler(ctx: Context<CompleteBuild>) -> Result<()> {
 
     // mark build as complete
     let build = &mut ctx.accounts.build;
-    build.complete = true;
+    build.status = BuildStatus::Complete;
 
     Ok(())
 }

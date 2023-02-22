@@ -2793,6 +2793,7 @@ __metadata:
     "@metaplex-foundation/mpl-token-metadata": ^2.8.3
     "@project-serum/anchor": ^0.26.0
     "@raindrop-studios/sol-kit": 0.1.81
+    "@solana/spl-account-compression": ^0.1.6
     "@solana/spl-token": ^0.1.8
     "@types/jest": ^28.1.5
     "@types/node": ^18.0.3
@@ -9341,7 +9342,6 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@metaplex-foundation/amman": ^0.10.0
-    "@solana/spl-account-compression": ^0.1.6
     turbo: ^1.4.3
   languageName: unknown
   linkType: soft

@@ -4,7 +4,7 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{ItemClassV1, Material, NoopProgram, Schema};
+use crate::state::{accounts::{ItemClassV1, Schema}, Material, NoopProgram};
 
 #[derive(Accounts)]
 #[instruction(args: CreateItemClassV1Args)]
@@ -44,7 +44,6 @@ pub struct CreateItemClassV1Args {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SchemaArgs {
     pub build_enabled: bool,
-    pub auto_activate: bool,
     pub materials: Vec<Material>,
 }
 
@@ -53,7 +52,6 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
     ctx.accounts.schema.set_inner(Schema {
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.schema_args.build_enabled,
-        auto_activate: args.schema_args.auto_activate,
         materials: args.schema_args.materials,
     });
 
