@@ -25,7 +25,7 @@ pub struct CompleteBuild<'info> {
     #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(seeds = [Schema::PREFIX.as_bytes(), item_class.key().as_ref()], bump)]
+    #[account(seeds = [Schema::PREFIX.as_bytes(), &schema.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
     #[account(mut)]

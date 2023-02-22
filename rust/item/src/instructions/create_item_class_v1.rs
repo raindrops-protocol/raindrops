@@ -24,7 +24,7 @@ pub struct CreateItemClassV1<'info> {
     #[account(init,
         payer = authority,
         space = Schema::space(args.schema_args.material_args.len()),
-        seeds = [Schema::PREFIX.as_bytes(), item_class.key().as_ref()], bump)]
+        seeds = [Schema::PREFIX.as_bytes(), &Schema::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
     #[account(mut)]
@@ -57,17 +57,19 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         materials.push(material_arg.into())
     }
 
-    // init schema
-    ctx.accounts.schema.set_inner(Schema {
-        item_class: ctx.accounts.item_class.key(),
-        build_enabled: args.schema_args.build_enabled,
-        materials: materials,
-    });
-
     // init item class
     ctx.accounts.item_class.set_inner(ItemClassV1 {
         authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
+        schema_index: Schema::INITIAL_INDEX,
+    });
+
+    // init schema
+    ctx.accounts.schema.set_inner(Schema {
+        schema_index: Schema::INITIAL_INDEX,
+        item_class: ctx.accounts.item_class.key(),
+        build_enabled: args.schema_args.build_enabled,
+        materials: materials,
     });
 
     let init_empty_merkle_tree_accounts = Initialize {

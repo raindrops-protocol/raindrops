@@ -7,6 +7,7 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
+#[instruction(args: StartBuildArgs)]
 pub struct StartBuild<'info> {
     #[account(init,
         payer = builder,
@@ -14,7 +15,7 @@ pub struct StartBuild<'info> {
         seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(seeds = [Schema::PREFIX.as_bytes(), item_class.key().as_ref()], bump)]
+    #[account(seeds = [Schema::PREFIX.as_bytes(), &args.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
     #[account(mut, seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
@@ -26,6 +27,11 @@ pub struct StartBuild<'info> {
     pub rent: Sysvar<'info, Rent>,
 
     pub system_program: Program<'info, System>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct StartBuildArgs {
+    pub schema_index: u64,
 }
 
 pub fn handler(ctx: Context<StartBuild>) -> Result<()> {

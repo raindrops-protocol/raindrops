@@ -10,19 +10,25 @@ pub struct ItemClassV1 {
 
     // merkle tree containing all item addresses belonging to this item class
     pub items: Pubkey,
+
+    pub schema_index: u64,
 }
 
 impl ItemClassV1 {
     pub const PREFIX: &'static str = "item_class_v1";
     pub const SPACE: usize = 8 + // anchor
     32 + // authority
-    32; // members
+    32 + // members
+    8; // schema_index
 }
 
 // a schema contains all materials and build information for an item class v1
-// seeds = ['schema', item_class.key()]
+// seeds = ['schema', schema_index.to_le_bytes(), item_class.key()]
 #[account]
 pub struct Schema {
+    pub schema_index: u64,
+
+    // item class this schema builds
     pub item_class: Pubkey,
 
     // if false building is disabled for this item class
@@ -34,8 +40,10 @@ pub struct Schema {
 
 impl Schema {
     pub const PREFIX: &'static str = "schema";
+    pub const INITIAL_INDEX: u64 = 0;
     pub fn space(material_count: usize) -> usize {
         8 + // anchor
+        8 + // schema index
         32 + // item_class
         1 + // enabled
         4 + (Material::SPACE * material_count) // materials

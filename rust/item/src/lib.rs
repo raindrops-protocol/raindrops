@@ -1974,7 +1974,7 @@ pub mod raindrops_item {
         add_item_to_item_class::handler(ctx)
     }
 
-    pub fn start_build(ctx: Context<StartBuild>) -> Result<()> {
+    pub fn start_build(ctx: Context<StartBuild>, _args: StartBuildArgs) -> Result<()> {
         start_build::handler(ctx)
     }
 

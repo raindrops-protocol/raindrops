@@ -42,6 +42,12 @@ pub enum BuildStatus {
     ItemReceived,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ItemsType {
+    Mint(Pubkey),
+    MerkleTree(Pubkey),
+}
+
 // anchor wrapper for Noop Program required for spl-account-compression
 #[derive(Clone)]
 pub struct NoopProgram;
