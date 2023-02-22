@@ -1649,10 +1649,10 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "materials",
+            "name": "materialArgs",
             "type": {
               "vec": {
-                "defined": "Material"
+                "defined": "MaterialArg"
               }
             }
           }
@@ -1691,6 +1691,22 @@ export type RaindropsItem = {
               "option": "publicKey"
             }
           },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MaterialArg",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
             "name": "itemClass",
             "type": "publicKey"
@@ -5274,10 +5290,10 @@ export const IDL: RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "materials",
+            "name": "materialArgs",
             "type": {
               "vec": {
-                "defined": "Material"
+                "defined": "MaterialArg"
               }
             }
           }
@@ -5316,6 +5332,22 @@ export const IDL: RaindropsItem = {
               "option": "publicKey"
             }
           },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MaterialArg",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
             "name": "itemClass",
             "type": "publicKey"

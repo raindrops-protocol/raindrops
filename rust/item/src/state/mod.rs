@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use mpl_token_metadata::ID as TokenMetadataPID;
+use std::convert::From;
 
 pub mod accounts;
 pub mod errors;
@@ -15,6 +16,23 @@ impl Material {
     pub const SPACE: usize = 32 + // item class
     (1 + 32) + // item mint
     8; // amount
+}
+
+// convert arg to data structure which lives on the schema account
+impl From<MaterialArg> for Material {
+    fn from(value: MaterialArg) -> Self {
+        Material {
+            item_mint: None,
+            item_class: value.item_class,
+            amount: value.amount,
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+pub struct MaterialArg {
+    pub item_class: Pubkey,
+    pub amount: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]

@@ -6,7 +6,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Schema},
-    Material, NoopProgram,
+    Material, MaterialArg, NoopProgram,
 };
 
 #[derive(Accounts)]
@@ -23,7 +23,7 @@ pub struct CreateItemClassV1<'info> {
 
     #[account(init,
         payer = authority,
-        space = Schema::space(args.schema_args.materials.len()),
+        space = Schema::space(args.schema_args.material_args.len()),
         seeds = [Schema::PREFIX.as_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
@@ -47,15 +47,21 @@ pub struct CreateItemClassV1Args {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SchemaArgs {
     pub build_enabled: bool,
-    pub materials: Vec<Material>,
+    pub material_args: Vec<MaterialArg>,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
+    // set schema materials
+    let mut materials: Vec<Material> = Vec::with_capacity(args.schema_args.material_args.len());
+    for material_arg in args.schema_args.material_args {
+        materials.push(material_arg.into())
+    }
+
     // init schema
     ctx.accounts.schema.set_inner(Schema {
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.schema_args.build_enabled,
-        materials: args.schema_args.materials,
+        materials: materials,
     });
 
     // init item class

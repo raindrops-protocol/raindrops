@@ -32,7 +32,7 @@ describe.only("item", () => {
       let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
         schemaArgs: {
           buildEnabled: false,
-          materials: [],
+          materialArgs: [],
         },
       };
 
@@ -50,19 +50,16 @@ describe.only("item", () => {
     const createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
       schemaArgs: {
         buildEnabled: true,
-        materials: [
+        materialArgs: [
           {
-            itemMint: null,
             itemClass: materials[0][0],
             amount: new BN(1),
           },
           {
-            itemMint: null,
             itemClass: materials[1][0],
             amount: new BN(1),
           },
           {
-            itemMint: null,
             itemClass: materials[2][0],
             amount: new BN(1),
           },

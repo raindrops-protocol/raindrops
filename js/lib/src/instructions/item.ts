@@ -1768,11 +1768,10 @@ export interface CreateItemClassV1Args {
 
 export interface CreateItemClassV1SchemaArgs {
   buildEnabled: boolean;
-  materials: Material[];
+  materialArgs: MaterialArg[];
 }
 
-export interface Material {
-  itemMint: null;
+export interface MaterialArg {
   itemClass: web3.PublicKey;
   amount: BN;
 }
