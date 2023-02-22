@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use super::{Material, BuildStatus};
+use super::{BuildStatus, Material};
 
 // seeds = ['item_class_v1', membership_tree.key().as_ref()]
 #[account]

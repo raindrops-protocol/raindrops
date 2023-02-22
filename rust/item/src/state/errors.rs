@@ -11,6 +11,6 @@ pub enum ErrorCode {
     #[msg("Incorrect material for build")]
     IncorrectMaterial,
 
-    #[msg("Must complete build before receiving item")]
-    BuildIncomplete,
+    #[msg("Build Status is incompatible with this instruction")]
+    InvalidBuildStatus,
 }

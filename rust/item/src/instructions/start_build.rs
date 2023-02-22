@@ -1,6 +1,10 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, Material};
+use crate::state::{
+    accounts::{Build, ItemClassV1, Schema},
+    errors::ErrorCode,
+    BuildStatus, Material,
+};
 
 #[derive(Accounts)]
 pub struct StartBuild<'info> {
@@ -25,7 +29,10 @@ pub struct StartBuild<'info> {
 }
 
 pub fn handler(ctx: Context<StartBuild>) -> Result<()> {
+    // check this schema is enabled for building
     require!(ctx.accounts.schema.build_enabled, ErrorCode::BuildDisabled);
+
+    // set initial build material state
     let build = &mut ctx.accounts.build;
     for required_material in &ctx.accounts.schema.materials {
         build.materials.push(Material {
@@ -34,6 +41,9 @@ pub fn handler(ctx: Context<StartBuild>) -> Result<()> {
             amount: 0,
         });
     }
-    msg!("{:?}", build.materials);
+
+    // set the build to in progress
+    build.status = BuildStatus::InProgress;
+
     Ok(())
 }

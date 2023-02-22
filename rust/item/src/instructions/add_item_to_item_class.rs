@@ -25,7 +25,7 @@ pub struct AddItemToItemClass<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    pub noop: Program<'info, NoopProgram>,
+    pub log_wrapper: Program<'info, NoopProgram>,
 
     pub account_compression: Program<'info, SplAccountCompression>,
 }
@@ -34,7 +34,7 @@ pub fn handler(ctx: Context<AddItemToItemClass>) -> Result<()> {
     let append_accounts = Modify {
         merkle_tree: ctx.accounts.items.to_account_info(),
         authority: ctx.accounts.item_class.to_account_info(),
-        noop: ctx.accounts.noop.to_account_info(),
+        noop: ctx.accounts.log_wrapper.to_account_info(),
     };
 
     append(

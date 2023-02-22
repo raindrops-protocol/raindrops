@@ -1989,19 +1989,15 @@ pub mod raindrops_item {
         verify_build_material::handler(ctx, args)
     }
 
-    pub fn complete_build(ctx: Context<CompleteBuild>) -> Result<()> {
-        complete_build::handler(ctx)
-    }
-
     pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
         receive_item::handler(ctx)
     }
 
-    pub fn set_build_output<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, SetBuildOutput<'info>>,
-        args: SetBuildOutputArgs,
+    pub fn complete_build<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CompleteBuild<'info>>,
+        args: CompleteBuildArgs,
     ) -> Result<()> {
-        set_build_output::handler(ctx, args)
+        complete_build::handler(ctx, args)
     }
 }
 

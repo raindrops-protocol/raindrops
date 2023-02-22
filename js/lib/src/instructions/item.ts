@@ -1049,8 +1049,8 @@ export class Instruction extends SolKitInstruction {
         schema: schema,
         authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
-        accountCompressionProgram: cmp.PROGRAM_ID,
-        logWrapperProgram: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.PROGRAM_ID,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
@@ -1075,7 +1075,7 @@ export class Instruction extends SolKitInstruction {
           itemClass: accounts.itemClass,
           items: itemClassItems,
           authority: this.program.client.provider.publicKey!,
-          noop: cmp.SPL_NOOP_PROGRAM_ID,
+          logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
           accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
         })
         .instruction();
@@ -1285,7 +1285,7 @@ export class Instruction extends SolKitInstruction {
         schema: schema,
         itemClass: accounts.itemClass,
         builder: this.program.client.provider.publicKey,
-        noop: cmp.SPL_NOOP_PROGRAM_ID,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.PROGRAM_ID,
       })
       .remainingAccounts(proofAsRemainingAccounts)
@@ -1295,8 +1295,14 @@ export class Instruction extends SolKitInstruction {
   }
 
   async completeBuild(
-    accounts: CompleteBuildAccounts
+    accounts: CompleteBuildAccounts,
+    args: CompleteBuildArgs
   ): Promise<web3.TransactionInstruction> {
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+    const itemClassItems = new web3.PublicKey(itemClassData.items);
+
     const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from("schema"), accounts.itemClass.toBuffer()],
       this.program.id
@@ -1312,14 +1318,34 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
+    const proofAsRemainingAccounts = [];
+    for (let node of args.proof) {
+      const nodeAccount = {
+        pubkey: new web3.PublicKey(node),
+        isSigner: false,
+        isWritable: false,
+      };
+      proofAsRemainingAccounts.push(nodeAccount);
+    }
+
+    const ixArgs = {
+      root: args.root,
+      leafIndex: args.leafIndex,
+    };
+
     const ix = await this.program.client.methods
-      .completeBuild()
+      .completeBuild(ixArgs)
       .accounts({
+        itemMint: accounts.itemMint,
+        itemClass: accounts.itemClass,
+        itemClassItems: itemClassItems,
         build: build,
         schema: schema,
-        itemClass: accounts.itemClass,
         builder: this.program.client.provider.publicKey!,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
+      .remainingAccounts(proofAsRemainingAccounts)
       .instruction();
 
     return ix;
@@ -1422,63 +1448,6 @@ export class Instruction extends SolKitInstruction {
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
       })
-      .instruction();
-
-    return ix;
-  }
-
-  async setBuildOutput(
-    accounts: SetBuildOutputAccounts,
-    args: SetBuildOutputArgs
-  ): Promise<web3.TransactionInstruction> {
-    const itemClassData = await this.program.client.account.itemClassV1.fetch(
-      accounts.itemClass
-    );
-    const itemClassItems = new web3.PublicKey(itemClassData.items);
-
-    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("schema"), accounts.itemClass.toBuffer()],
-      this.program.id
-    );
-
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        schema.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
-      ],
-      this.program.id
-    );
-
-    const proofAsRemainingAccounts = [];
-    for (let node of args.proof) {
-      const nodeAccount = {
-        pubkey: new web3.PublicKey(node),
-        isSigner: false,
-        isWritable: false,
-      };
-      proofAsRemainingAccounts.push(nodeAccount);
-    }
-
-    const ixArgs = {
-      root: args.root,
-      leafIndex: args.leafIndex,
-    };
-
-    const ix = await this.program.client.methods
-      .setBuildOutput(ixArgs)
-      .accounts({
-        itemMint: accounts.itemMint,
-        itemClass: accounts.itemClass,
-        itemClassItems: itemClassItems,
-        build: build,
-        schema: schema,
-        builder: this.program.client.provider.publicKey,
-        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
-        accountCompression: cmp.PROGRAM_ID,
-      })
-      .remainingAccounts(proofAsRemainingAccounts)
       .instruction();
 
     return ix;
@@ -1799,7 +1768,6 @@ export interface CreateItemClassV1Args {
 
 export interface CreateItemClassV1SchemaArgs {
   buildEnabled: boolean;
-  autoActivate: boolean;
   materials: Material[];
 }
 
@@ -1831,7 +1799,14 @@ export interface VerifyBuildMaterialArgs {
 }
 
 export interface CompleteBuildAccounts {
+  itemMint: web3.PublicKey;
   itemClass: web3.PublicKey;
+}
+
+export interface CompleteBuildArgs {
+  root: Buffer;
+  leafIndex: number;
+  proof: Buffer[];
 }
 
 export interface ReceiveItemAccounts {
@@ -1842,15 +1817,4 @@ export interface ReceiveItemAccounts {
 export interface AddItemsToItemClass {
   itemClass: web3.PublicKey;
   itemMints: web3.PublicKey[];
-}
-
-export interface SetBuildOutputAccounts {
-  itemMint: web3.PublicKey;
-  itemClass: web3.PublicKey;
-}
-
-export interface SetBuildOutputArgs {
-  root: Buffer;
-  leafIndex: number;
-  proof: Buffer[];
 }

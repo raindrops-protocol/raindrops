@@ -1,8 +1,15 @@
-use anchor_lang::{prelude::*, solana_program::program::invoke};
+use anchor_lang::{
+    prelude::*,
+    solana_program::{program::invoke, sysvar::instructions::ID as InstructionsID},
+};
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
-use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, TokenMetadataProgram};
+use crate::state::{
+    accounts::{Build, ItemClassV1, Schema},
+    errors::ErrorCode,
+    BuildStatus, TokenMetadataProgram,
+};
 
 #[derive(Accounts)]
 pub struct AddBuildMaterial<'info> {
@@ -45,8 +52,8 @@ pub struct AddBuildMaterial<'info> {
 
     pub rent: Sysvar<'info, Rent>,
 
-    /// CHECK: TODO
-    #[account()]
+    /// CHECK: manually checked with constraint
+    #[account(address = InstructionsID)]
     pub instructions: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -59,8 +66,15 @@ pub struct AddBuildMaterial<'info> {
 }
 
 pub fn handler(ctx: Context<AddBuildMaterial>) -> Result<()> {
-    // update build pda with material data
     let build = &mut ctx.accounts.build;
+
+    // check that the build is in progress
+    require!(
+        build.status.eq(&BuildStatus::InProgress),
+        ErrorCode::InvalidBuildStatus
+    );
+
+    // update build pda with material data
     let mut material_added = false;
     for material in build.materials.iter_mut() {
         if material

@@ -4,7 +4,10 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{accounts::{ItemClassV1, Schema}, Material, NoopProgram};
+use crate::state::{
+    accounts::{ItemClassV1, Schema},
+    Material, NoopProgram,
+};
 
 #[derive(Accounts)]
 #[instruction(args: CreateItemClassV1Args)]
@@ -29,9 +32,9 @@ pub struct CreateItemClassV1<'info> {
 
     pub rent: Sysvar<'info, Rent>,
 
-    pub account_compression_program: Program<'info, SplAccountCompression>,
+    pub account_compression: Program<'info, SplAccountCompression>,
 
-    pub log_wrapper_program: Program<'info, NoopProgram>,
+    pub log_wrapper: Program<'info, NoopProgram>,
 
     pub system_program: Program<'info, System>,
 }
@@ -64,13 +67,13 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
     let init_empty_merkle_tree_accounts = Initialize {
         merkle_tree: ctx.accounts.items.to_account_info(),
         authority: ctx.accounts.item_class.to_account_info(),
-        noop: ctx.accounts.log_wrapper_program.to_account_info(),
+        noop: ctx.accounts.log_wrapper.to_account_info(),
     };
 
     // initialize merkle tree
     init_empty_merkle_tree(
         CpiContext::new_with_signer(
-            ctx.accounts.account_compression_program.to_account_info(),
+            ctx.accounts.account_compression.to_account_info(),
             init_empty_merkle_tree_accounts,
             &[&[
                 ItemClassV1::PREFIX.as_bytes(),

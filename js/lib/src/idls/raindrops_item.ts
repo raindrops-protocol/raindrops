@@ -919,12 +919,12 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "accountCompressionProgram",
+          "name": "accountCompression",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "logWrapperProgram",
+          "name": "logWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -967,7 +967,7 @@ export type RaindropsItem = {
           "isSigner": true
         },
         {
-          "name": "noop",
+          "name": "logWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -1145,7 +1145,7 @@ export type RaindropsItem = {
           "isSigner": true
         },
         {
-          "name": "noop",
+          "name": "logWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -1163,32 +1163,6 @@ export type RaindropsItem = {
           }
         }
       ]
-    },
-    {
-      "name": "completeBuild",
-      "accounts": [
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "schema",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": []
     },
     {
       "name": "receiveItem",
@@ -1282,7 +1256,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "setBuildOutput",
+      "name": "completeBuild",
       "accounts": [
         {
           "name": "itemMint",
@@ -1329,7 +1303,7 @@ export type RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "SetBuildOutputArgs"
+            "defined": "CompleteBuildArgs"
           }
         }
       ]
@@ -1366,10 +1340,6 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "autoActivate",
-            "type": "bool"
-          },
-          {
             "name": "materials",
             "type": {
               "vec": {
@@ -1390,7 +1360,7 @@ export type RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "outputMint",
+            "name": "itemMint",
             "type": {
               "option": "publicKey"
             }
@@ -1404,12 +1374,10 @@ export type RaindropsItem = {
             }
           },
           {
-            "name": "complete",
-            "type": "bool"
-          },
-          {
-            "name": "itemDistributed",
-            "type": "bool"
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
           }
         ]
       }
@@ -1637,6 +1605,27 @@ export type RaindropsItem = {
   ],
   "types": [
     {
+      "name": "CompleteBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -1660,37 +1649,12 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "autoActivate",
-            "type": "bool"
-          },
-          {
             "name": "materials",
             "type": {
               "vec": {
                 "defined": "Material"
               }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "SetBuildOutputArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "root",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "leafIndex",
-            "type": "u32"
           }
         ]
       }
@@ -3417,6 +3381,23 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "BuildStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InProgress"
+          },
+          {
+            "name": "Complete"
+          },
+          {
+            "name": "ItemReceived"
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -3636,8 +3617,8 @@ export type RaindropsItem = {
     },
     {
       "code": 6003,
-      "name": "BuildIncomplete",
-      "msg": "Must complete build before receiving item"
+      "name": "InvalidBuildStatus",
+      "msg": "Build Status is incompatible with this instruction"
     }
   ]
 };
@@ -4563,12 +4544,12 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "accountCompressionProgram",
+          "name": "accountCompression",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "logWrapperProgram",
+          "name": "logWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -4611,7 +4592,7 @@ export const IDL: RaindropsItem = {
           "isSigner": true
         },
         {
-          "name": "noop",
+          "name": "logWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -4789,7 +4770,7 @@ export const IDL: RaindropsItem = {
           "isSigner": true
         },
         {
-          "name": "noop",
+          "name": "logWrapper",
           "isMut": false,
           "isSigner": false
         },
@@ -4807,32 +4788,6 @@ export const IDL: RaindropsItem = {
           }
         }
       ]
-    },
-    {
-      "name": "completeBuild",
-      "accounts": [
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "schema",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": []
     },
     {
       "name": "receiveItem",
@@ -4926,7 +4881,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "setBuildOutput",
+      "name": "completeBuild",
       "accounts": [
         {
           "name": "itemMint",
@@ -4973,7 +4928,7 @@ export const IDL: RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "SetBuildOutputArgs"
+            "defined": "CompleteBuildArgs"
           }
         }
       ]
@@ -5010,10 +4965,6 @@ export const IDL: RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "autoActivate",
-            "type": "bool"
-          },
-          {
             "name": "materials",
             "type": {
               "vec": {
@@ -5034,7 +4985,7 @@ export const IDL: RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "outputMint",
+            "name": "itemMint",
             "type": {
               "option": "publicKey"
             }
@@ -5048,12 +4999,10 @@ export const IDL: RaindropsItem = {
             }
           },
           {
-            "name": "complete",
-            "type": "bool"
-          },
-          {
-            "name": "itemDistributed",
-            "type": "bool"
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
           }
         ]
       }
@@ -5281,6 +5230,27 @@ export const IDL: RaindropsItem = {
   ],
   "types": [
     {
+      "name": "CompleteBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -5304,37 +5274,12 @@ export const IDL: RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "autoActivate",
-            "type": "bool"
-          },
-          {
             "name": "materials",
             "type": {
               "vec": {
                 "defined": "Material"
               }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "SetBuildOutputArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "root",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "leafIndex",
-            "type": "u32"
           }
         ]
       }
@@ -7061,6 +7006,23 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "BuildStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InProgress"
+          },
+          {
+            "name": "Complete"
+          },
+          {
+            "name": "ItemReceived"
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -7280,8 +7242,8 @@ export const IDL: RaindropsItem = {
     },
     {
       "code": 6003,
-      "name": "BuildIncomplete",
-      "msg": "Must complete build before receiving item"
+      "name": "InvalidBuildStatus",
+      "msg": "Build Status is incompatible with this instruction"
     }
   ]
 };

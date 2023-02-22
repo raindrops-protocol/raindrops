@@ -296,18 +296,13 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async completeBuild(accounts: ItemInstruction.CompleteBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuild(accounts);
+  async completeBuild(accounts: ItemInstruction.CompleteBuildAccounts, args: ItemInstruction.CompleteBuildArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.completeBuild(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
   async receiveItem(accounts: ItemInstruction.ReceiveItemAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.receiveItem(accounts);
-    return await this.sendWithRetry([ix], [], options);
-  }
-
-  async setBuildOutput(accounts: ItemInstruction.SetBuildOutputAccounts, args: ItemInstruction.SetBuildOutputArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.setBuildOutput(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 }

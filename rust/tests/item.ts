@@ -32,7 +32,6 @@ describe.only("item", () => {
       let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
         schemaArgs: {
           buildEnabled: false,
-          autoActivate: true,
           materials: [],
         },
       };
@@ -51,7 +50,6 @@ describe.only("item", () => {
     const createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
       schemaArgs: {
         buildEnabled: true,
-        autoActivate: true,
         materials: [
           {
             itemMint: null,
@@ -162,15 +160,6 @@ describe.only("item", () => {
       console.log("addBuildMaterialTxSig: %s", addBuildMaterialResult.txid);
     }
 
-    // complete the build process
-    const completeBuildAccounts: Instructions.Item.CompleteBuildAccounts = {
-      itemClass: itemClass,
-    };
-    const completeBuildResult = await itemProgram.completeBuild(
-      completeBuildAccounts
-    );
-    console.log("completeBuildTxSig: %s", completeBuildResult.txid);
-
     // create item pNFT, transferred to the builder when the build is complete
     const client = new metaplex.Metaplex(connection, {}).use(
       metaplex.keypairIdentity(payer)
@@ -217,23 +206,22 @@ describe.only("item", () => {
     );
     const itemProof = itemClassOffChainTree.getProof(0);
 
-    // set the pNft as the output of the build
-    const setBuildOutputAccounts: Instructions.Item.SetBuildOutputAccounts = {
+    // complete the build process
+    const completeBuildAccounts: Instructions.Item.CompleteBuildAccounts = {
       itemMint: itemMintPNftOutput.mintAddress,
       itemClass: itemClass,
     };
-
-    const setBuildOutputArgs: Instructions.Item.SetBuildOutputArgs = {
+    const completeBuildArgs: Instructions.Item.CompleteBuildArgs = {
       root: itemProof.root,
       leafIndex: itemProof.leafIndex,
       proof: itemProof.proof,
     };
 
-    const setBuildOutputResult = await itemProgram.setBuildOutput(
-      setBuildOutputAccounts,
-      setBuildOutputArgs
+    const completeBuildResult = await itemProgram.completeBuild(
+      completeBuildAccounts,
+      completeBuildArgs
     );
-    console.log("setBuildOutputTxSig: %s", setBuildOutputResult.txid);
+    console.log("completeBuildTxSig: %s", completeBuildResult.txid);
 
     const receiveItemAccounts: Instructions.Item.ReceiveItemAccounts = {
       itemMint: itemMintPNftOutput.mintAddress,

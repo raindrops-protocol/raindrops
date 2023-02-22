@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
 use mpl_token_metadata::ID as TokenMetadataPID;
 
-pub mod errors;
 pub mod accounts;
+pub mod errors;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
 pub struct Material {
@@ -21,7 +21,7 @@ impl Material {
 pub enum BuildStatus {
     InProgress,
     Complete,
-    ItemReceived
+    ItemReceived,
 }
 
 // anchor wrapper for Noop Program required for spl-account-compression

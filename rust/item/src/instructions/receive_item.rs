@@ -1,8 +1,15 @@
-use anchor_lang::{prelude::*, solana_program::program::invoke_signed};
+use anchor_lang::{
+    prelude::*,
+    solana_program::{program::invoke_signed, sysvar::instructions::ID as InstructionsID},
+};
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
-use crate::state::{errors::ErrorCode, accounts::{Build, ItemClassV1, Schema}, TokenMetadataProgram, BuildStatus};
+use crate::state::{
+    accounts::{Build, ItemClassV1, Schema},
+    errors::ErrorCode,
+    BuildStatus, TokenMetadataProgram,
+};
 
 #[derive(Accounts)]
 pub struct ReceiveItem<'info> {
@@ -48,7 +55,7 @@ pub struct ReceiveItem<'info> {
     pub rent: Sysvar<'info, Rent>,
 
     /// CHECK: checked with constraint
-    #[account()]
+    #[account(address = InstructionsID)]
     pub instructions: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -64,7 +71,7 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
     // check that the build is complete
     require!(
         ctx.accounts.build.status.eq(&BuildStatus::Complete),
-        ErrorCode::BuildIncomplete
+        ErrorCode::InvalidBuildStatus
     );
 
     // set build to final state
