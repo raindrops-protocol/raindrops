@@ -808,6 +808,8 @@ pub struct CreateMatch<'info> {
 pub struct UpdateMatch<'info> {
     #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
+
+    /// CHECK: constraints
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
     authority: Signer<'info>,
@@ -817,6 +819,8 @@ pub struct UpdateMatch<'info> {
 pub struct UpdateMatchFromOracle<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
+
+    /// CHECK: constraints
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
@@ -827,17 +831,22 @@ pub struct DrainMatch<'info> {
     #[account(mut, constraint=match_instance.authority == authority.key(), seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
     authority: Signer<'info>,
+
+    /// CHECK: TODO
     receiver: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 #[instruction(args: DrainOracleArgs)]
 pub struct DrainOracle<'info> {
+    /// CHECK: seeds
     #[account(seeds=[PREFIX.as_bytes(), oracle.key().as_ref()], bump)]
     match_instance: UncheckedAccount<'info>,
     #[account(mut, seeds=[PREFIX.as_bytes(), authority.key().as_ref(), args.seed.as_ref()], bump)]
     oracle: Account<'info, WinOracle>,
     authority: Signer<'info>,
+
+    /// CHECK: TODO
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
 }
@@ -854,11 +863,13 @@ pub struct JoinMatch<'info> {
     token_mint: Box<Account<'info, Mint>>,
     #[account(mut, constraint=source_token_account.mint == token_mint.key())]
     source_token_account: Box<Account<'info, TokenAccount>>,
-    // set to system if none
+    /// CHECK: set to system if none
     source_item_or_player_pda: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
+
+    /// CHECK: in ix
     validation_program: UncheckedAccount<'info>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
@@ -877,6 +888,8 @@ pub struct DisburseTokensByOracle<'info> {
     destination_token_account: Account<'info, TokenAccount>,
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: Box<Account<'info, WinOracle>>,
+
+    /// CHECK: TODO
     #[account(mut)]
     original_sender: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
@@ -899,8 +912,12 @@ pub struct DisbursePlayerTokensByOracle<'info> {
     player_item_token_account: Account<'info, TokenAccount>,
     #[account(mut, constraint=destination_token_account.mint == token_mint.key())]
     destination_token_account: Account<'info, TokenAccount>,
+
+    /// CHECK: constraints
     #[account(constraint=win_oracle.key() == match_instance.win_oracle)]
     win_oracle: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     #[account(mut)]
     original_sender: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
@@ -912,7 +929,10 @@ pub struct DisbursePlayerTokensByOracle<'info> {
 pub struct LeaveMatch<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref()], bump=match_instance.bump)]
     match_instance: Account<'info, Match>,
+
+    /// CHECK: TODO
     receiver: UncheckedAccount<'info>,
+
     #[account(mut, seeds=[PREFIX.as_bytes(), match_instance.win_oracle.as_ref(), token_mint.key().as_ref(), receiver.key().as_ref()], bump)]
     token_account_escrow: Account<'info, TokenAccount>,
     #[account(mut)]
@@ -943,7 +963,7 @@ pub struct MatchJoinNamespace<'info> {
     /// CHECK: Use typed Program when we have a commons crate
     namespace: UncheckedAccount<'info>,
 
-    // CHECK: checked by address constraint
+    /// CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }
@@ -957,7 +977,7 @@ pub struct MatchLeaveNamespace<'info> {
     /// CHECK: Use typed Program when we have a commons crate
     namespace: UncheckedAccount<'info>,
 
-    // CHECK: checked by address constraint
+    /// CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }
@@ -972,7 +992,7 @@ pub struct MatchCacheNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
 
-    // CHECK: checked by address constraint
+    /// CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }
@@ -986,7 +1006,7 @@ pub struct MatchUncacheNamespace<'info> {
     #[account()]
     namespace: UncheckedAccount<'info>,
 
-    // CHECK: checked by address constraint
+    /// CHECK: checked by address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 }

@@ -1,7 +1,13 @@
 pub mod utils;
 
 use crate::utils::*;
-use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{
+    prelude::{
+        borsh::{BorshDeserialize, BorshSerialize},
+        *,
+    },
+    AnchorDeserialize, AnchorSerialize,
+};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{
@@ -38,7 +44,8 @@ pub struct ItemCallbackArgs {
     pub usage_info: Option<u8>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+// use Borsh here so that these foreign types do not get imported into our IDL and break the Anchor TS generation
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],
     pub item_class_mint: Pubkey,
@@ -51,7 +58,8 @@ pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     pub usage_info: Option<raindrops_item::CraftUsageInfo>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+// use Borsh here so that these foreign types do not get imported into our IDL and break the Anchor TS generation
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],
     pub class_index: u64,
@@ -68,7 +76,8 @@ pub struct CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
     pub usage_info: Option<raindrops_item::UsageInfo>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+// use Borsh here so that these foreign types do not get imported into our IDL and break the Anchor TS generation
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],
     pub item_mint: Pubkey,
@@ -1566,10 +1575,14 @@ pub struct CreatePlayerClass<'info> {
     )]
     player_class: Box<Account<'info, PlayerClass>>,
     player_mint: Box<Account<'info, Mint>>,
+
+    /// CHECK: TODO
     metadata: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     edition: UncheckedAccount<'info>,
     // is the parent item class (if there is one.) Otherwise use same player class.
-    ///CHECK: TODO
+    /// CHECK: TODO
     #[account(mut)]
     parent: UncheckedAccount<'info>,
     #[account(mut)]
@@ -1593,7 +1606,8 @@ pub struct UpdatePlayerClass<'info> {
     )]
     player_class: Box<Account<'info, PlayerClass>>,
     player_mint: Box<Account<'info, Mint>>,
-    // Pass up system if you dont have a parent
+
+    /// CHECK: Pass up system if you dont have a parent
     parent: UncheckedAccount<'info>,
     // These below only needed if trying to do something other than permissionelss inheritance propagation
     // See the [COMMON REMAINING ACCOUNTS] in item's lib.rs for this
@@ -1620,6 +1634,8 @@ pub struct SubtractItemEffect<'info> {
     player_item_activation_marker: Box<Account<'info, PlayerItemActivationMarker>>,
     #[account(constraint=player_item_activation_marker.item == item.key())]
     item: Box<Account<'info, raindrops_item::Item>>,
+
+    /// CHECK: TODO
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
@@ -1642,6 +1658,8 @@ pub struct AddItemEffect<'info> {
     player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
+
+    /// CHECK: seeds
     #[account(
         mut,
         seeds=[
@@ -1652,9 +1670,11 @@ pub struct AddItemEffect<'info> {
         bump
     )]
     player_item_account: UncheckedAccount<'info>,
-    // Will be checked by item contract
+
+    /// CHECK: Will be checked by item contract
     #[account(mut)]
     item_mint: UncheckedAccount<'info>,
+
     #[account(
         init,
         seeds=[
@@ -1713,10 +1733,13 @@ pub struct AddItemEffect<'info> {
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
+
+    /// CHECK: constraint
     #[account(constraint=item_program.key() == raindrops_item::id())]
     item_program: UncheckedAccount<'info>,
     token_program: Program<'info, Token>,
-    // System program if there is no callback to call
+
+    /// CHECK: System program if there is no callback to call
     // if there is, pass up the callback program
     callback_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after
@@ -1737,9 +1760,15 @@ pub struct UseItem<'info> {
     player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
+
+    /// CHECK: TODO
     #[account(mut)]
     item: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     item_class: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1749,6 +1778,8 @@ pub struct UseItem<'info> {
         bump
     )]
     player_item_account: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     // Size needs to be >= 20 and <= 66
     #[account(mut)]
     item_activation_marker: UncheckedAccount<'info>,
@@ -1757,11 +1788,12 @@ pub struct UseItem<'info> {
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
+    /// CHECK: constraints
     #[account(constraint=item_program.key() == raindrops_item::id())]
     item_program: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
-    // System program if there is no validation to call
+    /// CHECK: System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after
@@ -1781,6 +1813,7 @@ pub struct UpdateValidForUseIfWarmupPassedOnItem<'info> {
     player: Box<Account<'info, Player>>,
     #[account(constraint=player.parent == player_class.key())]
     player_class: Box<Account<'info, PlayerClass>>,
+    /// CHECK: TODO
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1790,11 +1823,15 @@ pub struct UpdateValidForUseIfWarmupPassedOnItem<'info> {
         bump
     )]
     player_item_account: UncheckedAccount<'info>,
+    /// CHECK: TODO
     #[account(mut)]
     item: UncheckedAccount<'info>,
+    /// CHECK: TODO
     item_class: UncheckedAccount<'info>,
+    /// CHECK: TODO
     #[account(mut)]
     item_activation_marker: UncheckedAccount<'info>,
+    /// CHECK: constraint
     #[account(constraint=item_program.key() == raindrops_item::id())]
     item_program: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
@@ -1849,7 +1886,7 @@ pub struct AddItem<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
-    // System program if there is no validation to call
+    /// CHECK: System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after for add item permissiveness
@@ -1889,6 +1926,8 @@ pub struct RemoveItem<'info> {
         payer=payer
     )]
     item_account: Box<Account<'info, TokenAccount>>,
+
+    /// CHECK: TODO
     item_account_owner: UncheckedAccount<'info>,
     #[account(
         mut,
@@ -1906,7 +1945,7 @@ pub struct RemoveItem<'info> {
     token_program: Program<'info, Token>,
     associated_token_program: Program<'info, AssociatedToken>,
     rent: Sysvar<'info, Rent>,
-    // System program if there is no validation to call
+    /// CHECK: System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after for add item permissiveness
@@ -1972,7 +2011,7 @@ pub struct ToggleEquipItem<'info> {
         bump
     )]
     player_item_account: Box<Account<'info, TokenAccount>>,
-    // System program if there is no validation to call
+    /// CHECK: System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for accounts that come after for add item permissiveness
@@ -1991,11 +2030,15 @@ pub struct DrainPlayerClass<'info> {
         bump=player_class.bump
     )]
     player_class: Account<'info, PlayerClass>,
+
+    /// CHECK: constraints
     #[account(
         mut,
         constraint= (player_class.parent.is_none() && parent_class.key() == player_class.key()) || player_class.parent.unwrap() == parent_class.key()
     )]
     parent_class: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] in lib.rs of item for this
@@ -2026,8 +2069,12 @@ pub struct DrainPlayer<'info> {
     )]
     player_class: Box<Account<'info, PlayerClass>>,
     receiver: Signer<'info>,
+
+    /// CHECK: in ix
     #[account(mut)]
     rain_token: UncheckedAccount<'info>,
+
+    /// CHECK: seeds
     #[account(
         mut,
         seeds=[
@@ -2070,15 +2117,25 @@ pub struct BuildPlayer<'info> {
     )]
     new_player: Box<Account<'info, Player>>,
     new_player_mint: Box<Account<'info, Mint>>,
+
+    /// CHECK: TODO
     new_player_metadata: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     new_player_edition: UncheckedAccount<'info>,
     #[account(
         constraint=new_player_token.amount > 0 && new_player_token.mint == new_player_mint.key() && new_player_token.owner == new_player_token_holder.key(),
     )]
     new_player_token: Box<Account<'info, TokenAccount>>,
+
+    /// CHECK: in ix
     rain_token_transfer_authority: UncheckedAccount<'info>,
+    /// CHECK: in ix
     rain_token: UncheckedAccount<'info>,
+    /// CHECK: in ix
     rain_token_mint: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     #[account(
         mut,
         seeds=[
@@ -2088,7 +2145,8 @@ pub struct BuildPlayer<'info> {
         bump
     )]
     rain_token_program_account: UncheckedAccount<'info>,
-    // may be required signer if builder must be holder in item class is true
+
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_player_token_holder: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -2136,6 +2194,7 @@ pub struct PlayerArtifactJoinNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2151,6 +2210,7 @@ pub struct PlayerArtifactLeaveNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2167,6 +2227,7 @@ pub struct PlayerArtifactCacheNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2182,6 +2243,7 @@ pub struct PlayerArtifactUncacheNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }

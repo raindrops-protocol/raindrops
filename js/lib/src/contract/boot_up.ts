@@ -577,7 +577,8 @@ export class BootUp {
         await this.player.client.provider.connection.getAccountInfo(metadata);
       const metadataObj = decodeMetadata(metadataAccount.data);
       const firstUpload = await writeToImmutableStorage(
-        itemCollectionFile ?? itemImageFile[this.createItemLookupKey(bodyPartLayers[0], traits[0])],
+        itemCollectionFile ??
+          itemImageFile[this.createItemLookupKey(bodyPartLayers[0], traits[0])],
         itemsName,
         metadataObj.data.creators.map((c) => ({
           address: c.address,
@@ -1165,7 +1166,7 @@ export class BootUp {
         console.log("Timeout detected but ignoring");
       } else {
         console.log("Maybe player already built? Let's check.");
-        let player = await this.player.client.account.player.fetch(
+        const player = await this.player.client.account.player.fetch(
           (
             await getPlayerPDA(new web3.PublicKey(mint), new BN(index))
           )[0]
@@ -2186,7 +2187,7 @@ export class BootUp {
             console.log(
               "Performing a check to see if the items equipped on chain match what we think we have. We cannot proceed until we know for sure."
             );
-            let player = await this.player.client.account.player.fetch(
+            const player = await this.player.client.account.player.fetch(
               playerPDA
             );
             if (

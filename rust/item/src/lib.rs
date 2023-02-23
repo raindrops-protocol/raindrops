@@ -2081,10 +2081,17 @@ pub struct CreateItemEscrow<'info> {
         bump=item_class.bump
     )]
     item_class: Box<Account<'info, ItemClass>>,
+
+    /// CHECK: TODO
     item_class_metadata: UncheckedAccount<'info>,
+
     #[account(mut)]
     new_item_mint: Box<Account<'info, Mint>>,
+
+    /// CHECK: TODO
     new_item_metadata: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     new_item_edition: UncheckedAccount<'info>,
     #[account(
         init,
@@ -2108,7 +2115,8 @@ pub struct CreateItemEscrow<'info> {
         constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -2163,7 +2171,7 @@ pub struct AddCraftItemToEscrow<'info> {
         constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
     #[account(
@@ -2267,14 +2275,15 @@ pub struct RemoveCraftItemFromEscrow<'info> {
         ],
         bump
     )]
+    /// CHECK: seed check
     craft_item_counter: UncheckedAccount<'info>,
     #[account(
         constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
-    // cant be stolen to a different craft item token account due to seed by token key
+    /// CHECK: cant be stolen to a different craft item token account due to seed by token key
     #[account(
         mut,
         seeds=[
@@ -2401,7 +2410,7 @@ pub struct StartItemEscrowBuildPhase<'info> {
         constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Account<'info, TokenAccount>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -2437,7 +2446,11 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     new_item: Box<Account<'info, Item>>,
     #[account(mut)]
     new_item_mint: Box<Account<'info, Mint>>,
+
+    /// CHECK: TODO
     new_item_metadata: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     new_item_edition: UncheckedAccount<'info>,
     #[account(
         mut,
@@ -2460,7 +2473,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
         constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -2485,7 +2498,7 @@ pub struct UpdateItemClass<'info> {
     )]
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
-    // Pass up system if you dont have a parent
+    /// CHECK: Pass up system if you dont have a parent
     parent: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
@@ -2529,6 +2542,8 @@ pub struct DrainItemClass<'info> {
         bump=item_class.bump
     )]
     item_class: Account<'info, ItemClass>,
+
+    /// CHECK: constraints applied
     #[account(
         mut,
         constraint=item_class.parent.unwrap() == parent_class.key()
@@ -2618,7 +2633,7 @@ pub struct BeginItemActivation<'info> {
     system_program: Program<'info, System>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
-    // System program if there is no validation to call
+    /// CHECK: System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -2801,6 +2816,8 @@ pub struct EndItemActivation<'info> {
     )]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     token_program: Program<'info, Token>,
+
+    /// CHECK: TODO
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -2816,6 +2833,7 @@ pub struct ItemArtifactJoinNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2830,6 +2848,7 @@ pub struct ItemArtifactLeaveNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2845,6 +2864,7 @@ pub struct ItemArtifactCacheNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2859,6 +2879,7 @@ pub struct ItemArtifactUncacheNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }

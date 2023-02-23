@@ -1,6 +1,6 @@
 {
   "name": "@raindrops-protocol/raindrops-cli",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "license": "Apache-2.0",
   "bin": {
     "boot-up": "./src/boot_up.ts",
