@@ -44,6 +44,7 @@ pub struct ItemCallbackArgs {
     pub usage_info: Option<u8>,
 }
 
+// use Borsh here so that these foreign types do not get imported into our IDL and break the Anchor TS generation
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],
@@ -57,6 +58,7 @@ pub struct CopyEndItemActivationBecauseAnchorSucksSometimesArgs {
     pub usage_info: Option<raindrops_item::CraftUsageInfo>,
 }
 
+// use Borsh here so that these foreign types do not get imported into our IDL and break the Anchor TS generation
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],
@@ -74,6 +76,7 @@ pub struct CopyBeginItemActivationBecauseAnchorSucksSometimesArgs {
     pub usage_info: Option<raindrops_item::UsageInfo>,
 }
 
+// use Borsh here so that these foreign types do not get imported into our IDL and break the Anchor TS generation
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs {
     pub instruction: [u8; 8],

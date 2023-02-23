@@ -109,7 +109,6 @@ pub mod raindrops_staking {
 
         let namespace = assert_part_of_namespace(&artifact_unchecked.to_account_info(), namespace)?;
 
-        let staking_permissiveness_array = artifact_class.data.staking_permissiveness;
         let permissiveness: Option<ItemPermissivenessType> =
             staking_permissiveness_to_use.map(|p| p.into());
 
@@ -118,7 +117,7 @@ pub mod raindrops_staking {
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &permissiveness,
-            permissiveness_array: &staking_permissiveness_array,
+            permissiveness_array: &artifact_class.data.staking_permissiveness,
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
@@ -306,13 +305,10 @@ pub mod raindrops_staking {
         let permissiveness: Option<ItemPermissivenessType> =
             staking_permissiveness_to_use.map(|p| p.into());
 
-        let unstaking_permissiveness_array = artifact_class.data.unstaking_permissiveness;
-        let staking_permissiveness_array = artifact_class.data.staking_permissiveness;
-
         // if unstaking permissiveness is not set, use the staking permissiveness settings
-        let permissiveness_array = match unstaking_permissiveness_array {
-            Some(_) => unstaking_permissiveness_array,
-            None => staking_permissiveness_array,
+        let permissiveness_array = match artifact_class.data.unstaking_permissiveness {
+            Some(unstaking_permissiveness) => unstaking_permissiveness,
+            None => artifact_class.data.staking_permissiveness.unwrap(),
         };
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
@@ -320,7 +316,7 @@ pub mod raindrops_staking {
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &permissiveness,
-            permissiveness_array: &permissiveness_array,
+            permissiveness_array: &Some(permissiveness_array),
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
@@ -743,6 +739,7 @@ pub struct StakingCounter {
     pub event_type: u8,
 }
 
+// use Borsh here so that these foreign types do not get imported into our IDL and break the Anchor TS generation
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct ArtifactClassData {
     pub children_must_be_editions: Option<raindrops_item::Boolean>,
