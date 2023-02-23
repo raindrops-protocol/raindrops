@@ -305,18 +305,16 @@ pub mod raindrops_staking {
         let permissiveness: Option<ItemPermissivenessType> =
             staking_permissiveness_to_use.map(|p| p.into());
 
-        // if unstaking permissiveness is not set, use the staking permissiveness settings
-        let permissiveness_array = match artifact_class.data.unstaking_permissiveness {
-            Some(unstaking_permissiveness) => unstaking_permissiveness,
-            None => artifact_class.data.staking_permissiveness.unwrap(),
-        };
-
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &permissiveness,
-            permissiveness_array: &Some(permissiveness_array),
+            permissiveness_array: if artifact_class.data.unstaking_permissiveness.is_some() {
+                &artifact_class.data.unstaking_permissiveness
+            } else {
+                &artifact_class.data.staking_permissiveness
+            },
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
