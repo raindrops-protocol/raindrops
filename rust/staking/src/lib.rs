@@ -1,7 +1,14 @@
 pub mod utils;
 
 use crate::utils::{assert_is_proper_class, assert_is_proper_instance, assert_part_of_namespace};
-use anchor_lang::{prelude::*, solana_program::sysvar, AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{
+    prelude::{
+        borsh::{BorshDeserialize, BorshSerialize},
+        *,
+    },
+    solana_program::sysvar,
+    AnchorDeserialize, AnchorSerialize,
+};
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use raindrops_item::{
     program::RaindropsItem,
@@ -9,10 +16,11 @@ use raindrops_item::{
         assert_permissiveness_access, close_token_account, spl_token_transfer,
         AssertPermissivenessAccessArgs, TokenTransferParams,
     },
-    Boolean, ChildUpdatePropagationPermissiveness, NamespaceAndIndex, Permissiveness,
-    PermissivenessType as ItemPermissivenessType,
+    NamespaceAndIndex, PermissivenessType as ItemPermissivenessType,
 };
 use raindrops_player::program::RaindropsPlayer;
+use std::convert::From;
+
 anchor_lang::declare_id!("stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4");
 pub const PREFIX: &str = "staking";
 pub const STAKING_COUNTER: &str = "counter";
@@ -101,15 +109,16 @@ pub mod raindrops_staking {
 
         let namespace = assert_part_of_namespace(&artifact_unchecked.to_account_info(), namespace)?;
 
+        let staking_permissiveness_array = artifact_class.data.staking_permissiveness;
         let permissiveness: Option<ItemPermissivenessType> =
-            staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
+            staking_permissiveness_to_use.map(|p| p.into());
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &permissiveness,
-            permissiveness_array: &artifact_class.data.staking_permissiveness,
+            permissiveness_array: &staking_permissiveness_array,
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
@@ -295,18 +304,23 @@ pub mod raindrops_staking {
         )?;
 
         let permissiveness: Option<ItemPermissivenessType> =
-            staking_permissiveness_to_use.map(|p| p.to_item_permissiveness());
+            staking_permissiveness_to_use.map(|p| p.into());
+
+        let unstaking_permissiveness_array = artifact_class.data.unstaking_permissiveness;
+        let staking_permissiveness_array = artifact_class.data.staking_permissiveness;
+
+        // if unstaking permissiveness is not set, use the staking permissiveness settings
+        let permissiveness_array = match unstaking_permissiveness_array {
+            Some(_) => unstaking_permissiveness_array,
+            None => staking_permissiveness_array,
+        };
 
         assert_permissiveness_access(AssertPermissivenessAccessArgs {
             program_id: ctx.program_id,
             given_account: &artifact_class_unchecked.to_account_info(),
             remaining_accounts: ctx.remaining_accounts,
             permissiveness_to_use: &permissiveness,
-            permissiveness_array: if artifact_class.data.unstaking_permissiveness.is_some() {
-                &artifact_class.data.unstaking_permissiveness
-            } else {
-                &artifact_class.data.staking_permissiveness
-            },
+            permissiveness_array: &permissiveness_array,
             index: class_index,
             class_index: parent_class_index,
             account_mint: Some(&artifact_class_mint),
@@ -729,18 +743,19 @@ pub struct StakingCounter {
     pub event_type: u8,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub struct ArtifactClassData {
-    pub children_must_be_editions: Option<Boolean>,
-    pub builder_must_be_holder: Option<Boolean>,
-    pub update_permissiveness: Option<Vec<Permissiveness>>,
-    pub build_permissiveness: Option<Vec<Permissiveness>>,
+    pub children_must_be_editions: Option<raindrops_item::Boolean>,
+    pub builder_must_be_holder: Option<raindrops_item::Boolean>,
+    pub update_permissiveness: Option<Vec<raindrops_item::Permissiveness>>,
+    pub build_permissiveness: Option<Vec<raindrops_item::Permissiveness>>,
     pub staking_warm_up_duration: Option<u64>,
     pub staking_cooldown_duration: Option<u64>,
-    pub staking_permissiveness: Option<Vec<Permissiveness>>,
+    pub staking_permissiveness: Option<Vec<raindrops_item::Permissiveness>>,
     // if not set, assumed to use staking permissiveness
-    pub unstaking_permissiveness: Option<Vec<Permissiveness>>,
-    pub child_update_propagation_permissiveness: Option<Vec<ChildUpdatePropagationPermissiveness>>,
+    pub unstaking_permissiveness: Option<Vec<raindrops_item::Permissiveness>>,
+    pub child_update_propagation_permissiveness:
+        Option<Vec<raindrops_item::ChildUpdatePropagationPermissiveness>>,
 }
 
 pub struct ArtifactClass {
@@ -778,8 +793,23 @@ pub enum PermissivenessType {
     Anybody,
 }
 
-impl PermissivenessType {
-    pub fn to_item_permissiveness(&self) -> ItemPermissivenessType {
+impl From<raindrops_item::PermissivenessType> for PermissivenessType {
+    fn from(value: raindrops_item::PermissivenessType) -> Self {
+        match value {
+            raindrops_item::PermissivenessType::Anybody => PermissivenessType::Anybody,
+            raindrops_item::PermissivenessType::ParentTokenHolder => {
+                PermissivenessType::ParentTokenHolder
+            }
+            raindrops_item::PermissivenessType::TokenHolder => PermissivenessType::TokenHolder,
+            raindrops_item::PermissivenessType::UpdateAuthority => {
+                PermissivenessType::UpdateAuthority
+            }
+        }
+    }
+}
+
+impl Into<ItemPermissivenessType> for PermissivenessType {
+    fn into(self) -> ItemPermissivenessType {
         match self {
             PermissivenessType::TokenHolder => ItemPermissivenessType::TokenHolder,
             PermissivenessType::ParentTokenHolder => ItemPermissivenessType::ParentTokenHolder,
