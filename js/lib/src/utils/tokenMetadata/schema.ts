@@ -88,7 +88,7 @@ export class DataV2 {
 }
 
 export class CreateMetadataArgs {
-  instruction: number = 16;
+  instruction = 16;
   data: DataV2;
   isMutable: boolean;
 
@@ -99,11 +99,11 @@ export class CreateMetadataArgs {
 }
 
 export class VerifyCollectionArgs {
-  instruction: number = 18;
+  instruction = 18;
 }
 
 export class UpdateMetadataArgs {
-  instruction: number = 4;
+  instruction = 4;
   data: DataV2 | null;
   // Not used by this app, just required for instruction
   updateAuthority: StringPublicKey | null;
@@ -123,7 +123,7 @@ export class UpdateMetadataArgs {
 }
 
 export class CreateMasterEditionArgs {
-  instruction: number = 10;
+  instruction = 10;
   maxSupply: BN | null;
   constructor(args: { maxSupply: BN | null }) {
     this.maxSupply = args.maxSupply;
