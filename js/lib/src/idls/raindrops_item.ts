@@ -1013,13 +1013,25 @@ export type RaindropsItem = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "StartBuildArgs"
+          }
+        }
+      ]
     },
     {
       "name": "addBuildMaterial",
       "accounts": [
         {
           "name": "materialMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
           "isMut": false,
           "isSigner": false
         },
@@ -1059,8 +1071,8 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
-          "isMut": false,
+          "name": "item",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1127,11 +1139,6 @@ export type RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "schema",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1205,11 +1212,6 @@ export type RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "schema",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1307,6 +1309,138 @@ export type RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "applyBuildEffect",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "returnBuildMaterial",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -1322,6 +1456,36 @@ export type RaindropsItem = {
           {
             "name": "items",
             "type": "publicKey"
+          },
+          {
+            "name": "schemaIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "itemV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemState",
+            "type": {
+              "defined": "ItemState"
+            }
           }
         ]
       }
@@ -1331,6 +1495,10 @@ export type RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "schemaIndex",
+            "type": "u64"
+          },
           {
             "name": "itemClass",
             "type": "publicKey"
@@ -1343,7 +1511,7 @@ export type RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "Material"
+                "defined": "SchemaMaterialData"
               }
             }
           }
@@ -1356,7 +1524,15 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
+            "name": "schemaIndex",
+            "type": "u64"
+          },
+          {
             "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
             "type": "publicKey"
           },
           {
@@ -1369,7 +1545,7 @@ export type RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "Material"
+                "defined": "BuildMaterialData"
               }
             }
           },
@@ -1649,12 +1825,24 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "materialArgs",
+            "name": "materials",
             "type": {
               "vec": {
-                "defined": "MaterialArg"
+                "defined": "SchemaMaterialData"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StartBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "schemaIndex",
+            "type": "u64"
           }
         ]
       }
@@ -1681,29 +1869,57 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "Material",
+      "name": "BuildMaterialData",
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "itemMint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
           {
             "name": "itemClass",
             "type": "publicKey"
           },
           {
-            "name": "amount",
+            "name": "currentAmount",
             "type": "u64"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          },
+          {
+            "name": "mints",
+            "type": {
+              "vec": {
+                "defined": "BuildMaterialMint"
+              }
+            }
           }
         ]
       }
     },
     {
-      "name": "MaterialArg",
+      "name": "BuildMaterialMint",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "buildEffectApplied",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SchemaMaterialData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1712,8 +1928,52 @@ export type RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "amount",
+            "name": "requiredAmount",
             "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildEffect",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "degredation",
+            "type": {
+              "defined": "Degredation"
+            }
+          },
+          {
+            "name": "cooldown",
+            "type": {
+              "defined": "Cooldown"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "durability",
+            "type": "u64"
+          },
+          {
+            "name": "cooldown",
+            "type": {
+              "option": "i64"
+            }
           }
         ]
       }
@@ -3414,6 +3674,46 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "Degredation",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Cooldown",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "seconds",
+                "type": "i64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -3635,6 +3935,21 @@ export type RaindropsItem = {
       "code": 6003,
       "name": "InvalidBuildStatus",
       "msg": "Build Status is incompatible with this instruction"
+    },
+    {
+      "code": 6004,
+      "name": "ItemNotReturnable",
+      "msg": "Item cannot be returned"
+    },
+    {
+      "code": 6005,
+      "name": "BuildEffectAlreadyApplied",
+      "msg": "Build Effect Already Applied"
+    },
+    {
+      "code": 6006,
+      "name": "BuildEffectNotApplied",
+      "msg": "Build Effect Not Applied"
     }
   ]
 };
@@ -4654,13 +4969,25 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "StartBuildArgs"
+          }
+        }
+      ]
     },
     {
       "name": "addBuildMaterial",
       "accounts": [
         {
           "name": "materialMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
           "isMut": false,
           "isSigner": false
         },
@@ -4700,8 +5027,8 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
-          "isMut": false,
+          "name": "item",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -4768,11 +5095,6 @@ export const IDL: RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "schema",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -4846,11 +5168,6 @@ export const IDL: RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "schema",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -4948,6 +5265,138 @@ export const IDL: RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "applyBuildEffect",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "returnBuildMaterial",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -4963,6 +5412,36 @@ export const IDL: RaindropsItem = {
           {
             "name": "items",
             "type": "publicKey"
+          },
+          {
+            "name": "schemaIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "itemV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemState",
+            "type": {
+              "defined": "ItemState"
+            }
           }
         ]
       }
@@ -4972,6 +5451,10 @@ export const IDL: RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "schemaIndex",
+            "type": "u64"
+          },
           {
             "name": "itemClass",
             "type": "publicKey"
@@ -4984,7 +5467,7 @@ export const IDL: RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "Material"
+                "defined": "SchemaMaterialData"
               }
             }
           }
@@ -4997,7 +5480,15 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
+            "name": "schemaIndex",
+            "type": "u64"
+          },
+          {
             "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
             "type": "publicKey"
           },
           {
@@ -5010,7 +5501,7 @@ export const IDL: RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "Material"
+                "defined": "BuildMaterialData"
               }
             }
           },
@@ -5290,12 +5781,24 @@ export const IDL: RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "materialArgs",
+            "name": "materials",
             "type": {
               "vec": {
-                "defined": "MaterialArg"
+                "defined": "SchemaMaterialData"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StartBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "schemaIndex",
+            "type": "u64"
           }
         ]
       }
@@ -5322,29 +5825,57 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "Material",
+      "name": "BuildMaterialData",
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "itemMint",
-            "type": {
-              "option": "publicKey"
-            }
-          },
           {
             "name": "itemClass",
             "type": "publicKey"
           },
           {
-            "name": "amount",
+            "name": "currentAmount",
             "type": "u64"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          },
+          {
+            "name": "mints",
+            "type": {
+              "vec": {
+                "defined": "BuildMaterialMint"
+              }
+            }
           }
         ]
       }
     },
     {
-      "name": "MaterialArg",
+      "name": "BuildMaterialMint",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "buildEffectApplied",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SchemaMaterialData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -5353,8 +5884,52 @@ export const IDL: RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "amount",
+            "name": "requiredAmount",
             "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildEffect",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "degredation",
+            "type": {
+              "defined": "Degredation"
+            }
+          },
+          {
+            "name": "cooldown",
+            "type": {
+              "defined": "Cooldown"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "durability",
+            "type": "u64"
+          },
+          {
+            "name": "cooldown",
+            "type": {
+              "option": "i64"
+            }
           }
         ]
       }
@@ -7055,6 +7630,46 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "Degredation",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Cooldown",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "seconds",
+                "type": "i64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -7276,6 +7891,21 @@ export const IDL: RaindropsItem = {
       "code": 6003,
       "name": "InvalidBuildStatus",
       "msg": "Build Status is incompatible with this instruction"
+    },
+    {
+      "code": 6004,
+      "name": "ItemNotReturnable",
+      "msg": "Item cannot be returned"
+    },
+    {
+      "code": 6005,
+      "name": "BuildEffectAlreadyApplied",
+      "msg": "Build Effect Already Applied"
+    },
+    {
+      "code": 6006,
+      "name": "BuildEffectNotApplied",
+      "msg": "Build Effect Not Applied"
     }
   ]
 };

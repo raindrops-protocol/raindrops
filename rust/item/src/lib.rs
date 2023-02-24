@@ -1974,8 +1974,8 @@ pub mod raindrops_item {
         add_item_to_item_class::handler(ctx)
     }
 
-    pub fn start_build(ctx: Context<StartBuild>, _args: StartBuildArgs) -> Result<()> {
-        start_build::handler(ctx)
+    pub fn start_build(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
+        start_build::handler(ctx, args)
     }
 
     pub fn add_build_material(ctx: Context<AddBuildMaterial>) -> Result<()> {
@@ -1998,6 +1998,14 @@ pub mod raindrops_item {
         args: CompleteBuildArgs,
     ) -> Result<()> {
         complete_build::handler(ctx, args)
+    }
+
+    pub fn apply_build_effect(ctx: Context<ApplyBuildEffect>) -> Result<()> {
+        apply_build_effect::handler(ctx)
+    }
+
+    pub fn return_build_material(ctx: Context<ReturnBuildMaterial>) -> Result<()> {
+        return_build_material::handler(ctx)
     }
 }
 

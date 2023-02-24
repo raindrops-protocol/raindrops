@@ -281,8 +281,8 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async startBuild(accounts: ItemInstruction.StartBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.startBuild(accounts);
+  async startBuild(accounts: ItemInstruction.StartBuildAccounts, args: ItemInstruction.StartBuildArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.startBuild(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -303,6 +303,16 @@ export class ItemProgram extends Program.Program {
 
   async receiveItem(accounts: ItemInstruction.ReceiveItemAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.receiveItem(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async applyBuildEffect(accounts: ItemInstruction.ApplyBuildEffectAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.applyBuildEffect(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async returnBuildMaterial(accounts: ItemInstruction.ReturnBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.returnBuildMaterial(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
 }

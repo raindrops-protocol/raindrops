@@ -8,9 +8,9 @@ use spl_account_compression::{
 };
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, Schema},
+    accounts::{Build, ItemClassV1},
     errors::ErrorCode,
-    NoopProgram,
+    BuildMaterialMint, NoopProgram,
 };
 
 #[derive(Accounts)]
@@ -24,11 +24,8 @@ pub struct VerifyBuildMaterial<'info> {
     /// CHECK: checked by spl-account-compression
     pub material_item_class_items: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
-
-    #[account(seeds = [Schema::PREFIX.as_bytes(), &schema.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub schema: Account<'info, Schema>,
 
     #[account(seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
@@ -75,12 +72,23 @@ pub fn handler<'a, 'b, 'c, 'info>(
     // set this mint as allowable in the build pda
     let build = &mut ctx.accounts.build;
     let mut material_added = false;
-    for material in build.materials.iter_mut() {
-        if material
+    for build_material_data in build.materials.iter_mut() {
+        if build_material_data
             .item_class
             .eq(&ctx.accounts.material_item_class.key())
         {
-            material.item_mint = Some(ctx.accounts.material_mint.key());
+            // error if builder already escrowed enough of this material
+            require!(
+                build_material_data.current_amount < build_material_data.required_amount,
+                ErrorCode::IncorrectMaterial
+            );
+
+            // add the mint to the list of build materials
+            build_material_data.mints.push(BuildMaterialMint {
+                build_effect_applied: false,
+                mint: ctx.accounts.material_mint.key(),
+            });
+
             material_added = true;
 
             break;

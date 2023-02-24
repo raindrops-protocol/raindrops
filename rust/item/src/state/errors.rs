@@ -13,4 +13,13 @@ pub enum ErrorCode {
 
     #[msg("Build Status is incompatible with this instruction")]
     InvalidBuildStatus,
+
+    #[msg("Item cannot be returned")]
+    ItemNotReturnable,
+
+    #[msg("Build Effect Already Applied")]
+    BuildEffectAlreadyApplied,
+
+    #[msg("Build Effect Not Applied")]
+    BuildEffectNotApplied,
 }

@@ -1,9 +1,11 @@
+use std::vec;
+
 use anchor_lang::prelude::*;
 
 use crate::state::{
     accounts::{Build, ItemClassV1, Schema},
     errors::ErrorCode,
-    BuildStatus, Material,
+    BuildMaterialData, BuildStatus,
 };
 
 #[derive(Accounts)]
@@ -11,8 +13,8 @@ use crate::state::{
 pub struct StartBuild<'info> {
     #[account(init,
         payer = builder,
-        space = Build::space(schema.materials.len()),
-        seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
+        space = Build::space(&schema.materials),
+        seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
     #[account(seeds = [Schema::PREFIX.as_bytes(), &args.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
@@ -34,22 +36,26 @@ pub struct StartBuildArgs {
     pub schema_index: u64,
 }
 
-pub fn handler(ctx: Context<StartBuild>) -> Result<()> {
+pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
     // check this schema is enabled for building
     require!(ctx.accounts.schema.build_enabled, ErrorCode::BuildDisabled);
 
     // set initial build material state
-    let build = &mut ctx.accounts.build;
-    for required_material in &ctx.accounts.schema.materials {
-        build.materials.push(Material {
-            item_mint: None,
-            item_class: required_material.item_class,
-            amount: 0,
-        });
+    let mut materials: Vec<BuildMaterialData> =
+        Vec::with_capacity(ctx.accounts.schema.materials.len());
+    for required_material in ctx.accounts.schema.materials.clone() {
+        materials.push(required_material.into());
     }
 
-    // set the build to in progress
-    build.status = BuildStatus::InProgress;
+    // set build data
+    ctx.accounts.build.set_inner(Build {
+        schema_index: args.schema_index,
+        builder: ctx.accounts.builder.key(),
+        item_class: ctx.accounts.item_class.key(),
+        item_mint: None,
+        status: BuildStatus::InProgress,
+        materials: materials,
+    });
 
     Ok(())
 }

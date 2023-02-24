@@ -6,14 +6,18 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, Schema},
+    accounts::{Build, ItemClassV1, ItemV1},
     errors::ErrorCode,
-    BuildStatus, TokenMetadataProgram,
+    BuildStatus, ItemState, TokenMetadataProgram,
 };
 
 #[derive(Accounts)]
 pub struct AddBuildMaterial<'info> {
     pub material_mint: Box<Account<'info, token::Mint>>,
+
+    #[account(
+        seeds = [ItemClassV1::PREFIX.as_bytes(), material_item_class.items.key().as_ref()], bump)]
+    pub material_item_class: Account<'info, ItemClassV1>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
@@ -37,11 +41,11 @@ pub struct AddBuildMaterial<'info> {
     #[account(mut)]
     pub material_destination_token_record: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(seeds = [Schema::PREFIX.as_bytes(), &schema.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub schema: Account<'info, Schema>,
+    #[account(init_if_needed, payer = builder, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), material_item_class.key().as_ref(), material_mint.key().as_ref()], bump)]
+    pub item: Account<'info, ItemV1>,
 
     #[account(
         seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
@@ -74,23 +78,46 @@ pub fn handler(ctx: Context<AddBuildMaterial>) -> Result<()> {
         ErrorCode::InvalidBuildStatus
     );
 
-    // update build pda with material data
-    let mut material_added = false;
-    for material in build.materials.iter_mut() {
-        if material
-            .item_mint
-            .unwrap()
-            .eq(&ctx.accounts.material_mint.key())
+    // verify material_mint
+    for build_material_data in &ctx.accounts.build.materials {
+        // find the corresponding item class
+        if ctx
+            .accounts
+            .material_item_class
+            .key()
+            .eq(&build_material_data.item_class.key())
         {
-            // TODO: fail if added amount is > required amount
-            material.amount += 1;
-
-            material_added = true;
-
-            break;
+            // check the material mint exists in the list of verified mints
+            let verified = build_material_data
+                .mints
+                .iter()
+                .any(|mint_data| mint_data.mint.eq(&ctx.accounts.material_mint.key()));
+            require!(verified, ErrorCode::IncorrectMaterial);
         }
     }
-    require!(material_added, ErrorCode::IncorrectMaterial);
+
+    // increment current_amount by transfer amount (1)
+    for build_material_data in ctx.accounts.build.materials.iter_mut() {
+        // find the corresponding item class
+        if ctx
+            .accounts
+            .material_item_class
+            .key()
+            .eq(&build_material_data.item_class.key())
+        {
+            build_material_data.current_amount += 1;
+        }
+    }
+
+    // set the initial data if item pda has not been initialized until this instruction
+    if !ctx.accounts.item.initialized {
+        ctx.accounts.item.set_inner(ItemV1 {
+            initialized: true,
+            item_class: ctx.accounts.material_item_class.key(),
+            item_mint: ctx.accounts.material_mint.key(),
+            item_state: ItemState::default(),
+        })
+    }
 
     // transfer material_mint to destination
     let transfer_args = TransferArgs::V1 {

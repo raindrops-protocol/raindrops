@@ -2914,6 +2914,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@solana/spl-account-compression@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "@solana/spl-account-compression@npm:0.1.6"
+  dependencies:
+    "@metaplex-foundation/beet": ^0.7.1
+    "@metaplex-foundation/beet-solana": ^0.4.0
+    bn.js: ^5.2.1
+    borsh: ^0.7.0
+    typescript-collections: ^1.3.3
+  peerDependencies:
+    "@solana/web3.js": ^1.50.1
+  checksum: 969bc6980f4db36cf38c76198beacd443c709570887ef8da1b677e087f0f1afdba128da375a6edc71b1e4f4cf3e372238843d31e1fd79d921b6e36195cb42067
+  languageName: node
+  linkType: hard
+
 "@solana/spl-token-registry@npm:^0.2.2405":
   version: 0.2.4574
   resolution: "@solana/spl-token-registry@npm:0.2.4574"
@@ -10592,6 +10607,13 @@ __metadata:
   version: 0.21.3
   resolution: "type-fest@npm:0.21.3"
   checksum: e6b32a3b3877f04339bae01c193b273c62ba7bfc9e325b8703c4ee1b32dc8fe4ef5dfa54bf78265e069f7667d058e360ae0f37be5af9f153b22382cd55a9afe0
+  languageName: node
+  linkType: hard
+
+"typescript-collections@npm:^1.3.3":
+  version: 1.3.3
+  resolution: "typescript-collections@npm:1.3.3"
+  checksum: a27f07dffdfe8407c4302eedb3e578b1360de783626cbd53519bd9c7943293a2940ed1ec3004cafae9dce049768b143185a36ca812d0d5c3c0f621a289239633
   languageName: node
   linkType: hard
 

@@ -6,7 +6,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Schema},
-    Material, MaterialArg, NoopProgram,
+    NoopProgram, SchemaMaterialData,
 };
 
 #[derive(Accounts)]
@@ -23,7 +23,7 @@ pub struct CreateItemClassV1<'info> {
 
     #[account(init,
         payer = authority,
-        space = Schema::space(args.schema_args.material_args.len()),
+        space = Schema::space(args.schema_args.materials.len()),
         seeds = [Schema::PREFIX.as_bytes(), &Schema::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
@@ -47,16 +47,10 @@ pub struct CreateItemClassV1Args {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SchemaArgs {
     pub build_enabled: bool,
-    pub material_args: Vec<MaterialArg>,
+    pub materials: Vec<SchemaMaterialData>,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
-    // set schema materials
-    let mut materials: Vec<Material> = Vec::with_capacity(args.schema_args.material_args.len());
-    for material_arg in args.schema_args.material_args {
-        materials.push(material_arg.into())
-    }
-
     // init item class
     ctx.accounts.item_class.set_inner(ItemClassV1 {
         authority: ctx.accounts.authority.key(),
@@ -69,16 +63,16 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         schema_index: Schema::INITIAL_INDEX,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.schema_args.build_enabled,
-        materials: materials,
+        materials: args.schema_args.materials,
     });
 
+    // initialize merkle tree
     let init_empty_merkle_tree_accounts = Initialize {
         merkle_tree: ctx.accounts.items.to_account_info(),
         authority: ctx.accounts.item_class.to_account_info(),
         noop: ctx.accounts.log_wrapper.to_account_info(),
     };
 
-    // initialize merkle tree
     init_empty_merkle_tree(
         CpiContext::new_with_signer(
             ctx.accounts.account_compression.to_account_info(),

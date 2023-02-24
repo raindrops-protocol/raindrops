@@ -22,10 +22,10 @@ pub struct CompleteBuild<'info> {
     /// CHECK: checked by spl-account-compression
     pub item_class_items: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), schema.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(seeds = [Schema::PREFIX.as_bytes(), &schema.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
+    #[account(seeds = [Schema::PREFIX.as_bytes(), &build.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub schema: Account<'info, Schema>,
 
     #[account(mut)]
@@ -52,27 +52,21 @@ pub fn handler<'a, 'b, 'c, 'info>(
         ErrorCode::InvalidBuildStatus
     );
 
-    // check build meets schema requirements
-    for required_material in &ctx.accounts.schema.materials {
-        let mut found = false;
-        for escrowed_material in &ctx.accounts.build.materials {
-            if required_material
-                .item_class
-                .eq(&escrowed_material.item_class)
-                && required_material.amount == escrowed_material.amount
-            {
-                found = true;
-                break;
-            }
-        }
-        require!(found, ErrorCode::MissingBuildMaterial);
-    }
+    // check build requirements are met
+    let build_requirements_met = ctx
+        .accounts
+        .build
+        .materials
+        .iter()
+        .all(|material| material.current_amount >= material.required_amount);
+    require!(build_requirements_met, ErrorCode::MissingBuildMaterial);
 
     // mark build as complete
     let build = &mut ctx.accounts.build;
     build.status = BuildStatus::Complete;
 
     // set the item mint that will be received
+    // TODO: we will want to change how this works in the future
 
     // verify mint exists in the items tree
     let verify_item_accounts = VerifyLeaf {

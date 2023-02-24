@@ -53,15 +53,27 @@ describe.only("item", () => {
         materialArgs: [
           {
             itemClass: materials[0][0],
-            amount: new BN(1),
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: null,
+              cooldown: null,
+            },
           },
           {
             itemClass: materials[1][0],
-            amount: new BN(1),
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: null,
+              cooldown: null,
+            },
           },
           {
             itemClass: materials[2][0],
-            amount: new BN(1),
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: null,
+              cooldown: null,
+            },
           },
         ],
       },
@@ -78,7 +90,14 @@ describe.only("item", () => {
       itemClass: itemClass,
     };
 
-    const startBuildResult = await itemProgram.startBuild(startBuildAccounts);
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      schemaIndex: new anchor.BN(0),
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
     console.log("startBuildTxSig: %s", startBuildResult.txid);
 
     // escrow the materials with the build pda
@@ -149,6 +168,7 @@ describe.only("item", () => {
         {
           itemClass: itemClass,
           materialMint: materialMintPNftOutput.mintAddress,
+          materialItemClass: material[0],
         };
 
       const addBuildMaterialResult = await itemProgram.addBuildMaterial(
@@ -220,6 +240,7 @@ describe.only("item", () => {
     );
     console.log("completeBuildTxSig: %s", completeBuildResult.txid);
 
+    // send item to builder
     const receiveItemAccounts: Instructions.Item.ReceiveItemAccounts = {
       itemMint: itemMintPNftOutput.mintAddress,
       itemClass: itemClass,
@@ -242,6 +263,79 @@ describe.only("item", () => {
     assert.isTrue(
       new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
     );
+
+    // get all build material mints/item classes
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+    const buildData = await itemProgram.client.account.build.fetch(build);
+    // [item_class, mint pubkeys]
+    const buildMaterialMints: [
+      anchor.web3.PublicKey,
+      anchor.web3.PublicKey[]
+    ][] = [];
+    for (let materialData of buildData.materials as any[]) {
+      let mints: anchor.web3.PublicKey[] = [];
+      for (let mintData of materialData.mints) {
+        if (mintData.buildEffectApplied) {
+          continue;
+        }
+
+        mints.push(mintData.mint);
+      }
+      buildMaterialMints.push([materialData.itemClass, mints]);
+    }
+    // apply the build effect to each material and then return them to the builder
+    for (let buildMaterialData of buildMaterialMints) {
+      for (let mint of buildMaterialData[1]) {
+        const applyBuildEffectAccounts: Instructions.Item.ApplyBuildEffectAccounts =
+          {
+            materialItemClass: buildMaterialData[0],
+            materialMint: mint,
+            builder: itemProgram.client.provider.publicKey,
+            itemClass: itemClass,
+          };
+
+        const applyBuildEffectResult = await itemProgram.applyBuildEffect(
+          applyBuildEffectAccounts
+        );
+        console.log("applyBuildEffectTxSig: %s", applyBuildEffectResult.txid);
+
+        const returnBuildMaterialAccounts: Instructions.Item.ReturnBuildMaterialAccounts =
+          {
+            materialMint: mint,
+            materialItemClass: buildMaterialData[0],
+            builder: payer.publicKey,
+            itemClass: itemClass,
+          };
+
+        const returnBuildMaterialResult = await itemProgram.returnBuildMaterial(
+          returnBuildMaterialAccounts
+        );
+        console.log(
+          "returnBuildMaterialTxSig: %s",
+          returnBuildMaterialResult.txid
+        );
+
+        // assert builder received their item back
+        const builderItemAta = splToken.getAssociatedTokenAddressSync(
+          mint,
+          payer.publicKey
+        );
+        const tokenBalanceResponse =
+          await itemProgram.client.provider.connection.getTokenAccountBalance(
+            builderItemAta
+          );
+        assert.isTrue(
+          new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
+        );
+      }
+    }
   });
 });
 
