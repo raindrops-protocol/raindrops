@@ -1,5 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import * as errors from "./errors";
+import { fetch } from "cross-fetch";
 
 export class Client {
   readonly baseUrl: string;
@@ -29,28 +30,57 @@ export class Client {
     }
   }
 
-  // for the given item class, return all of the possible build options for the builder
-  // BuildOptions can be used to build the client side selection UI flow
-  async getBuildOptions(
-    itemClass: anchor.web3.PublicKey
-  ): Promise<BuildOptions> {
+  // check this list of materials can build the item
+  async checkMaterials(
+    itemClass: anchor.web3.PublicKey,
+    materials: MaterialArg[]
+  ): Promise<Schema[]> {
     let params = new URLSearchParams({
       itemClass: itemClass.toString(),
-      builder: this.provider.publicKey.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/buildOptions?` + params);
+    for (let material of materials) {
+      params.append("materialMints", material.itemMint.toString());
+      params.append("materialAmounts", material.amount.toString());
+    }
 
-    return await errors.handleResponse(response);
+    const response = await fetch(`${this.baseUrl}/checkMaterials?` + params);
+
+    if (response.status !== 200) {
+      return [];
+    }
+
+    const buildableSchemas: Schema[] = await response.json();
+
+    return buildableSchemas
   }
 
-  // after selecting a schema, begin the transaction flow
-  async build(schema: Schema): Promise<anchor.web3.PublicKey> {
-    // start build
-    const build = await this.startBuild(schema.address);
+  // use these materials to build the item
+  async build(
+    itemClass: anchor.web3.PublicKey,
+    materialArgs: MaterialArg[]
+  ): Promise<anchor.web3.PublicKey> {
+    // find valid schema with these materials
+    const buildAbleSchemas = await this.checkMaterials(itemClass, materialArgs)
+    const schema: Schema = {
+      itemClass: itemClass,
+      schemaIndex: new anchor.BN(0),
+      materials: [],
+    };
 
-    // add build items
-    await this.addBuildMaterials(build, schema.materials);
+    // start build
+    const build = await this.startBuild(itemClass, new anchor.BN(0));
+
+    for (let material of schema.materials) {
+      await this.verifyBuildMaterial(
+        itemClass,
+        material.itemMint,
+        material.itemClass
+      );
+
+      // add build items
+      await this.addBuildMaterial(build, material);
+    }
 
     // complete build
     await this.completeBuild(build);
@@ -59,17 +89,19 @@ export class Client {
     const itemMint = await this.receiveItem(build);
 
     // clean up
-    await this.closeBuild(build);
+    await this.cleanBuild(build);
 
     return itemMint;
   }
 
   // start the build process for an item class via the schema
   private async startBuild(
-    schema: anchor.web3.PublicKey
+    itemClass: anchor.web3.PublicKey,
+    schemaIndex: anchor.BN
   ): Promise<anchor.web3.PublicKey> {
     let params = new URLSearchParams({
-      schema: schema.toString(),
+      itemClass: itemClass.toString(),
+      schemaIndex: schemaIndex.toString(),
       builder: this.provider.publicKey.toString(),
     });
 
@@ -84,33 +116,22 @@ export class Client {
   }
 
   // escrow items from builder to the build pda
-  private async addBuildMaterials(
+  private async addBuildMaterial(
     build: anchor.web3.PublicKey,
-    materials: Material[]
+    material: Material
   ): Promise<void> {
-    for (let material of materials) {
-      for (let materialMint of material.itemMints) {
-        let params = new URLSearchParams({
-          build: build.toString(),
-          builder: this.provider.publicKey.toString(),
-          materialMint: materialMint.toString(),
-          materialItemClass: material.itemClass.toString(),
-        });
+    let params = new URLSearchParams({
+      build: build.toString(),
+      builder: this.provider.publicKey.toString(),
+      materialMint: material.itemMint.toString(),
+    });
 
-        const response = await fetch(
-          `${this.baseUrl}/addBuildMaterial?` + params
-        );
-        const body = await errors.handleResponse(response);
+    const response = await fetch(`${this.baseUrl}/addBuildMaterial?` + params);
+    const body = await errors.handleResponse(response);
 
-        // first we send the verify tx
-        const verifyBuildItemTxSig = await this.send(body.txns[0]);
-        console.log("verifyBuildItemTxSig: %s", verifyBuildItemTxSig);
-
-        // escrow happens here
-        const addBuildMaterialTxSig = await this.send(body.txns[1]);
-        console.log("addBuildMaterialTxSig: %s", addBuildMaterialTxSig);
-      }
-    }
+    // send material to build
+    const addBuildMaterialTxSig = await this.send(body.txns[1]);
+    console.log("addBuildMaterialTxSig: %s", addBuildMaterialTxSig);
   }
 
   // mark build as complete, contract checks that required materials have been escrowed
@@ -147,8 +168,8 @@ export class Client {
     return body.itemMint;
   }
 
-  // begin process of closing the build accounts
-  private async closeBuild(build: anchor.web3.PublicKey): Promise<void> {
+  // clean up all build artifacts
+  private async cleanBuild(build: anchor.web3.PublicKey): Promise<void> {
     let params = new URLSearchParams({
       build: build.toString(),
       payer: this.provider.publicKey.toString(),
@@ -156,12 +177,12 @@ export class Client {
 
     await this.applyBuildEffects(build);
 
-    const response = await fetch(`${this.baseUrl}/closeBuild?` + params);
+    const response = await fetch(`${this.baseUrl}/cleanBuild?` + params);
 
     const body = await errors.handleResponse(response);
 
     const txSig = await this.send(body.tx);
-    console.log("closeBuildTxSig: %s", txSig);
+    console.log("cleanBuildTxSig: %s", txSig);
 
     return body.itemMint;
   }
@@ -189,6 +210,27 @@ export class Client {
     return body.itemMint;
   }
 
+  private async verifyBuildMaterial(
+    itemClass: anchor.web3.PublicKey,
+    materialMint: anchor.web3.PublicKey,
+    materialItemClass: anchor.web3.PublicKey
+  ): Promise<void> {
+    let params = new URLSearchParams({
+      itemClass: itemClass.toString(),
+      materialMint: materialMint.toString(),
+      materialItemClass: materialItemClass.toString(),
+    });
+
+    const response = await fetch(
+      `${this.baseUrl}/verifyBuildMaterial?` + params
+    );
+
+    const body = await errors.handleResponse(response);
+
+    const txSig = await this.send(body.tx);
+    console.log("verifyBuildMaterialTxSig: %s", txSig);
+  }
+
   // sign and send a transaction received from the items api
   private async send(txBase64: string): Promise<string> {
     const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
@@ -206,20 +248,19 @@ export class Client {
   }
 }
 
-export interface BuildOptions {
-  itemClass: anchor.web3.PublicKey;
-  schemas: Schema[];
-}
-
 export interface Schema {
-  address: anchor.web3.PublicKey;
-  schemaIndex: anchor.BN;
   itemClass: anchor.web3.PublicKey;
+  schemaIndex: anchor.BN;
   materials: Material[];
 }
 
+export interface MaterialArg {
+  itemMint: anchor.web3.PublicKey;
+  amount: anchor.BN;
+}
+
 export interface Material {
+  itemMint: anchor.web3.PublicKey;
   itemClass: anchor.web3.PublicKey;
-  itemMints: anchor.web3.PublicKey[];
-  requiredAmount: anchor.BN;
+  amount: anchor.BN;
 }

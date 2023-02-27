@@ -2,7 +2,12 @@ import * as anchor from "@project-serum/anchor";
 import { BN } from "@project-serum/anchor";
 import * as metaplex from "@metaplex-foundation/js";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
-import { Instructions, Idls, ItemProgram } from "@raindrops-protocol/raindrops";
+import {
+  Instructions,
+  Idls,
+  ItemProgram,
+  Http,
+} from "@raindrops-protocol/raindrops";
 import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";
 import { assert } from "chai";
@@ -337,6 +342,138 @@ describe.only("item", () => {
       }
     }
   });
+
+  it.only("build pNFT item class via HTTP ", async () => {
+    const payer = await newPayer(connection);
+    const provider = new anchor.AnchorProvider(
+      connection,
+      new anchor.Wallet(payer),
+      {}
+    );
+
+    // init http client
+    const client = new Http.Item.Client(provider, "localnet");
+
+    //
+    // start api out of band
+    //
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // build all the material item classes
+    const materials: [anchor.web3.PublicKey, cmp.MerkleTree][] = [];
+    for (let i = 0; i < 3; i++) {
+      let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
+        schemaArgs: {
+          buildEnabled: false,
+          materialArgs: [],
+        },
+      };
+
+      let [itemClass, createItemClassResult] =
+        await itemProgram.createItemClassV1(createItemClassArgs);
+      console.log("createItemClassTxSig: %s", createItemClassResult.txid);
+
+      // TODO: currently these are hardcoded in the contract
+      let offchainTree = initTree({ maxBufferSize: 64, maxDepth: 14 });
+
+      materials.push([itemClass, offchainTree]);
+    }
+
+    // create the item class which will be built using the materials
+    const createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
+      schemaArgs: {
+        buildEnabled: true,
+        materialArgs: [
+          {
+            itemClass: materials[0][0],
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: null,
+              cooldown: null,
+            },
+          },
+          {
+            itemClass: materials[1][0],
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: null,
+              cooldown: null,
+            },
+          },
+          {
+            itemClass: materials[2][0],
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: null,
+              cooldown: null,
+            },
+          },
+        ],
+      },
+    };
+
+    const [itemClass, createItemClassResult] =
+      await itemProgram.createItemClassV1(createItemClassArgs);
+    console.log("createItemClassTxSig: %s", createItemClassResult.txid);
+
+    const itemClassOffChainTree = initTree({ maxDepth: 14, maxBufferSize: 64 });
+
+
+    // add items to the item classes
+    const materialArgs: Http.Item.MaterialArg[] = [];
+    for (let material of materials) {
+      // create pNFTs which represent the material item classes
+      const client = new metaplex.Metaplex(connection, {}).use(
+        metaplex.keypairIdentity(payer)
+      );
+
+      const materialMintPNftOutput = await client.nfts().create({
+        tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
+        uri: "https://foo.com/bar.json",
+        name: "pNFT1",
+        sellerFeeBasisPoints: 500,
+        symbol: "PN",
+      });
+      console.log(
+        "createPNftTxSig: %s",
+        materialMintPNftOutput.response.signature
+      );
+
+      // add mint to the items tree on chain
+      const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass =
+        {
+          itemClass: material[0],
+          itemMints: [materialMintPNftOutput.mintAddress],
+        };
+
+      const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(
+        addItemsToItemClassAccounts
+      );
+      console.log(
+        "addItemsToItemClassTxSig: %s",
+        addItemsToItemClassResult.txid
+      );
+
+      const materialArg: Http.Item.MaterialArg = {
+        itemMint: materialMintPNftOutput.mintAddress,
+        amount: new anchor.BN(1),
+      };
+
+      materialArgs.push(materialArg);
+    }
+
+    const schemas = await client.checkMaterials(itemClass, materialArgs)
+    console.log(schemas);
+  });
 });
 
 async function newPayer(
@@ -357,8 +494,4 @@ function initTree(depthSizePair: cmp.ValidDepthSizePair): cmp.MerkleTree {
   const leaves = Array(2 ** depthSizePair.maxDepth).fill(Buffer.alloc(32));
   const tree = new cmp.MerkleTree(leaves);
   return tree;
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

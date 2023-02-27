@@ -9,7 +9,7 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
-import { decodeItemClass, ItemClass } from "../state/item";
+import { decodeItemClass, ItemClass, ItemClassV1, Material, Schema } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 
@@ -314,6 +314,53 @@ export class ItemProgram extends Program.Program {
   async returnBuildMaterial(accounts: ItemInstruction.ReturnBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.returnBuildMaterial(accounts);
     return await this.sendWithRetry([ix], [], options);
+  }
+
+  async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1> {
+    const itemClassData = await this.client.account.itemClassV1.fetch(itemClass);
+    if (!itemClassData) {
+      return null
+    }
+
+    const schemaIndex = new BN(itemClassData.schemaIndex as string);
+
+    const schemas: Schema[] = [];
+    for (let i = 0; i <= schemaIndex.toNumber(); i++) {
+
+      const [schemaAddr, _schemaAddrBump] = web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("schema"), schemaIndex.toArrayLike(Buffer, "le", 8), itemClass.toBuffer()], this.PROGRAM_ID
+      )
+
+      const schemaData = await this.client.account.schema.fetch(schemaAddr);
+
+      const materials: Material[] = [];
+      for (let schemaMaterial of schemaData.materials as any[]) {
+        const material: Material = {
+          itemClass: new web3.PublicKey(schemaMaterial.itemClass),
+          requiredAmount: new BN(schemaMaterial.requiredAmount as string),
+        }
+
+        materials.push(material)
+      }
+
+      const schema: Schema = {
+        itemClass: itemClass,
+        schemaIndex: new BN(i),
+        buildEnabled: schemaData.buildEnabled as boolean,
+        materials: materials,
+      } 
+
+      schemas.push(schema);
+    }
+
+    const itemClassV1: ItemClassV1 = {
+      authority: new web3.PublicKey(itemClassData.authority),
+      items: new web3.PublicKey(itemClassData.items),
+      schemaIndex: schemaIndex,
+      schemas: schemas,
+    }
+
+    return itemClassV1
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

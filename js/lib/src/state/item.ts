@@ -538,3 +538,22 @@ export const ITEM_SCHEMA = new Map<any, any>([
     },
   ],
 ]);
+
+export interface ItemClassV1 {
+  authority: web3.PublicKey;
+  items: web3.PublicKey;
+  schemaIndex: BN;
+  schemas: Schema[];
+}
+
+export interface Schema {
+  schemaIndex: BN;
+  itemClass: web3.PublicKey;
+  buildEnabled: boolean;
+  materials: Material[];
+}
+
+export interface Material {
+  itemClass: web3.PublicKey;
+  requiredAmount: BN;
+}
