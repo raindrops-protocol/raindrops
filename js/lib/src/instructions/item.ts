@@ -22,6 +22,7 @@ import {
   getMetadata,
 } from "../utils/pda";
 import {
+  MPL_AUTH_RULES_PROGRAM_ID,
   TOKEN_METADATA_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "../constants/programIds";
@@ -1264,8 +1265,12 @@ export class Instruction extends SolKitInstruction {
         mpl.PROGRAM_ID
       );
 
-    const materialMetadataData = await mpl.Metadata.fromAccountAddress(this.program.client.provider.connection, materialMetadata, "confirmed");
-    
+    const materialMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      materialMetadata,
+      "confirmed"
+    );
+
     const [materialME, _materialMEBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("metadata"),
@@ -1492,6 +1497,11 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
+      const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+        this.program.client.provider.connection,
+        itemMetadata,
+        "confirmed"
+      );
 
     const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -1547,6 +1557,7 @@ export class Instruction extends SolKitInstruction {
         itemMint: accounts.itemMint,
         itemMetadata: itemMetadata,
         itemEdition: itemME,
+        authRules: itemMetadataData.programmableConfig.ruleSet,
         itemSource: itemSource,
         itemSourceTokenRecord: itemSourceTokenRecord,
         itemDestination: itemDestination,
@@ -1560,6 +1571,7 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        authRulesProgram: MPL_AUTH_RULES_PROGRAM_ID,
       })
       .instruction();
 
@@ -1603,7 +1615,7 @@ export class Instruction extends SolKitInstruction {
 
   async returnBuildMaterial(
     accounts: ReturnBuildMaterialAccounts
-  ): Promise<web3.TransactionInstruction> {
+  ): Promise<web3.TransactionInstruction[]> {
     const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("item_v1"),
@@ -1628,21 +1640,27 @@ export class Instruction extends SolKitInstruction {
       accounts.materialMint
     );
 
-    let ix: web3.TransactionInstruction;
+    let ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-      ix = await this.returnBuildMaterialPNft(accounts, build, item);
+      const pNftIxns = await this.returnBuildMaterialPNft(
+        accounts,
+        build,
+        item
+      );
+      ixns.push(...pNftIxns);
     } else {
-      ix = await this.returnBuildMaterialSpl(accounts, build, item);
+      const ix = await this.returnBuildMaterialSpl(accounts, build, item);
+      ixns.push(ix);
     }
 
-    return ix;
+    return ixns;
   }
 
   private async returnBuildMaterialPNft(
     accounts: ReturnBuildMaterialAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey
-  ): Promise<web3.TransactionInstruction> {
+  ): Promise<web3.TransactionInstruction[]> {
     const [itemMetadata, _itemMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
         [
@@ -1652,8 +1670,12 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
-    
-    const itemMetadataData = await mpl.Metadata.fromAccountAddress(this.program.client.provider.connection, itemMetadata, "confirmed");
+
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata,
+      "confirmed"
+    );
 
     const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -1703,6 +1725,16 @@ export class Instruction extends SolKitInstruction {
         mpl.PROGRAM_ID
       );
 
+    // double CU and fee
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
     const ix = await this.program.client.methods
       .returnBuildMaterialPnft()
       .accounts({
@@ -1725,11 +1757,11 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
-        authRulesProgram: Constants.ProgramIds.MPL_AUTH_RULES_PROGRAM_ID
+        authRulesProgram: Constants.ProgramIds.MPL_AUTH_RULES_PROGRAM_ID,
       })
       .instruction();
 
-    return ix;
+    return [increaseCUIx, addPriorityFeeIx, ix];
   }
 
   private async returnBuildMaterialSpl(

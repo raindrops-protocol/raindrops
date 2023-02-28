@@ -7,7 +7,7 @@ import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";
 import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
-import { encode, decode } from "@msgpack/msgpack";
+import { encode } from "@msgpack/msgpack";
 
 describe.only("item", () => {
   // Configure the client to use the local cluster.
@@ -322,10 +322,104 @@ describe.only("item", () => {
       console.log("addBuildMaterialTxSig: %s", addBuildMaterialResult.txid);
     }
 
+    // use an allow all ruleset
+    const ruleSetData = {
+      libVersion: 1,
+      ruleSetName: "AllRuleSet",
+      owner: Array.from(payer.publicKey.toBytes()),
+      operations: {
+        "Delegate:Transfer": {
+          ProgramOwnedList: {
+            programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
+            field: "Delegate",
+          },
+        },
+        "Transfer:Owner": {
+          All: {
+            rules: [
+              {
+                Any: {
+                  rules: [
+                    {
+                      ProgramOwnedList: {
+                        programs: [
+                          Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                        ],
+                        field: "Source",
+                      },
+                    },
+                    {
+                      ProgramOwnedList: {
+                        programs: [
+                          Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                        ],
+                        field: "Destination",
+                      },
+                    },
+                    {
+                      ProgramOwnedList: {
+                        programs: [
+                          Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                        ],
+                        field: "Authority",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        "Transfer:TransferDelegate": {
+          All: {
+            rules: [
+              {
+                Any: {
+                  rules: [
+                    {
+                      ProgramOwnedList: {
+                        programs: [
+                          Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                        ],
+                        field: "Source",
+                      },
+                    },
+                    {
+                      ProgramOwnedList: {
+                        programs: [
+                          Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                        ],
+                        field: "Destination",
+                      },
+                    },
+                    {
+                      ProgramOwnedList: {
+                        programs: [
+                          Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                        ],
+                        field: "Authority",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
+      itemProgram.client.provider.publicKey,
+      "AllRuleSet"
+    );
+    console.log(ruleSetPda.toString());
+
     // create item pNFT, transferred to the builder when the build is complete
     const client = new metaplex.Metaplex(connection, {}).use(
       metaplex.keypairIdentity(payer)
     );
+    client.programs().register({name: "authRulesProgram", address: mplAuth.PROGRAM_ID});
 
     const itemMintPNftOutput = await client.nfts().create({
       tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
@@ -333,6 +427,7 @@ describe.only("item", () => {
       name: "pNFT1",
       sellerFeeBasisPoints: 500,
       symbol: "PN",
+      ruleSet: ruleSetPda, 
     });
     console.log("createPNftTxSig: %s", itemMintPNftOutput.response.signature);
 
@@ -347,7 +442,7 @@ describe.only("item", () => {
       authority: payer,
       fromOwner: payer.publicKey,
       toOwner: itemClass,
-    });
+    }, {confirmOptions: {skipPreflight: true}});
     console.log("transferPNftTxSig: %s", itemTransferOutput.response.signature);
 
     // add item to on chain tree
@@ -591,51 +686,3 @@ function initTree(depthSizePair: cmp.ValidDepthSizePair): cmp.MerkleTree {
   const tree = new cmp.MerkleTree(leaves);
   return tree;
 }
-
-const ALL: string = `[
-  1,
-  "AllRuleSet",
-  [
-    179,
-    107,
-    212,
-    213,
-    134,
-    17,
-    73,
-    4,
-    139,
-    180,
-    99,
-    251,
-    121,
-    169,
-    251,
-    156,
-    115,
-    58,
-    2,
-    234,
-    234,
-    3,
-    134,
-    180,
-    39,
-    227,
-    155,
-    164,
-    150,
-    197,
-    54,
-    236
-  ],
-  {
-    "Transfer": {
-      "All": [
-        [
-          "Pass"
-        ]
-      ]
-    }
-  }
-]`;

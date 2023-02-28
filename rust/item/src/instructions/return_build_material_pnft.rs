@@ -136,8 +136,8 @@ pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
         sysvar_instructions: ctx.accounts.instructions.key(),
         spl_token_program: ctx.accounts.token_program.key(),
         spl_ata_program: ctx.accounts.associated_token_program.key(),
-        authorization_rules_program: None,
-        authorization_rules: None,
+        authorization_rules_program: Some(ctx.accounts.auth_rules_program.key()),
+        authorization_rules: Some(ctx.accounts.auth_rules.key()),
         args: transfer_args,
     };
 
@@ -157,6 +157,8 @@ pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
         ctx.accounts.instructions.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
         ctx.accounts.associated_token_program.to_account_info(),
+        ctx.accounts.auth_rules_program.to_account_info(),
+        ctx.accounts.auth_rules.to_account_info(),
     ];
 
     invoke_signed(

@@ -9,7 +9,17 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
-import { Build, BuildMaterialData, BuildMaterialMint, decodeItemClass, ItemClass, ItemClassV1, ItemV1, Material, Schema } from "../state/item";
+import {
+  Build,
+  BuildMaterialData,
+  BuildMaterialMint,
+  decodeItemClass,
+  ItemClass,
+  ItemClassV1,
+  ItemV1,
+  Material,
+  Schema,
+} from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 
@@ -269,77 +279,123 @@ export class ItemProgram extends Program.Program {
     return this.sendWithRetry(instruction, [], options);
   }
 
-  async createItemClassV1(args: ItemInstruction.CreateItemClassV1Args, options?: SendOptions): Promise<[web3.PublicKey, Transaction.SendTransactionResult]> {
-    const [itemClass, itemsKp, instructions] = await this.instruction.createItemClassV1(args);
+  async createItemClassV1(
+    args: ItemInstruction.CreateItemClassV1Args,
+    options?: SendOptions
+  ): Promise<[web3.PublicKey, Transaction.SendTransactionResult]> {
+    const [itemClass, itemsKp, instructions] =
+      await this.instruction.createItemClassV1(args);
     const result = await this.sendWithRetry(instructions, [itemsKp], options);
-    return [itemClass, result]
+    return [itemClass, result];
   }
 
   // TODO: chunk the returned instructions
-  async addItemsToItemClass(accounts: ItemInstruction.AddItemsToItemClass, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async addItemsToItemClass(
+    accounts: ItemInstruction.AddItemsToItemClass,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ixns = await this.instruction.addItemsToItemClass(accounts);
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async addSchema(accounts: ItemInstruction.AddSchemaAccounts, args: ItemInstruction.AddSchemaArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async addSchema(
+    accounts: ItemInstruction.AddSchemaAccounts,
+    args: ItemInstruction.AddSchemaArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.addSchema(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async startBuild(accounts: ItemInstruction.StartBuildAccounts, args: ItemInstruction.StartBuildArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async startBuild(
+    accounts: ItemInstruction.StartBuildAccounts,
+    args: ItemInstruction.StartBuildArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.startBuild(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, args: ItemInstruction.AddBuildMaterialArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async addBuildMaterial(
+    accounts: ItemInstruction.AddBuildMaterialAccounts,
+    args: ItemInstruction.AddBuildMaterialArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ixns = await this.instruction.addBuildMaterial(accounts, args);
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async verifyBuildMaterial(accounts: ItemInstruction.VerifyBuildMaterialAccounts, args: ItemInstruction.VerifyBuildMaterialArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async verifyBuildMaterial(
+    accounts: ItemInstruction.VerifyBuildMaterialAccounts,
+    args: ItemInstruction.VerifyBuildMaterialArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.verifyBuildMaterial(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async completeBuild(accounts: ItemInstruction.CompleteBuildAccounts, args: ItemInstruction.CompleteBuildArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async completeBuild(
+    accounts: ItemInstruction.CompleteBuildAccounts,
+    args: ItemInstruction.CompleteBuildArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.completeBuild(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async receiveItem(accounts: ItemInstruction.ReceiveItemAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async receiveItem(
+    accounts: ItemInstruction.ReceiveItemAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.receiveItem(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async applyBuildEffect(accounts: ItemInstruction.ApplyBuildEffectAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async applyBuildEffect(
+    accounts: ItemInstruction.ApplyBuildEffectAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.applyBuildEffect(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async returnBuildMaterial(accounts: ItemInstruction.ReturnBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.returnBuildMaterial(accounts);
+  async returnBuildMaterial(
+    accounts: ItemInstruction.ReturnBuildMaterialAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.returnBuildMaterial(accounts);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async consumeBuildMaterial(
+    accounts: ItemInstruction.ConsumeBuildMaterialAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.consumeBuildMaterial(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async consumeBuildMaterial(accounts: ItemInstruction.ConsumeBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.consumeBuildMaterial(accounts);
-    return await this.sendWithRetry([ix], [], options);  
-  }
-
   async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
-    const itemClassData = await this.client.account.itemClassV1.fetch(itemClass);
+    const itemClassData = await this.client.account.itemClassV1.fetch(
+      itemClass
+    );
     if (!itemClassData) {
-      return null
+      return null;
     }
 
     const schemaIndex = new BN(itemClassData.schemaIndex as string);
 
     const schemas: Schema[] = [];
     for (let i = 0; i <= schemaIndex.toNumber(); i++) {
-
-      const [schemaAddr, _schemaAddrBump] = web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("schema"), schemaIndex.toArrayLike(Buffer, "le", 8), itemClass.toBuffer()], this.PROGRAM_ID
-      )
+      const [schemaAddr, _schemaAddrBump] =
+        web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("schema"),
+            schemaIndex.toArrayLike(Buffer, "le", 8),
+            itemClass.toBuffer(),
+          ],
+          this.PROGRAM_ID
+        );
 
       const schemaData = await this.client.account.schema.fetch(schemaAddr);
 
@@ -348,9 +404,9 @@ export class ItemProgram extends Program.Program {
         const material: Material = {
           itemClass: new web3.PublicKey(schemaMaterial.itemClass),
           requiredAmount: new BN(schemaMaterial.requiredAmount as string),
-        }
+        };
 
-        materials.push(material)
+        materials.push(material);
       }
 
       const schema: Schema = {
@@ -358,7 +414,7 @@ export class ItemProgram extends Program.Program {
         schemaIndex: i,
         buildEnabled: schemaData.buildEnabled as boolean,
         materials: materials,
-      } 
+      };
 
       schemas.push(schema);
     }
@@ -368,23 +424,26 @@ export class ItemProgram extends Program.Program {
       items: new web3.PublicKey(itemClassData.items),
       schemaIndex: schemaIndex,
       schemas: schemas,
-    }
+    };
 
-    return itemClassV1
+    return itemClassV1;
   }
 
   async getBuild(build: web3.PublicKey): Promise<Build | null> {
     const buildDataRaw = await this.client.account.build.fetch(build);
     if (!buildDataRaw) {
-      return null
-    } 
+      return null;
+    }
 
     const buildMaterialData: BuildMaterialData[] = [];
 
     for (let rawMaterial of buildDataRaw.materials as any[]) {
       const mints: BuildMaterialMint[] = [];
       for (let rawMaterialMint of rawMaterial.mints as any[]) {
-        mints.push({mint: new web3.PublicKey(rawMaterialMint.mint), buildEffectApplied: rawMaterialMint.buildEffectApplied})
+        mints.push({
+          mint: new web3.PublicKey(rawMaterialMint.mint),
+          buildEffectApplied: rawMaterialMint.buildEffectApplied,
+        });
       }
 
       buildMaterialData.push({
@@ -393,8 +452,8 @@ export class ItemProgram extends Program.Program {
         requiredAmount: new BN(rawMaterial.requiredAmount),
         buildEffect: rawMaterial.buildEffect,
         mints: mints,
-      })
-    } 
+      });
+    }
 
     const buildData: Build = {
       schemaIndex: buildDataRaw.schemaIndex as number,
@@ -403,22 +462,21 @@ export class ItemProgram extends Program.Program {
       itemMint: new web3.PublicKey(buildDataRaw.itemMint) || null,
       materials: buildMaterialData,
       status: buildDataRaw.status,
-    }
+    };
 
-    return buildData
+    return buildData;
   }
 
   async getItemV1(item: web3.PublicKey): Promise<ItemV1 | null> {
     const itemDataRaw = await this.client.account.itemV1.fetch(item);
     if (!itemDataRaw) {
-      return null
-    } 
+      return null;
+    }
 
     let cooldown: BN | null = null;
     if ((itemDataRaw.itemState as any).cooldown !== null) {
       cooldown = new BN((itemDataRaw.itemState as any).cooldown);
     }
-
 
     const itemData: ItemV1 = {
       initialized: itemDataRaw.initialized as boolean,
@@ -428,9 +486,9 @@ export class ItemProgram extends Program.Program {
         cooldown: cooldown,
         durability: new BN((itemDataRaw.itemState as any).durability),
       },
-    }
+    };
 
-    return itemData
+    return itemData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
