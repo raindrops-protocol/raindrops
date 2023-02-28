@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
-use mpl_token_metadata::ID as TokenMetadataPID;
 use mpl_token_auth_rules::ID as AuthRulesID;
+use mpl_token_metadata::ID as TokenMetadataPID;
 
 pub mod accounts;
 pub mod errors;
@@ -180,6 +180,6 @@ pub struct AuthRulesProgram;
 
 impl anchor_lang::Id for AuthRulesProgram {
     fn id() -> Pubkey {
-       AuthRulesID 
+        AuthRulesID
     }
 }

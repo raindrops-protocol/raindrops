@@ -9,13 +9,13 @@ import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
 import { encode } from "@msgpack/msgpack";
 
-describe.only("item", () => {
+describe.only("itemv1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const connection = anchor.getProvider().connection;
 
-  it.only("build pNFT item class", async () => {
+  it("build pNFT item class", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -458,10 +458,6 @@ describe.only("item", () => {
     });
     console.log("createPNftTxSig: %s", itemMintPNftOutput.response.signature);
 
-    const pNft = await client.nfts().findByMint({
-      mintAddress: itemMintPNftOutput.mintAddress,
-    });
-
     const itemClassPNftAta = splToken.getAssociatedTokenAddressSync(
       itemMintPNftOutput.mintAddress,
       itemClass,
@@ -541,7 +537,7 @@ describe.only("item", () => {
     const itemTransferTxSig = await itemProgram.client.provider.sendAndConfirm(
       transferTx,
       undefined,
-      { skipPreflight: true }
+      { skipPreflight: false }
     );
     console.log("itemTransferTxSig: %s", itemTransferTxSig);
 

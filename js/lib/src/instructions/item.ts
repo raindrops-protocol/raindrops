@@ -1201,8 +1201,8 @@ export class Instruction extends SolKitInstruction {
       const pNftIxns = await this.addBuildMaterialPnft(accounts, build, item);
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.addBuildMaterialSpl(accounts, build, item, args);
-      ixns.push(ix);
+      const splIxns = await this.addBuildMaterialSpl(accounts, build, item, args);
+      ixns.push(...splIxns);
     }
 
     return ixns;
@@ -1213,7 +1213,7 @@ export class Instruction extends SolKitInstruction {
     build: web3.PublicKey,
     item: web3.PublicKey,
     args: AddBuildMaterialArgs
-  ): Promise<web3.TransactionInstruction> {
+  ): Promise<web3.TransactionInstruction[]> {
     const materialSource = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
@@ -1228,6 +1228,15 @@ export class Instruction extends SolKitInstruction {
       true
     );
 
+    const ixns: web3.TransactionInstruction[] = [];
+
+    // if the mint is wrapped sol we are just gonna transfer native sol for now
+    // need this a created account incase owner doesnt have it
+    if (accounts.materialMint.equals(Constants.ProgramIds.WRAPPED_SOL_MINT)) {
+      const dummyWSOLAta = Token.createAssociatedTokenAccountInstruction(Constants.ProgramIds.SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID, Constants.ProgramIds.TOKEN_PROGRAM_ID, accounts.materialMint, materialSource, accounts.builder, accounts.builder);
+      ixns.push(dummyWSOLAta)
+    };
+    
     const ix = await this.program.client.methods
       .addBuildMaterialSpl(args)
       .accounts({
@@ -1246,8 +1255,9 @@ export class Instruction extends SolKitInstruction {
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .instruction();
+    ixns.push(ix)
 
-    return ix;
+    return ixns;
   }
 
   private async addBuildMaterialPnft(

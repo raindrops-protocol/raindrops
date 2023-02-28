@@ -8,7 +8,7 @@ use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, Tr
 use crate::state::{
     accounts::{Build, ItemClassV1, ItemV1},
     errors::ErrorCode,
-    BuildStatus, TokenMetadataProgram, AuthRulesProgram,
+    AuthRulesProgram, BuildStatus, TokenMetadataProgram,
 };
 
 #[derive(Accounts)]
@@ -72,7 +72,7 @@ pub struct ReturnBuildMaterialPNft<'info> {
 
     pub associated_token_program: Program<'info, associated_token::AssociatedToken>,
 
-    pub token_metadata: Program<'info, TokenMetadataProgram>, 
+    pub token_metadata: Program<'info, TokenMetadataProgram>,
 
     pub auth_rules_program: Program<'info, AuthRulesProgram>,
 }

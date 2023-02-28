@@ -1,4 +1,6 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+};
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
@@ -108,7 +110,7 @@ pub fn handler(ctx: Context<AddBuildMaterialSpl>, args: AddBuildMaterialSplArgs)
             }
             None => {}
         }
-    }
+    } 
 
     // transfer tokens to build pda
     let transfer_accounts = token::Transfer {

@@ -8,7 +8,7 @@ use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, Tr
 use crate::state::{
     accounts::{Build, ItemClassV1, ItemV1},
     errors::ErrorCode,
-    BuildStatus, ItemState, TokenMetadataProgram, AuthRulesProgram,
+    AuthRulesProgram, BuildStatus, ItemState, TokenMetadataProgram,
 };
 
 #[derive(Accounts)]
