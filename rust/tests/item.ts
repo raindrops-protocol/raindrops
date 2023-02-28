@@ -413,13 +413,40 @@ describe.only("item", () => {
       itemProgram.client.provider.publicKey,
       "AllRuleSet"
     );
-    console.log(ruleSetPda.toString());
+
+    const createAuthRulesAccounts: mplAuth.CreateOrUpdateInstructionAccounts = {
+      payer: itemProgram.client.provider.publicKey,
+      ruleSetPda: ruleSetPda,
+    };
+
+    const createAuthRulesArgs: mplAuth.CreateOrUpdateInstructionArgs = {
+      createOrUpdateArgs: {
+        __kind: "V1",
+        serializedRuleSet: encode(ruleSetData),
+      },
+    };
+
+    const createAuthRulesetIx = await mplAuth.createCreateOrUpdateInstruction(
+      createAuthRulesAccounts,
+      createAuthRulesArgs
+    );
+    const createAuthRulesetTx = new anchor.web3.Transaction().add(
+      createAuthRulesetIx
+    );
+    const createAuthRulesetTxSig =
+      await itemProgram.client.provider.sendAndConfirm(
+        createAuthRulesetTx,
+        undefined,
+        { commitment: "confirmed" }
+      );
+    console.log("createAuthRulesetTxSig: %s", createAuthRulesetTxSig);
 
     // create item pNFT, transferred to the builder when the build is complete
     const client = new metaplex.Metaplex(connection, {}).use(
       metaplex.keypairIdentity(payer)
     );
-    client.programs().register({name: "authRulesProgram", address: mplAuth.PROGRAM_ID});
+
+    console.log("RULE_SET: %s", ruleSetPda.toString());
 
     const itemMintPNftOutput = await client.nfts().create({
       tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
@@ -427,7 +454,7 @@ describe.only("item", () => {
       name: "pNFT1",
       sellerFeeBasisPoints: 500,
       symbol: "PN",
-      ruleSet: ruleSetPda, 
+      ruleSet: ruleSetPda,
     });
     console.log("createPNftTxSig: %s", itemMintPNftOutput.response.signature);
 
@@ -435,15 +462,88 @@ describe.only("item", () => {
       mintAddress: itemMintPNftOutput.mintAddress,
     });
 
-    // escrow the pNFT with the item class
+    const itemClassPNftAta = splToken.getAssociatedTokenAddressSync(
+      itemMintPNftOutput.mintAddress,
+      itemClass,
+      true
+    );
 
-    const itemTransferOutput = await client.nfts().transfer({
-      nftOrSft: pNft,
-      authority: payer,
-      fromOwner: payer.publicKey,
-      toOwner: itemClass,
-    }, {confirmOptions: {skipPreflight: true}});
-    console.log("transferPNftTxSig: %s", itemTransferOutput.response.signature);
+    const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          itemMintPNftOutput.mintAddress.toBuffer(),
+          Buffer.from("token_record"),
+          itemMintPNftOutput.tokenAddress.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemDestinationTokenRecord, _itemDestinationTokenRecordBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          itemMintPNftOutput.mintAddress.toBuffer(),
+          Buffer.from("token_record"),
+          itemClassPNftAta.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    // double CU and fee
+
+    const increaseCUIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx =
+      anchor.web3.ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 5000,
+      });
+
+    // escrow the pNFT with the item class
+    const transferIx = mpl.createTransferInstruction(
+      {
+        token: itemMintPNftOutput.tokenAddress,
+        tokenOwner: payer.publicKey,
+        destination: itemClassPNftAta,
+        destinationOwner: itemClass,
+        mint: itemMintPNftOutput.mintAddress,
+        metadata: itemMintPNftOutput.metadataAddress,
+        edition: itemMintPNftOutput.masterEditionAddress,
+        ownerTokenRecord: itemSourceTokenRecord,
+        destinationTokenRecord: itemDestinationTokenRecord,
+        authority: payer.publicKey,
+        payer: payer.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        splTokenProgram: splToken.TOKEN_PROGRAM_ID,
+        splAtaProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        authorizationRulesProgram: mplAuth.PROGRAM_ID,
+        authorizationRules: ruleSetPda,
+      },
+      {
+        transferArgs: {
+          __kind: "V1",
+          amount: 1,
+          authorizationData: null,
+        },
+      }
+    );
+
+    const transferTx = new anchor.web3.Transaction().add(
+      increaseCUIx,
+      addPriorityFeeIx,
+      transferIx
+    );
+    const itemTransferTxSig = await itemProgram.client.provider.sendAndConfirm(
+      transferTx,
+      undefined,
+      { skipPreflight: true }
+    );
+    console.log("itemTransferTxSig: %s", itemTransferTxSig);
 
     // add item to on chain tree
     const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass = {

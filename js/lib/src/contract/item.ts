@@ -347,8 +347,8 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.ReceiveItemAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.receiveItem(accounts);
-    return await this.sendWithRetry([ix], [], options);
+    const ixns = await this.instruction.receiveItem(accounts);
+    return await this.sendWithRetry(ixns, [], options);
   }
 
   async applyBuildEffect(

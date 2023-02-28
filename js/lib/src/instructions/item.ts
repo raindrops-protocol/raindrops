@@ -1478,7 +1478,7 @@ export class Instruction extends SolKitInstruction {
 
   async receiveItem(
     accounts: ReceiveItemAccounts
-  ): Promise<web3.TransactionInstruction> {
+  ): Promise<web3.TransactionInstruction[]> {
     const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("build"),
@@ -1550,6 +1550,16 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
+    
+    // double CU and fee
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
 
     const ix = await this.program.client.methods
       .receiveItem()
@@ -1575,7 +1585,7 @@ export class Instruction extends SolKitInstruction {
       })
       .instruction();
 
-    return ix;
+    return [increaseCUIx, addPriorityFeeIx, ix];
   }
 
   async applyBuildEffect(
