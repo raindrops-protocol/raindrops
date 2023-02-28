@@ -2,12 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { BN } from "@project-serum/anchor";
 import * as metaplex from "@metaplex-foundation/js";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
-import {
-  Instructions,
-  Idls,
-  ItemProgram,
-  Http,
-} from "@raindrops-protocol/raindrops";
+import { Instructions, Idls, ItemProgram } from "@raindrops-protocol/raindrops";
 import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";
 import { assert } from "chai";
@@ -18,7 +13,7 @@ describe.only("item", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it("build pNFT item class", async () => {
+  it.only("build pNFT item class", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -60,7 +55,7 @@ describe.only("item", () => {
             itemClass: materials[0][0],
             requiredAmount: new BN(1),
             buildEffect: {
-              degredation: null,
+              degredation: { amount: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
           },
@@ -108,14 +103,13 @@ describe.only("item", () => {
 
     // escrow the materials with the build pda
     for (let i = 0; i < materials.length; i++) {
-
       // create pNFTs which represent the material item classes
       const client = new metaplex.Metaplex(connection, {}).use(
         metaplex.keypairIdentity(payer)
       );
 
       let tokenStandard: mpl.TokenStandard;
-      if (i == 0) {
+      if (i === 0) {
         tokenStandard = mpl.TokenStandard.NonFungible;
       } else {
         tokenStandard = mpl.TokenStandard.ProgrammableNonFungible;
@@ -150,7 +144,10 @@ describe.only("item", () => {
 
       // add mint to the off chain tree, eventually this won't be a manual operation when we have an indexer
       // right now index 0 because we are only adding 1 item
-      materials[i][1].updateLeaf(0, materialMintNftOutput.mintAddress.toBuffer());
+      materials[i][1].updateLeaf(
+        0,
+        materialMintNftOutput.mintAddress.toBuffer()
+      );
 
       const materialProof = materials[i][1].getProof(0);
 
@@ -189,7 +186,7 @@ describe.only("item", () => {
 
       const addBuildMaterialArgs: Instructions.Item.AddBuildMaterialArgs = {
         amount: new anchor.BN(1),
-      }
+      };
 
       const addBuildMaterialResult = await itemProgram.addBuildMaterial(
         addBuildMaterialAccounts,
@@ -330,34 +327,68 @@ describe.only("item", () => {
         );
         console.log("applyBuildEffectTxSig: %s", applyBuildEffectResult.txid);
 
-        const returnBuildMaterialAccounts: Instructions.Item.ReturnBuildMaterialAccounts =
-          {
-            materialMint: mint,
-            materialItemClass: buildMaterialData[0],
-            builder: payer.publicKey,
-            itemClass: itemClass,
-          };
+        // detect if item is returnable or consumable
+        const [item, _itemBump] = anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("item_v1"),
+            buildMaterialData[0].toBuffer(),
+            mint.toBuffer(),
+          ],
+          itemProgram.PROGRAM_ID
+        );
+        const itemData = await itemProgram.getItemV1(item);
 
-        const returnBuildMaterialResult = await itemProgram.returnBuildMaterial(
-          returnBuildMaterialAccounts
-        );
-        console.log(
-          "returnBuildMaterialTxSig: %s",
-          returnBuildMaterialResult.txid
-        );
+        if (itemData.itemState.durability.lte(new anchor.BN(0))) {
+          // consume it
+          const consumeBuildMaterialAccounts: Instructions.Item.ConsumeBuildMaterialAccounts =
+            {
+              materialMint: mint,
+              materialItemClass: buildMaterialData[0],
+              itemClass: itemClass,
+              builder: itemProgram.client.provider.publicKey,
+              payer: itemProgram.client.provider.publicKey,
+            };
 
-        // assert builder received their item back
-        const builderItemAta = splToken.getAssociatedTokenAddressSync(
-          mint,
-          payer.publicKey
-        );
-        const tokenBalanceResponse =
-          await itemProgram.client.provider.connection.getTokenAccountBalance(
-            builderItemAta
+          const consumeBuildMaterialResult =
+            await itemProgram.consumeBuildMaterial(
+              consumeBuildMaterialAccounts
+            );
+          console.log(
+            "consumeBuildMaterialTxSig: %s",
+            consumeBuildMaterialResult.txid
           );
-        assert.isTrue(
-          new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
-        );
+        } else {
+          // return it
+          const returnBuildMaterialAccounts: Instructions.Item.ReturnBuildMaterialAccounts =
+            {
+              materialMint: mint,
+              materialItemClass: buildMaterialData[0],
+              builder: payer.publicKey,
+              payer: payer.publicKey,
+              itemClass: itemClass,
+            };
+
+          const returnBuildMaterialResult =
+            await itemProgram.returnBuildMaterial(returnBuildMaterialAccounts);
+          console.log(
+            "returnBuildMaterialTxSig: %s",
+            returnBuildMaterialResult.txid
+          );
+          // assert builder received their item back
+          const builderItemAta = splToken.getAssociatedTokenAddressSync(
+            mint,
+            payer.publicKey
+          );
+          const tokenBalanceResponse =
+            await itemProgram.client.provider.connection.getTokenAccountBalance(
+              builderItemAta
+            );
+          assert.isTrue(
+            new anchor.BN(tokenBalanceResponse.value.amount).eq(
+              new anchor.BN(1)
+            )
+          );
+        }
       }
     }
   });
@@ -387,7 +418,7 @@ describe.only("item", () => {
     console.log("createItemClassTxSig: %s", createItemClassResult.txid);
 
     // first schema is created during item class creation
-    const itemClassDataPre = await itemProgram.getItemClassV1(itemClass)
+    const itemClassDataPre = await itemProgram.getItemClassV1(itemClass);
     assert.isTrue(itemClassDataPre.schemaIndex.eq(new anchor.BN(0)));
 
     const addSchemaAccounts: Instructions.Item.AddSchemaAccounts = {
@@ -399,14 +430,17 @@ describe.only("item", () => {
       args: {
         buildEnabled: false,
         materialArgs: [],
-      }
-    }
+      },
+    };
 
-    const addSchemaResult = await itemProgram.addSchema(addSchemaAccounts, addSchemaArgs);
+    const addSchemaResult = await itemProgram.addSchema(
+      addSchemaAccounts,
+      addSchemaArgs
+    );
     console.log("addSchemaTxSig: %s", addSchemaResult.txid);
 
     // first schema is created during item class creation
-    const itemClassDataPost = await itemProgram.getItemClassV1(itemClass)
+    const itemClassDataPost = await itemProgram.getItemClassV1(itemClass);
     assert.isTrue(itemClassDataPost.schemaIndex.eq(new anchor.BN(1)));
   });
 });

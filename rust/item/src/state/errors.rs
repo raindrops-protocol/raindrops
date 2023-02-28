@@ -17,9 +17,15 @@ pub enum ErrorCode {
     #[msg("Item cannot be returned")]
     ItemNotReturnable,
 
+    #[msg("Item cannot be consumed")]
+    ItemNotConsumable,
+
     #[msg("Build Effect Already Applied")]
     BuildEffectAlreadyApplied,
 
     #[msg("Build Effect Not Applied")]
     BuildEffectNotApplied,
+
+    #[msg("Item is on Cooldown")]
+    ItemOnCooldown,
 }

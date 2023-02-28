@@ -9,7 +9,7 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
-import { Build, BuildMaterialData, BuildMaterialMint, decodeItemClass, ItemClass, ItemClassV1, Material, Schema } from "../state/item";
+import { Build, BuildMaterialData, BuildMaterialMint, decodeItemClass, ItemClass, ItemClassV1, ItemV1, Material, Schema } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 
@@ -281,6 +281,11 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
+  async addSchema(accounts: ItemInstruction.AddSchemaAccounts, args: ItemInstruction.AddSchemaArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.addSchema(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
   async startBuild(accounts: ItemInstruction.StartBuildAccounts, args: ItemInstruction.StartBuildArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.startBuild(accounts, args);
     return await this.sendWithRetry([ix], [], options);
@@ -316,9 +321,9 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addSchema(accounts: ItemInstruction.AddSchemaAccounts, args: ItemInstruction.AddSchemaArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.addSchema(accounts, args);
-    return await this.sendWithRetry([ix], [], options);
+  async consumeBuildMaterial(accounts: ItemInstruction.ConsumeBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.consumeBuildMaterial(accounts);
+    return await this.sendWithRetry([ix], [], options);  
   }
 
   async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
@@ -401,6 +406,31 @@ export class ItemProgram extends Program.Program {
     }
 
     return buildData
+  }
+
+  async getItemV1(item: web3.PublicKey): Promise<ItemV1 | null> {
+    const itemDataRaw = await this.client.account.itemV1.fetch(item);
+    if (!itemDataRaw) {
+      return null
+    } 
+
+    let cooldown: BN | null = null;
+    if ((itemDataRaw.itemState as any).cooldown !== null) {
+      cooldown = new BN((itemDataRaw.itemState as any).cooldown);
+    }
+
+
+    const itemData: ItemV1 = {
+      initialized: itemDataRaw.initialized as boolean,
+      itemClass: new web3.PublicKey(itemDataRaw.itemClass),
+      itemMint: new web3.PublicKey(itemDataRaw.itemMint),
+      itemState: {
+        cooldown: cooldown,
+        durability: new BN((itemDataRaw.itemState as any).durability),
+      },
+    }
+
+    return itemData
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

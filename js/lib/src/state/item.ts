@@ -558,6 +558,18 @@ export interface Material {
   requiredAmount: BN;
 }
 
+export interface ItemV1 {
+  initialized: boolean;
+  itemClass: web3.PublicKey;
+  itemMint: web3.PublicKey;
+  itemState: ItemState;
+}
+
+export interface ItemState {
+  durability: BN;
+  cooldown: BN | null;
+}
+
 export interface Build {
   schemaIndex: number;
   builder: web3.PublicKey;

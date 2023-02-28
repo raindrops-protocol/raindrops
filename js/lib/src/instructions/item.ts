@@ -1634,7 +1634,7 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async returnBuildMaterialPNft(
+  private async returnBuildMaterialPNft(
     accounts: ReturnBuildMaterialAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey
@@ -1723,7 +1723,8 @@ export class Instruction extends SolKitInstruction {
 
     return ix;
   }
-  async returnBuildMaterialSpl(
+
+  private async returnBuildMaterialSpl(
     accounts: ReturnBuildMaterialAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey
@@ -1751,13 +1752,66 @@ export class Instruction extends SolKitInstruction {
         itemDestination: itemDestination,
         build: build,
         builder: accounts.builder,
-        itemClass: accounts.itemClass,
-        payer: this.program.client.provider.publicKey,
+        itemClass: accounts.materialItemClass,
+        payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+    return ix;
+  }
+
+  async consumeBuildMaterial(
+    accounts: ConsumeBuildMaterialAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("item_v1"),
+        accounts.materialItemClass.toBuffer(),
+        accounts.materialMint.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        accounts.itemClass.toBuffer(),
+        accounts.builder.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const tokenStandard = await Utils.Item.getTokenStandard(
+      this.program.client.provider.connection,
+      accounts.materialMint
+    );
+    if (tokenStandard !== Utils.Item.TokenStandard.Spl) {
+      throw new Error(`Burning pNFTs not supported yet`);
+    }
+
+    const itemSource = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.materialMint,
+      build,
+      true
+    );
+
+    const ix = this.program.client.methods
+      .consumeBuildMaterialSpl()
+      .accounts({
+        item: item,
+        itemMint: accounts.materialMint,
+        itemSource: itemSource,
+        build: build,
+        builder: accounts.builder,
+        itemClass: accounts.materialItemClass,
+        payer: accounts.payer,
+        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
     return ix;
@@ -2238,6 +2292,7 @@ export interface ReturnBuildMaterialAccounts {
   materialMint: web3.PublicKey;
   materialItemClass: web3.PublicKey;
   builder: web3.PublicKey;
+  payer: web3.PublicKey;
   itemClass: web3.PublicKey;
 }
 
@@ -2248,4 +2303,12 @@ export interface AddSchemaAccounts {
 
 export interface AddSchemaArgs {
   args: SchemaArgs;
+}
+
+export interface ConsumeBuildMaterialAccounts {
+  materialMint: web3.PublicKey;
+  materialItemClass: web3.PublicKey;
+  itemClass: web3.PublicKey;
+  payer: web3.PublicKey;
+  builder: web3.PublicKey;
 }

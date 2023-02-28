@@ -73,22 +73,24 @@ pub struct ReturnBuildMaterialPNft<'info> {
 }
 
 pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
-    // check that the build item has been retrieved by the builder
+    // check that the build item has been received by the builder
     require!(
         ctx.accounts.build.status.eq(&BuildStatus::ItemReceived),
         ErrorCode::InvalidBuildStatus
     );
 
     // check that the build effect has been applied before returning item
+    let mut checked = false;
     for build_material_data in &ctx.accounts.build.materials {
         // get corresponding item class
         if build_material_data
             .item_class
-            .eq(&ctx.accounts.item_class.key())
+            .eq(&ctx.accounts.item.item_class)
         {
             // find the specific mint within the item class and verify the build effect has been applied
             for mint_data in &build_material_data.mints {
                 if mint_data.mint.eq(&ctx.accounts.item_mint.key()) {
+                    checked = true;
                     require!(
                         mint_data.build_effect_applied,
                         ErrorCode::BuildEffectNotApplied
@@ -97,6 +99,7 @@ pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
             }
         }
     }
+    require!(checked, ErrorCode::IncorrectMaterial);
 
     // verify item is eligible to be returned to the builder
     // if the item has no durability left, the token must be burned

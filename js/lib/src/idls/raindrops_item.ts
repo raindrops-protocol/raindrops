@@ -1618,6 +1618,52 @@ export type RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "consumeBuildMaterialSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -4152,13 +4198,23 @@ export type RaindropsItem = {
     },
     {
       "code": 6005,
+      "name": "ItemNotConsumable",
+      "msg": "Item cannot be consumed"
+    },
+    {
+      "code": 6006,
       "name": "BuildEffectAlreadyApplied",
       "msg": "Build Effect Already Applied"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "BuildEffectNotApplied",
       "msg": "Build Effect Not Applied"
+    },
+    {
+      "code": 6008,
+      "name": "ItemOnCooldown",
+      "msg": "Item is on Cooldown"
     }
   ]
 };
@@ -5783,6 +5839,52 @@ export const IDL: RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "consumeBuildMaterialSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -8317,13 +8419,23 @@ export const IDL: RaindropsItem = {
     },
     {
       "code": 6005,
+      "name": "ItemNotConsumable",
+      "msg": "Item cannot be consumed"
+    },
+    {
+      "code": 6006,
       "name": "BuildEffectAlreadyApplied",
       "msg": "Build Effect Already Applied"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "BuildEffectNotApplied",
       "msg": "Build Effect Not Applied"
+    },
+    {
+      "code": 6008,
+      "name": "ItemOnCooldown",
+      "msg": "Item is on Cooldown"
     }
   ]
 };

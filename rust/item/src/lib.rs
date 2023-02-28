@@ -2022,6 +2022,10 @@ pub mod raindrops_item {
     pub fn return_build_material_spl(ctx: Context<ReturnBuildMaterialSpl>) -> Result<()> {
         return_build_material_spl::handler(ctx)
     }
+
+    pub fn consume_build_material_spl(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
+        consume_build_material_spl::handler(ctx)
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]

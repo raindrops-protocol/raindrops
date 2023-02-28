@@ -40,6 +40,7 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
     );
 
     // apply build effect defined in the build pda (derived from the schema)
+    let mut applied = false;
     for build_material_data in ctx.accounts.build.materials.iter_mut() {
         // find the build material corresponding to the item class in this instruction
         if build_material_data
@@ -48,6 +49,8 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
         {
             // find the specific item within the build material that is referenced in this instruction
             for mint_data in build_material_data.mints.iter_mut() {
+                applied = true;
+
                 // check that we haven't already applied the build effect to this item
                 require!(
                     !mint_data.build_effect_applied,
@@ -69,6 +72,7 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
             }
         }
     }
+    require!(applied, ErrorCode::IncorrectMaterial);
 
     Ok(())
 }

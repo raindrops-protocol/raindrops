@@ -117,6 +117,18 @@ pub fn handler(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
             item_mint: ctx.accounts.material_mint.key(),
             item_state: ItemState::default(),
         })
+    } else {
+        // check that item is not on cooldown
+        match ctx.accounts.item.item_state.cooldown {
+            Some(until) => {
+                let now = Clock::get().unwrap().unix_timestamp;
+
+                if now < until {
+                    return Err(ErrorCode::ItemOnCooldown.into());
+                }
+            }
+            None => {}
+        }
     }
 
     // transfer material_mint to destination
