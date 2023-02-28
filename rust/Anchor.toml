@@ -51,6 +51,10 @@ address = "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
 [[test.validator.clone]]
 address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
 
+# mpl-auth-rules
+[[test.validator.clone]]
+address = "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg"
+
 # mock $RAIN Mint with our own Mint Authority
 [[test.validator.account]]
 address = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL"

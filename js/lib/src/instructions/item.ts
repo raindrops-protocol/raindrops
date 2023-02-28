@@ -30,7 +30,7 @@ import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
 import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
-import { Utils } from "../main";
+import { Constants, Utils } from "../main";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1264,6 +1264,8 @@ export class Instruction extends SolKitInstruction {
         mpl.PROGRAM_ID
       );
 
+    const materialMetadataData = await mpl.Metadata.fromAccountAddress(this.program.client.provider.connection, materialMetadata, "confirmed");
+    
     const [materialME, _materialMEBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("metadata"),
@@ -1331,6 +1333,7 @@ export class Instruction extends SolKitInstruction {
         materialItemClass: accounts.materialItemClass,
         materialMetadata: materialMetadata,
         materialEdition: materialME,
+        authRules: materialMetadataData.programmableConfig.ruleSet,
         materialSource: materialSource,
         materialSourceTokenRecord: materialSourceTokenRecord,
         materialDestination: materialDestination,
@@ -1345,6 +1348,7 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        authRulesProgram: Constants.ProgramIds.MPL_AUTH_RULES_PROGRAM_ID,
       })
       .instruction();
 
@@ -1648,6 +1652,8 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
+    
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(this.program.client.provider.connection, itemMetadata, "confirmed");
 
     const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -1704,6 +1710,7 @@ export class Instruction extends SolKitInstruction {
         itemMint: accounts.materialMint,
         itemMetadata: itemMetadata,
         itemEdition: itemME,
+        authRules: itemMetadataData.programmableConfig.ruleSet,
         itemSource: itemSource,
         itemSourceTokenRecord: itemSourceTokenRecord,
         itemDestination: itemDestination,
@@ -1718,6 +1725,7 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        authRulesProgram: Constants.ProgramIds.MPL_AUTH_RULES_PROGRAM_ID
       })
       .instruction();
 

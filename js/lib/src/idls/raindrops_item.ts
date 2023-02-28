@@ -1084,6 +1084,11 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "materialSource",
           "isMut": true,
           "isSigner": false
@@ -1150,6 +1155,11 @@ export type RaindropsItem = {
         },
         {
           "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1481,6 +1491,11 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "itemSource",
           "isMut": true,
           "isSigner": false
@@ -1547,6 +1562,11 @@ export type RaindropsItem = {
         },
         {
           "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -5305,6 +5325,11 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "materialSource",
           "isMut": true,
           "isSigner": false
@@ -5371,6 +5396,11 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -5702,6 +5732,11 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "itemSource",
           "isMut": true,
           "isSigner": false
@@ -5768,6 +5803,11 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
           "isMut": false,
           "isSigner": false
         }

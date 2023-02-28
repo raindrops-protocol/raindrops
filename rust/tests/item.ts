@@ -5,7 +5,9 @@ import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import { Instructions, Idls, ItemProgram } from "@raindrops-protocol/raindrops";
 import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";
+import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
+import { encode, decode } from "@msgpack/msgpack";
 
 describe.only("item", () => {
   // Configure the client to use the local cluster.
@@ -109,10 +111,134 @@ describe.only("item", () => {
       );
 
       let tokenStandard: mpl.TokenStandard;
+      let ruleSet: anchor.web3.PublicKey | null = null;
       if (i === 0) {
         tokenStandard = mpl.TokenStandard.NonFungible;
       } else {
         tokenStandard = mpl.TokenStandard.ProgrammableNonFungible;
+
+        // use an allow all ruleset
+        const ruleSetData = {
+          libVersion: 1,
+          ruleSetName: "AllRuleSet",
+          owner: Array.from(payer.publicKey.toBytes()),
+          operations: {
+            "Delegate:Transfer": {
+              ProgramOwnedList: {
+                programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
+                field: "Delegate",
+              },
+            },
+            "Transfer:Owner": {
+              All: {
+                rules: [
+                  {
+                    Any: {
+                      rules: [
+                        {
+                          ProgramOwnedList: {
+                            programs: [
+                              Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                            ],
+                            field: "Source",
+                          },
+                        },
+                        {
+                          ProgramOwnedList: {
+                            programs: [
+                              Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                            ],
+                            field: "Destination",
+                          },
+                        },
+                        {
+                          ProgramOwnedList: {
+                            programs: [
+                              Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                            ],
+                            field: "Authority",
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+            "Transfer:TransferDelegate": {
+              All: {
+                rules: [
+                  {
+                    Any: {
+                      rules: [
+                        {
+                          ProgramOwnedList: {
+                            programs: [
+                              Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                            ],
+                            field: "Source",
+                          },
+                        },
+                        {
+                          ProgramOwnedList: {
+                            programs: [
+                              Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                            ],
+                            field: "Destination",
+                          },
+                        },
+                        {
+                          ProgramOwnedList: {
+                            programs: [
+                              Array.from(itemProgram.PROGRAM_ID.toBytes()),
+                            ],
+                            field: "Authority",
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+
+        const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
+          itemProgram.client.provider.publicKey,
+          "AllRuleSet"
+        );
+
+        const createAuthRulesAccounts: mplAuth.CreateOrUpdateInstructionAccounts =
+          {
+            payer: itemProgram.client.provider.publicKey,
+            ruleSetPda: ruleSetPda,
+          };
+
+        const createAuthRulesArgs: mplAuth.CreateOrUpdateInstructionArgs = {
+          createOrUpdateArgs: {
+            __kind: "V1",
+            serializedRuleSet: encode(ruleSetData),
+          },
+        };
+
+        const createAuthRulesetIx =
+          await mplAuth.createCreateOrUpdateInstruction(
+            createAuthRulesAccounts,
+            createAuthRulesArgs
+          );
+        const createAuthRulesetTx = new anchor.web3.Transaction().add(
+          createAuthRulesetIx
+        );
+        const createAuthRulesetTxSig =
+          await itemProgram.client.provider.sendAndConfirm(
+            createAuthRulesetTx,
+            undefined,
+            { commitment: "confirmed" }
+          );
+        console.log("createAuthRulesetTxSig: %s", createAuthRulesetTxSig);
+
+        ruleSet = ruleSetPda;
       }
 
       const materialMintNftOutput = await client.nfts().create({
@@ -121,6 +247,7 @@ describe.only("item", () => {
         name: "pNFT1",
         sellerFeeBasisPoints: 500,
         symbol: "PN",
+        ruleSet: ruleSet,
       });
       console.log(
         "createPNftTxSig: %s",
@@ -464,3 +591,51 @@ function initTree(depthSizePair: cmp.ValidDepthSizePair): cmp.MerkleTree {
   const tree = new cmp.MerkleTree(leaves);
   return tree;
 }
+
+const ALL: string = `[
+  1,
+  "AllRuleSet",
+  [
+    179,
+    107,
+    212,
+    213,
+    134,
+    17,
+    73,
+    4,
+    139,
+    180,
+    99,
+    251,
+    121,
+    169,
+    251,
+    156,
+    115,
+    58,
+    2,
+    234,
+    234,
+    3,
+    134,
+    180,
+    39,
+    227,
+    155,
+    164,
+    150,
+    197,
+    54,
+    236
+  ],
+  {
+    "Transfer": {
+      "All": [
+        [
+          "Pass"
+        ]
+      ]
+    }
+  }
+]`;

@@ -2439,6 +2439,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@metaplex-foundation/mpl-token-auth-rules@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@metaplex-foundation/mpl-token-auth-rules@npm:1.1.0"
+  dependencies:
+    "@metaplex-foundation/beet": ^0.7.1
+    "@metaplex-foundation/beet-solana": ^0.4.0
+    "@metaplex-foundation/cusper": ^0.0.2
+    "@solana/spl-token": ^0.3.6
+    "@solana/web3.js": ^1.66.2
+  checksum: c40f4c8c9333fd55508828a58a8f859b138e90a7e112b17c0b30285e0af2ebc6b000a79dc70eacd515140cb25f13a4395a91b8ba81173ef77e9728287ee1275b
+  languageName: node
+  linkType: hard
+
 "@metaplex-foundation/mpl-token-metadata@npm:^2.2.2":
   version: 2.2.3
   resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.2.3"
@@ -2466,6 +2479,13 @@ __metadata:
     bn.js: ^5.2.0
     debug: ^4.3.4
   checksum: c926ec1cbd4f909a8010fcc149f35577cac6e69114138a295e51a9804b8383a4aa6186f786b36c52d62e6f73dc92981b3797bfe7aa326358ffe2b64638e7f08c
+  languageName: node
+  linkType: hard
+
+"@msgpack/msgpack@npm:^2.8.0":
+  version: 2.8.0
+  resolution: "@msgpack/msgpack@npm:2.8.0"
+  checksum: bead9393f57239007a2fe455df5277cbc03b125f14f310162a652b81471dcf3ab6780eaa24b36e20aa742998910a6840147d08b7267063b8e2de5d40c624360e
   languageName: node
   linkType: hard
 
@@ -2745,7 +2765,9 @@ __metadata:
   resolution: "@raindrops-protocol/raindrops-programs@workspace:rust"
   dependencies:
     "@metaplex-foundation/js": ^0.18.1
+    "@metaplex-foundation/mpl-token-auth-rules": 1.1.0
     "@metaplex-foundation/mpl-token-metadata": ^2.8.3
+    "@msgpack/msgpack": ^2.8.0
     "@project-serum/anchor": ^0.26.0
     "@project-serum/common": ^0.0.1-beta.3
     "@raindrops-protocol/raindrops": "workspace:^"

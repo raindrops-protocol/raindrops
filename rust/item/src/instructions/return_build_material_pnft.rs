@@ -8,7 +8,7 @@ use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, Tr
 use crate::state::{
     accounts::{Build, ItemClassV1, ItemV1},
     errors::ErrorCode,
-    BuildStatus, TokenMetadataProgram,
+    BuildStatus, TokenMetadataProgram, AuthRulesProgram,
 };
 
 #[derive(Accounts)]
@@ -27,6 +27,9 @@ pub struct ReturnBuildMaterialPNft<'info> {
     /// CHECK: Done by token metadata
     #[account(mut)]
     pub item_edition: UncheckedAccount<'info>,
+
+    /// CHECK: Done by token metadata
+    pub auth_rules: UncheckedAccount<'info>,
 
     #[account(mut, associated_token::mint = item_mint, associated_token::authority = build)]
     pub item_source: Box<Account<'info, token::TokenAccount>>,
@@ -69,7 +72,9 @@ pub struct ReturnBuildMaterialPNft<'info> {
 
     pub associated_token_program: Program<'info, associated_token::AssociatedToken>,
 
-    pub token_metadata: Program<'info, TokenMetadataProgram>,
+    pub token_metadata: Program<'info, TokenMetadataProgram>, 
+
+    pub auth_rules_program: Program<'info, AuthRulesProgram>,
 }
 
 pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {

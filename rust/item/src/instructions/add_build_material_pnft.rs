@@ -8,7 +8,7 @@ use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, Tr
 use crate::state::{
     accounts::{Build, ItemClassV1, ItemV1},
     errors::ErrorCode,
-    BuildStatus, ItemState, TokenMetadataProgram,
+    BuildStatus, ItemState, TokenMetadataProgram, AuthRulesProgram,
 };
 
 #[derive(Accounts)]
@@ -26,6 +26,9 @@ pub struct AddBuildMaterialPNft<'info> {
     /// CHECK: Done by token metadata
     #[account(mut)]
     pub material_edition: UncheckedAccount<'info>,
+
+    /// CHECK: Done by token metadata
+    pub auth_rules: UncheckedAccount<'info>,
 
     #[account(mut, associated_token::mint = material_mint, associated_token::authority = builder)]
     pub material_source: Box<Account<'info, token::TokenAccount>>,
@@ -67,6 +70,8 @@ pub struct AddBuildMaterialPNft<'info> {
     pub associated_token_program: Program<'info, associated_token::AssociatedToken>,
 
     pub token_metadata: Program<'info, TokenMetadataProgram>,
+
+    pub auth_rules_program: Program<'info, AuthRulesProgram>,
 }
 
 pub fn handler(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
@@ -153,8 +158,8 @@ pub fn handler(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
         sysvar_instructions: ctx.accounts.instructions.key(),
         spl_token_program: ctx.accounts.token_program.key(),
         spl_ata_program: ctx.accounts.associated_token_program.key(),
-        authorization_rules_program: None,
-        authorization_rules: None,
+        authorization_rules_program: Some(ctx.accounts.auth_rules_program.key()),
+        authorization_rules: Some(ctx.accounts.auth_rules.key()),
         args: transfer_args,
     };
 
@@ -176,6 +181,8 @@ pub fn handler(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
         ctx.accounts.instructions.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
         ctx.accounts.associated_token_program.to_account_info(),
+        ctx.accounts.auth_rules_program.to_account_info(),
+        ctx.accounts.auth_rules.to_account_info(),
     ];
 
     invoke(&transfer_ix.instruction(), &transfer_accounts)?;
