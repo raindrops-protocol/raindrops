@@ -9,7 +9,7 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
-import { decodeItemClass, ItemClass, ItemClassV1, Material, Schema } from "../state/item";
+import { Build, BuildMaterialData, BuildMaterialMint, decodeItemClass, ItemClass, ItemClassV1, Material, Schema } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 
@@ -316,7 +316,7 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1> {
+  async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
     const itemClassData = await this.client.account.itemClassV1.fetch(itemClass);
     if (!itemClassData) {
       return null
@@ -345,7 +345,7 @@ export class ItemProgram extends Program.Program {
 
       const schema: Schema = {
         itemClass: itemClass,
-        schemaIndex: new BN(i),
+        schemaIndex: i,
         buildEnabled: schemaData.buildEnabled as boolean,
         materials: materials,
       } 
@@ -361,6 +361,41 @@ export class ItemProgram extends Program.Program {
     }
 
     return itemClassV1
+  }
+
+  async getBuild(build: web3.PublicKey): Promise<Build | null> {
+    const buildDataRaw = await this.client.account.build.fetch(build);
+    if (!buildDataRaw) {
+      return null
+    } 
+
+    const buildMaterialData: BuildMaterialData[] = [];
+
+    for (let rawMaterial of buildDataRaw.materials as any[]) {
+      const mints: BuildMaterialMint[] = [];
+      for (let rawMaterialMint of rawMaterial.mints as any[]) {
+        mints.push({mint: new web3.PublicKey(rawMaterialMint.mint), buildEffectApplied: rawMaterialMint.buildEffectApplied})
+      }
+
+      buildMaterialData.push({
+        itemClass: new web3.PublicKey(rawMaterial.itemClass),
+        currentAmount: new BN(rawMaterial.currentAmount),
+        requiredAmount: new BN(rawMaterial.requiredAmount),
+        buildEffect: rawMaterial.buildEffect,
+        mints: mints,
+      })
+    } 
+
+    const buildData: Build = {
+      schemaIndex: buildDataRaw.schemaIndex as number,
+      builder: new web3.PublicKey(buildDataRaw.builder),
+      itemClass: new web3.PublicKey(buildDataRaw.itemClass),
+      itemMint: new web3.PublicKey(buildDataRaw.itemMint) || null,
+      materials: buildMaterialData,
+      status: buildDataRaw.status,
+    }
+
+    return buildData
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

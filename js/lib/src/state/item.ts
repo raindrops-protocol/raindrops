@@ -547,7 +547,7 @@ export interface ItemClassV1 {
 }
 
 export interface Schema {
-  schemaIndex: BN;
+  schemaIndex: number;
   itemClass: web3.PublicKey;
   buildEnabled: boolean;
   materials: Material[];
@@ -556,4 +556,26 @@ export interface Schema {
 export interface Material {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
+}
+
+export interface Build {
+  schemaIndex: number;
+  builder: web3.PublicKey;
+  itemClass: web3.PublicKey;
+  itemMint: web3.PublicKey | null;
+  materials: BuildMaterialData[];
+  status: any;
+}
+
+export interface BuildMaterialData {
+  itemClass: web3.PublicKey;
+  currentAmount: BN;
+  requiredAmount: BN;
+  buildEffect: any;
+  mints: BuildMaterialMint[];
+}
+
+export interface BuildMaterialMint {
+  mint: web3.PublicKey;
+  buildEffectApplied: boolean;
 }

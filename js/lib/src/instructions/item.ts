@@ -1146,7 +1146,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
+        accounts.builder.toBuffer(),
       ],
       this.program.id
     );
@@ -1157,7 +1157,7 @@ export class Instruction extends SolKitInstruction {
         build: build,
         schema: schema,
         itemClass: accounts.itemClass,
-        builder: this.program.client.provider.publicKey!,
+        builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
       })
@@ -1182,7 +1182,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
+       accounts.builder.toBuffer(), 
       ],
       this.program.id
     );
@@ -1211,7 +1211,7 @@ export class Instruction extends SolKitInstruction {
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       accounts.materialMint,
-      this.program.client.provider.publicKey!
+      accounts.builder,
     );
     const materialDestination = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -1271,7 +1271,7 @@ export class Instruction extends SolKitInstruction {
         build: build,
         item: item,
         itemClass: accounts.itemClass,
-        builder: this.program.client.provider.publicKey!,
+        builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1300,7 +1300,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
+        accounts.builder.toBuffer(), 
       ],
       this.program.id
     );
@@ -1328,9 +1328,9 @@ export class Instruction extends SolKitInstruction {
         materialItemClassItems: materialItemClassItems,
         build: build,
         itemClass: accounts.itemClass,
-        builder: this.program.client.provider.publicKey,
+        builder: accounts.builder,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
-        accountCompression: cmp.PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
       .remainingAccounts(proofAsRemainingAccounts)
       .instruction();
@@ -1351,7 +1351,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
+        accounts.builder.toBuffer(),
       ],
       this.program.id
     );
@@ -1390,7 +1390,7 @@ export class Instruction extends SolKitInstruction {
         itemClassItems: itemClassItems,
         build: build,
         schema: schema,
-        builder: this.program.client.provider.publicKey!,
+        builder: accounts.builder,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
@@ -1407,7 +1407,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
+        accounts.builder.toBuffer(),
       ],
       this.program.id
     );
@@ -1443,7 +1443,7 @@ export class Instruction extends SolKitInstruction {
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       accounts.itemMint,
-      this.program.client.provider.publicKey!
+      accounts.builder,
     );
 
     const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
@@ -1482,7 +1482,7 @@ export class Instruction extends SolKitInstruction {
         itemDestinationTokenRecord: itemDestinationTokenRecord,
         itemClass: accounts.itemClass,
         build: build,
-        builder: this.program.client.provider.publicKey!,
+        builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1511,7 +1511,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
+        accounts.builder.toBuffer(),
       ],
       this.program.id
     );
@@ -1524,7 +1524,7 @@ export class Instruction extends SolKitInstruction {
         itemMint: accounts.materialMint,
         build: build,
         builder: accounts.builder,
-        payer: this.program.client.provider.publicKey,
+        payer: accounts.payer,
       })
       .instruction();
     return ix;
@@ -1546,7 +1546,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        this.program.client.provider.publicKey!.toBuffer(),
+        accounts.builder.toBuffer(),
       ],
       this.program.id
     );
@@ -1974,6 +1974,7 @@ export interface Cooldown {
 
 export interface StartBuildAccounts {
   itemClass: web3.PublicKey;
+  builder: web3.PublicKey;
 }
 
 export interface StartBuildArgs {
@@ -1984,12 +1985,14 @@ export interface AddBuildMaterialAccounts {
   materialMint: web3.PublicKey;
   materialItemClass: web3.PublicKey;
   itemClass: web3.PublicKey;
+  builder: web3.PublicKey;
 }
 
 export interface VerifyBuildMaterialAccounts {
   materialMint: web3.PublicKey;
   materialItemClass: web3.PublicKey;
   itemClass: web3.PublicKey;
+  builder: web3.PublicKey;
 }
 
 export interface VerifyBuildMaterialArgs {
@@ -2001,6 +2004,7 @@ export interface VerifyBuildMaterialArgs {
 export interface CompleteBuildAccounts {
   itemMint: web3.PublicKey;
   itemClass: web3.PublicKey;
+  builder: web3.PublicKey;
 }
 
 export interface CompleteBuildArgs {
@@ -2012,6 +2016,7 @@ export interface CompleteBuildArgs {
 export interface ReceiveItemAccounts {
   itemMint: web3.PublicKey;
   itemClass: web3.PublicKey;
+  builder: web3.PublicKey;
 }
 
 export interface AddItemsToItemClass {
@@ -2024,6 +2029,7 @@ export interface ApplyBuildEffectAccounts {
   materialItemClass: web3.PublicKey;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
+  payer: web3.PublicKey;
 }
 
 export interface ReturnBuildMaterialAccounts {

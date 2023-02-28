@@ -93,6 +93,7 @@ describe.only("item", () => {
     // start the build process
     const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
       itemClass: itemClass,
+      builder: itemProgram.client.provider.publicKey,
     };
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
@@ -151,6 +152,7 @@ describe.only("item", () => {
           materialMint: materialMintPNftOutput.mintAddress,
           materialItemClass: material[0],
           itemClass: itemClass,
+          builder: itemProgram.client.provider.publicKey,
         };
 
       const verifyBuildMaterialArgs: Instructions.Item.VerifyBuildMaterialArgs =
@@ -174,6 +176,7 @@ describe.only("item", () => {
           itemClass: itemClass,
           materialMint: materialMintPNftOutput.mintAddress,
           materialItemClass: material[0],
+          builder: itemProgram.client.provider.publicKey,
         };
 
       const addBuildMaterialResult = await itemProgram.addBuildMaterial(
@@ -232,6 +235,7 @@ describe.only("item", () => {
     const completeBuildAccounts: Instructions.Item.CompleteBuildAccounts = {
       itemMint: itemMintPNftOutput.mintAddress,
       itemClass: itemClass,
+      builder: itemProgram.client.provider.publicKey,
     };
     const completeBuildArgs: Instructions.Item.CompleteBuildArgs = {
       root: itemProof.root,
@@ -249,6 +253,7 @@ describe.only("item", () => {
     const receiveItemAccounts: Instructions.Item.ReceiveItemAccounts = {
       itemMint: itemMintPNftOutput.mintAddress,
       itemClass: itemClass,
+      builder: itemProgram.client.provider.publicKey,
     };
 
     const receiveItemResult = await itemProgram.receiveItem(
@@ -341,138 +346,6 @@ describe.only("item", () => {
         );
       }
     }
-  });
-
-  it.only("build pNFT item class via HTTP ", async () => {
-    const payer = await newPayer(connection);
-    const provider = new anchor.AnchorProvider(
-      connection,
-      new anchor.Wallet(payer),
-      {}
-    );
-
-    // init http client
-    const client = new Http.Item.Client(provider, "localnet");
-
-    //
-    // start api out of band
-    //
-
-    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemIDL,
-    });
-
-    // build all the material item classes
-    const materials: [anchor.web3.PublicKey, cmp.MerkleTree][] = [];
-    for (let i = 0; i < 3; i++) {
-      let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
-        schemaArgs: {
-          buildEnabled: false,
-          materialArgs: [],
-        },
-      };
-
-      let [itemClass, createItemClassResult] =
-        await itemProgram.createItemClassV1(createItemClassArgs);
-      console.log("createItemClassTxSig: %s", createItemClassResult.txid);
-
-      // TODO: currently these are hardcoded in the contract
-      let offchainTree = initTree({ maxBufferSize: 64, maxDepth: 14 });
-
-      materials.push([itemClass, offchainTree]);
-    }
-
-    // create the item class which will be built using the materials
-    const createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
-      schemaArgs: {
-        buildEnabled: true,
-        materialArgs: [
-          {
-            itemClass: materials[0][0],
-            requiredAmount: new BN(1),
-            buildEffect: {
-              degredation: null,
-              cooldown: null,
-            },
-          },
-          {
-            itemClass: materials[1][0],
-            requiredAmount: new BN(1),
-            buildEffect: {
-              degredation: null,
-              cooldown: null,
-            },
-          },
-          {
-            itemClass: materials[2][0],
-            requiredAmount: new BN(1),
-            buildEffect: {
-              degredation: null,
-              cooldown: null,
-            },
-          },
-        ],
-      },
-    };
-
-    const [itemClass, createItemClassResult] =
-      await itemProgram.createItemClassV1(createItemClassArgs);
-    console.log("createItemClassTxSig: %s", createItemClassResult.txid);
-
-    const itemClassOffChainTree = initTree({ maxDepth: 14, maxBufferSize: 64 });
-
-
-    // add items to the item classes
-    const materialArgs: Http.Item.MaterialArg[] = [];
-    for (let material of materials) {
-      // create pNFTs which represent the material item classes
-      const client = new metaplex.Metaplex(connection, {}).use(
-        metaplex.keypairIdentity(payer)
-      );
-
-      const materialMintPNftOutput = await client.nfts().create({
-        tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
-        uri: "https://foo.com/bar.json",
-        name: "pNFT1",
-        sellerFeeBasisPoints: 500,
-        symbol: "PN",
-      });
-      console.log(
-        "createPNftTxSig: %s",
-        materialMintPNftOutput.response.signature
-      );
-
-      // add mint to the items tree on chain
-      const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass =
-        {
-          itemClass: material[0],
-          itemMints: [materialMintPNftOutput.mintAddress],
-        };
-
-      const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(
-        addItemsToItemClassAccounts
-      );
-      console.log(
-        "addItemsToItemClassTxSig: %s",
-        addItemsToItemClassResult.txid
-      );
-
-      const materialArg: Http.Item.MaterialArg = {
-        itemMint: materialMintPNftOutput.mintAddress,
-        amount: new anchor.BN(1),
-      };
-
-      materialArgs.push(materialArg);
-    }
-
-    const schemas = await client.checkMaterials(itemClass, materialArgs)
-    console.log(schemas);
   });
 });
 
