@@ -30,6 +30,7 @@ import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
 import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
+import { Utils } from "../main";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1167,7 +1168,8 @@ export class Instruction extends SolKitInstruction {
   }
 
   async addBuildMaterial(
-    accounts: AddBuildMaterialAccounts
+    accounts: AddBuildMaterialAccounts,
+    args: AddBuildMaterialArgs
   ): Promise<web3.TransactionInstruction[]> {
     const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -1187,6 +1189,71 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
+    // detect what type of token we are adding
+    const tokenStandard = await Utils.Item.getTokenStandard(
+      this.program.client.provider.connection,
+      accounts.materialMint
+    );
+
+    let ixns: web3.TransactionInstruction[] = [];
+    if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      const pNftIxns = await this.addBuildMaterialPnft(accounts, build, item);
+      ixns.push(...pNftIxns);
+    } else {
+      const ix = await this.addBuildMaterialSpl(accounts, build, item, args);
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
+  private async addBuildMaterialSpl(
+    accounts: AddBuildMaterialAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey,
+    args: AddBuildMaterialArgs
+  ): Promise<web3.TransactionInstruction> {
+    const materialSource = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.materialMint,
+      accounts.builder
+    );
+    const materialDestination = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.materialMint,
+      build,
+      true
+    );
+
+    const ix = await this.program.client.methods
+      .addBuildMaterialSpl(args)
+      .accounts({
+        materialMint: accounts.materialMint,
+        materialItemClass: accounts.materialItemClass,
+        materialSource: materialSource,
+        materialDestination: materialDestination,
+        build: build,
+        item: item,
+        itemClass: accounts.itemClass,
+        builder: accounts.builder,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  private async addBuildMaterialPnft(
+    accounts: AddBuildMaterialAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey
+  ): Promise<web3.TransactionInstruction[]> {
     const [materialMetadata, _materialMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
         [
@@ -1551,6 +1618,27 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
+    // detect what type of token we are adding
+    const tokenStandard = await Utils.Item.getTokenStandard(
+      this.program.client.provider.connection,
+      accounts.materialMint
+    );
+
+    let ix: web3.TransactionInstruction;
+    if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      ix = await this.returnBuildMaterialPNft(accounts, build, item);
+    } else {
+      ix = await this.returnBuildMaterialSpl(accounts, build, item);
+    }
+
+    return ix;
+  }
+
+  async returnBuildMaterialPNft(
+    accounts: ReturnBuildMaterialAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
     const [itemMetadata, _itemMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
         [
@@ -1630,6 +1718,46 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+      })
+      .instruction();
+
+    return ix;
+  }
+  async returnBuildMaterialSpl(
+    accounts: ReturnBuildMaterialAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
+    const itemSource = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.materialMint,
+      build,
+      true
+    );
+    const itemDestination = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      accounts.materialMint,
+      accounts.builder
+    );
+
+    const ix = await this.program.client.methods
+      .returnBuildMaterialSpl()
+      .accounts({
+        item: item,
+        itemMint: accounts.materialMint,
+        itemSource: itemSource,
+        itemDestination: itemDestination,
+        build: build,
+        builder: accounts.builder,
+        itemClass: accounts.itemClass,
+        payer: this.program.client.provider.publicKey,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .instruction();
     return ix;
@@ -2056,6 +2184,10 @@ export interface AddBuildMaterialAccounts {
   materialItemClass: web3.PublicKey;
   itemClass: web3.PublicKey;
   builder: web3.PublicKey;
+}
+
+export interface AddBuildMaterialArgs {
+  amount: BN;
 }
 
 export interface VerifyBuildMaterialAccounts {

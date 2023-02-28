@@ -1552,6 +1552,72 @@ export type RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "returnBuildMaterialSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -5646,6 +5712,72 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "returnBuildMaterialSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
           "isMut": false,
           "isSigner": false
         }

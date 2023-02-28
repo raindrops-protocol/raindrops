@@ -286,8 +286,8 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.addBuildMaterial(accounts);
+  async addBuildMaterial(accounts: ItemInstruction.AddBuildMaterialAccounts, args: ItemInstruction.AddBuildMaterialArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.addBuildMaterial(accounts, args);
     return await this.sendWithRetry(ixns, [], options);
   }
 

@@ -2018,6 +2018,10 @@ pub mod raindrops_item {
     pub fn return_build_material_pnft(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
         return_build_material_pnft::handler(ctx)
     }
+
+    pub fn return_build_material_spl(ctx: Context<ReturnBuildMaterialSpl>) -> Result<()> {
+        return_build_material_spl::handler(ctx)
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]

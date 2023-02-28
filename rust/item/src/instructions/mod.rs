@@ -7,6 +7,7 @@ pub mod complete_build;
 pub mod create_item_class_v1;
 pub mod receive_item;
 pub mod return_build_material_pnft;
+pub mod return_build_material_spl;
 pub mod start_build;
 pub mod verify_build_material;
 
@@ -19,5 +20,6 @@ pub use complete_build::*;
 pub use create_item_class_v1::*;
 pub use receive_item::*;
 pub use return_build_material_pnft::*;
+pub use return_build_material_spl::*;
 pub use start_build::*;
 pub use verify_build_material::*;

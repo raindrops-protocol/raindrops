@@ -107,14 +107,22 @@ describe.only("item", () => {
     console.log("startBuildTxSig: %s", startBuildResult.txid);
 
     // escrow the materials with the build pda
-    for (let material of materials) {
+    for (let i = 0; i < materials.length; i++) {
+
       // create pNFTs which represent the material item classes
       const client = new metaplex.Metaplex(connection, {}).use(
         metaplex.keypairIdentity(payer)
       );
 
-      const materialMintPNftOutput = await client.nfts().create({
-        tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
+      let tokenStandard: mpl.TokenStandard;
+      if (i == 0) {
+        tokenStandard = mpl.TokenStandard.NonFungible;
+      } else {
+        tokenStandard = mpl.TokenStandard.ProgrammableNonFungible;
+      }
+
+      const materialMintNftOutput = await client.nfts().create({
+        tokenStandard: tokenStandard,
         uri: "https://foo.com/bar.json",
         name: "pNFT1",
         sellerFeeBasisPoints: 500,
@@ -122,14 +130,14 @@ describe.only("item", () => {
       });
       console.log(
         "createPNftTxSig: %s",
-        materialMintPNftOutput.response.signature
+        materialMintNftOutput.response.signature
       );
 
       // add mint to the items tree on chain
       const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass =
         {
-          itemClass: material[0],
-          itemMints: [materialMintPNftOutput.mintAddress],
+          itemClass: materials[i][0],
+          itemMints: [materialMintNftOutput.mintAddress],
         };
 
       const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(
@@ -142,15 +150,15 @@ describe.only("item", () => {
 
       // add mint to the off chain tree, eventually this won't be a manual operation when we have an indexer
       // right now index 0 because we are only adding 1 item
-      material[1].updateLeaf(0, materialMintPNftOutput.mintAddress.toBuffer());
+      materials[i][1].updateLeaf(0, materialMintNftOutput.mintAddress.toBuffer());
 
-      const materialProof = material[1].getProof(0);
+      const materialProof = materials[i][1].getProof(0);
 
       // verify build material
       const verifyBuildMaterialAccounts: Instructions.Item.VerifyBuildMaterialAccounts =
         {
-          materialMint: materialMintPNftOutput.mintAddress,
-          materialItemClass: material[0],
+          materialMint: materialMintNftOutput.mintAddress,
+          materialItemClass: materials[i][0],
           itemClass: itemClass,
           builder: itemProgram.client.provider.publicKey,
         };
@@ -174,13 +182,18 @@ describe.only("item", () => {
       const addBuildMaterialAccounts: Instructions.Item.AddBuildMaterialAccounts =
         {
           itemClass: itemClass,
-          materialMint: materialMintPNftOutput.mintAddress,
-          materialItemClass: material[0],
+          materialMint: materialMintNftOutput.mintAddress,
+          materialItemClass: materials[i][0],
           builder: itemProgram.client.provider.publicKey,
         };
 
+      const addBuildMaterialArgs: Instructions.Item.AddBuildMaterialArgs = {
+        amount: new anchor.BN(1),
+      }
+
       const addBuildMaterialResult = await itemProgram.addBuildMaterial(
-        addBuildMaterialAccounts
+        addBuildMaterialAccounts,
+        addBuildMaterialArgs
       );
       console.log("addBuildMaterialTxSig: %s", addBuildMaterialResult.txid);
     }
