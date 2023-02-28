@@ -51,6 +51,4 @@ pub fn handler(ctx: Context<AddItemToItemClass>) -> Result<()> {
     )?;
 
     Ok(())
-
-    // TODO: emit event for the indexer
 }

@@ -1970,6 +1970,10 @@ pub mod raindrops_item {
         create_item_class_v1::handler(ctx, args)
     }
 
+    pub fn add_schema(ctx: Context<AddSchema>, args: AddSchemaArgs) -> Result<()> {
+        add_schema::handler(ctx, args)
+    }
+
     pub fn add_item_to_item_class(ctx: Context<AddItemToItemClass>) -> Result<()> {
         add_item_to_item_class::handler(ctx)
     }
@@ -1978,8 +1982,15 @@ pub mod raindrops_item {
         start_build::handler(ctx, args)
     }
 
-    pub fn add_build_material(ctx: Context<AddBuildMaterial>) -> Result<()> {
-        add_build_material::handler(ctx)
+    pub fn add_build_material_pnft(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
+        add_build_material_pnft::handler(ctx)
+    }
+
+    pub fn add_build_material_spl(
+        ctx: Context<AddBuildMaterialSpl>,
+        args: AddBuildMaterialSplArgs,
+    ) -> Result<()> {
+        add_build_material_spl::handler(ctx, args)
     }
 
     pub fn verify_build_material<'a, 'b, 'c, 'info>(
@@ -2004,8 +2015,8 @@ pub mod raindrops_item {
         apply_build_effect::handler(ctx)
     }
 
-    pub fn return_build_material(ctx: Context<ReturnBuildMaterial>) -> Result<()> {
-        return_build_material::handler(ctx)
+    pub fn return_build_material_pnft(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
+        return_build_material_pnft::handler(ctx)
     }
 }
 

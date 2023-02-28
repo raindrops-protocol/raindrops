@@ -316,6 +316,11 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async addSchema(accounts: ItemInstruction.AddSchemaAccounts, args: ItemInstruction.AddSchemaArgs, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.addSchema(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
   async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
     const itemClassData = await this.client.account.itemClassV1.fetch(itemClass);
     if (!itemClassData) {

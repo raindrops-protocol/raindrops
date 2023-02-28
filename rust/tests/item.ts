@@ -308,6 +308,7 @@ describe.only("item", () => {
             materialItemClass: buildMaterialData[0],
             materialMint: mint,
             builder: itemProgram.client.provider.publicKey,
+            payer: itemProgram.client.provider.publicKey,
             itemClass: itemClass,
           };
 
@@ -346,6 +347,54 @@ describe.only("item", () => {
         );
       }
     }
+  });
+
+  it("create item class with multiple schemas", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
+      schemaArgs: {
+        buildEnabled: false,
+        materialArgs: [],
+      },
+    };
+
+    let [itemClass, createItemClassResult] =
+      await itemProgram.createItemClassV1(createItemClassArgs);
+    console.log("createItemClassTxSig: %s", createItemClassResult.txid);
+
+    // first schema is created during item class creation
+    const itemClassDataPre = await itemProgram.getItemClassV1(itemClass)
+    assert.isTrue(itemClassDataPre.schemaIndex.eq(new anchor.BN(0)));
+
+    const addSchemaAccounts: Instructions.Item.AddSchemaAccounts = {
+      itemClass: itemClass,
+      authority: payer.publicKey,
+    };
+
+    const addSchemaArgs: Instructions.Item.AddSchemaArgs = {
+      args: {
+        buildEnabled: false,
+        materialArgs: [],
+      }
+    }
+
+    const addSchemaResult = await itemProgram.addSchema(addSchemaAccounts, addSchemaArgs);
+    console.log("addSchemaTxSig: %s", addSchemaResult.txid);
+
+    // first schema is created during item class creation
+    const itemClassDataPost = await itemProgram.getItemClassV1(itemClass)
+    assert.isTrue(itemClassDataPost.schemaIndex.eq(new anchor.BN(1)));
   });
 });
 

@@ -1182,7 +1182,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-       accounts.builder.toBuffer(), 
+        accounts.builder.toBuffer(),
       ],
       this.program.id
     );
@@ -1211,7 +1211,7 @@ export class Instruction extends SolKitInstruction {
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       accounts.materialMint,
-      accounts.builder,
+      accounts.builder
     );
     const materialDestination = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -1258,7 +1258,7 @@ export class Instruction extends SolKitInstruction {
     });
 
     const ix = await this.program.client.methods
-      .addBuildMaterial()
+      .addBuildMaterialPnft()
       .accounts({
         materialMint: accounts.materialMint,
         materialItemClass: accounts.materialItemClass,
@@ -1300,7 +1300,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("build"),
         accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(), 
+        accounts.builder.toBuffer(),
       ],
       this.program.id
     );
@@ -1443,7 +1443,7 @@ export class Instruction extends SolKitInstruction {
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       accounts.itemMint,
-      accounts.builder,
+      accounts.builder
     );
 
     const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
@@ -1610,7 +1610,7 @@ export class Instruction extends SolKitInstruction {
       );
 
     const ix = await this.program.client.methods
-      .returnBuildMaterial()
+      .returnBuildMaterialPnft()
       .accounts({
         item: item,
         itemMint: accounts.materialMint,
@@ -1630,6 +1630,76 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+      })
+      .instruction();
+    return ix;
+  }
+
+  async addSchema(
+    accounts: AddSchemaAccounts,
+    args: AddSchemaArgs
+  ): Promise<web3.TransactionInstruction> {
+    const materials: any[] = [];
+    for (let materialArg of args.args.materialArgs) {
+      let degredationBuildEffect;
+      if (materialArg.buildEffect.degredation) {
+        degredationBuildEffect = {
+          on: { amount: materialArg.buildEffect.degredation.amount },
+        };
+      } else {
+        degredationBuildEffect = { off: {} };
+      }
+
+      let cooldownBuildEffect;
+      if (materialArg.buildEffect.cooldown) {
+        cooldownBuildEffect = {
+          on: { seconds: materialArg.buildEffect.cooldown.seconds },
+        };
+      } else {
+        cooldownBuildEffect = { off: {} };
+      }
+
+      let material = {
+        itemClass: materialArg.itemClass,
+        requiredAmount: materialArg.requiredAmount,
+        buildEffect: {
+          degredation: degredationBuildEffect,
+          cooldown: cooldownBuildEffect,
+        },
+      };
+
+      materials.push(material);
+    }
+
+    const ixArgs = {
+      buildEnabled: args.args.buildEnabled,
+      materials: materials,
+    };
+
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+
+    // get new schema pda based off item class schema index
+    const [newSchema, _bumpNewSchema] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("schema"),
+        (itemClassData.schemaIndex as BN)
+          .add(new BN(1))
+          .toArrayLike(Buffer, "le", 8),
+        accounts.itemClass.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const ix = await this.program.client.methods
+      .addSchema(ixArgs)
+      .accounts({
+        schema: newSchema,
+        itemClass: accounts.itemClass,
+        authority: accounts.authority,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
     return ix;
@@ -1945,10 +2015,10 @@ export interface UpdateItemAccounts {}
 export interface UpdateItemAdditionalArgs {}
 
 export interface CreateItemClassV1Args {
-  schemaArgs: CreateItemClassV1SchemaArgs;
+  schemaArgs: SchemaArgs;
 }
 
-export interface CreateItemClassV1SchemaArgs {
+export interface SchemaArgs {
   buildEnabled: boolean;
   materialArgs: SchemaMaterialDataArgs[];
 }
@@ -2037,4 +2107,13 @@ export interface ReturnBuildMaterialAccounts {
   materialItemClass: web3.PublicKey;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
+}
+
+export interface AddSchemaAccounts {
+  itemClass: web3.PublicKey;
+  authority: web3.PublicKey;
+}
+
+export interface AddSchemaArgs {
+  args: SchemaArgs;
 }

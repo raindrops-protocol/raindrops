@@ -944,6 +944,44 @@ export type RaindropsItem = {
       ]
     },
     {
+      "name": "addSchema",
+      "accounts": [
+        {
+          "name": "schema",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddSchemaArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "addItemToItemClass",
       "accounts": [
         {
@@ -1023,7 +1061,7 @@ export type RaindropsItem = {
       ]
     },
     {
-      "name": "addBuildMaterial",
+      "name": "addBuildMaterialPnft",
       "accounts": [
         {
           "name": "materialMint",
@@ -1117,6 +1155,79 @@ export type RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "addBuildMaterialSpl",
+      "accounts": [
+        {
+          "name": "materialMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "materialDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddBuildMaterialSplArgs"
+          }
+        }
+      ]
     },
     {
       "name": "verifyBuildMaterial",
@@ -1347,7 +1458,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "returnBuildMaterial",
+      "name": "returnBuildMaterialPnft",
       "accounts": [
         {
           "name": "item",
@@ -1780,6 +1891,38 @@ export type RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "AddBuildMaterialSplArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AddSchemaArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "SchemaMaterialData"
+              }
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "CompleteBuildArgs",
       "type": {
@@ -4900,6 +5043,44 @@ export const IDL: RaindropsItem = {
       ]
     },
     {
+      "name": "addSchema",
+      "accounts": [
+        {
+          "name": "schema",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddSchemaArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "addItemToItemClass",
       "accounts": [
         {
@@ -4979,7 +5160,7 @@ export const IDL: RaindropsItem = {
       ]
     },
     {
-      "name": "addBuildMaterial",
+      "name": "addBuildMaterialPnft",
       "accounts": [
         {
           "name": "materialMint",
@@ -5073,6 +5254,79 @@ export const IDL: RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "addBuildMaterialSpl",
+      "accounts": [
+        {
+          "name": "materialMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "materialSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "materialDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddBuildMaterialSplArgs"
+          }
+        }
+      ]
     },
     {
       "name": "verifyBuildMaterial",
@@ -5303,7 +5557,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "returnBuildMaterial",
+      "name": "returnBuildMaterialPnft",
       "accounts": [
         {
           "name": "item",
@@ -5736,6 +5990,38 @@ export const IDL: RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "AddBuildMaterialSplArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AddSchemaArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "SchemaMaterialData"
+              }
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "CompleteBuildArgs",
       "type": {
