@@ -61,11 +61,11 @@ jobs:
       - name: Lint
         run: yarn run lint:check
 
-      - name: Build lib
-        run: yarn run build:lib
-
       - name: Build program
         run: yarn run build:program
+
+      - name: Build lib
+        run: yarn run build:lib
 
       - name: Build cli
         run: yarn run build:cli
