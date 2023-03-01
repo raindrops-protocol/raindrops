@@ -64,7 +64,15 @@ export async function createPlayerClass(
       config: {
         startingStatsUri: null,
         basicStats: null,
-        bodyParts: [],
+        //bodyParts: [],
+        bodyParts: [
+          {
+            index: 0,
+            bodyPart: "arm",
+            totalItemSpots: 1,
+            inherited: { notInherited: true },
+          },
+        ],
         equipValidation: null,
         addToPackValidation: null,
       },
@@ -150,7 +158,7 @@ export async function createPlayer(
 
   const buildPlayerAdditionalArgs: Instructions.Player.BuildPlayerAdditionalArgs =
     {
-      rainAmount: new anchor.BN(Constants.Player.RAIN_PAYMENT_AMOUNT),
+      rainAmount: new anchor.BN(0),
     };
 
   const createPlayerResult = await (
@@ -404,13 +412,17 @@ export async function createItemEscrowAndCompleteBuild(
             usagePermissiveness: [{ tokenHolder: true }],
             inherited: { notInherited: true },
             itemClassType: {
-              consumable: {
-                maxUses: new anchor.BN(10),
-                maxPlayersPerUse: new anchor.BN(1),
-                cooldownDuration: null,
-                warmupDuration: null,
-                itemUsageType: { infinite: true },
+              wearable: {
+                bodyPart: ["arm"],
+                limitPerPart: 1,
               },
+              //consumable: {
+              //  maxUses: new anchor.BN(10),
+              //  maxPlayersPerUse: new anchor.BN(1),
+              //  cooldownDuration: null,
+              //  warmupDuration: null,
+              //  itemUsageType: { infinite: true },
+              //},
             },
             callback: null,
             validation: null,

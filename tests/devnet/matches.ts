@@ -15,7 +15,7 @@ async function matches() {
     JSON.parse(fs.readFileSync(`./tester.json`).toString())
   );
 
-  let payer = anchor.web3.Keypair.fromSecretKey(decodedKey);
+  const payer = anchor.web3.Keypair.fromSecretKey(decodedKey);
 
   const connection = new anchor.web3.Connection(
     "https://api.devnet.solana.com",
@@ -46,7 +46,7 @@ async function matches() {
   console.log("created mint: %s", matchMint.toString());
   await utils.delay(2000);
 
-  let payerMatchMintAta = await splToken.getOrCreateAssociatedTokenAccount(
+  const payerMatchMintAta = await splToken.getOrCreateAssociatedTokenAccount(
     connection,
     payer,
     matchMint,

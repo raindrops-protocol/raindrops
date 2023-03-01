@@ -1,5 +1,4 @@
 import * as anchor from "@project-serum/anchor";
-import * as utils from "./utils";
 import { Idls, NamespaceProgram } from "@raindrops-protocol/raindrops";
 import fs from "fs";
 
@@ -8,7 +7,7 @@ async function namespace() {
     JSON.parse(fs.readFileSync(`./tester.json`).toString())
   );
 
-  let payer = anchor.web3.Keypair.fromSecretKey(decodedKey);
+  const payer = anchor.web3.Keypair.fromSecretKey(decodedKey);
 
   const connection = new anchor.web3.Connection(
     "https://api.devnet.solana.com",
