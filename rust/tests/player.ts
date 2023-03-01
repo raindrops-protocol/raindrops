@@ -107,35 +107,6 @@ describe("player", () => {
     ).rpc();
     console.log("addItemTxSig: %s", addItemResult.txid);
 
-    //const equipItemAccount: Instructions.Player.ToggleEquipItemAccounts = {
-    //  metadataUpdateAuthority: payer.publicKey,
-    //  validationProgram: null,
-    //};
-    //const equipItemArgs: Instructions.Player.ToggleEquipItemArgs = {
-    //  itemIndex: new anchor.BN(0),
-    //  itemMint: itemMint,
-    //  itemClassMint: itemClassMint,
-    //  index: new anchor.BN(0),
-    //  playerMint: playerMint,
-    //  amount: new anchor.BN(1),
-    //  equipping: true,
-    //  bodyPartIndex: 0,
-    //  equipItemPermissivenessToUse: { tokenHolder: true },
-    //  itemUsage: null,
-    //  itemUsageIndex: null,
-    //  itemUsageProof: null,
-    //};
-
-    //const equipItemResult = await (
-    //  await playerProgram.toggleEquipItem(equipItemArgs, equipItemAccount, {
-    //    playerClassMint: playerClassMint,
-    //    itemClassIndex: new anchor.BN(0),
-    //    classIndex: new anchor.BN(0),
-    //    itemProgram: itemProgram,
-    //  })
-    //).rpc();
-    //console.log("equipItemTxSig: %s", equipItemResult.txid);
-
     const useItemAccounts: Instructions.Player.UseItemAccounts = {
       validationProgram: anchor.web3.SystemProgram.programId,
       metadataUpdateAuthority: payer.publicKey,
@@ -289,12 +260,6 @@ async function createPlayerClass(
         startingStatsUri: null,
         basicStats: null,
         bodyParts: [],
-        //bodyParts: [{
-        //  index: 0,
-        //  bodyPart: "arm",
-        //  totalItemSpots: 1,
-        //  inherited: { notInherited: true },
-        //}],
         equipValidation: null,
         addToPackValidation: null,
       },
