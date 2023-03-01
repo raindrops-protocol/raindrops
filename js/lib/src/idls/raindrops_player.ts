@@ -748,7 +748,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -769,7 +772,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -790,7 +796,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -816,7 +825,10 @@ export type RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -830,6 +842,9 @@ export type RaindropsPlayer = {
   "accounts": [
     {
       "name": "playerClass",
+      "docs": [
+        "seed ['player', player program, mint, namespace]"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -886,6 +901,9 @@ export type RaindropsPlayer = {
     },
     {
       "name": "player",
+      "docs": [
+        "seed ['player', player program, mint, namespace] also"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -1070,188 +1088,6 @@ export type RaindropsPlayer = {
             "name": "usageInfo",
             "type": {
               "option": "u8"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CopyEndItemActivationBecauseAnchorSucksSometimesArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "instruction",
-            "type": {
-              "array": [
-                "u8",
-                8
-              ]
-            }
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "usagePermissivenessToUse",
-            "type": {
-              "option": {
-                "defined": "PermissivenessType"
-              }
-            }
-          },
-          {
-            "name": "usageIndex",
-            "type": "u16"
-          },
-          {
-            "name": "index",
-            "type": "u64"
-          },
-          {
-            "name": "classIndex",
-            "type": "u64"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "usageInfo",
-            "type": {
-              "option": {
-                "defined": "raindrops_item::CraftUsageInfo"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CopyBeginItemActivationBecauseAnchorSucksSometimesArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "instruction",
-            "type": {
-              "array": [
-                "u8",
-                8
-              ]
-            }
-          },
-          {
-            "name": "classIndex",
-            "type": "u64"
-          },
-          {
-            "name": "index",
-            "type": "u64"
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "itemMarkerSpace",
-            "type": "u8"
-          },
-          {
-            "name": "usagePermissivenessToUse",
-            "type": {
-              "option": {
-                "defined": "PermissivenessType"
-              }
-            }
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "usageIndex",
-            "type": "u16"
-          },
-          {
-            "name": "target",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "usageInfo",
-            "type": {
-              "option": {
-                "defined": "raindrops_item::UsageInfo"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "instruction",
-            "type": {
-              "array": [
-                "u8",
-                8
-              ]
-            }
-          },
-          {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "index",
-            "type": "u64"
-          },
-          {
-            "name": "usageIndex",
-            "type": "u16"
-          },
-          {
-            "name": "classIndex",
-            "type": "u64"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "usageProof",
-            "type": {
-              "option": {
-                "vec": {
-                  "array": [
-                    "u8",
-                    32
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "name": "usage",
-            "type": {
-              "option": {
-                "defined": "raindrops_item::ItemUsage"
-              }
             }
           }
         ]
@@ -3756,7 +3592,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3777,7 +3616,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3798,7 +3640,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3824,7 +3669,10 @@ export const IDL: RaindropsPlayer = {
         {
           "name": "namespace",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "The Namespace program will verify this account for us, and the Namespace program is the only program allowed to call this ix"
+          ]
         },
         {
           "name": "instructions",
@@ -3838,6 +3686,9 @@ export const IDL: RaindropsPlayer = {
   "accounts": [
     {
       "name": "playerClass",
+      "docs": [
+        "seed ['player', player program, mint, namespace]"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3894,6 +3745,9 @@ export const IDL: RaindropsPlayer = {
     },
     {
       "name": "player",
+      "docs": [
+        "seed ['player', player program, mint, namespace] also"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -4078,188 +3932,6 @@ export const IDL: RaindropsPlayer = {
             "name": "usageInfo",
             "type": {
               "option": "u8"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CopyEndItemActivationBecauseAnchorSucksSometimesArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "instruction",
-            "type": {
-              "array": [
-                "u8",
-                8
-              ]
-            }
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "usagePermissivenessToUse",
-            "type": {
-              "option": {
-                "defined": "PermissivenessType"
-              }
-            }
-          },
-          {
-            "name": "usageIndex",
-            "type": "u16"
-          },
-          {
-            "name": "index",
-            "type": "u64"
-          },
-          {
-            "name": "classIndex",
-            "type": "u64"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "usageInfo",
-            "type": {
-              "option": {
-                "defined": "raindrops_item::CraftUsageInfo"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CopyBeginItemActivationBecauseAnchorSucksSometimesArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "instruction",
-            "type": {
-              "array": [
-                "u8",
-                8
-              ]
-            }
-          },
-          {
-            "name": "classIndex",
-            "type": "u64"
-          },
-          {
-            "name": "index",
-            "type": "u64"
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "itemMarkerSpace",
-            "type": "u8"
-          },
-          {
-            "name": "usagePermissivenessToUse",
-            "type": {
-              "option": {
-                "defined": "PermissivenessType"
-              }
-            }
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "usageIndex",
-            "type": "u16"
-          },
-          {
-            "name": "target",
-            "type": {
-              "option": "publicKey"
-            }
-          },
-          {
-            "name": "usageInfo",
-            "type": {
-              "option": {
-                "defined": "raindrops_item::UsageInfo"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CopyUpdateValidForUseIfWarmupPassedBecauseAnchorSucksSometimesArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "instruction",
-            "type": {
-              "array": [
-                "u8",
-                8
-              ]
-            }
-          },
-          {
-            "name": "itemMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "index",
-            "type": "u64"
-          },
-          {
-            "name": "usageIndex",
-            "type": "u16"
-          },
-          {
-            "name": "classIndex",
-            "type": "u64"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "itemClassMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "usageProof",
-            "type": {
-              "option": {
-                "vec": {
-                  "array": [
-                    "u8",
-                    32
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "name": "usage",
-            "type": {
-              "option": {
-                "defined": "raindrops_item::ItemUsage"
-              }
             }
           }
         ]

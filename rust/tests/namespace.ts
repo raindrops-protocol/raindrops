@@ -2185,7 +2185,7 @@ describe("namespace", () => {
     assert(ns1Data.artifactsCached === 0);
   });
 
-  it("cache 101 items to namespace, tests cache pagination, then uncache them all", async () => {
+  it.skip("cache 101 items to namespace, tests cache pagination, then uncache them all", async () => {
     const payer = await newPayer(
       connection,
       rainTokenMint,

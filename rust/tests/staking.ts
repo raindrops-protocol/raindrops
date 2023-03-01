@@ -1,16 +1,8 @@
 import * as anchor from "@project-serum/anchor";
-import { BN } from "@project-serum/anchor";
-import * as splToken from "../node_modules/@solana/spl-token";
-import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import {
-  State,
-  Instructions,
-  Utils,
-  Constants,
   StakingProgram,
   Idls,
 } from "@raindrops-protocol/raindrops";
-import assert = require("assert");
 
 describe("staking", () => {
   // Configure the client to use the local cluster.

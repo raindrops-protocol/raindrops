@@ -62,7 +62,7 @@ export class Data {
 }
 
 export class CreateMetadataArgs {
-  instruction: number = 0;
+  instruction = 0;
   data: Data;
   isMutable: boolean;
 
@@ -73,13 +73,11 @@ export class CreateMetadataArgs {
 }
 
 export class SetAndVerifyCollectionArgs {
-  instruction: number = 25;
-
-  constructor() {}
+  instruction = 25;
 }
 
 export class UpdateMetadataArgs {
-  instruction: number = 1;
+  instruction = 1;
   data: Data | null;
   // Not used by this app, just required for instruction
   updateAuthority: StringPublicKey | null;
@@ -96,7 +94,7 @@ export class UpdateMetadataArgs {
 }
 
 export class CreateMasterEditionArgs {
-  instruction: number = 10;
+  instruction = 10;
   maxSupply: BN | null;
   constructor(args: { maxSupply: BN | null }) {
     this.maxSupply = args.maxSupply;

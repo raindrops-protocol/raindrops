@@ -873,7 +873,11 @@ pub struct InitializeNamespace<'info> {
     ]
     namespace: Account<'info, Namespace>,
     mint: Account<'info, Mint>,
+
+    /// CHECK: TODO
     metadata: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     master_edition: UncheckedAccount<'info>,
 
     #[account(mut)]
@@ -984,15 +988,23 @@ pub struct MatchValidationArgs {
 #[derive(Accounts)]
 #[instruction(args: ValidationArgs)]
 pub struct ItemValidation<'info> {
+    /// CHECK: TODO
     item_class: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     item: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     item_account: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 #[instruction(args: MatchValidationArgs)]
 pub struct MatchValidation<'info> {
+    /// CHECK: TODO
     source_item_or_player_pda: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     mint: UncheckedAccount<'info>,
 }
 
@@ -1009,6 +1021,7 @@ pub struct JoinNamespace<'info> {
     #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Box<Account<'info, TokenAccount>>,
 
+    /// CHECK: TODO
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
 
@@ -1027,9 +1040,11 @@ pub struct JoinNamespace<'info> {
     #[account(mut, associated_token::mint = rain_token_mint, associated_token::authority = token_holder)]
     rain_payer_ata: Account<'info, token::TokenAccount>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
 
+    /// CHECK: constraints
     #[account(constraint=raindrops_program.key() == crate::id() ||
         raindrops_program.key() == raindrops_item::id() ||
         raindrops_program.key() == raindrops_player::id() ||
@@ -1045,13 +1060,20 @@ pub struct LeaveNamespace<'info> {
     namespace: Account<'info, Namespace>,
     #[account(associated_token::mint = namespace.mint, associated_token::authority = token_holder, constraint = namespace_token.amount == 1)]
     namespace_token: Account<'info, TokenAccount>,
+
+    /// CHECK: TODO
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
+
     #[account(seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), GATEKEEPER.as_bytes()], bump, has_one=namespace)]
     namespace_gatekeeper: Account<'info, NamespaceGatekeeper>,
     token_holder: Signer<'info>,
+
+    /// CHECK: constraints
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
+
+    /// CHECK: constraints
     #[account(constraint=raindrops_program.key() == crate::id() ||
     raindrops_program.key() == raindrops_item::id() ||
     raindrops_program.key() == raindrops_player::id() ||
@@ -1068,14 +1090,20 @@ pub struct CacheArtifact<'info> {
     namespace_token: Account<'info, TokenAccount>,
     #[account(init_if_needed, payer = token_holder, space = NamespaceIndex::SPACE, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump)]
     index: Account<'info, NamespaceIndex>,
+
+    /// CHECK: TODO
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     #[account(mut)]
     token_holder: Signer<'info>,
+
+    /// CHECK: constraints
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+
+    /// CHECK: constraints
     #[account(constraint=raindrops_program.key() == crate::id() ||
         raindrops_program.key() == raindrops_item::id() ||
         raindrops_program.key() == raindrops_player::id() ||
@@ -1092,14 +1120,20 @@ pub struct UncacheArtifact<'info> {
     namespace_token: Account<'info, TokenAccount>,
     #[account(mut, seeds=[PREFIX.as_bytes(), namespace.key().as_ref(), &args.page.to_le_bytes()], bump=index.bump)]
     index: Account<'info, NamespaceIndex>,
+
+    /// CHECK: TODO
     #[account(mut)]
     artifact: UncheckedAccount<'info>,
     #[account(mut)]
     token_holder: Signer<'info>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+
+    /// CHECK: constraints
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     instructions: UncheckedAccount<'info>,
+
+    /// CHECK: constraints
     #[account(constraint=raindrops_program.key() == crate::id() ||
         raindrops_program.key() == raindrops_item::id() ||
         raindrops_program.key() == raindrops_player::id() ||

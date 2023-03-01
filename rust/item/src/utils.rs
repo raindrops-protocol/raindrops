@@ -630,7 +630,10 @@ pub fn assert_builder_must_be_holder_check(
 ) -> Result<()> {
     if let Some(b) = &item_class_data.settings.builder_must_be_holder {
         if b.boolean {
-            require!(new_item_token_holder.is_signer, MustBeHolderToBuild)
+            require!(
+                new_item_token_holder.is_signer,
+                ErrorCode::MustBeHolderToBuild
+            )
         }
     }
 
@@ -1127,10 +1130,13 @@ pub fn assert_is_ata(
     if let Some(p) = allowed_delegate {
         require!(
             ata_account.delegate.unwrap() == *p,
-            ExpectedDelegateToMatchProvided
+            ErrorCode::ExpectedDelegateToMatchProvided
         );
     } else {
-        require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+        require!(
+            ata_account.delegate.is_none(),
+            ErrorCode::AtaShouldNotHaveDelegate
+        );
     }
     Ok(ata_account)
 }
@@ -1154,7 +1160,10 @@ pub fn assert_is_player_pda(
     assert_keys_equal(ata_account.owner, *player)?;
     assert_keys_equal(ata_account.mint, mint.key())?;
     assert_keys_equal(get_player_token_pda(item, player)?, *ata.key)?;
-    require!(ata_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+    require!(
+        ata_account.delegate.is_none(),
+        ErrorCode::AtaShouldNotHaveDelegate
+    );
     Ok(ata_account)
 }
 
@@ -1365,7 +1374,7 @@ pub fn verify_cooldown(args: VerifyCooldownArgs) -> Result<()> {
                     &craft_usage_state_root.root,
                     node.0
                 ),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
         } else {
             return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1380,7 +1389,7 @@ pub fn verify_cooldown(args: VerifyCooldownArgs) -> Result<()> {
         if let Some(craft_usage_root) = &craft_item_class_data.config.usage_root {
             require!(
                 verify(&craft_usage_proof, &craft_usage_root.root, class_node.0),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
         } else {
             return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1388,12 +1397,12 @@ pub fn verify_cooldown(args: VerifyCooldownArgs) -> Result<()> {
 
         require!(
             craft_usage.index == chosen_component.use_usage_index,
-            UnableToFindValidCooldownState
+            ErrorCode::UnableToFindValidCooldownState
         );
 
         require!(
             craft_usage_state.index == chosen_component.use_usage_index,
-            UnableToFindValidCooldownState
+            ErrorCode::UnableToFindValidCooldownState
         );
 
         if let Some(activated_at) = craft_usage_state.activated_at {
@@ -1494,7 +1503,10 @@ pub fn verify_component(args: VerifyComponentArgs) -> Result<Component> {
                     &craft_item_token_mint.to_bytes(),
                     &AnchorSerialize::try_to_vec(&c)?,
                 ]);
-                require!(verify(&p, &component_root.root, node.0), InvalidProof);
+                require!(
+                    verify(&p, &component_root.root, node.0),
+                    ErrorCode::InvalidProof
+                );
                 c
             } else {
                 return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1529,7 +1541,7 @@ pub fn verify_component(args: VerifyComponentArgs) -> Result<Component> {
 
     require!(
         chosen_component.component_scope == component_scope,
-        NotPartOfComponentScope
+        ErrorCode::NotPartOfComponentScope
     );
 
     Ok(chosen_component)
@@ -1664,7 +1676,7 @@ pub fn enact_valid_state_change(
     } = item_usage.item_class_type
     {
         if let Some(max) = max_uses {
-            require!(item_usage_state.uses <= max, MaxUsesReached)
+            require!(item_usage_state.uses <= max, ErrorCode::MaxUsesReached)
         }
 
         if let Some(duration) = cooldown_duration {
@@ -1751,29 +1763,32 @@ pub fn verify_and_affect_item_state_update(
             ]);
             require!(
                 verify(usage_state_proof, &usage_state_root.root, chief_node.0),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
 
             require!(
                 verify(new_usage_state_proof, new_usage_state_root, chief_node.0),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
 
             // Require that the index matches up to what you sent
 
-            require!(usage_state.index == usage_index, UsageIndexMismatch);
+            require!(
+                usage_state.index == usage_index,
+                ErrorCode::UsageIndexMismatch
+            );
 
             // Check that both states have the same total states
             let node =
                 anchor_lang::solana_program::keccak::hashv(&[&[0x00], &total_states.to_le_bytes()]);
             require!(
                 verify(total_states_proof, &usage_state_root.root, node.0),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
 
             require!(
                 verify(new_total_states_proof, new_usage_state_root, node.0),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
 
             // Now mutate the usage ourselves to verify that it works out to the same
@@ -1787,7 +1802,7 @@ pub fn verify_and_affect_item_state_update(
             ]);
             require!(
                 verify(new_usage_state_proof, new_usage_state_root, node.0),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
             item_activation_marker.proof_counter = Some(ItemActivationMarkerProofCounter {
                 states_proven: 0,
@@ -1850,8 +1865,11 @@ pub fn get_item_usage(args: GetItemUsageArgs) -> Result<ItemUsage> {
                     &[0x00],
                     &AnchorSerialize::try_to_vec(&usage)?,
                 ]);
-                require!(us.index == usage_index, UsageIndexMismatch);
-                require!(verify(usage_proof, &usage_root.root, node.0), InvalidProof);
+                require!(us.index == usage_index, ErrorCode::UsageIndexMismatch);
+                require!(
+                    verify(usage_proof, &usage_root.root, node.0),
+                    ErrorCode::InvalidProof
+                );
                 us.clone()
             } else {
                 return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1942,12 +1960,15 @@ pub fn get_item_usage_and_item_usage_state(
                     &usage_state_root.root,
                     chief_node.0
                 ),
-                InvalidProof
+                ErrorCode::InvalidProof
             );
 
             // Require that the index matches up to what you sent
 
-            require!(craft_usage_state.index == usage_index, UsageIndexMismatch);
+            require!(
+                craft_usage_state.index == usage_index,
+                ErrorCode::UsageIndexMismatch
+            );
 
             craft_usage_state
         } else {

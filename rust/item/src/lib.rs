@@ -552,7 +552,10 @@ pub mod raindrops_item {
             allowed_delegate: None,
         })?;
 
-        require!(item_class.existing_children == 0, ChildrenStillExist);
+        require!(
+            item_class.existing_children == 0,
+            ErrorCode::ChildrenStillExist
+        );
 
         if !parent.data_is_empty() && parent.to_account_info().owner == ctx.program_id {
             let mut parent_deserialized: Account<'_, ItemClass> =
@@ -608,7 +611,7 @@ pub mod raindrops_item {
             allowed_delegate: None,
         })?;
 
-        require!(item.tokens_staked == 0, UnstakeTokensFirst);
+        require!(item.tokens_staked == 0, ErrorCode::UnstakeTokensFirst);
 
         item_class.existing_children = item_class
             .existing_children
@@ -682,12 +685,15 @@ pub mod raindrops_item {
                     let data: &mut [u8] = *borrowed_data;
                     require!(
                         data[0] == metaplex_token_metadata::state::Key::EditionV1 as u8,
-                        MustBeChild
+                        ErrorCode::MustBeChild
                     );
                     let parent = array_ref![data, 1, 32];
                     let parent_key = Pubkey::new_from_array(*parent);
 
-                    require!(parent_key == item_class_metadata.key(), MustBeChild);
+                    require!(
+                        parent_key == item_class_metadata.key(),
+                        ErrorCode::MustBeChild
+                    );
 
                     // Make sure they arent lying about the metadata
                     assert_metadata_valid(item_class_metadata, None, &item_class_mint)?;
@@ -807,9 +813,12 @@ pub mod raindrops_item {
             account_mint: Some(&item_class_mint),
             allowed_delegate: None,
         })?;
-        require!(!item_escrow.deactivated, DeactivatedItemEscrow);
+        require!(!item_escrow.deactivated, ErrorCode::DeactivatedItemEscrow);
 
-        require!(item_escrow.build_began.is_none(), BuildPhaseAlreadyStarted);
+        require!(
+            item_escrow.build_began.is_none(),
+            ErrorCode::BuildPhaseAlreadyStarted
+        );
 
         let chosen_component = verify_component(VerifyComponentArgs {
             item_class,
@@ -823,7 +832,7 @@ pub mod raindrops_item {
 
         if let Some(time) = chosen_component.time_to_build {
             if let Some(already_set_time) = item_escrow.time_to_build {
-                require!(time == already_set_time, TimeToBuildMismatch)
+                require!(time == already_set_time, ErrorCode::TimeToBuildMismatch)
             } else {
                 item_escrow.time_to_build = chosen_component.time_to_build;
             }
@@ -845,7 +854,7 @@ pub mod raindrops_item {
 
         require!(
             chosen_component.class_index == craft_item_class_index,
-            CraftClassIndexMismatch
+            ErrorCode::CraftClassIndexMismatch
         );
 
         let total_amount_required = chosen_component
@@ -860,7 +869,7 @@ pub mod raindrops_item {
 
             require!(
                 amount_remaining >= amount_to_contribute_from_this_contributor,
-                GivingTooMuch
+                ErrorCode::GivingTooMuch
             );
 
             if chosen_component.condition == ComponentCondition::Consumed
@@ -894,10 +903,13 @@ pub mod raindrops_item {
             // to truly make it work and avoid workarounds. This means while you can technically have a fungible
             // be absence, the user must find and burn all tokens to get this condition satisfied.
 
-            require!(craft_item_token_mint.supply == 0, BalanceNeedsToBeZero);
+            require!(
+                craft_item_token_mint.supply == 0,
+                ErrorCode::BalanceNeedsToBeZero
+            );
             require!(
                 amount_to_contribute_from_this_contributor == 0,
-                BalanceNeedsToBeZero
+                ErrorCode::BalanceNeedsToBeZero
             );
         }
 
@@ -955,7 +967,7 @@ pub mod raindrops_item {
             allowed_delegate: None,
         })?;
         msg!("not item_escrow_deactivated and verify_component");
-        require!(item_escrow.deactivated, NotDeactivated);
+        require!(item_escrow.deactivated, ErrorCode::NotDeactivated);
 
         let chosen_component = verify_component(VerifyComponentArgs {
             item_class,
@@ -1077,9 +1089,12 @@ pub mod raindrops_item {
             allowed_delegate: None,
         })?;
 
-        require!(!item_escrow.deactivated, DeactivatedItemEscrow);
+        require!(!item_escrow.deactivated, ErrorCode::DeactivatedItemEscrow);
 
-        require!(item_escrow.build_began.is_none(), BuildPhaseAlreadyStarted);
+        require!(
+            item_escrow.build_began.is_none(),
+            ErrorCode::BuildPhaseAlreadyStarted
+        );
 
         if let Some(components) = &item_class_data.config.components {
             let mut counter = 0;
@@ -1096,7 +1111,10 @@ pub mod raindrops_item {
                     }
                 }
             } else {
-                require!(counter == item_escrow.step as usize, StillMissingComponents);
+                require!(
+                    counter == item_escrow.step as usize,
+                    ErrorCode::StillMissingComponents
+                );
             }
         } else if let Some(component_root) = &item_class_data.config.component_root {
             if let Some(en_proof) = end_node_proof {
@@ -1117,9 +1135,12 @@ pub mod raindrops_item {
                         // and that the one you sent up matches that
                         require!(
                             verify(&en_proof, &component_root.root, node.0),
-                            InvalidProof
+                            ErrorCode::InvalidProof
                         );
-                        require!(total_s == item_escrow.step, StillMissingComponents);
+                        require!(
+                            total_s == item_escrow.step,
+                            ErrorCode::StillMissingComponents
+                        );
                     }
                 } else {
                     return Err(error!(ErrorCode::MissingMerkleInfo));
@@ -1217,7 +1238,7 @@ pub mod raindrops_item {
             allowed_delegate: None,
         })?;
 
-        require!(!item_escrow.deactivated, DeactivatedItemEscrow);
+        require!(!item_escrow.deactivated, ErrorCode::DeactivatedItemEscrow);
 
         if let Some(build_began) = item_escrow.build_began {
             if let Some(time_to_build) = item_escrow.time_to_build {
@@ -1310,7 +1331,7 @@ pub mod raindrops_item {
     ) -> Result<()> {
         let item_escrow = &mut ctx.accounts.item_escrow;
 
-        require!(!item_escrow.deactivated, AlreadyDeactivated);
+        require!(!item_escrow.deactivated, ErrorCode::AlreadyDeactivated);
 
         if item_escrow.step > 0 && item_escrow.build_began.is_none() {
             // It gets put up one higher than it can possibly be with last add.
@@ -1333,9 +1354,9 @@ pub mod raindrops_item {
         let item_escrow = &mut ctx.accounts.item_escrow;
         let originator = &ctx.accounts.originator;
 
-        require!(item_escrow.deactivated, NotDeactivated);
+        require!(item_escrow.deactivated, ErrorCode::NotDeactivated);
 
-        require!(item_escrow.step == 0, NotEmptied);
+        require!(item_escrow.step == 0, ErrorCode::NotEmptied);
 
         let item_escrow_info = item_escrow.to_account_info();
         let snapshot: u64 = item_escrow_info.lamports();
@@ -1374,9 +1395,15 @@ pub mod raindrops_item {
             ..
         } = args;
 
-        require!(amount > 0, MustBeGreaterThanZero);
-        require!(item_account.amount >= amount, InsufficientBalance);
-        require!(item_account.delegate.is_none(), AtaShouldNotHaveDelegate);
+        require!(amount > 0, ErrorCode::MustBeGreaterThanZero);
+        require!(
+            item_account.amount >= amount,
+            ErrorCode::InsufficientBalance
+        );
+        require!(
+            item_account.delegate.is_none(),
+            ErrorCode::AtaShouldNotHaveDelegate
+        );
 
         item_activation_marker.bump = *ctx.bumps.get("item_activation_marker").unwrap();
         item_activation_marker.target = target;
@@ -1464,7 +1491,7 @@ pub mod raindrops_item {
 
         require!(
             item_activation_marker.valid_for_use,
-            ItemActivationNotValidYet
+            ErrorCode::ItemActivationNotValidYet
         );
 
         let EndItemActivationArgs {
@@ -1671,8 +1698,14 @@ pub mod raindrops_item {
                             &AnchorSerialize::try_to_vec(&state)?,
                         ]);
                         // Since these states were not altered by activation, they should be in both.
-                        require!(verify(proof, &usage_state_root.root, node.0), InvalidProof);
-                        require!(verify(new_proof, &new_root, node.0), InvalidProof);
+                        require!(
+                            verify(proof, &usage_state_root.root, node.0),
+                            ErrorCode::InvalidProof
+                        );
+                        require!(
+                            verify(new_proof, &new_root, node.0),
+                            ErrorCode::InvalidProof
+                        );
 
                         if state
                             .index
@@ -2006,10 +2039,17 @@ pub struct CreateItemEscrow<'info> {
         bump=item_class.bump
     )]
     item_class: Box<Account<'info, ItemClass>>,
+
+    /// CHECK: TODO
     item_class_metadata: UncheckedAccount<'info>,
+
     #[account(mut)]
     new_item_mint: Box<Account<'info, Mint>>,
+
+    /// CHECK: TODO
     new_item_metadata: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     new_item_edition: UncheckedAccount<'info>,
     #[account(
         init,
@@ -2033,7 +2073,8 @@ pub struct CreateItemEscrow<'info> {
         constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -2088,7 +2129,7 @@ pub struct AddCraftItemToEscrow<'info> {
         constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     // cant be stolen to a different craft item token account due to seed by token key
     #[account(
@@ -2192,14 +2233,15 @@ pub struct RemoveCraftItemFromEscrow<'info> {
         ],
         bump
     )]
+    /// CHECK: seed check
     craft_item_counter: UncheckedAccount<'info>,
     #[account(
         constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
-    // cant be stolen to a different craft item token account due to seed by token key
+    /// CHECK: cant be stolen to a different craft item token account due to seed by token key
     #[account(
         mut,
         seeds=[
@@ -2326,7 +2368,7 @@ pub struct StartItemEscrowBuildPhase<'info> {
         constraint=new_item_token.mint == args.new_item_mint && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Account<'info, TokenAccount>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -2362,7 +2404,11 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
     new_item: Box<Account<'info, Item>>,
     #[account(mut)]
     new_item_mint: Box<Account<'info, Mint>>,
+
+    /// CHECK: TODO
     new_item_metadata: UncheckedAccount<'info>,
+
+    /// CHECK: TODO
     new_item_edition: UncheckedAccount<'info>,
     #[account(
         mut,
@@ -2385,7 +2431,7 @@ pub struct CompleteItemEscrowBuildPhase<'info> {
         constraint=new_item_token.mint == new_item_mint.key() && new_item_token.owner == new_item_token_holder.key()
     )]
     new_item_token: Box<Account<'info, TokenAccount>>,
-    // may be required signer if builder must be holder in item class is true
+    /// CHECK: may be required signer if builder must be holder in item class is true
     new_item_token_holder: UncheckedAccount<'info>,
     #[account(mut)]
     payer: Signer<'info>,
@@ -2410,7 +2456,7 @@ pub struct UpdateItemClass<'info> {
     )]
     item_class: Account<'info, ItemClass>,
     item_mint: Account<'info, Mint>,
-    // Pass up system if you dont have a parent
+    /// CHECK: Pass up system if you dont have a parent
     parent: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
 }
@@ -2454,6 +2500,8 @@ pub struct DrainItemClass<'info> {
         bump=item_class.bump
     )]
     item_class: Account<'info, ItemClass>,
+
+    /// CHECK: constraints applied
     #[account(
         mut,
         constraint=item_class.parent.unwrap() == parent_class.key()
@@ -2543,7 +2591,7 @@ pub struct BeginItemActivation<'info> {
     system_program: Program<'info, System>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
-    // System program if there is no validation to call
+    /// CHECK: System program if there is no validation to call
     // if there is, pass up the validation program
     validation_program: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -2726,6 +2774,8 @@ pub struct EndItemActivation<'info> {
     )]
     item_activation_marker: Account<'info, ItemActivationMarker>,
     token_program: Program<'info, Token>,
+
+    /// CHECK: TODO
     #[account(mut)]
     receiver: UncheckedAccount<'info>,
     // See the [COMMON REMAINING ACCOUNTS] ctrl f for this
@@ -2741,6 +2791,7 @@ pub struct ItemArtifactJoinNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2755,6 +2806,7 @@ pub struct ItemArtifactLeaveNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2770,6 +2822,7 @@ pub struct ItemArtifactCacheNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }
@@ -2784,6 +2837,7 @@ pub struct ItemArtifactUncacheNamespace<'info> {
     #[account()]
     pub namespace: UncheckedAccount<'info>,
 
+    /// CHECK: address constraint
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub instructions: UncheckedAccount<'info>,
 }

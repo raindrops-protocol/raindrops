@@ -37,10 +37,10 @@ jobs:
         run: curl -sSfL https://release.solana.com/stable/install | sh
 
       - name: Install Anchor Dependencies
-        run: sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
+        run: sudo apt-mark hold grub-efi-amd64-signed && sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
 
-      - name: Install Anchor 0.24.2
-        run: npm i -g @project-serum/anchor-cli@0.24.2
+      - name: Install Anchor 0.26.0
+        run: npm i -g @project-serum/anchor-cli@0.26.0
 
       - name: Set Environment
         run: echo "/home/runner/.cargo/bin" >> $GITHUB_PATH && echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
@@ -61,11 +61,11 @@ jobs:
       - name: Lint
         run: yarn run lint:check
 
-      - name: Build lib
-        run: yarn run build:lib
-
       - name: Build program
         run: yarn run build:program
+
+      - name: Build lib
+        run: yarn run build:lib
 
       - name: Build cli
         run: yarn run build:cli
