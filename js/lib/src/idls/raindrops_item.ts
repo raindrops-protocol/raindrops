@@ -1694,6 +1694,37 @@ export type RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "closeBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -2240,24 +2271,6 @@ export type RaindropsItem = {
             "name": "cooldown",
             "type": {
               "defined": "Cooldown"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "ItemState",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "durability",
-            "type": "u64"
-          },
-          {
-            "name": "cooldown",
-            "type": {
-              "option": "i64"
             }
           }
         ]
@@ -3999,6 +4012,32 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "ItemState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Fungible"
+          },
+          {
+            "name": "NonFungible",
+            "fields": [
+              {
+                "name": "durability",
+                "type": "u64"
+              },
+              {
+                "name": "cooldown",
+                "type": {
+                  "option": "i64"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -4203,46 +4242,51 @@ export type RaindropsItem = {
   "errors": [
     {
       "code": 6000,
+      "name": "BuildNotEmpty",
+      "msg": "Build still owns tokens"
+    },
+    {
+      "code": 6001,
       "name": "BuildDisabled",
       "msg": "Building is disabled for this Item Class"
     },
     {
-      "code": 6001,
+      "code": 6002,
       "name": "MissingBuildMaterial",
       "msg": "Cannot Complete Build, Missing at least one build material"
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "IncorrectMaterial",
       "msg": "Incorrect material for build"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "InvalidBuildStatus",
       "msg": "Build Status is incompatible with this instruction"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "ItemNotReturnable",
       "msg": "Item cannot be returned"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "ItemNotConsumable",
       "msg": "Item cannot be consumed"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "BuildEffectAlreadyApplied",
       "msg": "Build Effect Already Applied"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "BuildEffectNotApplied",
       "msg": "Build Effect Not Applied"
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "ItemOnCooldown",
       "msg": "Item is on Cooldown"
     }
@@ -5945,6 +5989,37 @@ export const IDL: RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "closeBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -6491,24 +6566,6 @@ export const IDL: RaindropsItem = {
             "name": "cooldown",
             "type": {
               "defined": "Cooldown"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "ItemState",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "durability",
-            "type": "u64"
-          },
-          {
-            "name": "cooldown",
-            "type": {
-              "option": "i64"
             }
           }
         ]
@@ -8250,6 +8307,32 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "ItemState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Fungible"
+          },
+          {
+            "name": "NonFungible",
+            "fields": [
+              {
+                "name": "durability",
+                "type": "u64"
+              },
+              {
+                "name": "cooldown",
+                "type": {
+                  "option": "i64"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -8454,46 +8537,51 @@ export const IDL: RaindropsItem = {
   "errors": [
     {
       "code": 6000,
+      "name": "BuildNotEmpty",
+      "msg": "Build still owns tokens"
+    },
+    {
+      "code": 6001,
       "name": "BuildDisabled",
       "msg": "Building is disabled for this Item Class"
     },
     {
-      "code": 6001,
+      "code": 6002,
       "name": "MissingBuildMaterial",
       "msg": "Cannot Complete Build, Missing at least one build material"
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "IncorrectMaterial",
       "msg": "Incorrect material for build"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "InvalidBuildStatus",
       "msg": "Build Status is incompatible with this instruction"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "ItemNotReturnable",
       "msg": "Item cannot be returned"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "ItemNotConsumable",
       "msg": "Item cannot be consumed"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "BuildEffectAlreadyApplied",
       "msg": "Build Effect Already Applied"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "BuildEffectNotApplied",
       "msg": "Build Effect Not Applied"
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "ItemOnCooldown",
       "msg": "Item is on Cooldown"
     }

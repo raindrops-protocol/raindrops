@@ -37,7 +37,7 @@ types = "../js/lib/src/idls/"
 startup_wait = 10000
 
 [test.validator]
-url = "https://rpc.ankr.com/solana"
+url = "https://trashpandas.rpcpool.com/896a4208af08c479e8cf62e109f1"
 
 # metaplex
 [[test.validator.clone]]

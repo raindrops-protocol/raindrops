@@ -15,7 +15,7 @@ describe.only("itemv1", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it("build pNFT item class", async () => {
+  it.only("build pNFT item class", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -446,8 +446,6 @@ describe.only("itemv1", () => {
       metaplex.keypairIdentity(payer)
     );
 
-    console.log("RULE_SET: %s", ruleSetPda.toString());
-
     const itemMintPNftOutput = await client.nfts().create({
       tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
       uri: "https://foo.com/bar.json",
@@ -709,6 +707,16 @@ describe.only("itemv1", () => {
         }
       }
     }
+
+    const closeBuildAccounts: Instructions.Item.CloseBuildAccounts = {
+      builder: payer.publicKey,
+      payer: payer.publicKey,
+      itemClass: itemClass,
+    };
+
+    // clean up build pda
+    const closeBuildResult = await itemProgram.closeBuild(closeBuildAccounts);
+    console.log("closeBuildTxSig: %s", closeBuildResult.txid);
   });
 
   it("create item class with multiple schemas", async () => {

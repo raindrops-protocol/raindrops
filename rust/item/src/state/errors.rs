@@ -2,6 +2,9 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
+    #[msg("Build still owns tokens")]
+    BuildNotEmpty,
+
     #[msg("Building is disabled for this Item Class")]
     BuildDisabled,
 

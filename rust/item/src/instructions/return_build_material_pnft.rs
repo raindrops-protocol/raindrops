@@ -78,40 +78,34 @@ pub struct ReturnBuildMaterialPNft<'info> {
 }
 
 pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
-    // check that the build item has been received by the builder
-    require!(
-        ctx.accounts.build.status.eq(&BuildStatus::ItemReceived),
-        ErrorCode::InvalidBuildStatus
-    );
-
-    // check that the build effect has been applied before returning item
-    let mut checked = false;
-    for build_material_data in &ctx.accounts.build.materials {
-        // get corresponding item class
-        if build_material_data
-            .item_class
-            .eq(&ctx.accounts.item.item_class)
-        {
-            // find the specific mint within the item class and verify the build effect has been applied
-            for mint_data in &build_material_data.mints {
-                if mint_data.mint.eq(&ctx.accounts.item_mint.key()) {
-                    checked = true;
-                    require!(
-                        mint_data.build_effect_applied,
-                        ErrorCode::BuildEffectNotApplied
-                    );
-                }
-            }
+    match ctx.accounts.build.status {
+        BuildStatus::InProgress => {
+            // if the build is still in progress allow the builder to withdraw
         }
-    }
-    require!(checked, ErrorCode::IncorrectMaterial);
+        BuildStatus::ItemReceived => {
+            // verify item is eligible to be returned to the builder
+            // if the item has no durability left, the token must be burned
+            require!(
+                ctx.accounts.item.item_state.returnable(),
+                ErrorCode::ItemNotReturnable
+            );
 
-    // verify item is eligible to be returned to the builder
-    // if the item has no durability left, the token must be burned
-    require!(
-        ctx.accounts.item.item_state.durability > 0,
-        ErrorCode::ItemNotReturnable
-    );
+            // check that the build effect is applied
+            require!(
+                ctx.accounts.build.build_effect_applied(
+                    ctx.accounts.item.item_class,
+                    ctx.accounts.item_mint.key()
+                ),
+                ErrorCode::BuildEffectNotApplied
+            );
+        }
+        _ => return Err(ErrorCode::ItemNotReturnable.into()),
+    }
+
+    // decrement the amount in the build pda so we know its been returned
+    ctx.accounts
+        .build
+        .decrement_build_amount(ctx.accounts.item.item_class.key(), 1);
 
     // transfer the pNFT to the builder
     // transfer item_mint to destination
@@ -173,4 +167,6 @@ pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
     )?;
 
     Ok(())
+
+    // TODO: close mpl token account via mpl instruction
 }

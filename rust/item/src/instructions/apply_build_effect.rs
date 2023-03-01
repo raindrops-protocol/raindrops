@@ -42,35 +42,33 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
     // apply build effect defined in the build pda (derived from the schema)
     let mut applied = false;
     for build_material_data in ctx.accounts.build.materials.iter_mut() {
-        // find the build material corresponding to the item class in this instruction
-        if build_material_data
-            .item_class
-            .eq(&ctx.accounts.material_item_class.key())
-        {
-            // find the specific item within the build material that is referenced in this instruction
-            for mint_data in build_material_data.mints.iter_mut() {
-                applied = true;
-
-                // check that we haven't already applied the build effect to this item
-                require!(
-                    !mint_data.build_effect_applied,
-                    ErrorCode::BuildEffectAlreadyApplied
-                );
-                mint_data.build_effect_applied = true;
-
-                // apply degredation
-                build_material_data
-                    .build_effect
-                    .degredation
-                    .apply(&mut ctx.accounts.item.item_state);
-
-                // apply cooldown
-                build_material_data
-                    .build_effect
-                    .cooldown
-                    .apply(&mut ctx.accounts.item.item_state);
+        // find the specific item within the build material that is referenced in this instruction
+        for mint_data in build_material_data.mints.iter_mut() {
+            if mint_data.mint.ne(&ctx.accounts.item_mint.key()) {
+                continue;
             }
-        }
+
+            // check that we haven't already applied the build effect to this item
+            require!(
+                !mint_data.build_effect_applied,
+                ErrorCode::BuildEffectAlreadyApplied
+            );
+            mint_data.build_effect_applied = true;
+
+            // apply degredation
+            build_material_data
+                .build_effect
+                .degredation
+                .apply(&mut ctx.accounts.item.item_state);
+
+            // apply cooldown
+            build_material_data
+                .build_effect
+                .cooldown
+                .apply(&mut ctx.accounts.item.item_state);
+
+            applied = true;
+        } 
     }
     require!(applied, ErrorCode::IncorrectMaterial);
 

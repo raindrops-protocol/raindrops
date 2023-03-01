@@ -1946,6 +1946,27 @@ export class Instruction extends SolKitInstruction {
       .instruction();
     return ix;
   }
+
+  async closeBuild(accounts: CloseBuildAccounts): Promise<web3.TransactionInstruction> {
+    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        accounts.itemClass.toBuffer(),
+        accounts.builder.toBuffer(),
+      ],
+      this.program.id
+    );
+
+    const ix = await this.program.client.methods.closeBuild().accounts({
+      build: build,
+      builder: accounts.builder,
+      payer: accounts.payer,
+      rent: web3.SYSVAR_RENT_PUBKEY,
+      systemProgram: web3.SystemProgram.programId,
+    }).instruction();
+
+    return ix
+  }
 }
 
 export interface CreateItemClassArgs {
@@ -2371,4 +2392,10 @@ export interface ConsumeBuildMaterialAccounts {
   itemClass: web3.PublicKey;
   payer: web3.PublicKey;
   builder: web3.PublicKey;
+}
+
+export interface CloseBuildAccounts {
+  builder: web3.PublicKey;
+  itemClass: web3.PublicKey;
+  payer: web3.PublicKey;
 }

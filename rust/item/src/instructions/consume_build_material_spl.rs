@@ -39,39 +39,35 @@ pub struct ConsumeBuildMaterialSpl<'info> {
 }
 
 pub fn handler(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
-    // check that the build item has been received by the builder
-    require!(
-        ctx.accounts.build.status.eq(&BuildStatus::ItemReceived),
-        ErrorCode::InvalidBuildStatus
-    );
+    // check build status
+    match ctx.accounts.build.status {
+        BuildStatus::ItemReceived => {
+            // check that the build effect is applied
+            require!(
+                ctx.accounts.build.build_effect_applied(
+                    ctx.accounts.item_class.key(),
+                    ctx.accounts.item_mint.key()
+                ),
+                ErrorCode::BuildEffectNotApplied
+            );
 
-    // check that the build effect has been applied before consuming item
-    let mut checked = false;
-    for build_material_data in &ctx.accounts.build.materials {
-        // get corresponding item class
-        if build_material_data
-            .item_class
-            .eq(&ctx.accounts.item_class.key())
-        {
-            // find the specific mint within the item class and verify the build effect has been applied
-            for mint_data in &build_material_data.mints {
-                if mint_data.mint.eq(&ctx.accounts.item_mint.key()) {
-                    checked = true;
-                    require!(
-                        mint_data.build_effect_applied,
-                        ErrorCode::BuildEffectNotApplied
-                    );
-                }
-            }
+            // the durability must be 0 to be consumed,
+            // its the responsibility of the schema to decrement the durability via apply_build_effect
+            require!(
+                ctx.accounts.item.item_state.broken(),
+                ErrorCode::ItemNotConsumable
+            );
+
+            // decrement the amount in the build pda so we know its been burned
+            ctx.accounts.build.decrement_build_amount(
+                ctx.accounts.item.item_class.key(),
+                ctx.accounts.item_source.amount,
+            );
         }
+        _ => return Err(ErrorCode::ItemNotConsumable.into()),
     }
-    require!(checked, ErrorCode::IncorrectMaterial);
 
-    // the durability must be 0 to be consumed, its the responsibility of the schema to decrement the durability via apply_build_effec
-    require!(
-        ctx.accounts.item.item_state.durability <= 0,
-        ErrorCode::ItemNotConsumable
-    );
+    // burn the tokens
 
     let burn_accounts = token::Burn {
         from: ctx.accounts.item_source.to_account_info(),
@@ -91,5 +87,24 @@ pub fn handler(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
             ]],
         ),
         ctx.accounts.item_source.amount,
-    )
+    )?;
+
+    // close the account after burning all the tokens
+
+    let close_accounts = token::CloseAccount {
+        account: ctx.accounts.item_source.to_account_info(),
+        destination: ctx.accounts.builder.to_account_info(),
+        authority: ctx.accounts.build.to_account_info(),
+    };
+
+    token::close_account(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        close_accounts,
+        &[&[
+            Build::PREFIX.as_bytes(),
+            ctx.accounts.build.item_class.as_ref(),
+            ctx.accounts.builder.key().as_ref(),
+            &[*ctx.bumps.get("build").unwrap()],
+        ]],
+    ))
 }

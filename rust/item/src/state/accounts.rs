@@ -115,9 +115,70 @@ impl Build {
         let mut total_build_material_space: usize = 0;
         for material_data in schema_material_data {
             total_build_material_space +=
-                BuildMaterialData::space(material_data.required_amount.try_into().unwrap());
+                BuildMaterialData::space(material_data.required_amount.try_into().unwrap())
+            //match material_data.build_effect {
+            //    BuildEffect::Fungible { effect: _ } => {
+            //        total_build_material_space += BuildMaterialData::space(1);
+            //    }
+            //    BuildEffect::NonFungible {
+            //        degredation: _,
+            //        cooldown: _,
+            //    } => {
+            //        total_build_material_space +=
+            //            BuildMaterialData::space(material_data.required_amount.try_into().unwrap());
+            //    }
+            //}
         }
 
         total_build_material_space
+    }
+
+    pub fn build_effect_applied(&self, material_item_class: Pubkey, material_mint: Pubkey) -> bool {
+        for build_material_data in &self.materials {
+            // get corresponding item class
+            if build_material_data.item_class.eq(&material_item_class) {
+                // find the specific mint within the item class and verify the build effect has been applied
+                for mint_data in &build_material_data.mints {
+                    if mint_data.mint.eq(&material_mint) {
+                        return mint_data.build_effect_applied;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    pub fn verify_build_mint(&self, material_item_class: Pubkey, material_mint: Pubkey) -> bool {
+        // verify material_mint
+        for build_material_data in &self.materials {
+            // find the corresponding item class
+            if material_item_class.eq(&build_material_data.item_class) {
+                // check the material mint exists in the list of verified mints
+                let verified = build_material_data
+                    .mints
+                    .iter()
+                    .any(|mint_data| mint_data.mint.eq(&material_mint));
+                return verified;
+            }
+        }
+        false
+    }
+
+    pub fn increment_build_amount(&mut self, material_item_class: Pubkey, amount: u64) {
+        for build_material_data in self.materials.iter_mut() {
+            // find the corresponding item class
+            if material_item_class.eq(&build_material_data.item_class) {
+                build_material_data.current_amount += amount;
+            }
+        }
+    }
+
+    pub fn decrement_build_amount(&mut self, material_item_class: Pubkey, amount: u64) {
+        for build_material_data in self.materials.iter_mut() {
+            // find the corresponding item class
+            if material_item_class.eq(&build_material_data.item_class) {
+                build_material_data.current_amount -= amount;
+            }
+        }
     }
 }

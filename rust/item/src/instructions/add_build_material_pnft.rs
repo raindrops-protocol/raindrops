@@ -84,35 +84,14 @@ pub fn handler(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
     );
 
     // verify material_mint
-    for build_material_data in &ctx.accounts.build.materials {
-        // find the corresponding item class
-        if ctx
-            .accounts
-            .material_item_class
-            .key()
-            .eq(&build_material_data.item_class.key())
-        {
-            // check the material mint exists in the list of verified mints
-            let verified = build_material_data
-                .mints
-                .iter()
-                .any(|mint_data| mint_data.mint.eq(&ctx.accounts.material_mint.key()));
-            require!(verified, ErrorCode::IncorrectMaterial);
-        }
-    }
+    let verified = build.verify_build_mint(
+        ctx.accounts.material_item_class.key(),
+        ctx.accounts.material_mint.key(),
+    );
+    require!(verified, ErrorCode::IncorrectMaterial);
 
     // increment current_amount by transfer amount (1)
-    for build_material_data in ctx.accounts.build.materials.iter_mut() {
-        // find the corresponding item class
-        if ctx
-            .accounts
-            .material_item_class
-            .key()
-            .eq(&build_material_data.item_class.key())
-        {
-            build_material_data.current_amount += 1;
-        }
-    }
+    build.increment_build_amount(ctx.accounts.material_item_class.key(), 1);
 
     // set the initial data if item pda has not been initialized until this instruction
     if !ctx.accounts.item.initialized {
@@ -120,19 +99,12 @@ pub fn handler(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
             initialized: true,
             item_class: ctx.accounts.material_item_class.key(),
             item_mint: ctx.accounts.material_mint.key(),
-            item_state: ItemState::default(),
+            item_state: ItemState::new(),
         })
     } else {
-        // check that item is not on cooldown
-        match ctx.accounts.item.item_state.cooldown {
-            Some(until) => {
-                let now = Clock::get().unwrap().unix_timestamp;
-
-                if now < until {
-                    return Err(ErrorCode::ItemOnCooldown.into());
-                }
-            }
-            None => {}
+        // check that the item is not on cooldown
+        if ctx.accounts.item.item_state.on_cooldown() {
+            return Err(ErrorCode::ItemOnCooldown.into());
         }
     }
 

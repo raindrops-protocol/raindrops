@@ -105,12 +105,18 @@ impl Degredation {
     pub const SPACE: usize = (1 + 8);
 
     pub fn apply(&self, item_state: &mut ItemState) {
-        match self {
-            Degredation::Off => return,
-            Degredation::On { amount } => {
-                item_state.durability -= amount;
-            }
-        }
+        match item_state {
+            ItemState::Fungible => return,
+            ItemState::NonFungible {
+                durability,
+                cooldown: _,
+            } => match self {
+                Degredation::Off => return,
+                Degredation::On { amount } => {
+                    *durability -= amount;
+                }
+            },
+        };
     }
 }
 
@@ -124,34 +130,80 @@ impl Cooldown {
     pub const SPACE: usize = (1 + 8);
 
     pub fn apply(&self, item_state: &mut ItemState) {
-        match self {
-            Cooldown::Off => return,
-            Cooldown::On { seconds } => {
-                let current_unix_timestamp = Clock::get().unwrap().unix_timestamp;
-                item_state.cooldown = Some(current_unix_timestamp + seconds);
-            }
-        }
+        match item_state {
+            ItemState::Fungible => return,
+            ItemState::NonFungible {
+                durability: _,
+                cooldown,
+            } => match self {
+                Cooldown::Off => return,
+                Cooldown::On { seconds } => {
+                    let current_unix_timestamp = Clock::get().unwrap().unix_timestamp;
+                    *cooldown = Some(current_unix_timestamp + seconds);
+                }
+            },
+        };
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ItemState {
-    pub durability: u64, // when durability reaches 0 this item is destroyed (token burn)
-    pub cooldown: Option<i64>, // if Some, item is not usable until now >= cooldown unix timestamp
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ItemState {
+    Fungible,
+    NonFungible {
+        durability: u64,
+        cooldown: Option<i64>,
+    },
 }
 
-impl Default for ItemState {
-    fn default() -> Self {
-        ItemState {
+impl ItemState {
+    pub const SPACE: usize = 8 + (1 + 8);
+    pub fn new() -> Self {
+        ItemState::NonFungible {
             durability: 100000,
             cooldown: None,
         }
     }
-}
 
-impl ItemState {
-    pub const SPACE: usize = 8 + // durability
-    (1 + 8); // cooldown
+    // returns true if item is on cooldown
+    pub fn on_cooldown(&self) -> bool {
+        match self {
+            Self::Fungible => false,
+            Self::NonFungible {
+                durability: _,
+                cooldown,
+            } => match cooldown {
+                Some(until) => {
+                    let now = Clock::get().unwrap().unix_timestamp;
+
+                    now <= *until
+                }
+                None => false,
+            },
+        }
+    }
+
+    // returns true if the item has no more durability left
+    pub fn broken(&self) -> bool {
+        msg!("{:?}", &self);
+        match self {
+            Self::Fungible => false,
+            Self::NonFungible {
+                durability,
+                cooldown: _,
+            } => *durability <= 0,
+        }
+    }
+
+    // fungible tokens and broken items are not returnable
+    pub fn returnable(&self) -> bool {
+        match self {
+            Self::Fungible => false,
+            Self::NonFungible {
+                durability: _,
+                cooldown: _,
+            } => !self.broken(),
+        }
+    }
 }
 
 // anchor wrapper for Noop Program required for spl-account-compression

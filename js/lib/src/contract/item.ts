@@ -375,6 +375,11 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async closeBuild(accounts: ItemInstruction.CloseBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.closeBuild(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
   async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
     const itemClassData = await this.client.account.itemClassV1.fetch(
       itemClass
@@ -474,8 +479,8 @@ export class ItemProgram extends Program.Program {
     }
 
     let cooldown: BN | null = null;
-    if ((itemDataRaw.itemState as any).cooldown !== null) {
-      cooldown = new BN((itemDataRaw.itemState as any).cooldown);
+    if ((itemDataRaw.itemState as any).nonFungible.cooldown !== null) {
+      cooldown = new BN((itemDataRaw.itemState as any).nonFungible.cooldown);
     }
 
     const itemData: ItemV1 = {
@@ -484,7 +489,7 @@ export class ItemProgram extends Program.Program {
       itemMint: new web3.PublicKey(itemDataRaw.itemMint),
       itemState: {
         cooldown: cooldown,
-        durability: new BN((itemDataRaw.itemState as any).durability),
+        durability: new BN((itemDataRaw.itemState as any).nonFungible.durability),
       },
     };
 
