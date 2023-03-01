@@ -1,9 +1,9 @@
 import * as anchor from "@project-serum/anchor";
 import * as utils from "./utils";
-import { Idls, NamespaceProgram } from "@raindrops-protocol/raindrops";
+import { Idls, StakingProgram } from "@raindrops-protocol/raindrops";
 import fs from "fs";
 
-async function namespace() {
+async function staking() {
   const decodedKey = new Uint8Array(
     JSON.parse(fs.readFileSync(`./tester.json`).toString())
   );
@@ -15,8 +15,8 @@ async function namespace() {
     "confirmed"
   );
 
-  const namespaceProgram = await NamespaceProgram.getProgramWithConfig(
-    NamespaceProgram,
+  const stakingProgram = await StakingProgram.getProgramWithConfig(
+    StakingProgram,
     {
       asyncSigning: false,
       provider: new anchor.AnchorProvider(
@@ -24,12 +24,10 @@ async function namespace() {
         new anchor.Wallet(payer),
         { commitment: "confirmed" }
       ),
-      idl: Idls.NamespaceIDL,
+      idl: Idls.StakingIDL,
     }
   );
-  console.log("ns program init complete");
-
-  // TODO: requires devnet $RAIN
+  console.log("stake program init complete");
 }
 
-namespace();
+staking();
