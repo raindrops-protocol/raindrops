@@ -206,6 +206,35 @@ impl ItemState {
     }
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Payment {
+    pub treasury: Pubkey,
+    pub amount: u64,
+}
+
+impl Payment {
+    pub const SPACE: usize = 32 + 8;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct PaymentState {
+    pub paid: bool,
+    pub payment_details: Payment,
+}
+
+impl From<Payment> for PaymentState {
+    fn from(value: Payment) -> Self {
+        PaymentState {
+            paid: false,
+            payment_details: value,
+        }
+    }
+}
+
+impl PaymentState {
+    pub const SPACE: usize = 1 + Payment::SPACE;
+}
+
 // anchor wrapper for Noop Program required for spl-account-compression
 #[derive(Clone)]
 pub struct NoopProgram;

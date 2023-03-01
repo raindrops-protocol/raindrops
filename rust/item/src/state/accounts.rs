@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use anchor_lang::prelude::*;
 
-use super::{BuildMaterialData, BuildStatus, ItemState, SchemaMaterialData};
+use super::{BuildMaterialData, BuildStatus, ItemState, Payment, PaymentState, SchemaMaterialData};
 
 // seeds = ['item_class_v1', items.key().as_ref()]
 #[account]
@@ -61,6 +61,9 @@ pub struct Schema {
     // if false building is disabled for this item class
     pub build_enabled: bool,
 
+    // if Some, SOL is required
+    pub payment: Option<Payment>,
+
     // list of materials required to use this schema to build the item class v1
     pub materials: Vec<SchemaMaterialData>,
 }
@@ -73,6 +76,7 @@ impl Schema {
         8 + // schema index
         32 + // item_class
         1 + // enabled
+        (1 + Payment::SPACE) + // payment
         4 + (SchemaMaterialData::SPACE * material_count) // materials
     }
 }
@@ -92,6 +96,9 @@ pub struct Build {
     // mint of the token received at the end
     pub item_mint: Option<Pubkey>,
 
+    // payment state
+    pub payment: Option<PaymentState>,
+
     // current build materials
     pub materials: Vec<BuildMaterialData>,
 
@@ -108,6 +115,7 @@ impl Build {
         32 + // item class
         (1 + 32) + // item mint
         (1 + 1) + // status
+        (1 + PaymentState::SPACE) + // payment
         4 + (Self::build_material_data_space(schema_material_data)) // materials
     }
 
@@ -116,18 +124,6 @@ impl Build {
         for material_data in schema_material_data {
             total_build_material_space +=
                 BuildMaterialData::space(material_data.required_amount.try_into().unwrap())
-            //match material_data.build_effect {
-            //    BuildEffect::Fungible { effect: _ } => {
-            //        total_build_material_space += BuildMaterialData::space(1);
-            //    }
-            //    BuildEffect::NonFungible {
-            //        degredation: _,
-            //        cooldown: _,
-            //    } => {
-            //        total_build_material_space +=
-            //            BuildMaterialData::space(material_data.required_amount.try_into().unwrap());
-            //    }
-            //}
         }
 
         total_build_material_space

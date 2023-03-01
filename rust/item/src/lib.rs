@@ -2030,6 +2030,10 @@ pub mod raindrops_item {
     pub fn close_build(ctx: Context<CloseBuild>) -> Result<()> {
         close_build::handler(ctx)
     }
+
+    pub fn add_payment(ctx: Context<AddPayment>) -> Result<()> {
+        add_payment::handler(ctx)
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]

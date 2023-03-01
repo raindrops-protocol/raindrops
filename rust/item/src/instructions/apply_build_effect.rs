@@ -68,7 +68,7 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
                 .apply(&mut ctx.accounts.item.item_state);
 
             applied = true;
-        } 
+        }
     }
     require!(applied, ErrorCode::IncorrectMaterial);
 

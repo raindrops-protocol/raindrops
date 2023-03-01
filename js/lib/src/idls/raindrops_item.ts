@@ -1725,6 +1725,32 @@ export type RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "addPayment",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -1792,6 +1818,14 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
             "name": "materials",
             "type": {
               "vec": {
@@ -1823,6 +1857,14 @@ export type RaindropsItem = {
             "name": "itemMint",
             "type": {
               "option": "publicKey"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
             }
           },
           {
@@ -2086,6 +2128,14 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
             "name": "materials",
             "type": {
               "vec": {
@@ -2139,6 +2189,14 @@ export type RaindropsItem = {
           {
             "name": "buildEnabled",
             "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
           },
           {
             "name": "materials",
@@ -2271,6 +2329,40 @@ export type RaindropsItem = {
             "name": "cooldown",
             "type": {
               "defined": "Cooldown"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Payment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paid",
+            "type": "bool"
+          },
+          {
+            "name": "paymentDetails",
+            "type": {
+              "defined": "Payment"
             }
           }
         ]
@@ -4289,6 +4381,16 @@ export type RaindropsItem = {
       "code": 6009,
       "name": "ItemOnCooldown",
       "msg": "Item is on Cooldown"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidPaymentTreasury",
+      "msg": "Invalid Payment Treasury Account"
+    },
+    {
+      "code": 6011,
+      "name": "BuildNotPaid",
+      "msg": "Must make build payment"
     }
   ]
 };
@@ -6020,6 +6122,32 @@ export const IDL: RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "addPayment",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -6087,6 +6215,14 @@ export const IDL: RaindropsItem = {
             "type": "bool"
           },
           {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
             "name": "materials",
             "type": {
               "vec": {
@@ -6118,6 +6254,14 @@ export const IDL: RaindropsItem = {
             "name": "itemMint",
             "type": {
               "option": "publicKey"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
             }
           },
           {
@@ -6381,6 +6525,14 @@ export const IDL: RaindropsItem = {
             "type": "bool"
           },
           {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
             "name": "materials",
             "type": {
               "vec": {
@@ -6434,6 +6586,14 @@ export const IDL: RaindropsItem = {
           {
             "name": "buildEnabled",
             "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
           },
           {
             "name": "materials",
@@ -6566,6 +6726,40 @@ export const IDL: RaindropsItem = {
             "name": "cooldown",
             "type": {
               "defined": "Cooldown"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Payment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paid",
+            "type": "bool"
+          },
+          {
+            "name": "paymentDetails",
+            "type": {
+              "defined": "Payment"
             }
           }
         ]
@@ -8584,6 +8778,16 @@ export const IDL: RaindropsItem = {
       "code": 6009,
       "name": "ItemOnCooldown",
       "msg": "Item is on Cooldown"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidPaymentTreasury",
+      "msg": "Invalid Payment Treasury Account"
+    },
+    {
+      "code": 6011,
+      "name": "BuildNotPaid",
+      "msg": "Must make build payment"
     }
   ]
 };

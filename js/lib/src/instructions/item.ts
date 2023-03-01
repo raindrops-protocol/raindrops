@@ -1082,6 +1082,7 @@ export class Instruction extends SolKitInstruction {
     const ixArgs = {
       schemaArgs: {
         buildEnabled: args.schemaArgs.buildEnabled,
+        payment: args.schemaArgs.payment,
         materials: materials,
       },
     };
@@ -1201,7 +1202,12 @@ export class Instruction extends SolKitInstruction {
       const pNftIxns = await this.addBuildMaterialPnft(accounts, build, item);
       ixns.push(...pNftIxns);
     } else {
-      const splIxns = await this.addBuildMaterialSpl(accounts, build, item, args);
+      const splIxns = await this.addBuildMaterialSpl(
+        accounts,
+        build,
+        item,
+        args
+      );
       ixns.push(...splIxns);
     }
 
@@ -1233,10 +1239,17 @@ export class Instruction extends SolKitInstruction {
     // if the mint is wrapped sol we are just gonna transfer native sol for now
     // need this a created account incase owner doesnt have it
     if (accounts.materialMint.equals(Constants.ProgramIds.WRAPPED_SOL_MINT)) {
-      const dummyWSOLAta = Token.createAssociatedTokenAccountInstruction(Constants.ProgramIds.SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID, Constants.ProgramIds.TOKEN_PROGRAM_ID, accounts.materialMint, materialSource, accounts.builder, accounts.builder);
-      ixns.push(dummyWSOLAta)
-    };
-    
+      const dummyWSOLAta = Token.createAssociatedTokenAccountInstruction(
+        Constants.ProgramIds.SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+        Constants.ProgramIds.TOKEN_PROGRAM_ID,
+        accounts.materialMint,
+        materialSource,
+        accounts.builder,
+        accounts.builder
+      );
+      ixns.push(dummyWSOLAta);
+    }
+
     const ix = await this.program.client.methods
       .addBuildMaterialSpl(args)
       .accounts({
@@ -1255,7 +1268,7 @@ export class Instruction extends SolKitInstruction {
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
       .instruction();
-    ixns.push(ix)
+    ixns.push(ix);
 
     return ixns;
   }
@@ -1507,11 +1520,11 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
-      const itemMetadataData = await mpl.Metadata.fromAccountAddress(
-        this.program.client.provider.connection,
-        itemMetadata,
-        "confirmed"
-      );
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata,
+      "confirmed"
+    );
 
     const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -1560,7 +1573,7 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
-    
+
     // double CU and fee
 
     const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
@@ -1916,6 +1929,7 @@ export class Instruction extends SolKitInstruction {
     const ixArgs = {
       buildEnabled: args.args.buildEnabled,
       materials: materials,
+      payment: args.args.payment,
     };
 
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
@@ -1947,7 +1961,9 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async closeBuild(accounts: CloseBuildAccounts): Promise<web3.TransactionInstruction> {
+  async closeBuild(
+    accounts: CloseBuildAccounts
+  ): Promise<web3.TransactionInstruction> {
     const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("build"),
@@ -1957,15 +1973,33 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const ix = await this.program.client.methods.closeBuild().accounts({
-      build: build,
-      builder: accounts.builder,
-      payer: accounts.payer,
-      rent: web3.SYSVAR_RENT_PUBKEY,
-      systemProgram: web3.SystemProgram.programId,
-    }).instruction();
+    const ix = await this.program.client.methods
+      .closeBuild()
+      .accounts({
+        build: build,
+        builder: accounts.builder,
+        payer: accounts.payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
 
-    return ix
+    return ix;
+  }
+
+  async addPayment(
+    accounts: AddPaymentAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const ix = await this.program.client.methods
+      .addPayment()
+      .accounts({
+        build: accounts.build,
+        builder: accounts.builder,
+        treasury: accounts.treasury,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+    return ix;
   }
 }
 
@@ -2283,7 +2317,13 @@ export interface CreateItemClassV1Args {
 
 export interface SchemaArgs {
   buildEnabled: boolean;
+  payment: Payment | null;
   materialArgs: SchemaMaterialDataArgs[];
+}
+
+export interface Payment {
+  treasury: web3.PublicKey;
+  amount: BN;
 }
 
 export interface SchemaMaterialDataArgs {
@@ -2398,4 +2438,10 @@ export interface CloseBuildAccounts {
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
   payer: web3.PublicKey;
+}
+
+export interface AddPaymentAccounts {
+  build: web3.PublicKey;
+  builder: web3.PublicKey;
+  treasury: web3.PublicKey;
 }

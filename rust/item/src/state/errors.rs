@@ -31,4 +31,10 @@ pub enum ErrorCode {
 
     #[msg("Item is on Cooldown")]
     ItemOnCooldown,
+
+    #[msg("Invalid Payment Treasury Account")]
+    InvalidPaymentTreasury,
+
+    #[msg("Must make build payment")]
+    BuildNotPaid,
 }

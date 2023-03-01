@@ -61,6 +61,14 @@ pub fn handler<'a, 'b, 'c, 'info>(
         .all(|material| material.current_amount >= material.required_amount);
     require!(build_requirements_met, ErrorCode::MissingBuildMaterial);
 
+    // check payment has been made
+    match &ctx.accounts.build.payment {
+        Some(payment) => {
+            require!(payment.paid, ErrorCode::BuildNotPaid);
+        }
+        None => {}
+    }
+
     // mark build as complete
     let build = &mut ctx.accounts.build;
     build.status = BuildStatus::Complete;

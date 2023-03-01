@@ -6,7 +6,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Schema},
-    NoopProgram, SchemaMaterialData,
+    NoopProgram, Payment, SchemaMaterialData,
 };
 
 #[derive(Accounts)]
@@ -47,6 +47,7 @@ pub struct CreateItemClassV1Args {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SchemaArgs {
     pub build_enabled: bool,
+    pub payment: Option<Payment>,
     pub materials: Vec<SchemaMaterialData>,
 }
 
@@ -64,6 +65,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.schema_args.build_enabled,
         materials: args.schema_args.materials,
+        payment: args.schema_args.payment,
     });
 
     // initialize merkle tree

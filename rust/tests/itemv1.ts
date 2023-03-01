@@ -33,6 +33,7 @@ describe.only("itemv1", () => {
     for (let i = 0; i < 3; i++) {
       let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
         schemaArgs: {
+          payment: null,
           buildEnabled: false,
           materialArgs: [],
         },
@@ -52,6 +53,10 @@ describe.only("itemv1", () => {
     const createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
       schemaArgs: {
         buildEnabled: true,
+        payment: {
+          treasury: payer.publicKey,
+          amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+        },
         materialArgs: [
           {
             itemClass: materials[0][0],
@@ -321,6 +326,25 @@ describe.only("itemv1", () => {
       );
       console.log("addBuildMaterialTxSig: %s", addBuildMaterialResult.txid);
     }
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    // make payment to build
+    const addPaymentAccounts: Instructions.Item.AddPaymentAccounts = {
+      build: build,
+      builder: payer.publicKey,
+      treasury: payer.publicKey,
+    };
+
+    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
+    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
 
     // use an allow all ruleset
     const ruleSetData = {
@@ -601,14 +625,6 @@ describe.only("itemv1", () => {
     );
 
     // get all build material mints/item classes
-    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        itemClass.toBuffer(),
-        itemProgram.client.provider.publicKey!.toBuffer(),
-      ],
-      itemProgram.id
-    );
     const buildData = await itemProgram.client.account.build.fetch(build);
     // [item_class, mint pubkeys]
     const buildMaterialMints: [
@@ -735,6 +751,7 @@ describe.only("itemv1", () => {
     let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
       schemaArgs: {
         buildEnabled: false,
+        payment: null,
         materialArgs: [],
       },
     };
@@ -755,6 +772,7 @@ describe.only("itemv1", () => {
     const addSchemaArgs: Instructions.Item.AddSchemaArgs = {
       args: {
         buildEnabled: false,
+        payment: null,
         materialArgs: [],
       },
     };

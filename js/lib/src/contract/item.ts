@@ -375,8 +375,19 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async closeBuild(accounts: ItemInstruction.CloseBuildAccounts, options?: SendOptions): Promise<Transaction.SendTransactionResult> {
+  async closeBuild(
+    accounts: ItemInstruction.CloseBuildAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.closeBuild(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async addPayment(
+    accounts: ItemInstruction.AddPaymentAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.addPayment(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -489,7 +500,9 @@ export class ItemProgram extends Program.Program {
       itemMint: new web3.PublicKey(itemDataRaw.itemMint),
       itemState: {
         cooldown: cooldown,
-        durability: new BN((itemDataRaw.itemState as any).nonFungible.durability),
+        durability: new BN(
+          (itemDataRaw.itemState as any).nonFungible.durability
+        ),
       },
     };
 

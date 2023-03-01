@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{Build, ItemClassV1, Schema},
     errors::ErrorCode,
-    BuildMaterialData, BuildStatus,
+    BuildMaterialData, BuildStatus, PaymentState,
 };
 
 #[derive(Accounts)]
@@ -47,6 +47,14 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         materials.push(required_material.into());
     }
 
+    let payment: Option<PaymentState> = match &ctx.accounts.schema.payment {
+        Some(payment) => Some(PaymentState {
+            paid: false,
+            payment_details: payment.clone(),
+        }),
+        None => None,
+    };
+
     // set build data
     ctx.accounts.build.set_inner(Build {
         schema_index: args.schema_index,
@@ -54,6 +62,7 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         item_class: ctx.accounts.item_class.key(),
         item_mint: None,
         status: BuildStatus::InProgress,
+        payment: payment,
         materials: materials,
     });
 

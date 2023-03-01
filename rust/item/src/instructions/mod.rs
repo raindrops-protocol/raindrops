@@ -1,6 +1,7 @@
 pub mod add_build_material_pnft;
 pub mod add_build_material_spl;
 pub mod add_item_to_item_class;
+pub mod add_payment;
 pub mod add_schema;
 pub mod apply_build_effect;
 pub mod close_build;
@@ -16,6 +17,7 @@ pub mod verify_build_material;
 pub use add_build_material_pnft::*;
 pub use add_build_material_spl::*;
 pub use add_item_to_item_class::*;
+pub use add_payment::*;
 pub use add_schema::*;
 pub use apply_build_effect::*;
 pub use close_build::*;

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::state::{
     accounts::{ItemClassV1, Schema},
-    SchemaMaterialData,
+    Payment, SchemaMaterialData,
 };
 
 #[derive(Accounts)]
@@ -30,6 +30,7 @@ pub struct AddSchema<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AddSchemaArgs {
     pub build_enabled: bool,
+    pub payment: Option<Payment>,
     pub materials: Vec<SchemaMaterialData>,
 }
 
@@ -44,6 +45,7 @@ pub fn handler(ctx: Context<AddSchema>, args: AddSchemaArgs) -> Result<()> {
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.build_enabled,
         materials: args.materials,
+        payment: args.payment,
     });
 
     Ok(())
