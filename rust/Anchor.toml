@@ -34,7 +34,7 @@ members = ["item", "player", "namespace", "matches", "staking"]
 types = "../js/lib/src/idls/"
 
 [test.validator]
-url = "https://rpc.ankr.com/solana"
+url = "https://api.mainnet-beta.solana.com"
 
 # metaplex
 [[test.validator.clone]]
