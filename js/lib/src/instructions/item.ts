@@ -6,6 +6,7 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
+import * as splToken from "spl-token-latest";
 import {
   Program,
   Instruction as SolKitInstruction,
@@ -1191,14 +1192,19 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
+    console.log("pdas found, getting token standard")
+
     // detect what type of token we are adding
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
       accounts.materialMint
     );
 
+    console.log('token standard', tokenStandard);
+
     let ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      console.log("get pnft ix")
       const pNftIxns = await this.addBuildMaterialPnft(accounts, build, item);
       ixns.push(...pNftIxns);
     } else {
@@ -1210,6 +1216,7 @@ export class Instruction extends SolKitInstruction {
       );
       ixns.push(...splIxns);
     }
+    console.log("ixns retrieved")
 
     return ixns;
   }
@@ -1278,6 +1285,7 @@ export class Instruction extends SolKitInstruction {
     build: web3.PublicKey,
     item: web3.PublicKey
   ): Promise<web3.TransactionInstruction[]> {
+    console.log("creating pnft ix")
     const [materialMetadata, _materialMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
         [
@@ -1288,6 +1296,7 @@ export class Instruction extends SolKitInstruction {
         mpl.PROGRAM_ID
       );
 
+    console.log("get metadata from addr")
     const materialMetadataData = await mpl.Metadata.fromAccountAddress(
       this.program.client.provider.connection,
       materialMetadata,
@@ -1304,15 +1313,14 @@ export class Instruction extends SolKitInstruction {
       mpl.PROGRAM_ID
     );
 
-    const materialSource = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    console.log("getting atas")
+
+    const materialSource = splToken.getAssociatedTokenAddressSync(
       accounts.materialMint,
       accounts.builder
     );
-    const materialDestination = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+
+    const materialDestination = splToken.getAssociatedTokenAddressSync(
       accounts.materialMint,
       build,
       true
@@ -1353,6 +1361,8 @@ export class Instruction extends SolKitInstruction {
     const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
       microLamports: 5000,
     });
+
+    console.log("accounts retrieved, creating")
 
     const ix = await this.program.client.methods
       .addBuildMaterialPnft()
@@ -1536,16 +1546,12 @@ export class Instruction extends SolKitInstruction {
       mpl.PROGRAM_ID
     );
 
-    const itemSource = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const itemSource = splToken.getAssociatedTokenAddressSync(
       accounts.itemMint,
       accounts.itemClass,
       true
     );
-    const itemDestination = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const itemDestination = await splToken.getAssociatedTokenAddress(
       accounts.itemMint,
       accounts.builder
     );
@@ -1720,16 +1726,12 @@ export class Instruction extends SolKitInstruction {
       mpl.PROGRAM_ID
     );
 
-    const itemSource = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const itemSource = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
       build,
       true
     );
-    const itemDestination = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const itemDestination = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
       accounts.builder
     );
@@ -1783,7 +1785,7 @@ export class Instruction extends SolKitInstruction {
         build: build,
         builder: accounts.builder,
         itemClass: accounts.itemClass,
-        payer: this.program.client.provider.publicKey,
+        payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1802,16 +1804,12 @@ export class Instruction extends SolKitInstruction {
     build: web3.PublicKey,
     item: web3.PublicKey
   ): Promise<web3.TransactionInstruction> {
-    const itemSource = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const itemSource = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
       build,
       true
     );
-    const itemDestination = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const itemDestination = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
       accounts.builder
     );
@@ -1866,9 +1864,7 @@ export class Instruction extends SolKitInstruction {
       throw new Error(`Burning pNFTs not supported yet`);
     }
 
-    const itemSource = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const itemSource = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
       build,
       true

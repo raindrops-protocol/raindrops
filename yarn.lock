@@ -2452,21 +2452,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metaplex-foundation/mpl-token-metadata@npm:^2.2.2":
-  version: 2.2.3
-  resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.2.3"
-  dependencies:
-    "@metaplex-foundation/beet": ^0.4.0
-    "@metaplex-foundation/beet-solana": ^0.3.0
-    "@metaplex-foundation/cusper": ^0.0.2
-    "@solana/spl-token": ^0.2.0
-    "@solana/web3.js": ^1.35.1
-    bn.js: ^5.2.0
-    debug: ^4.3.3
-  checksum: 4ad8ce73609ce7bb6ff229c29e90ae1abd25164510af5cf997bccb77347ef1406aa209ef3f0da709287025b3cc24f85f55d83d6afeb07c5988542821ddbb3969
-  languageName: node
-  linkType: hard
-
 "@metaplex-foundation/mpl-token-metadata@npm:^2.7.0, @metaplex-foundation/mpl-token-metadata@npm:^2.8.3":
   version: 2.8.3
   resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.8.3"
@@ -2700,7 +2685,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@raindrop-studios/sol-kit@npm:0.1.81":
+"@raindrop-studios/sol-kit@npm:0.1.81, @raindrop-studios/sol-kit@npm:^0.1.81":
   version: 0.1.81
   resolution: "@raindrop-studios/sol-kit@npm:0.1.81"
   dependencies:
@@ -2710,18 +2695,6 @@ __metadata:
     loglevel: ^1.8.0
     typescript: ^4.3.5
   checksum: f24c0c2ca8263da376b261b7654f1054a19a398623b41fc45d0039e00f9c31c0712dd9bce89f3da2591327aa289cc94c082f0c1e2276f4264a182a05d3b00015
-  languageName: node
-  linkType: hard
-
-"@raindrop-studios/sol-kit@npm:^0.1.78":
-  version: 0.1.79
-  resolution: "@raindrop-studios/sol-kit@npm:0.1.79"
-  dependencies:
-    "@project-serum/anchor": ^0.24.2
-    borsh: ^0.4.0
-    loglevel: ^1.8.0
-    typescript: ^4.3.5
-  checksum: 11f72dee3094eb31b24c2ffabfe0840aca75eeeb7926c7e18946f808d93a948866e4de1cac78bc27ead43d2ef914215e7f320647978ccf4e4a0be8efdfa4440b
   languageName: node
   linkType: hard
 
@@ -2788,10 +2761,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@raindrops-protocol/raindrops-tests@workspace:tests"
   dependencies:
-    "@metaplex-foundation/mpl-token-metadata": ^2.2.2
-    "@project-serum/anchor": ^0.24.2
-    "@raindrop-studios/sol-kit": ^0.1.78
+    "@metaplex-foundation/mpl-token-metadata": ^2.8.3
+    "@project-serum/anchor": ^0.26.0
+    "@raindrop-studios/sol-kit": ^0.1.81
     "@raindrops-protocol/raindrops": "workspace:^"
+    "@solana/spl-token": ^0.3.7
     "@types/chai": ^4.3.1
     "@types/mocha": ^9.1.1
     "@types/node": ^18.0.3
@@ -2830,6 +2804,7 @@ __metadata:
     node-fetch: ^2.6.1
     pkg: ^5.3.1
     prettier: ^2.7.1
+    spl-token-latest: "npm:@solana/spl-token@0.3.7"
     ts-jest: ^28.0.5
     typescript: ^4.3.5
   languageName: unknown
@@ -2960,6 +2935,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@solana/spl-token@npm:@solana/spl-token@0.3.7, @solana/spl-token@npm:^0.3.5, @solana/spl-token@npm:^0.3.6, @solana/spl-token@npm:^0.3.7, spl-token-latest@npm:@solana/spl-token@0.3.7":
+  version: 0.3.7
+  resolution: "@solana/spl-token@npm:0.3.7"
+  dependencies:
+    "@solana/buffer-layout": ^4.0.0
+    "@solana/buffer-layout-utils": ^0.2.0
+    buffer: ^6.0.3
+  peerDependencies:
+    "@solana/web3.js": ^1.47.4
+  checksum: 4452c5cb6473d0452383eb1da22ed463e5d896bf04ae91d43385b286edcb682908d6476db9f44d46fd602e335daf9c3a74f20ddfe34d6d3ac9caeddb09316d87
+  languageName: node
+  linkType: hard
+
 "@solana/spl-token@npm:^0.1.6, @solana/spl-token@npm:^0.1.8":
   version: 0.1.8
   resolution: "@solana/spl-token@npm:0.1.8"
@@ -2996,19 +2984,6 @@ __metadata:
   peerDependencies:
     "@solana/web3.js": ^1.47.4
   checksum: 230c153b886c7dedb09fdd65c4fd71259d37f3c951ab6ea9c099aff875cc595fc9d44c74b4d7ffef59475f7edd7a8a00931bfec8ab2bd3141512ca3f6f828139
-  languageName: node
-  linkType: hard
-
-"@solana/spl-token@npm:^0.3.5, @solana/spl-token@npm:^0.3.6":
-  version: 0.3.7
-  resolution: "@solana/spl-token@npm:0.3.7"
-  dependencies:
-    "@solana/buffer-layout": ^4.0.0
-    "@solana/buffer-layout-utils": ^0.2.0
-    buffer: ^6.0.3
-  peerDependencies:
-    "@solana/web3.js": ^1.47.4
-  checksum: 4452c5cb6473d0452383eb1da22ed463e5d896bf04ae91d43385b286edcb682908d6476db9f44d46fd602e335daf9c3a74f20ddfe34d6d3ac9caeddb09316d87
   languageName: node
   linkType: hard
 
@@ -3068,7 +3043,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solana/web3.js@npm:^1.32.0, @solana/web3.js@npm:^1.35.1, @solana/web3.js@npm:^1.43.4, @solana/web3.js@npm:^1.44.0":
+"@solana/web3.js@npm:^1.32.0, @solana/web3.js@npm:^1.43.4, @solana/web3.js@npm:^1.44.0":
   version: 1.52.0
   resolution: "@solana/web3.js@npm:1.52.0"
   dependencies:
@@ -9364,6 +9339,7 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@metaplex-foundation/amman": ^0.10.0
+    "@solana/spl-token": "npm:@solana/spl-token@0.3.7"
     turbo: ^1.4.3
   languageName: unknown
   linkType: soft

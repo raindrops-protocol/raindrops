@@ -15,7 +15,7 @@ export class Client {
         break;
       }
       case "devnet": {
-        this.baseUrl = "https://items-dev.raindrops.xyz";
+        this.baseUrl = "https://2tbu4lwr5b.execute-api.us-east-1.amazonaws.com";
         break;
       }
       case "localnet": {
@@ -46,10 +46,15 @@ export class Client {
 
     const response = await fetch(`${this.baseUrl}/checkMaterials?` + params);
 
-    if (response.status !== 200) {
+    if (response.status === 404) {
       return [];
     }
 
+    if (response.status !== 200) {
+      console.log(await response.json());
+      return [];
+    }
+    
     const buildableSchemas: Schema[] = await response.json();
 
     return buildableSchemas
@@ -81,7 +86,7 @@ export class Client {
       );
 
       // add build items
-      await this.addBuildMaterial(itemClass, build, material);
+      await this.addBuildMaterial(itemClass, material);
     }
     console.log('build materials added')
 
@@ -90,6 +95,12 @@ export class Client {
 
     // receive item
     const itemMint = await this.receiveItem(build);
+
+    // apply build effects to the materials used
+    await this.applyBuildEffects(build)
+
+    // return or consume the build materials in accordance with the effects
+    await this.returnOrConsumeMaterials(build)
 
     // clean up
     await this.cleanBuild(build);
@@ -121,15 +132,14 @@ export class Client {
   // escrow items from builder to the build pda
   private async addBuildMaterial(
     itemClass: anchor.web3.PublicKey,
-    build: anchor.web3.PublicKey,
     material: Material
   ): Promise<void> {
     let params = new URLSearchParams({
       itemClass: itemClass.toString(),
-      build: build.toString(),
       builder: this.provider.publicKey.toString(),
       materialMint: material.itemMint.toString(),
       materialItemClass: material.itemClass.toString(),
+      amount: material.amount.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/addBuildMaterial?` + params);
@@ -179,19 +189,16 @@ export class Client {
   private async cleanBuild(build: anchor.web3.PublicKey): Promise<void> {
     let params = new URLSearchParams({
       build: build.toString(),
-      payer: this.provider.publicKey.toString(),
     });
-
-    await this.applyBuildEffects(build);
 
     const response = await fetch(`${this.baseUrl}/cleanBuild?` + params);
 
-    //const body = await errors.handleResponse(response);
+    const body = await errors.handleResponse(response);
 
-    //const txSig = await this.send(body.tx);
-    //console.log("cleanBuildTxSig: %s", txSig);
+    const txSig = await this.send(body.tx);
+    console.log("cleanBuildTxSig: %s", txSig);
 
-    //return body.itemMint;
+    return body.itemMint;
   }
 
   // apply the post build effects to each material
@@ -232,6 +239,31 @@ export class Client {
     console.log("verifyBuildMaterialTxSig: %s", txSig);
   }
 
+  private async returnOrConsumeMaterials(build: anchor.web3.PublicKey): Promise<void> {
+    let params = new URLSearchParams({
+      build: build.toString(),
+    });
+
+    let done = false;
+    while (!done) {
+    
+      const response = await fetch(
+        `${this.baseUrl}/returnOrConsumeMaterials?` + params
+      );
+
+      const body = await errors.handleResponse(response);
+
+      // if done signal is returned, exit
+      if (body.done) {
+        return
+      }
+
+      const txSig = await this.send(body.tx);
+      console.log("returnOrConsumeMaterialsTxSig: %s", txSig);
+      done = body.done;
+    } 
+  }
+
   // sign and send a transaction received from the items api
   private async send(txBase64: string): Promise<string> {
     const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
@@ -252,6 +284,7 @@ export class Client {
 export interface Schema {
   itemClass: anchor.web3.PublicKey;
   schemaIndex: number;
+  //payment: Payment | null;
   materials: Material[];
 }
 
@@ -264,4 +297,12 @@ export interface Material {
   itemMint: anchor.web3.PublicKey;
   itemClass: anchor.web3.PublicKey;
   amount: anchor.BN;
+}
+
+export interface Payment {
+  amount: anchor.BN;
+}
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
 }
