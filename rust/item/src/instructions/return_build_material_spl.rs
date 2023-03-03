@@ -91,7 +91,7 @@ pub fn handler(ctx: Context<ReturnBuildMaterialSpl>) -> Result<()> {
             transfer_accounts,
             &[&[
                 Build::PREFIX.as_bytes(),
-                ctx.accounts.item_class.key().as_ref(),
+                ctx.accounts.build.item_class.key().as_ref(),
                 ctx.accounts.builder.key().as_ref(),
                 &[*ctx.bumps.get("build").unwrap()],
             ]],

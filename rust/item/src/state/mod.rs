@@ -113,7 +113,11 @@ impl Degredation {
             } => match self {
                 Degredation::Off => return,
                 Degredation::On { amount } => {
-                    *durability -= amount;
+                    if amount >= durability {
+                       *durability = 0;
+                    } else {
+                        *durability -= amount;
+                    }
                 }
             },
         };
@@ -156,7 +160,7 @@ pub enum ItemState {
 }
 
 impl ItemState {
-    pub const SPACE: usize = 8 + (1 + 8);
+    pub const SPACE: usize = 1 + (8 + (1 + 8));
     pub fn new() -> Self {
         ItemState::NonFungible {
             durability: 100000,

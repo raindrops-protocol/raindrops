@@ -51,7 +51,6 @@ export class Client {
     }
 
     if (response.status !== 200) {
-      console.log(await response.json());
       return [];
     }
     
@@ -88,7 +87,11 @@ export class Client {
       // add build items
       await this.addBuildMaterial(itemClass, material);
     }
-    console.log('build materials added')
+
+    // if a payment is required, pay it now
+    if (schema.payment) {
+      await this.addPayment(build)
+    }
 
     // complete build
     await this.completeBuild(itemClass, build);
@@ -148,6 +151,21 @@ export class Client {
     // send material to build
     const addBuildMaterialTxSig = await this.send(body.tx);
     console.log("addBuildMaterialTxSig: %s", addBuildMaterialTxSig);
+  }
+
+  // TODO: we only support native sol right now
+  private async addPayment(build: anchor.web3.PublicKey): Promise<void> {
+    let params = new URLSearchParams({
+      build: build.toString(),
+      builder: this.provider.publicKey.toString(),
+    });
+
+    const response = await fetch(`${this.baseUrl}/addPayment?` + params);
+
+    const body = await errors.handleResponse(response);
+
+    const txSig = await this.send(body.tx);
+    console.log("addPaymentTxSig: %s", txSig); 
   }
 
   // mark build as complete, contract checks that required materials have been escrowed
@@ -284,7 +302,7 @@ export class Client {
 export interface Schema {
   itemClass: anchor.web3.PublicKey;
   schemaIndex: number;
-  //payment: Payment | null;
+  payment: Payment | null;
   materials: Material[];
 }
 
@@ -300,6 +318,7 @@ export interface Material {
 }
 
 export interface Payment {
+  treasury: anchor.web3.PublicKey;
   amount: anchor.BN;
 }
 

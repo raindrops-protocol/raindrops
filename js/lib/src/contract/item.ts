@@ -415,6 +415,7 @@ export class ItemProgram extends Program.Program {
 
       const schemaData = await this.client.account.schema.fetch(schemaAddr);
 
+      // get schema materials
       const materials: Material[] = [];
       for (let schemaMaterial of schemaData.materials as any[]) {
         const material: Material = {
@@ -425,9 +426,19 @@ export class ItemProgram extends Program.Program {
         materials.push(material);
       }
 
+      // get payment data
+      let payment: ItemInstruction.Payment | null = null;
+      if (schemaData.payment) {
+        payment = {
+          amount: new BN((schemaData.payment as any).amount as string),
+          treasury: new web3.PublicKey((schemaData.payment as any).treasury),
+        }
+      }
+
       const schema: Schema = {
         itemClass: itemClass,
         schemaIndex: i,
+        payment: payment,
         buildEnabled: schemaData.buildEnabled as boolean,
         materials: materials,
       };

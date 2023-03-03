@@ -11,6 +11,7 @@ import {
   PermissivenessType,
   Root,
 } from "./common";
+import { Payment } from "../instructions/item";
 
 extendBorsh();
 
@@ -550,6 +551,7 @@ export interface Schema {
   schemaIndex: number;
   itemClass: web3.PublicKey;
   buildEnabled: boolean;
+  payment: Payment | null,
   materials: Material[];
 }
 
