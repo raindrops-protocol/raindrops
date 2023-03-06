@@ -114,7 +114,7 @@ impl Degredation {
                 Degredation::Off => return,
                 Degredation::On { amount } => {
                     if amount >= durability {
-                       *durability = 0;
+                        *durability = 0;
                     } else {
                         *durability -= amount;
                     }

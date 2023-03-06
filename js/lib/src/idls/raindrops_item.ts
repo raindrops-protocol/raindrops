@@ -1119,11 +1119,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": true
@@ -1200,11 +1195,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": true
@@ -1260,11 +1250,6 @@ export type RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1347,6 +1332,11 @@ export type RaindropsItem = {
         },
         {
           "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -1412,12 +1402,7 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -1450,11 +1435,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemMint",
           "isMut": false,
           "isSigner": false
@@ -1462,11 +1442,6 @@ export type RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1532,11 +1507,6 @@ export type RaindropsItem = {
         },
         {
           "name": "builder",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
           "isMut": false,
           "isSigner": false
         },
@@ -1613,12 +1583,7 @@ export type RaindropsItem = {
         },
         {
           "name": "builder",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1678,11 +1643,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "payer",
           "isMut": true,
           "isSigner": true
@@ -1705,18 +1665,13 @@ export type RaindropsItem = {
         },
         {
           "name": "builder",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "systemProgram",
@@ -5516,11 +5471,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": true
@@ -5597,11 +5547,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": true
@@ -5657,11 +5602,6 @@ export const IDL: RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -5744,6 +5684,11 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -5809,12 +5754,7 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -5847,11 +5787,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemMint",
           "isMut": false,
           "isSigner": false
@@ -5859,11 +5794,6 @@ export const IDL: RaindropsItem = {
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -5929,11 +5859,6 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "builder",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
           "isMut": false,
           "isSigner": false
         },
@@ -6010,12 +5935,7 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "builder",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -6075,11 +5995,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "payer",
           "isMut": true,
           "isSigner": true
@@ -6102,18 +6017,13 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "builder",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "systemProgram",

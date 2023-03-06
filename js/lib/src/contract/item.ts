@@ -279,6 +279,10 @@ export class ItemProgram extends Program.Program {
     return this.sendWithRetry(instruction, [], options);
   }
 
+  //
+  // v1
+  //
+
   async createItemClassV1(
     args: ItemInstruction.CreateItemClassV1Args,
     options?: SendOptions
@@ -417,7 +421,7 @@ export class ItemProgram extends Program.Program {
 
       // get schema materials
       const materials: Material[] = [];
-      for (let schemaMaterial of schemaData.materials as any[]) {
+      for (const schemaMaterial of schemaData.materials as any[]) {
         const material: Material = {
           itemClass: new web3.PublicKey(schemaMaterial.itemClass),
           requiredAmount: new BN(schemaMaterial.requiredAmount as string),
@@ -432,7 +436,7 @@ export class ItemProgram extends Program.Program {
         payment = {
           amount: new BN((schemaData.payment as any).amount as string),
           treasury: new web3.PublicKey((schemaData.payment as any).treasury),
-        }
+        };
       }
 
       const schema: Schema = {
@@ -464,9 +468,9 @@ export class ItemProgram extends Program.Program {
 
     const buildMaterialData: BuildMaterialData[] = [];
 
-    for (let rawMaterial of buildDataRaw.materials as any[]) {
+    for (const rawMaterial of buildDataRaw.materials as any[]) {
       const mints: BuildMaterialMint[] = [];
-      for (let rawMaterialMint of rawMaterial.mints as any[]) {
+      for (const rawMaterialMint of rawMaterial.mints as any[]) {
         mints.push({
           mint: new web3.PublicKey(rawMaterialMint.mint),
           buildEffectApplied: rawMaterialMint.buildEffectApplied,
@@ -482,11 +486,25 @@ export class ItemProgram extends Program.Program {
       });
     }
 
+    let itemMint: web3.PublicKey | null = null;
+    if (itemMint !== null) {
+      itemMint = new web3.PublicKey(buildDataRaw.itemMint);
+    }
+
+    const payment = buildDataRaw.payment as any;
+
     const buildData: Build = {
       schemaIndex: buildDataRaw.schemaIndex as number,
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
-      itemMint: new web3.PublicKey(buildDataRaw.itemMint) || null,
+      itemMint: itemMint,
+      payment: {
+        paid: payment.paid as boolean,
+        paymentDetails: {
+          treasury: new web3.PublicKey(payment.paymentDetails.treasury),
+          amount: new BN(payment.paymentDetails.amount as string),
+        },
+      },
       materials: buildMaterialData,
       status: buildDataRaw.status,
     };

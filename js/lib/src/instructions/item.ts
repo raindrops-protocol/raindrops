@@ -1007,6 +1007,10 @@ export class Instruction extends SolKitInstruction {
     ];
   }
 
+  //
+  // V1
+  //
+
   async createItemClassV1(
     args: CreateItemClassV1Args
   ): Promise<[web3.PublicKey, web3.Keypair, web3.TransactionInstruction[]]> {
@@ -1198,17 +1202,12 @@ export class Instruction extends SolKitInstruction {
       accounts.materialMint
     );
 
-    let ixns: web3.TransactionInstruction[] = [];
+    const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
       const pNftIxns = await this.addBuildMaterialPnft(accounts, build, item);
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.addBuildMaterialSpl(
-        accounts,
-        build,
-        item,
-        args
-      );
+      const ix = await this.addBuildMaterialSpl(accounts, build, item, args);
       ixns.push(ix);
     }
 
@@ -1240,7 +1239,6 @@ export class Instruction extends SolKitInstruction {
         materialDestination: materialDestination,
         build: build,
         item: item,
-        itemClass: accounts.itemClass,
         builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1345,7 +1343,6 @@ export class Instruction extends SolKitInstruction {
         materialDestinationTokenRecord: materialDestinationTokenRecord,
         build: build,
         item: item,
-        itemClass: accounts.itemClass,
         builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1382,7 +1379,7 @@ export class Instruction extends SolKitInstruction {
     );
 
     const proofAsRemainingAccounts = [];
-    for (let node of args.proof) {
+    for (const node of args.proof) {
       const nodeAccount = {
         pubkey: new web3.PublicKey(node),
         isSigner: false,
@@ -1403,7 +1400,6 @@ export class Instruction extends SolKitInstruction {
         materialItemClass: accounts.materialItemClass,
         materialItemClassItems: materialItemClassItems,
         build: build,
-        itemClass: accounts.itemClass,
         builder: accounts.builder,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
@@ -1418,33 +1414,17 @@ export class Instruction extends SolKitInstruction {
     accounts: CompleteBuildAccounts,
     args: CompleteBuildArgs
   ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(accounts.build);
+
+    const itemClass = new web3.PublicKey(buildData.itemClass);
+
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
-      accounts.itemClass
+      itemClass,
     );
     const itemClassItems = new web3.PublicKey(itemClassData.items);
 
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
-
-    const buildData = await this.program.client.account.build.fetch(build);
-
-    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("schema"),
-        new BN(buildData.schemaIndex as string).toArrayLike(Buffer, "le", 8),
-        accounts.itemClass.toBuffer(),
-      ],
-      this.program.id
-    );
-
     const proofAsRemainingAccounts = [];
-    for (let node of args.proof) {
+    for (const node of args.proof) {
       const nodeAccount = {
         pubkey: new web3.PublicKey(node),
         isSigner: false,
@@ -1462,11 +1442,10 @@ export class Instruction extends SolKitInstruction {
       .completeBuild(ixArgs)
       .accounts({
         itemMint: accounts.itemMint,
-        itemClass: accounts.itemClass,
+        itemClass: itemClass,
         itemClassItems: itemClassItems,
-        build: build,
-        schema: schema,
-        builder: accounts.builder,
+        build: accounts.build,
+        payer: accounts.payer,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
@@ -1479,21 +1458,18 @@ export class Instruction extends SolKitInstruction {
   async receiveItem(
     accounts: ReceiveItemAccounts
   ): Promise<web3.TransactionInstruction[]> {
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
+    const buildData = await this.program.client.account.build.fetch(accounts.build);
+
+    const itemClass = new web3.PublicKey(buildData.itemClass);
+    const itemMint = new web3.PublicKey(buildData.itemMint);
+    const builder = new web3.PublicKey(buildData.builder);
 
     const [itemMetadata, _itemMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.itemMint.toBuffer(),
+          itemMint.toBuffer(),
         ],
         mpl.PROGRAM_ID
       );
@@ -1507,20 +1483,20 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("metadata"),
         mpl.PROGRAM_ID.toBuffer(),
-        accounts.itemMint.toBuffer(),
+        itemMint.toBuffer(),
         Buffer.from("edition"),
       ],
       mpl.PROGRAM_ID
     );
 
     const itemSource = splToken.getAssociatedTokenAddressSync(
-      accounts.itemMint,
-      accounts.itemClass,
+      itemMint,
+      itemClass,
       true
     );
     const itemDestination = await splToken.getAssociatedTokenAddress(
-      accounts.itemMint,
-      accounts.builder
+      itemMint,
+      builder
     );
 
     const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
@@ -1528,7 +1504,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.itemMint.toBuffer(),
+          itemMint.toBuffer(),
           Buffer.from("token_record"),
           itemSource.toBuffer(),
         ],
@@ -1540,7 +1516,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.itemMint.toBuffer(),
+          itemMint.toBuffer(),
           Buffer.from("token_record"),
           itemDestination.toBuffer(),
         ],
@@ -1560,7 +1536,7 @@ export class Instruction extends SolKitInstruction {
     const ix = await this.program.client.methods
       .receiveItem()
       .accounts({
-        itemMint: accounts.itemMint,
+        itemMint: itemMint,
         itemMetadata: itemMetadata,
         itemEdition: itemME,
         authRules: itemMetadataData.programmableConfig.ruleSet,
@@ -1568,9 +1544,10 @@ export class Instruction extends SolKitInstruction {
         itemSourceTokenRecord: itemSourceTokenRecord,
         itemDestination: itemDestination,
         itemDestinationTokenRecord: itemDestinationTokenRecord,
-        itemClass: accounts.itemClass,
-        build: build,
-        builder: accounts.builder,
+        itemClass: itemClass,
+        build: accounts.build,
+        builder: builder,
+        payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1596,23 +1573,12 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
-
     const ix = await this.program.client.methods
       .applyBuildEffect()
       .accounts({
         item: item,
-        materialItemClass: accounts.materialItemClass,
         itemMint: accounts.materialMint,
-        build: build,
-        builder: accounts.builder,
+        build: accounts.build,
         payer: accounts.payer,
       })
       .instruction();
@@ -1631,31 +1597,22 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
-
     // detect what type of token we are adding
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
       accounts.materialMint
     );
 
-    let ixns: web3.TransactionInstruction[] = [];
+    const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
       const pNftIxns = await this.returnBuildMaterialPNft(
         accounts,
-        build,
+        accounts.build,
         item
       );
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.returnBuildMaterialSpl(accounts, build, item);
+      const ix = await this.returnBuildMaterialSpl(accounts, accounts.build, item);
       ixns.push(ix);
     }
 
@@ -1693,6 +1650,9 @@ export class Instruction extends SolKitInstruction {
       mpl.PROGRAM_ID
     );
 
+    const buildData = await this.program.client.account.build.fetch(build);
+    const builder = new web3.PublicKey(buildData.builder);
+
     const itemSource = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
       build,
@@ -1700,7 +1660,7 @@ export class Instruction extends SolKitInstruction {
     );
     const itemDestination = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
-      accounts.builder
+      builder
     );
 
     const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
@@ -1750,8 +1710,7 @@ export class Instruction extends SolKitInstruction {
         itemDestination: itemDestination,
         itemDestinationTokenRecord: itemDestinationTokenRecord,
         build: build,
-        builder: accounts.builder,
-        itemClass: accounts.itemClass,
+        builder: builder,
         payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1771,6 +1730,9 @@ export class Instruction extends SolKitInstruction {
     build: web3.PublicKey,
     item: web3.PublicKey
   ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(build);
+    const builder = new web3.PublicKey(buildData.builder);
+
     const itemSource = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
       build,
@@ -1778,7 +1740,7 @@ export class Instruction extends SolKitInstruction {
     );
     const itemDestination = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
-      accounts.builder
+      builder
     );
 
     const ix = await this.program.client.methods
@@ -1789,11 +1751,9 @@ export class Instruction extends SolKitInstruction {
         itemSource: itemSource,
         itemDestination: itemDestination,
         build: build,
-        builder: accounts.builder,
-        itemClass: accounts.materialItemClass,
+        builder: builder,
         payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
-        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -1845,7 +1805,6 @@ export class Instruction extends SolKitInstruction {
         itemSource: itemSource,
         build: build,
         builder: accounts.builder,
-        itemClass: accounts.materialItemClass,
         payer: accounts.payer,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
@@ -1858,7 +1817,7 @@ export class Instruction extends SolKitInstruction {
     args: AddSchemaArgs
   ): Promise<web3.TransactionInstruction> {
     const materials: any[] = [];
-    for (let materialArg of args.args.materialArgs) {
+    for (const materialArg of args.args.materialArgs) {
       let degredationBuildEffect;
       if (materialArg.buildEffect.degredation) {
         degredationBuildEffect = {
@@ -1877,7 +1836,7 @@ export class Instruction extends SolKitInstruction {
         cooldownBuildEffect = { off: {} };
       }
 
-      let material = {
+      const material = {
         itemClass: materialArg.itemClass,
         requiredAmount: materialArg.requiredAmount,
         buildEffect: {
@@ -1927,22 +1886,15 @@ export class Instruction extends SolKitInstruction {
   async closeBuild(
     accounts: CloseBuildAccounts
   ): Promise<web3.TransactionInstruction> {
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
+    const buildData = await this.program.client.account.build.fetch(accounts.build);
+    const builder = new web3.PublicKey(buildData.builder);
 
     const ix = await this.program.client.methods
       .closeBuild()
       .accounts({
-        build: build,
-        builder: accounts.builder,
+        build: accounts.build,
+        builder: builder,
         payer: accounts.payer,
-        rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
@@ -2274,6 +2226,10 @@ export interface UpdateItemAccounts {}
 
 export interface UpdateItemAdditionalArgs {}
 
+//
+// V1
+//
+
 export interface CreateItemClassV1Args {
   schemaArgs: SchemaArgs;
 }
@@ -2282,6 +2238,11 @@ export interface SchemaArgs {
   buildEnabled: boolean;
   payment: Payment | null;
   materialArgs: SchemaMaterialDataArgs[];
+}
+
+export interface PaymentState {
+  paid: boolean;
+  paymentDetails: Payment;
 }
 
 export interface Payment {
@@ -2343,8 +2304,8 @@ export interface VerifyBuildMaterialArgs {
 
 export interface CompleteBuildAccounts {
   itemMint: web3.PublicKey;
-  itemClass: web3.PublicKey;
-  builder: web3.PublicKey;
+  payer: web3.PublicKey;
+  build: web3.PublicKey;
 }
 
 export interface CompleteBuildArgs {
@@ -2354,9 +2315,8 @@ export interface CompleteBuildArgs {
 }
 
 export interface ReceiveItemAccounts {
-  itemMint: web3.PublicKey;
-  itemClass: web3.PublicKey;
-  builder: web3.PublicKey;
+  build: web3.PublicKey;
+  payer: web3.PublicKey;
 }
 
 export interface AddItemsToItemClass {
@@ -2367,17 +2327,15 @@ export interface AddItemsToItemClass {
 export interface ApplyBuildEffectAccounts {
   materialMint: web3.PublicKey;
   materialItemClass: web3.PublicKey;
-  builder: web3.PublicKey;
-  itemClass: web3.PublicKey;
+  build: web3.PublicKey;
   payer: web3.PublicKey;
 }
 
 export interface ReturnBuildMaterialAccounts {
   materialMint: web3.PublicKey;
   materialItemClass: web3.PublicKey;
-  builder: web3.PublicKey;
+  build: web3.PublicKey;
   payer: web3.PublicKey;
-  itemClass: web3.PublicKey;
 }
 
 export interface AddSchemaAccounts {
@@ -2398,8 +2356,7 @@ export interface ConsumeBuildMaterialAccounts {
 }
 
 export interface CloseBuildAccounts {
-  builder: web3.PublicKey;
-  itemClass: web3.PublicKey;
+  build: web3.PublicKey;
   payer: web3.PublicKey;
 }
 

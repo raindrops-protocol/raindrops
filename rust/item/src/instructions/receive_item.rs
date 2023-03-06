@@ -33,7 +33,7 @@ pub struct ReceiveItem<'info> {
     #[account(mut)]
     pub item_source_token_record: UncheckedAccount<'info>,
 
-    #[account(init_if_needed, payer = builder, associated_token::mint = item_mint, associated_token::authority = builder)]
+    #[account(init_if_needed, payer = payer, associated_token::mint = item_mint, associated_token::authority = builder)]
     pub item_destination: Box<Account<'info, token::TokenAccount>>,
 
     /// CHECK: Done by token metadata
@@ -41,16 +41,21 @@ pub struct ReceiveItem<'info> {
     pub item_destination_token_record: UncheckedAccount<'info>,
 
     #[account(
+        mut,
+        has_one = builder,
         constraint = item_mint.key().eq(&build.item_mint.unwrap()),
-        mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
+        seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
     #[account(
         seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
 
+    /// CHECK:
+    pub builder: UncheckedAccount<'info>,
+
     #[account(mut)]
-    pub builder: Signer<'info>,
+    pub payer: Signer<'info>,
 
     pub rent: Sysvar<'info, Rent>,
 
@@ -97,7 +102,7 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
         owner_token_record: Some(ctx.accounts.item_source_token_record.key()),
         destination_token_record: Some(ctx.accounts.item_destination_token_record.key()),
         authority: ctx.accounts.item_class.key(),
-        payer: ctx.accounts.builder.key(),
+        payer: ctx.accounts.payer.key(),
         system_program: ctx.accounts.system_program.key(),
         sysvar_instructions: ctx.accounts.instructions.key(),
         spl_token_program: ctx.accounts.token_program.key(),
@@ -118,7 +123,7 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
         ctx.accounts.item_source_token_record.to_account_info(),
         ctx.accounts.item_destination_token_record.to_account_info(),
         ctx.accounts.item_class.to_account_info(),
-        ctx.accounts.builder.to_account_info(),
+        ctx.accounts.payer.to_account_info(),
         ctx.accounts.system_program.to_account_info(),
         ctx.accounts.instructions.to_account_info(),
         ctx.accounts.token_program.to_account_info(),

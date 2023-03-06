@@ -15,6 +15,7 @@ pub struct AddItemToItemClass<'info> {
 
     #[account(
         has_one = authority,
+        has_one = items,
         seeds = [ItemClassV1::PREFIX.as_bytes(), items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
 

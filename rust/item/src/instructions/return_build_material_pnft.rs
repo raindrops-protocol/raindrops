@@ -6,7 +6,7 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, ItemV1},
+    accounts::{Build, ItemV1},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, TokenMetadataProgram,
 };
@@ -47,15 +47,11 @@ pub struct ReturnBuildMaterialPNft<'info> {
 
     #[account(
         has_one = builder,
-        mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
+        mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
     /// CHECK: build pda checks this account
     pub builder: UncheckedAccount<'info>,
-
-    #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -160,7 +156,7 @@ pub fn handler(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
         &transfer_accounts,
         &[&[
             Build::PREFIX.as_bytes(),
-            ctx.accounts.item_class.key().as_ref(),
+            ctx.accounts.build.item_class.key().as_ref(),
             ctx.accounts.builder.key().as_ref(),
             &[*ctx.bumps.get("build").unwrap()],
         ]],

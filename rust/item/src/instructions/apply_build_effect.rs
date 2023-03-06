@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token;
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, ItemV1},
+    accounts::{Build, ItemV1},
     errors::ErrorCode,
     BuildStatus,
 };
@@ -11,22 +11,14 @@ use crate::state::{
 pub struct ApplyBuildEffect<'info> {
     #[account(mut,
         has_one = item_mint,
-        seeds = [ItemV1::PREFIX.as_bytes(), material_item_class.key().as_ref(), item_mint.key().as_ref()], bump)]
+        seeds = [ItemV1::PREFIX.as_bytes(), item.item_class.key().as_ref(), item_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
-
-    #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), material_item_class.items.key().as_ref()], bump)]
-    pub material_item_class: Account<'info, ItemClassV1>,
 
     pub item_mint: Account<'info, token::Mint>,
 
     #[account(
-        has_one = builder,
-        mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.as_ref(), builder.key().as_ref()], bump)]
+        mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.as_ref(), build.builder.as_ref()], bump)]
     pub build: Account<'info, Build>,
-
-    /// CHECK: build pda checks this account
-    pub builder: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -42,6 +34,12 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
     // apply build effect defined in the build pda (derived from the schema)
     let mut applied = false;
     for build_material_data in ctx.accounts.build.materials.iter_mut() {
+
+        // find the correct item class for the item
+        if build_material_data.item_class.ne(&ctx.accounts.item.item_class.key()) {
+            continue;
+        }
+
         // find the specific item within the build material that is referenced in this instruction
         for mint_data in build_material_data.mints.iter_mut() {
             if mint_data.mint.ne(&ctx.accounts.item_mint.key()) {

@@ -7,7 +7,7 @@ use spl_account_compression::{
 use std::convert::TryInto;
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, Schema},
+    accounts::{Build, ItemClassV1},
     errors::ErrorCode,
     BuildStatus, NoopProgram,
 };
@@ -16,20 +16,20 @@ use crate::state::{
 pub struct CompleteBuild<'info> {
     pub item_mint: Box<Account<'info, token::Mint>>,
 
-    #[account(seeds = [ItemClassV1::PREFIX.as_bytes(), item_class_items.key().as_ref()], bump)]
+    #[account(
+        constraint = item_class.items.eq(&item_class_items.key()),
+        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class_items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
 
     /// CHECK: checked by spl-account-compression
     pub item_class_items: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut,
+        seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(seeds = [Schema::PREFIX.as_bytes(), &build.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub schema: Account<'info, Schema>,
-
     #[account(mut)]
-    pub builder: Signer<'info>,
+    pub payer: Signer<'info>,
 
     pub log_wrapper: Program<'info, NoopProgram>,
 

@@ -21,15 +21,11 @@ pub struct AddBuildMaterialSpl<'info> {
     #[account(init_if_needed, payer = builder, associated_token::mint = material_mint, associated_token::authority = build)]
     pub material_destination: Box<Account<'info, token::TokenAccount>>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
     #[account(init_if_needed, payer = builder, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), material_item_class.key().as_ref(), material_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
-
-    #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
 
     #[account(mut)]
     pub builder: Signer<'info>,

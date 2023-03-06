@@ -24,11 +24,8 @@ pub struct VerifyBuildMaterial<'info> {
     /// CHECK: checked by spl-account-compression
     pub material_item_class_items: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
-
-    #[account(seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
 
     #[account(mut)]
     pub builder: Signer<'info>,
@@ -69,9 +66,9 @@ pub fn handler<'a, 'b, 'c, 'info>(
         args.leaf_index,
     )?;
 
-    // set this mint as allowable in the build pda
+    // set the verified mint in the build data
     let build = &mut ctx.accounts.build;
-    let mut material_added = false;
+    let mut verified = false;
     for build_material_data in build.materials.iter_mut() {
         if build_material_data
             .item_class
@@ -83,18 +80,27 @@ pub fn handler<'a, 'b, 'c, 'info>(
                 ErrorCode::IncorrectMaterial
             );
 
+            let material_mint = ctx.accounts.material_mint.key();
+
+            // check this mint wasn't already verified
+            let already_verified = build_material_data
+                .mints
+                .iter()
+                .any(|mint_data| mint_data.mint.eq(&material_mint));
+            require!(!already_verified, ErrorCode::IncorrectMaterial);
+
             // add the mint to the list of build materials
             build_material_data.mints.push(BuildMaterialMint {
                 build_effect_applied: false,
                 mint: ctx.accounts.material_mint.key(),
             });
 
-            material_added = true;
+            verified = true;
 
             break;
         }
     }
-    require!(material_added, ErrorCode::IncorrectMaterial);
+    require!(verified, ErrorCode::IncorrectMaterial);
 
     Ok(())
 }

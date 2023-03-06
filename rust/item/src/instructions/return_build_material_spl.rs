@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, ItemV1},
+    accounts::{Build, ItemV1},
     errors::ErrorCode,
     BuildStatus,
 };
@@ -28,11 +28,8 @@ pub struct ReturnBuildMaterialSpl<'info> {
     pub build: Account<'info, Build>,
 
     /// CHECK: build pda checks this account
+    #[account(mut)]
     pub builder: UncheckedAccount<'info>,
-
-    #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -63,7 +60,7 @@ pub fn handler(ctx: Context<ReturnBuildMaterialSpl>) -> Result<()> {
             // check that the build effect is applied
             require!(
                 ctx.accounts.build.build_effect_applied(
-                    ctx.accounts.item_class.key(),
+                    ctx.accounts.item.item_class.key(),
                     ctx.accounts.item_mint.key()
                 ),
                 ErrorCode::BuildEffectNotApplied

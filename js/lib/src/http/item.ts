@@ -35,11 +35,11 @@ export class Client {
     itemClass: anchor.web3.PublicKey,
     materials: MaterialArg[]
   ): Promise<Schema[]> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       itemClass: itemClass.toString(),
     });
 
-    for (let material of materials) {
+    for (const material of materials) {
       params.append("materialMints", material.itemMint.toString());
       params.append("materialAmounts", material.amount.toString());
     }
@@ -53,31 +53,34 @@ export class Client {
     if (response.status !== 200) {
       return [];
     }
-    
+
     const buildableSchemas: Schema[] = await response.json();
 
-    return buildableSchemas
+    return buildableSchemas;
   }
 
   // use these materials to build the item
   async build(
     itemClass: anchor.web3.PublicKey,
-    materialArgs: MaterialArg[],
+    materialArgs: MaterialArg[]
   ): Promise<anchor.web3.PublicKey> {
-
     // find valid schema with these materials
-    const buildableSchemas = await this.checkMaterials(itemClass, materialArgs)
+    const buildableSchemas = await this.checkMaterials(itemClass, materialArgs);
     if (buildableSchemas.length <= 0) {
       throw new Error(`No Schemas Found`);
-    };
+    }
     const schema = buildableSchemas[0];
-    console.log("building item class: %s from schema: %s", itemClass.toString(), JSON.stringify(schema));
+    console.log(
+      "building item class: %s from schema: %s",
+      itemClass.toString(),
+      JSON.stringify(schema)
+    );
 
     // start build
     const build = await this.startBuild(itemClass, schema.schemaIndex);
     console.log("build started: %s", build.toString());
 
-    for (let material of schema.materials) {
+    for (const material of schema.materials) {
       await this.verifyBuildMaterial(
         itemClass,
         material.itemMint,
@@ -90,7 +93,7 @@ export class Client {
 
     // if a payment is required, pay it now
     if (schema.payment) {
-      await this.addPayment(build)
+      await this.addPayment(build);
     }
 
     // complete build
@@ -100,10 +103,10 @@ export class Client {
     const itemMint = await this.receiveItem(build);
 
     // apply build effects to the materials used
-    await this.applyBuildEffects(build)
+    await this.applyBuildEffects(build);
 
     // return or consume the build materials in accordance with the effects
-    await this.returnOrConsumeMaterials(build)
+    await this.returnOrConsumeMaterials(build);
 
     // clean up
     await this.cleanBuild(build);
@@ -114,9 +117,9 @@ export class Client {
   // start the build process for an item class via the schema
   private async startBuild(
     itemClass: anchor.web3.PublicKey,
-    schemaIndex: number,
+    schemaIndex: number
   ): Promise<anchor.web3.PublicKey> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       schemaIndex: schemaIndex.toString(),
       builder: this.provider.publicKey.toString(),
@@ -137,7 +140,7 @@ export class Client {
     itemClass: anchor.web3.PublicKey,
     material: Material
   ): Promise<void> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       builder: this.provider.publicKey.toString(),
       materialMint: material.itemMint.toString(),
@@ -155,7 +158,7 @@ export class Client {
 
   // TODO: we only support native sol right now
   private async addPayment(build: anchor.web3.PublicKey): Promise<void> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       build: build.toString(),
       builder: this.provider.publicKey.toString(),
     });
@@ -165,12 +168,15 @@ export class Client {
     const body = await errors.handleResponse(response);
 
     const txSig = await this.send(body.tx);
-    console.log("addPaymentTxSig: %s", txSig); 
+    console.log("addPaymentTxSig: %s", txSig);
   }
 
   // mark build as complete, contract checks that required materials have been escrowed
-  private async completeBuild(itemClass: anchor.web3.PublicKey, build: anchor.web3.PublicKey): Promise<void> {
-    let params = new URLSearchParams({
+  private async completeBuild(
+    itemClass: anchor.web3.PublicKey,
+    build: anchor.web3.PublicKey
+  ): Promise<void> {
+    const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       build: build.toString(),
       builder: this.provider.publicKey.toString(),
@@ -188,7 +194,7 @@ export class Client {
   private async receiveItem(
     build: anchor.web3.PublicKey
   ): Promise<anchor.web3.PublicKey> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       build: build.toString(),
       builder: this.provider.publicKey.toString(),
     });
@@ -205,7 +211,7 @@ export class Client {
 
   // clean up all build artifacts
   private async cleanBuild(build: anchor.web3.PublicKey): Promise<void> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       build: build.toString(),
     });
 
@@ -222,7 +228,7 @@ export class Client {
   // apply the post build effects to each material
   // things like cooldowns and degredation
   private async applyBuildEffects(build: anchor.web3.PublicKey): Promise<void> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       build: build.toString(),
       payer: this.provider.publicKey.toString(),
     });
@@ -231,7 +237,7 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const txSig = await this.send(body.tx)
+    const txSig = await this.send(body.tx);
     console.log("applyBuildEffectsTxSig: %s", txSig);
   }
 
@@ -240,7 +246,7 @@ export class Client {
     materialMint: anchor.web3.PublicKey,
     materialItemClass: anchor.web3.PublicKey
   ): Promise<void> {
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       materialMint: materialMint.toString(),
       materialItemClass: materialItemClass.toString(),
@@ -257,14 +263,15 @@ export class Client {
     console.log("verifyBuildMaterialTxSig: %s", txSig);
   }
 
-  private async returnOrConsumeMaterials(build: anchor.web3.PublicKey): Promise<void> {
-    let params = new URLSearchParams({
+  private async returnOrConsumeMaterials(
+    build: anchor.web3.PublicKey
+  ): Promise<void> {
+    const params = new URLSearchParams({
       build: build.toString(),
     });
 
     let done = false;
     while (!done) {
-    
       const response = await fetch(
         `${this.baseUrl}/returnOrConsumeMaterials?` + params
       );
@@ -273,13 +280,13 @@ export class Client {
 
       // if done signal is returned, exit
       if (body.done) {
-        return
+        return;
       }
 
       const txSig = await this.send(body.tx);
       console.log("returnOrConsumeMaterialsTxSig: %s", txSig);
       done = body.done;
-    } 
+    }
   }
 
   // sign and send a transaction received from the items api
@@ -320,8 +327,4 @@ export interface Material {
 export interface Payment {
   treasury: anchor.web3.PublicKey;
   amount: anchor.BN;
-}
-
-function delay(ms: number) {
-  return new Promise( resolve => setTimeout(resolve, ms) );
 }

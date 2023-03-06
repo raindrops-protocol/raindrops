@@ -10,12 +10,11 @@ pub struct CloseBuild<'info> {
     pub build: Account<'info, Build>,
 
     /// CHECK: by build account constraint
+    #[account(mut)]
     pub builder: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
-
-    pub rent: Sysvar<'info, Rent>,
 
     pub system_program: Program<'info, System>,
 }
