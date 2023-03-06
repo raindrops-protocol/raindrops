@@ -26,6 +26,7 @@ pub struct ConsumeBuildMaterialSpl<'info> {
     pub build: Account<'info, Build>,
 
     /// CHECK: build pda checks this account
+    #[account(mut)]
     pub builder: UncheckedAccount<'info>,
 
     #[account(mut)]

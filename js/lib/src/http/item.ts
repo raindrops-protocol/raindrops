@@ -97,7 +97,7 @@ export class Client {
     }
 
     // complete build
-    await this.completeBuild(itemClass, build);
+    await this.completeBuild(build);
 
     // receive item
     const itemMint = await this.receiveItem(build);
@@ -173,13 +173,11 @@ export class Client {
 
   // mark build as complete, contract checks that required materials have been escrowed
   private async completeBuild(
-    itemClass: anchor.web3.PublicKey,
     build: anchor.web3.PublicKey
   ): Promise<void> {
     const params = new URLSearchParams({
-      itemClass: itemClass.toString(),
       build: build.toString(),
-      builder: this.provider.publicKey.toString(),
+      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/completeBuild?` + params);
@@ -196,7 +194,7 @@ export class Client {
   ): Promise<anchor.web3.PublicKey> {
     const params = new URLSearchParams({
       build: build.toString(),
-      builder: this.provider.publicKey.toString(),
+      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/receiveItem?` + params);
@@ -213,6 +211,7 @@ export class Client {
   private async cleanBuild(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
+      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/cleanBuild?` + params);
@@ -268,6 +267,7 @@ export class Client {
   ): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
+      payer: this.provider.publicKey.toString(),
     });
 
     let done = false;

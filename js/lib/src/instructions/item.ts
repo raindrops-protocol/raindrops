@@ -1774,14 +1774,8 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
+    const buildData = await this.program.client.account.build.fetch(accounts.build);
+    const builder = new web3.PublicKey(buildData.builder);
 
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
@@ -1793,7 +1787,7 @@ export class Instruction extends SolKitInstruction {
 
     const itemSource = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
-      build,
+      accounts.build,
       true
     );
 
@@ -1803,8 +1797,8 @@ export class Instruction extends SolKitInstruction {
         item: item,
         itemMint: accounts.materialMint,
         itemSource: itemSource,
-        build: build,
-        builder: accounts.builder,
+        build: accounts.build,
+        builder: builder,
         payer: accounts.payer,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
@@ -2350,9 +2344,8 @@ export interface AddSchemaArgs {
 export interface ConsumeBuildMaterialAccounts {
   materialMint: web3.PublicKey;
   materialItemClass: web3.PublicKey;
-  itemClass: web3.PublicKey;
   payer: web3.PublicKey;
-  builder: web3.PublicKey;
+  build: web3.PublicKey;
 }
 
 export interface CloseBuildAccounts {

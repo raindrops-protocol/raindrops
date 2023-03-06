@@ -487,7 +487,7 @@ export class ItemProgram extends Program.Program {
     }
 
     let itemMint: web3.PublicKey | null = null;
-    if (itemMint !== null) {
+    if (buildDataRaw.itemMint !== null) {
       itemMint = new web3.PublicKey(buildDataRaw.itemMint);
     }
 

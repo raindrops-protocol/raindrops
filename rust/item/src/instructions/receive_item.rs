@@ -142,5 +142,7 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
         ]],
     )?;
 
+    // TODO: close item class ATA here
+
     Ok(())
 }

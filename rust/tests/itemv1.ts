@@ -1021,8 +1021,7 @@ async function cleanBuild(
           {
             materialMint: mint,
             materialItemClass: buildMaterialData[0],
-            itemClass: new anchor.web3.PublicKey(buildData.itemClass),
-            builder: itemProgram.client.provider.publicKey,
+            build: build,
             payer: itemProgram.client.provider.publicKey,
           };
 
