@@ -1656,6 +1656,112 @@ export type RaindropsItem = {
       "args": []
     },
     {
+      "name": "consumeBuildMaterialPnft",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "outputItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "outputItemClassAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "closeBuild",
       "accounts": [
         {
@@ -6001,6 +6107,112 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "consumeBuildMaterialPnft",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "outputItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "outputItemClassAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
           "isMut": false,
           "isSigner": false
         }

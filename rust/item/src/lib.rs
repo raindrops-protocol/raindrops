@@ -2027,6 +2027,10 @@ pub mod raindrops_item {
         consume_build_material_spl::handler(ctx)
     }
 
+    pub fn consume_build_material_pnft(ctx: Context<ConsumeBuildMaterialPNft>) -> Result<()> {
+        consume_build_material_pnft::handler(ctx)
+    }
+
     pub fn close_build(ctx: Context<CloseBuild>) -> Result<()> {
         close_build::handler(ctx)
     }

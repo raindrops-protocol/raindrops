@@ -1414,12 +1414,14 @@ export class Instruction extends SolKitInstruction {
     accounts: CompleteBuildAccounts,
     args: CompleteBuildArgs
   ): Promise<web3.TransactionInstruction> {
-    const buildData = await this.program.client.account.build.fetch(accounts.build);
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
 
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
-      itemClass,
+      itemClass
     );
     const itemClassItems = new web3.PublicKey(itemClassData.items);
 
@@ -1458,7 +1460,9 @@ export class Instruction extends SolKitInstruction {
   async receiveItem(
     accounts: ReceiveItemAccounts
   ): Promise<web3.TransactionInstruction[]> {
-    const buildData = await this.program.client.account.build.fetch(accounts.build);
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
     const itemMint = new web3.PublicKey(buildData.itemMint);
@@ -1612,7 +1616,11 @@ export class Instruction extends SolKitInstruction {
       );
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.returnBuildMaterialSpl(accounts, accounts.build, item);
+      const ix = await this.returnBuildMaterialSpl(
+        accounts,
+        accounts.build,
+        item
+      );
       ixns.push(ix);
     }
 
@@ -1764,7 +1772,7 @@ export class Instruction extends SolKitInstruction {
 
   async consumeBuildMaterial(
     accounts: ConsumeBuildMaterialAccounts
-  ): Promise<web3.TransactionInstruction> {
+  ): Promise<web3.TransactionInstruction[]> {
     const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("item_v1"),
@@ -1774,16 +1782,22 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const buildData = await this.program.client.account.build.fetch(accounts.build);
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
     const builder = new web3.PublicKey(buildData.builder);
+    const outputItemClass = new web3.PublicKey(buildData.itemClass);
+
+    const outputItemClassData =
+      await this.program.client.account.itemClassV1.fetch(outputItemClass);
+    const outputItemClassAuthority = new web3.PublicKey(
+      outputItemClassData.authority
+    );
 
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
       accounts.materialMint
     );
-    if (tokenStandard !== Utils.Item.TokenStandard.Spl) {
-      throw new Error(`Burning pNFTs not supported yet`);
-    }
 
     const itemSource = await splToken.getAssociatedTokenAddress(
       accounts.materialMint,
@@ -1791,7 +1805,135 @@ export class Instruction extends SolKitInstruction {
       true
     );
 
-    const ix = this.program.client.methods
+    const ixns: web3.TransactionInstruction[] = [];
+    if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      const pNftIxns = await this.consumeBuildMaterialPnft(
+        accounts,
+        item,
+        itemSource,
+        outputItemClass,
+        outputItemClassAuthority
+      );
+      ixns.push(...pNftIxns);
+    } else {
+      const ix = await this.consumeBuildMaterialSpl(
+        accounts,
+        item,
+        builder,
+        itemSource
+      );
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
+  private async consumeBuildMaterialPnft(
+    accounts: ConsumeBuildMaterialAccounts,
+    item: web3.PublicKey,
+    itemSource: web3.PublicKey,
+    outputItemClass: web3.PublicKey,
+    outputItemClassAuthority: web3.PublicKey
+  ): Promise<web3.TransactionInstruction[]> {
+    const [itemMetadata, _itemMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.materialMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata,
+      "confirmed"
+    );
+
+    const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.materialMint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const itemDestination = await splToken.getAssociatedTokenAddress(
+      accounts.materialMint,
+      outputItemClassAuthority
+    );
+
+    const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.materialMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemSource.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemDestinationTokenRecord, _itemDestinationTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.materialMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemDestination.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    // double CU and fee
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
+    const ix = await this.program.client.methods
+      .consumeBuildMaterialPnft()
+      .accounts({
+        item: item,
+        itemMint: accounts.materialMint,
+        itemMetadata: itemMetadata,
+        itemEdition: itemME,
+        authRules: itemMetadataData.programmableConfig.ruleSet,
+        itemSource: itemSource,
+        itemSourceTokenRecord: itemSourceTokenRecord,
+        itemDestination: itemDestination,
+        itemDestinationTokenRecord: itemDestinationTokenRecord,
+        build: accounts.build,
+        outputItemClass: outputItemClass,
+        outputItemClassAuthority: outputItemClassAuthority,
+        payer: accounts.payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        authRulesProgram: MPL_AUTH_RULES_PROGRAM_ID,
+      })
+      .instruction();
+
+    return [increaseCUIx, addPriorityFeeIx, ix];
+  }
+
+  private async consumeBuildMaterialSpl(
+    accounts: ConsumeBuildMaterialAccounts,
+    item: web3.PublicKey,
+    builder: web3.PublicKey,
+    itemSource: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
+    const ix = await this.program.client.methods
       .consumeBuildMaterialSpl()
       .accounts({
         item: item,
@@ -1803,6 +1945,7 @@ export class Instruction extends SolKitInstruction {
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
+
     return ix;
   }
 
@@ -1880,7 +2023,9 @@ export class Instruction extends SolKitInstruction {
   async closeBuild(
     accounts: CloseBuildAccounts
   ): Promise<web3.TransactionInstruction> {
-    const buildData = await this.program.client.account.build.fetch(accounts.build);
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
     const builder = new web3.PublicKey(buildData.builder);
 
     const ix = await this.program.client.methods

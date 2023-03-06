@@ -375,8 +375,8 @@ export class ItemProgram extends Program.Program {
     accounts: ItemInstruction.ConsumeBuildMaterialAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.consumeBuildMaterial(accounts);
-    return await this.sendWithRetry([ix], [], options);
+    const ixns = await this.instruction.consumeBuildMaterial(accounts);
+    return await this.sendWithRetry(ixns, [], options);
   }
 
   async closeBuild(

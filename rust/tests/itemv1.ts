@@ -20,7 +20,7 @@ describe.only("itemv1", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it("build pNFT using 1 NFT and 1 pNFT, both returned to builder after", async () => {
+  it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -67,7 +67,153 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: null,
+            degredation: { amount: new anchor.BN(100000) },
+            cooldown: null,
+          },
+        },
+      ],
+    });
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      schemaIndex: new anchor.BN(0),
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    await assertFreshBuild(
+      itemProgram,
+      build,
+      payer.publicKey,
+      outputItemClass.itemClass
+    );
+
+    // add pNFT to build
+    await addMaterial(
+      itemProgram,
+      pNftItemClass.tree,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // add NFT to build
+    await addMaterial(
+      itemProgram,
+      pNftItemClass.tree,
+      outputItemClass.itemClass,
+      nftItemClass.mints[0],
+      nftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // add payment to build
+    const addPaymentAccounts: Instructions.Item.AddPaymentAccounts = {
+      build: build,
+      builder: payer.publicKey,
+      treasury: payer.publicKey,
+    };
+
+    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
+    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+
+    // complete build and receive the item
+    await completeBuildAndReceiveItem(
+      itemProgram,
+      outputItemClass.tree,
+      0,
+      build,
+      outputItemClass.mints
+    );
+
+    // assert builder received their item
+    const builderItemAta = splToken.getAssociatedTokenAddressSync(
+      outputItemClass.mints[0],
+      payer.publicKey
+    );
+    const tokenBalanceResponse =
+      await itemProgram.client.provider.connection.getTokenAccountBalance(
+        builderItemAta
+      );
+    assert.isTrue(
+      new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
+    );
+
+    await cleanBuild(itemProgram, build);
+  });
+
+  it("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // material 1, pNFT
+    const pNftItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: false,
+      payment: null,
+      materialArgs: [],
+    });
+
+    // material 2, NFT
+    const nftItemClass = await createItemClass(payer, connection, 1, false, {
+      buildEnabled: false,
+      payment: null,
+      materialArgs: [],
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: true,
+      payment: {
+        treasury: payer.publicKey,
+        amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+      },
+      materialArgs: [
+        {
+          itemClass: pNftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degredation: { amount: new anchor.BN(100000)}, // single use
+            cooldown: null,
+          },
+        },
+        {
+          itemClass: nftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degredation: { amount: new anchor.BN(100000)}, // single use
             cooldown: null,
           },
         },

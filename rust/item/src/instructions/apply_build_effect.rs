@@ -34,9 +34,11 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
     // apply build effect defined in the build pda (derived from the schema)
     let mut applied = false;
     for build_material_data in ctx.accounts.build.materials.iter_mut() {
-
         // find the correct item class for the item
-        if build_material_data.item_class.ne(&ctx.accounts.item.item_class.key()) {
+        if build_material_data
+            .item_class
+            .ne(&ctx.accounts.item.item_class.key())
+        {
             continue;
         }
 
