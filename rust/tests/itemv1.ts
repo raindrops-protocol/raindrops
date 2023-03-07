@@ -67,7 +67,7 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: { amount: new anchor.BN(100000) },
+            degredation: { amount: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },

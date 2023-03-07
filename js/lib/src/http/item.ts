@@ -172,20 +172,16 @@ export class Client {
   }
 
   // mark build as complete, contract checks that required materials have been escrowed
-  private async completeBuild(
-    build: anchor.web3.PublicKey
-  ): Promise<void> {
+  private async completeBuild(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
-      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/completeBuild?` + params);
 
     const body = await errors.handleResponse(response);
 
-    const txSig = await this.send(body.tx);
-    console.log("completeBuildTxSig: %s", txSig);
+    console.log("completeBuildTxSig: %s", body.txSig);
   }
 
   // the builder will receive the output of the build here
@@ -194,15 +190,12 @@ export class Client {
   ): Promise<anchor.web3.PublicKey> {
     const params = new URLSearchParams({
       build: build.toString(),
-      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/receiveItem?` + params);
 
     const body = await errors.handleResponse(response);
-
-    const txSig = await this.send(body.tx);
-    console.log("receiveItemTxSig: %s", txSig);
+    console.log("receiveItemTxSig: %s", body.txSig);
 
     return body.itemMint;
   }
@@ -211,15 +204,12 @@ export class Client {
   private async cleanBuild(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
-      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/cleanBuild?` + params);
 
     const body = await errors.handleResponse(response);
-
-    const txSig = await this.send(body.tx);
-    console.log("cleanBuildTxSig: %s", txSig);
+    console.log("cleanBuildTxSig: %s", body.txSig);
 
     return body.itemMint;
   }
@@ -229,15 +219,12 @@ export class Client {
   private async applyBuildEffects(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
-      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(`${this.baseUrl}/applyBuildEffect?` + params);
 
     const body = await errors.handleResponse(response);
-
-    const txSig = await this.send(body.tx);
-    console.log("applyBuildEffectsTxSig: %s", txSig);
+    console.log("applyBuildEffectTxSig: %s", body.txSig);
   }
 
   private async verifyBuildMaterial(
@@ -267,7 +254,6 @@ export class Client {
   ): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
-      payer: this.provider.publicKey.toString(),
     });
 
     let done = false;
@@ -283,8 +269,7 @@ export class Client {
         return;
       }
 
-      const txSig = await this.send(body.tx);
-      console.log("returnOrConsumeMaterialsTxSig: %s", txSig);
+      console.log("returnOrConsumeMaterialsTxSig: %s", body.txSig);
       done = body.done;
     }
   }
