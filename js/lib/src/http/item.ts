@@ -69,6 +69,8 @@ export class Client {
     if (buildableSchemas.length <= 0) {
       throw new Error(`No Schemas Found`);
     }
+    
+    // TODO: probably should have the builder pass in if there's N matching schemas
     const schema = buildableSchemas[0];
     console.log(
       "building item class: %s from schema: %s",
