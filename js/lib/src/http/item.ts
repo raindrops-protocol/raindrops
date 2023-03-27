@@ -51,7 +51,7 @@ export class Client {
       return [];
     }
 
-    if (response.status !== 200) {
+    if (response.status !== 200 && response.status !== 304) {
       return [];
     }
 
