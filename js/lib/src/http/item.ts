@@ -202,10 +202,12 @@ export class Client {
     itemClass: anchor.web3.PublicKey,
     schemaIndex: anchor.BN
   ): Promise<anchor.web3.PublicKey> {
+    const builder = this.provider.publicKey.toString(); 
+    console.log('builder: %s', builder);
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       schemaIndex: schemaIndex.toString(),
-      builder: this.provider.publicKey.toString(),
+      builder: builder,
     });
 
     try {
