@@ -388,12 +388,12 @@ export class Client {
   private async send(txBase64: string): Promise<string> {
     try {
       const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
-      await this.provider.wallet.signTransaction(tx);
+      const signedTx = await this.provider.wallet.signTransaction(tx);
 
       const response = await fetch(`${this.baseUrl}/send`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tx: tx.serialize().toString("base64") }),
+        body: JSON.stringify({ tx: signedTx.serialize().toString("base64") }),
       });
 
       const body = await errors.handleResponse(response);
