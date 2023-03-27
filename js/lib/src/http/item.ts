@@ -95,7 +95,7 @@ export class Client {
     }
 
     // if a payment is required, pay it now
-    if (schema.payment) {
+    if (schema.payment !== null) {
       await this.addPayment(build);
     }
 
@@ -115,7 +115,7 @@ export class Client {
     });
 
     // return the current build data
-    const response = await fetch(`${this.baseUrl}/getBuild?` + params);
+    const response = await fetch(`${this.baseUrl}/build?` + params);
 
     const body = await errors.handleResponse(response);
 
