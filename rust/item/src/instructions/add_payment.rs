@@ -12,6 +12,7 @@ pub struct AddPayment<'info> {
     pub build: Account<'info, Build>,
 
     /// CHECK: checked in ix
+    #[account(mut)]
     pub treasury: UncheckedAccount<'info>,
 
     #[account(mut)]

@@ -548,7 +548,7 @@ export interface ItemClassV1 {
 }
 
 export interface Schema {
-  schemaIndex: number;
+  schemaIndex: BN;
   itemClass: web3.PublicKey;
   buildEnabled: boolean;
   payment: Payment | null;
@@ -573,7 +573,7 @@ export interface ItemState {
 }
 
 export interface Build {
-  schemaIndex: number;
+  schemaIndex: BN;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
   itemMint: web3.PublicKey | null;

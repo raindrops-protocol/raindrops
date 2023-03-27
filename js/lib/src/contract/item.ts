@@ -442,7 +442,7 @@ export class ItemProgram extends Program.Program {
 
       const schema: Schema = {
         itemClass: itemClass,
-        schemaIndex: i,
+        schemaIndex: new BN(i),
         payment: payment,
         buildEnabled: schemaData.buildEnabled as boolean,
         materials: materials,
@@ -495,7 +495,7 @@ export class ItemProgram extends Program.Program {
     const payment = buildDataRaw.payment as any;
 
     const buildData: Build = {
-      schemaIndex: buildDataRaw.schemaIndex as number,
+      schemaIndex: new BN(buildDataRaw.schemaIndex as string),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
       itemMint: itemMint,

@@ -55,9 +55,9 @@ export class Client {
     //  return [];
     //}
 
-    const buildableSchemas: Schema[] = await response.json();
+    const schemas: Schema[] = await response.json();
 
-    return buildableSchemas;
+    return schemas;
   }
 
   // use these materials to build the item
@@ -142,6 +142,7 @@ export class Client {
 
       // if payment is not paid do that now
       if (!buildData.payment.paid) {
+        console.log(build.toString());
         await this.addPayment(build);
       }
 
@@ -160,7 +161,7 @@ export class Client {
     });
 
     // fetch the current build data
-    const response = await fetch(`${this.baseUrl}/getBuild?` + params);
+    const response = await fetch(`${this.baseUrl}/build?` + params);
 
     const body = await errors.handleResponse(response);
 
@@ -182,7 +183,7 @@ export class Client {
   // start the build process for an item class via the schema
   private async startBuild(
     itemClass: anchor.web3.PublicKey,
-    schemaIndex: number
+    schemaIndex: anchor.BN
   ): Promise<anchor.web3.PublicKey> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
@@ -383,7 +384,7 @@ export class Client {
 
 export interface Schema {
   itemClass: anchor.web3.PublicKey;
-  schemaIndex: number;
+  schemaIndex: anchor.BN;
   payment: Payment | null;
   materials: Material[];
 }
@@ -407,9 +408,10 @@ export interface Payment {
 function getMissingBuildMaterials(schemaMaterials: Material[], buildData: Build): Material[] {
   const missingMaterials: Material[] = [];
   for (let currentBuildMaterial of buildData.materials) {
+    console.log(currentBuildMaterial);
 
     // if this build material already has escrowed the required amount, we dont need it
-    if (currentBuildMaterial.currentAmount.gte(currentBuildMaterial.requiredAmount)) {
+    if (new anchor.BN(currentBuildMaterial.currentAmount).gte(new anchor.BN(currentBuildMaterial.requiredAmount))) {
       continue
     }
 
