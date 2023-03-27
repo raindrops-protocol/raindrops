@@ -210,15 +210,14 @@ export class Client {
       builder: builder,
     });
 
-    try {
-      const response = await fetch(`${this.baseUrl}/startBuild?` + params);
-      const body = await errors.handleResponse(response);
-      const txSig = await this.send(body.tx);
-      console.log("startBuildTxSig: %s", txSig);
-      return body.build;
-    } catch(e) {
-      console.error(e)
-    } 
+    const response = await fetch(`${this.baseUrl}/startBuild?` + params);
+
+    const body = await errors.handleResponse(response);
+
+    const txSig = await this.send(body.tx);
+    console.log("startBuildTxSig: %s", txSig);
+
+    return body.build;
   }
 
   // escrow items from builder to the build pda
