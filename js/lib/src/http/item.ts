@@ -180,6 +180,23 @@ export class Client {
     await this.cleanBuild(build)
   }
 
+  async getBuild(itemClass: anchor.web3.PublicKey, builder: anchor.web3.PublicKey): Promise<[anchor.web3.PublicKey, Build]> {
+    const params = new URLSearchParams({
+      itemClass: itemClass.toString(),
+      builder: builder.toString(),
+    });
+
+    // return the current build data
+    const response = await fetch(`${this.baseUrl}/build?` + params);
+
+    const body = await errors.handleResponse(response);
+
+    const buildData: Build = JSON.parse(body.buildData);
+    const build = new anchor.web3.PublicKey(body.build); 
+
+    return [build, buildData]
+  }
+
   // start the build process for an item class via the schema
   private async startBuild(
     itemClass: anchor.web3.PublicKey,
@@ -225,17 +242,22 @@ export class Client {
 
   // TODO: we only support native sol right now
   private async addPayment(build: anchor.web3.PublicKey): Promise<void> {
+    console.log("adding payment to build: %s", build.toString());
     const params = new URLSearchParams({
       build: build.toString(),
       builder: this.provider.publicKey.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/addPayment?` + params);
+    try {
+      const response = await fetch(`${this.baseUrl}/addPayment?` + params);
 
-    const body = await errors.handleResponse(response);
+      const body = await errors.handleResponse(response);
 
-    const txSig = await this.send(body.tx);
-    console.log("addPaymentTxSig: %s", txSig);
+      const txSig = await this.send(body.tx);
+      console.log("addPaymentTxSig: %s", txSig);
+    } catch(e) {
+      console.error(e)
+    } 
   }
 
   // mark build as complete, contract checks that required materials have been escrowed
