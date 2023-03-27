@@ -190,9 +190,8 @@ export class Client {
       builder: this.provider.publicKey.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/startBuild?` + params);
-
     try {
+      const response = await fetch(`${this.baseUrl}/startBuild?` + params);
       const body = await errors.handleResponse(response);
       const txSig = await this.send(body.tx);
       console.log("startBuildTxSig: %s", txSig);
