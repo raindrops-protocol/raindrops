@@ -389,6 +389,7 @@ export class Client {
     try {
       const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
       const signedTx = await this.provider.wallet.signTransaction(tx);
+      console.log("signedTx", JSON.stringify(signedTx));
 
       const response = await fetch(`${this.baseUrl}/send`, {
         method: "POST",
