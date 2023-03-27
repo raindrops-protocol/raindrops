@@ -51,9 +51,9 @@ export class Client {
       return [];
     }
 
-    if (response.status !== 200 && response.status !== 304) {
-      return [];
-    }
+    //if (response.status !== 200 && response.status !== 304) {
+    //  return [];
+    //}
 
     const buildableSchemas: Schema[] = await response.json();
 
