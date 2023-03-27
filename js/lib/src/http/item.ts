@@ -1,5 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import * as errors from "./errors";
+import { Build, BuildMaterialData, BuildStatus } from "../state/item";
 import { fetch } from "cross-fetch";
 
 export class Client {
@@ -69,7 +70,7 @@ export class Client {
     if (buildableSchemas.length <= 0) {
       throw new Error(`No Schemas Found`);
     }
-    
+
     // TODO: probably should have the builder pass in if there's N matching schemas
     const schema = buildableSchemas[0];
     console.log(
@@ -98,22 +99,84 @@ export class Client {
       await this.addPayment(build);
     }
 
-    // complete build
-    await this.completeBuild(build);
-
-    // receive item
-    const itemMint = await this.receiveItem(build);
-
-    // apply build effects to the materials used
-    await this.applyBuildEffects(build);
-
-    // return or consume the build materials in accordance with the effects
-    await this.returnOrConsumeMaterials(build);
-
-    // clean up
-    await this.cleanBuild(build);
+    // drive build to completion
+    const itemMint = await this.driveBuild(build);
 
     return itemMint;
+  }
+
+  async continueBuild(
+    itemClass: anchor.web3.PublicKey,
+    materialArgs: MaterialArg[]
+  ) {
+    const params = new URLSearchParams({
+      itemClass: itemClass.toString(),
+      builder: this.provider.publicKey.toString(),
+    });
+
+    // return the current build data
+    const response = await fetch(`${this.baseUrl}/getBuild?` + params);
+
+    const body = await errors.handleResponse(response);
+
+    const buildData: Build = JSON.parse(body.buildData);
+    const build = new anchor.web3.PublicKey(body.build);
+
+    // if build status is still in progress, check the materials we have and add them
+    let itemMint: anchor.web3.PublicKey;
+    if (buildData.status === BuildStatus.InProgress) {
+
+      // get the matching schema for this build
+      const buildableSchemas = await this.checkMaterials(itemClass, materialArgs)
+      const schema = buildableSchemas.find(schema => schema.schemaIndex === buildData.schemaIndex);
+
+      // filter out already added materials
+      const missingMaterials = getMissingBuildMaterials(schema.materials, buildData);
+
+      // add the remaining materials
+      for (let material of missingMaterials) {
+        await this.verifyBuildMaterial(itemClass, material.itemMint, material.itemClass);
+
+        await this.addBuildMaterial(itemClass, material);
+      }
+
+      // if payment is not paid do that now
+      if (!buildData.payment.paid) {
+        await this.addPayment(build);
+      }
+
+      itemMint = await this.driveBuild(build)
+    } else {
+      itemMint = await this.driveBuild(build);
+    }
+
+    return itemMint
+  }
+
+  async cancelBuild(itemClass: anchor.web3.PublicKey) {
+    const params = new URLSearchParams({
+      itemClass: itemClass.toString(),
+      builder: this.provider.publicKey.toString(),
+    });
+
+    // fetch the current build data
+    const response = await fetch(`${this.baseUrl}/getBuild?` + params);
+
+    const body = await errors.handleResponse(response);
+
+    const buildData: Build = JSON.parse(body.buildData);
+    const build = new anchor.web3.PublicKey(body.build); 
+
+    // if the build is not in progress then you must go through with it
+    if (buildData.status !== BuildStatus.InProgress) {
+      throw new Error(`Build Cannot be cancelled, please call 'continueBuild'`);
+    };
+
+    // return any build materials that were added
+    await this.returnOrConsumeMaterials(build)
+
+    // clean up build accounts
+    await this.cleanBuild(build)
   }
 
   // start the build process for an item class via the schema
@@ -129,12 +192,14 @@ export class Client {
 
     const response = await fetch(`${this.baseUrl}/startBuild?` + params);
 
-    const body = await errors.handleResponse(response);
-
-    const txSig = await this.send(body.tx);
-    console.log("startBuildTxSig: %s", txSig);
-
-    return body.build;
+    try {
+      const body = await errors.handleResponse(response);
+      const txSig = await this.send(body.tx);
+      console.log("startBuildTxSig: %s", txSig);
+      return body.build;
+    } catch(e) {
+      console.error(e)
+    } 
   }
 
   // escrow items from builder to the build pda
@@ -276,20 +341,44 @@ export class Client {
     }
   }
 
+  // drive build to completion, these are all permissionless steps
+  private async driveBuild(build: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey> {
+    // complete build
+    await this.completeBuild(build);
+
+    // receive item
+    const itemMint = await this.receiveItem(build);
+
+    // apply build effects to the materials used
+    await this.applyBuildEffects(build);
+
+    // return or consume the build materials in accordance with the effects
+    await this.returnOrConsumeMaterials(build);
+
+    // clean up
+    await this.cleanBuild(build);
+
+    return itemMint; 
+  }
+
   // sign and send a transaction received from the items api
   private async send(txBase64: string): Promise<string> {
-    const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
-    await this.provider.wallet.signTransaction(tx);
+    try {
+      const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
+      await this.provider.wallet.signTransaction(tx);
 
-    const response = await fetch(`${this.baseUrl}/send`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ tx: tx.serialize().toString("base64") }),
-    });
+      const response = await fetch(`${this.baseUrl}/send`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tx: tx.serialize().toString("base64") }),
+      });
 
-    const body = await errors.handleResponse(response);
+      const body = await errors.handleResponse(response);
 
-    return body.txSig;
+      return body.txSig;
+    } catch (e) {
+      console.error(e)
+    } 
   }
 }
 
@@ -314,4 +403,24 @@ export interface Material {
 export interface Payment {
   treasury: anchor.web3.PublicKey;
   amount: anchor.BN;
+}
+
+function getMissingBuildMaterials(schemaMaterials: Material[], buildData: Build): Material[] {
+  const missingMaterials: Material[] = [];
+  for (let currentBuildMaterial of buildData.materials) {
+
+    // if this build material already has escrowed the required amount, we dont need it
+    if (currentBuildMaterial.currentAmount.gte(currentBuildMaterial.requiredAmount)) {
+      continue
+    }
+
+    // find the schema material which matches the build material required item class
+    for (let schemaMaterial of schemaMaterials) {
+      if (schemaMaterial.itemClass.equals(currentBuildMaterial.itemClass)) {
+        missingMaterials.push(schemaMaterial);
+      }
+    }
+  }
+
+  return missingMaterials
 }

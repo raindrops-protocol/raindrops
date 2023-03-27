@@ -13,6 +13,7 @@ import {
   Build,
   BuildMaterialData,
   BuildMaterialMint,
+  convertToBuildStatus,
   decodeItemClass,
   ItemClass,
   ItemClassV1,
@@ -506,7 +507,7 @@ export class ItemProgram extends Program.Program {
         },
       },
       materials: buildMaterialData,
-      status: buildDataRaw.status,
+      status: convertToBuildStatus(buildDataRaw.status),
     };
 
     return buildData;

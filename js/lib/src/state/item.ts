@@ -579,7 +579,7 @@ export interface Build {
   itemMint: web3.PublicKey | null;
   payment: PaymentState;
   materials: BuildMaterialData[];
-  status: any;
+  status: BuildStatus;
 }
 
 export interface BuildMaterialData {
@@ -593,4 +593,25 @@ export interface BuildMaterialData {
 export interface BuildMaterialMint {
   mint: web3.PublicKey;
   buildEffectApplied: boolean;
+}
+
+export enum BuildStatus {
+  InProgress,
+  Complete,
+  ItemReceived,
+}
+
+export function convertToBuildStatus(buildStatusRaw: any): BuildStatus {
+  const buildStatusStr = JSON.stringify(buildStatusRaw);
+
+  switch (true) {
+    case buildStatusStr.includes('inProgress'):
+      return BuildStatus.InProgress
+    case buildStatusStr.includes('complete'): 
+      return BuildStatus.Complete
+    case buildStatusStr.includes('itemReceived'):
+      return BuildStatus.ItemReceived
+    default:
+      throw new Error(`Invalid Build Status: ${buildStatusRaw}`)
+  }
 }
