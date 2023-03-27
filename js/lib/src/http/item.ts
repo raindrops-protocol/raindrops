@@ -168,7 +168,7 @@ export class Client {
     const buildData: Build = JSON.parse(body.buildData);
     const build = new anchor.web3.PublicKey(body.build); 
 
-    // if the build is not in progress then you must go through with it
+    // if the build is not in progress then you must continue
     if (buildData.status !== BuildStatus.InProgress) {
       throw new Error(`Build Cannot be cancelled, please call 'continueBuild'`);
     };
