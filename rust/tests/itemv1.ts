@@ -734,6 +734,9 @@ async function createItemClass(
   const tree = initTree({ maxDepth: 14, maxBufferSize: 64 });
   console.log("tree created: %s", itemClass.toString());
 
+  // collection nft for ingredient
+  const ingredientCollectionNft = await createCollectionNft(payer, connection);
+
   const mints: anchor.web3.PublicKey[] = [];
   for (let i = 0; i < ingredientCount; i++) {
     const client = new metaplex.Metaplex(connection, {}).use(
@@ -744,6 +747,7 @@ async function createItemClass(
     if (isPNft) {
       const ruleSetPda = await createRuleSet(payer, connection);
 
+      // TODO: test with a verified collection, for some reason this func fails
       ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
         uri: "https://foo.com/bar.json",
@@ -751,15 +755,19 @@ async function createItemClass(
         sellerFeeBasisPoints: 500,
         symbol: "PN",
         ruleSet: ruleSetPda,
+        //collection: ingredientCollectionNft,
+        //collectionAuthority: payer,
       });
       console.log("createPNftTxSig: %s", ingredientMintOutput.response.signature);
     } else {
       ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.NonFungible,
         uri: "https://foo.com/bar.json",
-        name: "pNFT1",
+        name: "NFT1",
         sellerFeeBasisPoints: 500,
-        symbol: "PN",
+        symbol: "N",
+        collection: ingredientCollectionNft,
+        collectionAuthority: payer,
       });
       console.log("createNftTxSig: %s", ingredientMintOutput.response.signature);
     }
@@ -905,6 +913,23 @@ async function transferPNft(
     { skipPreflight: false }
   );
   console.log("itemTransferTxSig: %s", itemTransferTxSig);
+}
+
+async function createCollectionNft(payer: anchor.web3.Keypair, connection: anchor.web3.Connection): Promise<anchor.web3.PublicKey> {
+  const client = new metaplex.Metaplex(connection, {}).use(
+    metaplex.keypairIdentity(payer)
+  );
+  
+  const result = await client.nfts().create({
+    tokenStandard: mpl.TokenStandard.NonFungible,
+    uri: "https://foo.com/bar.json",
+    name: "collectionNft",
+    sellerFeeBasisPoints: 0,
+    symbol: "CN",
+    isCollection: true,
+  });
+
+  return result.mintAddress
 }
 
 async function createRuleSet(
