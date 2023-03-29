@@ -1066,6 +1066,7 @@ async function addIngredient(
       ingredientItemClass: ingredientItemClass,
       itemClass: outputItemClass,
       builder: itemProgram.client.provider.publicKey,
+      payer: itemProgram.client.provider.publicKey,
     };
 
   // get proof for mint

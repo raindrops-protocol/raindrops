@@ -24,11 +24,11 @@ pub struct VerifyIngredient<'info> {
     /// CHECK: checked by spl-account-compression
     pub ingredient_item_class_items: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
     #[account(mut)]
-    pub builder: Signer<'info>,
+    pub payer: Signer<'info>,
 
     pub log_wrapper: Program<'info, NoopProgram>,
 

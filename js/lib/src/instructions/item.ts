@@ -1400,7 +1400,7 @@ export class Instruction extends SolKitInstruction {
         ingredientItemClass: accounts.ingredientItemClass,
         ingredientItemClassItems: ingredientItemClassItems,
         build: build,
-        builder: accounts.builder,
+        payer: accounts.payer,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
@@ -2388,6 +2388,7 @@ export interface VerifyIngredientAccounts {
   ingredientMint: web3.PublicKey;
   ingredientItemClass: web3.PublicKey;
   itemClass: web3.PublicKey;
+  payer: web3.PublicKey;
   builder: web3.PublicKey;
 }
 
