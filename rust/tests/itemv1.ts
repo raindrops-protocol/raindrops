@@ -86,7 +86,7 @@ describe.only("itemv1", () => {
     };
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
-      schemaIndex: new anchor.BN(0),
+      recipeIndex: new anchor.BN(0),
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -232,7 +232,7 @@ describe.only("itemv1", () => {
     };
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
-      schemaIndex: new anchor.BN(0),
+      recipeIndex: new anchor.BN(0),
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -387,7 +387,7 @@ describe.only("itemv1", () => {
       };
 
       const startBuildArgs: Instructions.Item.StartBuildArgs = {
-        schemaIndex: new anchor.BN(0),
+        recipeIndex: new anchor.BN(0),
       };
 
       const startBuildResult = await itemProgram.startBuild(
@@ -551,7 +551,7 @@ describe.only("itemv1", () => {
     };
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
-      schemaIndex: new anchor.BN(0),
+      recipeIndex: new anchor.BN(0),
     };
 
     const startBuildResult = await builderItemProgram.startBuild(
@@ -633,7 +633,7 @@ describe.only("itemv1", () => {
     await cleanBuild(crankItemProgram, build);
   });
 
-  it("create item class with multiple schemas", async () => {
+  it("create item class with multiple recipes", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -647,7 +647,7 @@ describe.only("itemv1", () => {
     });
 
     let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
-      schemaArgs: {
+      recipeArgs: {
         buildEnabled: false,
         payment: null,
         materialArgs: [],
@@ -658,16 +658,16 @@ describe.only("itemv1", () => {
       await itemProgram.createItemClassV1(createItemClassArgs);
     console.log("createItemClassTxSig: %s", createItemClassResult.txid);
 
-    // first schema is created during item class creation
+    // first recipe is created during item class creation
     const itemClassDataPre = await itemProgram.getItemClassV1(itemClass);
-    assert.isTrue(itemClassDataPre.schemaIndex.eq(new anchor.BN(0)));
+    assert.isTrue(itemClassDataPre.recipeIndex.eq(new anchor.BN(0)));
 
-    const addSchemaAccounts: Instructions.Item.AddSchemaAccounts = {
+    const createRecipeAccounts: Instructions.Item.CreateRecipeAccounts = {
       itemClass: itemClass,
       authority: payer.publicKey,
     };
 
-    const addSchemaArgs: Instructions.Item.AddSchemaArgs = {
+    const createRecipeArgs: Instructions.Item.CreateRecipeArgs = {
       args: {
         buildEnabled: false,
         payment: null,
@@ -675,15 +675,15 @@ describe.only("itemv1", () => {
       },
     };
 
-    const addSchemaResult = await itemProgram.addSchema(
-      addSchemaAccounts,
-      addSchemaArgs
+    const createRecipeResult = await itemProgram.createRecipe(
+      createRecipeAccounts,
+      createRecipeArgs
     );
-    console.log("addSchemaTxSig: %s", addSchemaResult.txid);
+    console.log("createRecipeTxSig: %s", createRecipeResult.txid);
 
-    // first schema is created during item class creation
+    // first recipe is created during item class creation
     const itemClassDataPost = await itemProgram.getItemClassV1(itemClass);
-    assert.isTrue(itemClassDataPost.schemaIndex.eq(new anchor.BN(1)));
+    assert.isTrue(itemClassDataPost.recipeIndex.eq(new anchor.BN(1)));
   });
 });
 
@@ -712,7 +712,7 @@ async function createItemClass(
   connection: anchor.web3.Connection,
   materialCount: number,
   isPNft: boolean,
-  schemaArgs: Instructions.Item.SchemaArgs
+  recipeArgs: Instructions.Item.RecipeArgs
 ): Promise<ItemClassContainer> {
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
@@ -723,7 +723,7 @@ async function createItemClass(
   });
 
   let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
-    schemaArgs: schemaArgs,
+    recipeArgs: recipeArgs,
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClassV1(

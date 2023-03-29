@@ -3,7 +3,7 @@ use std::vec;
 use anchor_lang::prelude::*;
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, Schema},
+    accounts::{Build, ItemClassV1, Recipe},
     errors::ErrorCode,
     BuildMaterialData, BuildStatus, PaymentState,
 };
@@ -13,12 +13,12 @@ use crate::state::{
 pub struct StartBuild<'info> {
     #[account(init,
         payer = builder,
-        space = Build::space(&schema.materials),
+        space = Build::space(&recipe.materials),
         seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(seeds = [Schema::PREFIX.as_bytes(), &args.schema_index.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub schema: Account<'info, Schema>,
+    #[account(seeds = [Recipe::PREFIX.as_bytes(), &args.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
+    pub recipe: Account<'info, Recipe>,
 
     #[account(mut, seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
@@ -33,21 +33,21 @@ pub struct StartBuild<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct StartBuildArgs {
-    pub schema_index: u64,
+    pub recipe_index: u64,
 }
 
 pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
-    // check this schema is enabled for building
-    require!(ctx.accounts.schema.build_enabled, ErrorCode::BuildDisabled);
+    // check this recipe is enabled for building
+    require!(ctx.accounts.recipe.build_enabled, ErrorCode::BuildDisabled);
 
     // set initial build material state
     let mut materials: Vec<BuildMaterialData> =
-        Vec::with_capacity(ctx.accounts.schema.materials.len());
-    for required_material in ctx.accounts.schema.materials.clone() {
+        Vec::with_capacity(ctx.accounts.recipe.materials.len());
+    for required_material in ctx.accounts.recipe.materials.clone() {
         materials.push(required_material.into());
     }
 
-    let payment: Option<PaymentState> = match &ctx.accounts.schema.payment {
+    let payment: Option<PaymentState> = match &ctx.accounts.recipe.payment {
         Some(payment) => Some(PaymentState {
             paid: false,
             payment_details: payment.clone(),
@@ -57,7 +57,7 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
 
     // set build data
     ctx.accounts.build.set_inner(Build {
-        schema_index: args.schema_index,
+        recipe_index: args.recipe_index,
         builder: ctx.accounts.builder.key(),
         item_class: ctx.accounts.item_class.key(),
         item_mint: None,

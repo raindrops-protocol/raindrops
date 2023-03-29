@@ -49,7 +49,7 @@ impl BuildMaterialMint {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct SchemaMaterialData {
+pub struct RecipeMaterialData {
     // the item must be a member of this item class
     pub item_class: Pubkey,
 
@@ -60,14 +60,14 @@ pub struct SchemaMaterialData {
     pub build_effect: BuildEffect,
 }
 
-impl SchemaMaterialData {
+impl RecipeMaterialData {
     pub const SPACE: usize = 32 + // item class
     8 + // required amount
     BuildEffect::SPACE; // build effect
 }
 
-impl From<SchemaMaterialData> for BuildMaterialData {
-    fn from(value: SchemaMaterialData) -> Self {
+impl From<RecipeMaterialData> for BuildMaterialData {
+    fn from(value: RecipeMaterialData) -> Self {
         BuildMaterialData {
             item_class: value.item_class,
             current_amount: 0,

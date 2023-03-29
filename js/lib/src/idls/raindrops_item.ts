@@ -904,7 +904,7 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
+          "name": "recipe",
           "isMut": true,
           "isSigner": false
         },
@@ -944,10 +944,10 @@ export type RaindropsItem = {
       ]
     },
     {
-      "name": "addSchema",
+      "name": "createRecipe",
       "accounts": [
         {
-          "name": "schema",
+          "name": "recipe",
           "isMut": true,
           "isSigner": false
         },
@@ -976,7 +976,7 @@ export type RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "AddSchemaArgs"
+            "defined": "CreateRecipeArgs"
           }
         }
       ]
@@ -1026,7 +1026,7 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
+          "name": "recipe",
           "isMut": false,
           "isSigner": false
         },
@@ -1829,7 +1829,7 @@ export type RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           }
         ]
@@ -1862,12 +1862,12 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "schema",
+      "name": "recipe",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           },
           {
@@ -1890,7 +1890,7 @@ export type RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "SchemaMaterialData"
+                "defined": "RecipeMaterialData"
               }
             }
           }
@@ -1903,7 +1903,7 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           },
           {
@@ -2180,34 +2180,6 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "AddSchemaArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "buildEnabled",
-            "type": "bool"
-          },
-          {
-            "name": "payment",
-            "type": {
-              "option": {
-                "defined": "Payment"
-              }
-            }
-          },
-          {
-            "name": "materials",
-            "type": {
-              "vec": {
-                "defined": "SchemaMaterialData"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "CompleteBuildArgs",
       "type": {
         "kind": "struct",
@@ -2234,16 +2206,16 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaArgs",
+            "name": "recipeArgs",
             "type": {
-              "defined": "SchemaArgs"
+              "defined": "RecipeArgs"
             }
           }
         ]
       }
     },
     {
-      "name": "SchemaArgs",
+      "name": "RecipeArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2263,7 +2235,35 @@ export type RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "SchemaMaterialData"
+                "defined": "RecipeMaterialData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateRecipeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "RecipeMaterialData"
               }
             }
           }
@@ -2276,7 +2276,7 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           }
         ]
@@ -2354,7 +2354,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "SchemaMaterialData",
+      "name": "RecipeMaterialData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -5362,7 +5362,7 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
+          "name": "recipe",
           "isMut": true,
           "isSigner": false
         },
@@ -5402,10 +5402,10 @@ export const IDL: RaindropsItem = {
       ]
     },
     {
-      "name": "addSchema",
+      "name": "createRecipe",
       "accounts": [
         {
-          "name": "schema",
+          "name": "recipe",
           "isMut": true,
           "isSigner": false
         },
@@ -5434,7 +5434,7 @@ export const IDL: RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "AddSchemaArgs"
+            "defined": "CreateRecipeArgs"
           }
         }
       ]
@@ -5484,7 +5484,7 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "schema",
+          "name": "recipe",
           "isMut": false,
           "isSigner": false
         },
@@ -6287,7 +6287,7 @@ export const IDL: RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           }
         ]
@@ -6320,12 +6320,12 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "schema",
+      "name": "recipe",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           },
           {
@@ -6348,7 +6348,7 @@ export const IDL: RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "SchemaMaterialData"
+                "defined": "RecipeMaterialData"
               }
             }
           }
@@ -6361,7 +6361,7 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           },
           {
@@ -6638,34 +6638,6 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "AddSchemaArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "buildEnabled",
-            "type": "bool"
-          },
-          {
-            "name": "payment",
-            "type": {
-              "option": {
-                "defined": "Payment"
-              }
-            }
-          },
-          {
-            "name": "materials",
-            "type": {
-              "vec": {
-                "defined": "SchemaMaterialData"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "CompleteBuildArgs",
       "type": {
         "kind": "struct",
@@ -6692,16 +6664,16 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaArgs",
+            "name": "recipeArgs",
             "type": {
-              "defined": "SchemaArgs"
+              "defined": "RecipeArgs"
             }
           }
         ]
       }
     },
     {
-      "name": "SchemaArgs",
+      "name": "RecipeArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -6721,7 +6693,35 @@ export const IDL: RaindropsItem = {
             "name": "materials",
             "type": {
               "vec": {
-                "defined": "SchemaMaterialData"
+                "defined": "RecipeMaterialData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateRecipeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "materials",
+            "type": {
+              "vec": {
+                "defined": "RecipeMaterialData"
               }
             }
           }
@@ -6734,7 +6734,7 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "schemaIndex",
+            "name": "recipeIndex",
             "type": "u64"
           }
         ]
@@ -6812,7 +6812,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "SchemaMaterialData",
+      "name": "RecipeMaterialData",
       "type": {
         "kind": "struct",
         "fields": [

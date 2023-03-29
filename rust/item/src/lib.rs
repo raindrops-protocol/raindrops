@@ -1970,8 +1970,8 @@ pub mod raindrops_item {
         create_item_class_v1::handler(ctx, args)
     }
 
-    pub fn add_schema(ctx: Context<AddSchema>, args: AddSchemaArgs) -> Result<()> {
-        add_schema::handler(ctx, args)
+    pub fn create_recipe(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()> {
+        create_recipe::handler(ctx, args)
     }
 
     pub fn add_item_to_item_class(ctx: Context<AddItemToItemClass>) -> Result<()> {

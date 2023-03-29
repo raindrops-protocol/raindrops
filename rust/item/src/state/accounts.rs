@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use anchor_lang::prelude::*;
 
-use super::{BuildMaterialData, BuildStatus, ItemState, Payment, PaymentState, SchemaMaterialData};
+use super::{BuildMaterialData, BuildStatus, ItemState, Payment, PaymentState, RecipeMaterialData};
 
 // seeds = ['item_class_v1', items.key().as_ref()]
 #[account]
@@ -13,7 +13,7 @@ pub struct ItemClassV1 {
     // merkle tree containing all item addresses belonging to this item class
     pub items: Pubkey,
 
-    pub schema_index: u64,
+    pub recipe_index: u64,
 }
 
 impl ItemClassV1 {
@@ -21,7 +21,7 @@ impl ItemClassV1 {
     pub const SPACE: usize = 8 + // anchor
     32 + // authority
     32 + // items 
-    8; // schema_index
+    8; // recipe_index
 }
 
 // seeds = ['item_v1', item_class.key().as_ref(), item_mint.key().as_ref()]
@@ -49,13 +49,13 @@ impl ItemV1 {
     ItemState::SPACE; // state
 }
 
-// a schema contains all materials and build information for an item class v1
-// seeds = ['schema', schema_index.to_le_bytes(), item_class.key()]
+// a recipe contains all materials and build information for an item class v1
+// seeds = ['recipe', recipe_index.to_le_bytes(), item_class.key()]
 #[account]
-pub struct Schema {
-    pub schema_index: u64,
+pub struct Recipe {
+    pub recipe_index: u64,
 
-    // item class this schema builds
+    // item class this recipe builds
     pub item_class: Pubkey,
 
     // if false building is disabled for this item class
@@ -64,20 +64,20 @@ pub struct Schema {
     // if Some, SOL is required
     pub payment: Option<Payment>,
 
-    // list of materials required to use this schema to build the item class v1
-    pub materials: Vec<SchemaMaterialData>,
+    // list of materials required to use this recipe to build the item class v1
+    pub materials: Vec<RecipeMaterialData>,
 }
 
-impl Schema {
-    pub const PREFIX: &'static str = "schema";
+impl Recipe {
+    pub const PREFIX: &'static str = "recipe";
     pub const INITIAL_INDEX: u64 = 0;
     pub fn space(material_count: usize) -> usize {
         8 + // anchor
-        8 + // schema index
+        8 + // recipe index
         32 + // item_class
         1 + // enabled
         (1 + Payment::SPACE) + // payment
-        4 + (SchemaMaterialData::SPACE * material_count) // materials
+        4 + (RecipeMaterialData::SPACE * material_count) // materials
     }
 }
 
@@ -85,8 +85,8 @@ impl Schema {
 // seeds = ['build', item_class.key(), builder.key().as_ref()]
 #[account]
 pub struct Build {
-    // points to the schema used for this build
-    pub schema_index: u64,
+    // points to the recipe used for this build
+    pub recipe_index: u64,
 
     pub builder: Pubkey,
 
@@ -108,20 +108,20 @@ pub struct Build {
 
 impl Build {
     pub const PREFIX: &'static str = "build";
-    pub fn space(schema_material_data: &Vec<SchemaMaterialData>) -> usize {
+    pub fn space(recipe_material_data: &Vec<RecipeMaterialData>) -> usize {
         8 + // anchor
-        8 + // schema_index
+        8 + // recipe_index
         32 + // builder
         32 + // item class
         (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
-        4 + (Self::build_material_data_space(schema_material_data)) // materials
+        4 + (Self::build_material_data_space(recipe_material_data)) // materials
     }
 
-    fn build_material_data_space(schema_material_data: &Vec<SchemaMaterialData>) -> usize {
+    fn build_material_data_space(recipe_material_data: &Vec<RecipeMaterialData>) -> usize {
         let mut total_build_material_space: usize = 0;
-        for material_data in schema_material_data {
+        for material_data in recipe_material_data {
             total_build_material_space +=
                 BuildMaterialData::space(material_data.required_amount.try_into().unwrap())
         }

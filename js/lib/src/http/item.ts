@@ -35,7 +35,7 @@ export class Client {
   async checkMaterials(
     itemClass: anchor.web3.PublicKey,
     materials: MaterialArg[]
-  ): Promise<Schema[]> {
+  ): Promise<Recipe[]> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
     });
@@ -51,13 +51,9 @@ export class Client {
       return [];
     }
 
-    //if (response.status !== 200 && response.status !== 304) {
-    //  return [];
-    //}
+    const recipes: Recipe[] = await response.json();
 
-    const schemas: Schema[] = await response.json();
-
-    return schemas;
+    return recipes;
   }
 
   // use these materials to build the item
@@ -65,25 +61,25 @@ export class Client {
     itemClass: anchor.web3.PublicKey,
     materialArgs: MaterialArg[]
   ): Promise<anchor.web3.PublicKey> {
-    // find valid schema with these materials
-    const buildableSchemas = await this.checkMaterials(itemClass, materialArgs);
-    if (buildableSchemas.length <= 0) {
-      throw new Error(`No Schemas Found`);
+    // find valid recipe with these materials
+    const buildableRecipes = await this.checkMaterials(itemClass, materialArgs);
+    if (buildableRecipes.length <= 0) {
+      throw new Error(`No Recipes Found`);
     }
 
-    // TODO: probably should have the builder pass in if there's N matching schemas
-    const schema = buildableSchemas[0];
+    // TODO: probably should have the builder pass in if there's N matching recipes
+    const recipe = buildableRecipes[0];
     console.log(
-      "building item class: %s from schema: %s",
+      "building item class: %s from recipe: %s",
       itemClass.toString(),
-      JSON.stringify(schema)
+      JSON.stringify(recipe)
     );
 
     // start build
-    const build = await this.startBuild(itemClass, schema.schemaIndex);
+    const build = await this.startBuild(itemClass, recipe.recipeIndex);
     console.log("build started: %s", build.toString());
 
-    for (const material of schema.materials) {
+    for (const material of recipe.materials) {
       await this.verifyBuildMaterial(
         itemClass,
         material.itemMint,
@@ -95,7 +91,7 @@ export class Client {
     }
 
     // if a payment is required, pay it now
-    if (schema.payment !== null) {
+    if (recipe.payment !== null) {
       await this.addPayment(build);
     }
 
@@ -126,12 +122,12 @@ export class Client {
     let itemMint: anchor.web3.PublicKey;
     if (buildData.status === BuildStatus.InProgress) {
 
-      // get the matching schema for this build
-      const buildableSchemas = await this.checkMaterials(itemClass, materialArgs)
-      const schema = buildableSchemas.find(schema => schema.schemaIndex === buildData.schemaIndex);
+      // get the matching recipe for this build
+      const buildableRecipes = await this.checkMaterials(itemClass, materialArgs)
+      const recipe = buildableRecipes.find(recipe => recipe.recipeIndex === buildData.recipeIndex);
 
       // filter out already added materials
-      const missingMaterials = getMissingBuildMaterials(schema.materials, buildData);
+      const missingMaterials = getMissingBuildMaterials(recipe.materials, buildData);
 
       // add the remaining materials
       for (let material of missingMaterials) {
@@ -197,16 +193,16 @@ export class Client {
     return [build, buildData]
   }
 
-  // start the build process for an item class via the schema
+  // start the build process for an item class via the recipe
   private async startBuild(
     itemClass: anchor.web3.PublicKey,
-    schemaIndex: anchor.BN
+    recipeIndex: anchor.BN
   ): Promise<anchor.web3.PublicKey> {
     const builder = this.provider.publicKey.toString(); 
     console.log('builder: %s', builder);
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
-      schemaIndex: schemaIndex.toString(),
+      recipeIndex: recipeIndex.toString(),
       builder: builder,
     });
 
@@ -405,9 +401,9 @@ export class Client {
   }
 }
 
-export interface Schema {
+export interface Recipe {
   itemClass: anchor.web3.PublicKey;
-  schemaIndex: anchor.BN;
+  recipeIndex: anchor.BN;
   payment: Payment | null;
   materials: Material[];
 }
@@ -428,7 +424,7 @@ export interface Payment {
   amount: anchor.BN;
 }
 
-function getMissingBuildMaterials(schemaMaterials: Material[], buildData: Build): Material[] {
+function getMissingBuildMaterials(recipeMaterials: Material[], buildData: Build): Material[] {
   const missingMaterials: Material[] = [];
   for (let currentBuildMaterial of buildData.materials) {
     console.log(currentBuildMaterial);
@@ -438,10 +434,10 @@ function getMissingBuildMaterials(schemaMaterials: Material[], buildData: Build)
       continue
     }
 
-    // find the schema material which matches the build material required item class
-    for (let schemaMaterial of schemaMaterials) {
-      if (schemaMaterial.itemClass.equals(currentBuildMaterial.itemClass)) {
-        missingMaterials.push(schemaMaterial);
+    // find the recipe material which matches the build material required item class
+    for (let recipeMaterial of recipeMaterials) {
+      if (recipeMaterial.itemClass.equals(currentBuildMaterial.itemClass)) {
+        missingMaterials.push(recipeMaterial);
       }
     }
   }

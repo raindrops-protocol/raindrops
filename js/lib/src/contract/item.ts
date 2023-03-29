@@ -19,7 +19,7 @@ import {
   ItemClassV1,
   ItemV1,
   Material,
-  Schema,
+  Recipe,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
@@ -303,12 +303,12 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async addSchema(
-    accounts: ItemInstruction.AddSchemaAccounts,
-    args: ItemInstruction.AddSchemaArgs,
+  async createRecipe(
+    accounts: ItemInstruction.CreateRecipeAccounts,
+    args: ItemInstruction.CreateRecipeArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.addSchema(accounts, args);
+    const ix = await this.instruction.createRecipe(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -404,28 +404,28 @@ export class ItemProgram extends Program.Program {
       return null;
     }
 
-    const schemaIndex = new BN(itemClassData.schemaIndex as string);
+    const recipeIndex = new BN(itemClassData.recipeIndex as string);
 
-    const schemas: Schema[] = [];
-    for (let i = 0; i <= schemaIndex.toNumber(); i++) {
-      const [schemaAddr, _schemaAddrBump] =
+    const recipes: Recipe[] = [];
+    for (let i = 0; i <= recipeIndex.toNumber(); i++) {
+      const [recipeAddr, _recipeAddrBump] =
         web3.PublicKey.findProgramAddressSync(
           [
-            Buffer.from("schema"),
-            schemaIndex.toArrayLike(Buffer, "le", 8),
+            Buffer.from("recipe"),
+            recipeIndex.toArrayLike(Buffer, "le", 8),
             itemClass.toBuffer(),
           ],
           this.PROGRAM_ID
         );
 
-      const schemaData = await this.client.account.schema.fetch(schemaAddr);
+      const recipeData = await this.client.account.recipe.fetch(recipeAddr);
 
-      // get schema materials
+      // get recipe materials
       const materials: Material[] = [];
-      for (const schemaMaterial of schemaData.materials as any[]) {
+      for (const recipeMaterial of recipeData.materials as any[]) {
         const material: Material = {
-          itemClass: new web3.PublicKey(schemaMaterial.itemClass),
-          requiredAmount: new BN(schemaMaterial.requiredAmount as string),
+          itemClass: new web3.PublicKey(recipeMaterial.itemClass),
+          requiredAmount: new BN(recipeMaterial.requiredAmount as string),
         };
 
         materials.push(material);
@@ -433,29 +433,29 @@ export class ItemProgram extends Program.Program {
 
       // get payment data
       let payment: ItemInstruction.Payment | null = null;
-      if (schemaData.payment) {
+      if (recipeData.payment) {
         payment = {
-          amount: new BN((schemaData.payment as any).amount as string),
-          treasury: new web3.PublicKey((schemaData.payment as any).treasury),
+          amount: new BN((recipeData.payment as any).amount as string),
+          treasury: new web3.PublicKey((recipeData.payment as any).treasury),
         };
       }
 
-      const schema: Schema = {
+      const recipe: Recipe = {
         itemClass: itemClass,
-        schemaIndex: new BN(i),
+        recipeIndex: new BN(i),
         payment: payment,
-        buildEnabled: schemaData.buildEnabled as boolean,
+        buildEnabled: recipeData.buildEnabled as boolean,
         materials: materials,
       };
 
-      schemas.push(schema);
+      recipes.push(recipe);
     }
 
     const itemClassV1: ItemClassV1 = {
       authority: new web3.PublicKey(itemClassData.authority),
       items: new web3.PublicKey(itemClassData.items),
-      schemaIndex: schemaIndex,
-      schemas: schemas,
+      recipeIndex: recipeIndex,
+      recipes: recipes,
     };
 
     return itemClassV1;
@@ -495,7 +495,7 @@ export class ItemProgram extends Program.Program {
     const payment = buildDataRaw.payment as any;
 
     const buildData: Build = {
-      schemaIndex: new BN(buildDataRaw.schemaIndex as string),
+      recipeIndex: new BN(buildDataRaw.recipeIndex as string),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
       itemMint: itemMint,

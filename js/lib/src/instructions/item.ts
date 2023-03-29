@@ -1043,9 +1043,9 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
+    const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
       [
-        Buffer.from("schema"),
+        Buffer.from("recipe"),
         new BN(0).toArrayLike(Buffer, "le", 8),
         itemClass.toBuffer(),
       ],
@@ -1053,7 +1053,7 @@ export class Instruction extends SolKitInstruction {
     );
 
     const materials: any[] = [];
-    for (let materialArg of args.schemaArgs.materialArgs) {
+    for (let materialArg of args.recipeArgs.materialArgs) {
       let degredationBuildEffect;
       if (materialArg.buildEffect.degredation) {
         degredationBuildEffect = {
@@ -1085,9 +1085,9 @@ export class Instruction extends SolKitInstruction {
     }
 
     const ixArgs = {
-      schemaArgs: {
-        buildEnabled: args.schemaArgs.buildEnabled,
-        payment: args.schemaArgs.payment,
+      recipeArgs: {
+        buildEnabled: args.recipeArgs.buildEnabled,
+        payment: args.recipeArgs.payment,
         materials: materials,
       },
     };
@@ -1097,7 +1097,7 @@ export class Instruction extends SolKitInstruction {
       .accounts({
         items: items.publicKey,
         itemClass: itemClass,
-        schema: schema,
+        recipe: recipe,
         authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
         accountCompression: cmp.PROGRAM_ID,
@@ -1141,10 +1141,10 @@ export class Instruction extends SolKitInstruction {
     accounts: StartBuildAccounts,
     args: StartBuildArgs
   ): Promise<web3.TransactionInstruction> {
-    const [schema, _schemaBump] = web3.PublicKey.findProgramAddressSync(
+    const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
       [
-        Buffer.from("schema"),
-        args.schemaIndex.toArrayLike(Buffer, "le", 8),
+        Buffer.from("recipe"),
+        args.recipeIndex.toArrayLike(Buffer, "le", 8),
         accounts.itemClass.toBuffer(),
       ],
       this.program.id
@@ -1163,7 +1163,7 @@ export class Instruction extends SolKitInstruction {
       .startBuild(args)
       .accounts({
         build: build,
-        schema: schema,
+        recipe: recipe,
         itemClass: accounts.itemClass,
         builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
@@ -1949,9 +1949,9 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async addSchema(
-    accounts: AddSchemaAccounts,
-    args: AddSchemaArgs
+  async createRecipe(
+    accounts: CreateRecipeAccounts,
+    args: CreateRecipeArgs
   ): Promise<web3.TransactionInstruction> {
     const materials: any[] = [];
     for (const materialArg of args.args.materialArgs) {
@@ -1995,11 +1995,11 @@ export class Instruction extends SolKitInstruction {
       accounts.itemClass
     );
 
-    // get new schema pda based off item class schema index
-    const [newSchema, _bumpNewSchema] = web3.PublicKey.findProgramAddressSync(
+    // get new recipe pda based off item class recipe index
+    const [newRecipe, _bumpNewRecipe] = web3.PublicKey.findProgramAddressSync(
       [
-        Buffer.from("schema"),
-        (itemClassData.schemaIndex as BN)
+        Buffer.from("recipe"),
+        (itemClassData.recipeIndex as BN)
           .add(new BN(1))
           .toArrayLike(Buffer, "le", 8),
         accounts.itemClass.toBuffer(),
@@ -2008,9 +2008,9 @@ export class Instruction extends SolKitInstruction {
     );
 
     const ix = await this.program.client.methods
-      .addSchema(ixArgs)
+      .createRecipe(ixArgs)
       .accounts({
-        schema: newSchema,
+        recipe: newRecipe,
         itemClass: accounts.itemClass,
         authority: accounts.authority,
         rent: web3.SYSVAR_RENT_PUBKEY,
@@ -2370,13 +2370,13 @@ export interface UpdateItemAdditionalArgs {}
 //
 
 export interface CreateItemClassV1Args {
-  schemaArgs: SchemaArgs;
+  recipeArgs: RecipeArgs;
 }
 
-export interface SchemaArgs {
+export interface RecipeArgs {
   buildEnabled: boolean;
   payment: Payment | null;
-  materialArgs: SchemaMaterialDataArgs[];
+  materialArgs: RecipeMaterialDataArgs[];
 }
 
 export interface PaymentState {
@@ -2389,7 +2389,7 @@ export interface Payment {
   amount: BN;
 }
 
-export interface SchemaMaterialDataArgs {
+export interface RecipeMaterialDataArgs {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
   buildEffect: BuildEffect;
@@ -2414,7 +2414,7 @@ export interface StartBuildAccounts {
 }
 
 export interface StartBuildArgs {
-  schemaIndex: BN;
+  recipeIndex: BN;
 }
 
 export interface AddBuildMaterialAccounts {
@@ -2477,13 +2477,13 @@ export interface ReturnBuildMaterialAccounts {
   payer: web3.PublicKey;
 }
 
-export interface AddSchemaAccounts {
+export interface CreateRecipeAccounts {
   itemClass: web3.PublicKey;
   authority: web3.PublicKey;
 }
 
-export interface AddSchemaArgs {
-  args: SchemaArgs;
+export interface CreateRecipeArgs {
+  args: RecipeArgs;
 }
 
 export interface ConsumeBuildMaterialAccounts {

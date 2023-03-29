@@ -17,7 +17,7 @@ extendBorsh();
 
 export const decodeItemClass = (buffer: Buffer): ItemClass => {
   const metadata = deserializeUnchecked(
-    ITEM_SCHEMA,
+    ITEM_recipe,
     ItemClass,
     buffer
   ) as ItemClass;
@@ -318,7 +318,7 @@ export enum BasicItemEffectType {
   DecrementPercentFromBase,
 }
 
-export const ITEM_SCHEMA = new Map<any, any>([
+export const ITEM_recipe = new Map<any, any>([
   [
     ItemClass,
     {
@@ -543,12 +543,12 @@ export const ITEM_SCHEMA = new Map<any, any>([
 export interface ItemClassV1 {
   authority: web3.PublicKey;
   items: web3.PublicKey;
-  schemaIndex: BN;
-  schemas: Schema[];
+  recipeIndex: BN;
+  recipes: Recipe[];
 }
 
-export interface Schema {
-  schemaIndex: BN;
+export interface Recipe {
+  recipeIndex: BN;
   itemClass: web3.PublicKey;
   buildEnabled: boolean;
   payment: Payment | null;
@@ -573,7 +573,7 @@ export interface ItemState {
 }
 
 export interface Build {
-  schemaIndex: BN;
+  recipeIndex: BN;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
   itemMint: web3.PublicKey | null;
