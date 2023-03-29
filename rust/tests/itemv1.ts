@@ -7,6 +7,7 @@ import {
   Idls,
   ItemProgram,
   Utils,
+  State,
 } from "@raindrops-protocol/raindrops";
 import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";
@@ -166,7 +167,7 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgram, build);
   });
 
-  it.only("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
+  it("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -205,7 +206,7 @@ describe.only("itemv1", () => {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: { amount: new anchor.BN(100000)}, // single use
+            degredation: { amount: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
@@ -213,7 +214,7 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: { amount: new anchor.BN(100000)}, // single use
+            degredation: { amount: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
@@ -685,6 +686,352 @@ describe.only("itemv1", () => {
     const itemClassDataPost = await itemProgram.getItemClassV1(itemClass);
     assert.isTrue(itemClassDataPost.recipeIndex.eq(new anchor.BN(1)));
   });
+
+  it.only("build pNFT with only 1 signature from builder", async () => {
+    const builder = await newPayer(connection);
+    const payer = await newPayer(connection);
+
+    console.log("builder: %s", builder.publicKey.toString());
+
+    const itemProgramPayer = await ItemProgram.getProgramWithConfig(
+      ItemProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemIDL,
+      }
+    );
+
+    const itemProgramBuilder = await ItemProgram.getProgramWithConfig(
+      ItemProgram,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(builder),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemIDL,
+      }
+    );
+
+    // ingredient 1, pNFT
+    const claymakerItemClass = await createItemClass(builder, connection, 1, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+    });
+
+    // ingredient 2, NFT
+    const sardItemClass = await createItemClass(builder, connection, 1, false, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+    });
+
+    // ingredient 3, pNFT
+    const clayItemClass = await createItemClass(builder, connection, 1, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(
+      builder,
+      connection,
+      1,
+      true,
+      {
+        buildEnabled: true,
+        payment: {
+          treasury: payer.publicKey,
+          amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+        },
+        ingredientArgs: [
+          {
+            itemClass: claymakerItemClass.itemClass,
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: null,
+              cooldown: null,
+            },
+          },
+          {
+            itemClass: sardItemClass.itemClass,
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: { amount: new anchor.BN(100000) }, // single use
+              cooldown: null,
+            },
+          },
+          {
+            itemClass: clayItemClass.itemClass,
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degredation: { amount: new anchor.BN(100000) }, // single use
+              cooldown: null,
+            },
+          },
+        ],
+      }
+    );
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(builder, connection, mint, outputItemClass.itemClass);
+    }
+
+    // start the build ix
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgramBuilder.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuildIx = await itemProgramBuilder.instruction.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgramBuilder.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgramBuilder.id
+    );
+
+    // add build payment ix
+    const addBuildPaymentAccounts: Instructions.Item.AddPaymentAccounts = {
+      build: build,
+      builder: builder.publicKey,
+      treasury: payer.publicKey,
+    };
+    const addBuildPaymentIx = await itemProgramBuilder.instruction.addPayment(addBuildPaymentAccounts)
+
+    const claymakerAta = splToken.getAssociatedTokenAddressSync(
+      claymakerItemClass.mints[0],
+      builder.publicKey
+    );
+
+    const [claymakerMetadata, _claymakerMetadataBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          claymakerItemClass.mints[0].toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [claymakerME, _claymakerMEBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        claymakerItemClass.mints[0].toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const [claymakerSourceTokenRecord, _claymakerSourceTokenRecordBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          claymakerItemClass.mints[0].toBuffer(),
+          Buffer.from("token_record"),
+          claymakerAta.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+     
+    const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
+      builder.publicKey,
+      "AllRuleSet"
+    );
+
+    // delegate claymaker ix
+    const approveClaymakerIx = mpl.createDelegateInstruction(
+      {
+        delegate: payer.publicKey,
+        metadata: claymakerMetadata,
+        masterEdition: claymakerME,
+        tokenRecord: claymakerSourceTokenRecord,
+        mint: claymakerItemClass.mints[0],
+        token: claymakerAta,
+        authority: builder.publicKey,
+        payer: builder.publicKey,
+        authorizationRules: ruleSetPda,
+        authorizationRulesProgram: mplAuth.PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        splTokenProgram: splToken.TOKEN_PROGRAM_ID,
+      },
+      {
+        delegateArgs: {
+          __kind: "TransferV1",
+          amount: 1,
+          authorizationData: null,
+        },
+      }
+    );
+
+    // delegate ingredient 2 ix
+    const sardAta = splToken.getAssociatedTokenAddressSync(sardItemClass.mints[0], builder.publicKey);
+    const approveSardIx = splToken.createApproveInstruction(sardAta, payer.publicKey, builder.publicKey, 1);
+
+    // delegate ingredient 3 ix
+    const clayAta = splToken.getAssociatedTokenAddressSync(
+      clayItemClass.mints[0],
+      builder.publicKey
+    );
+
+    const [clayMetadata, _clayMetadataBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          clayItemClass.mints[0].toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [clayME, _clayMEBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        clayItemClass.mints[0].toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const [claySourceTokenRecord, _claySourceTokenRecordBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          clayItemClass.mints[0].toBuffer(),
+          Buffer.from("token_record"),
+          clayAta.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+     
+    // delegate clay ix
+    const approveClayIx = mpl.createDelegateInstruction(
+      {
+        delegate: payer.publicKey,
+        metadata: clayMetadata,
+        masterEdition: clayME,
+        tokenRecord: claySourceTokenRecord,
+        mint: clayItemClass.mints[0],
+        token: clayAta,
+        authority: builder.publicKey,
+        payer: builder.publicKey,
+        authorizationRules: ruleSetPda,
+        authorizationRulesProgram: mplAuth.PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        splTokenProgram: splToken.TOKEN_PROGRAM_ID,
+      },
+      {
+        delegateArgs: {
+          __kind: "TransferV1",
+          amount: 1,
+          authorizationData: null,
+        },
+      }
+    );
+
+    const tx = new anchor.web3.Transaction().add(startBuildIx, approveClaymakerIx, approveSardIx, approveClayIx, addBuildPaymentIx)
+    const delegateTxSig = await itemProgramBuilder.client.provider.sendAndConfirm!(tx, undefined, {skipPreflight: true});
+    console.log("delegateTxSig: %s", delegateTxSig);
+
+    // verify claymaker permissionless
+    const verifyClaymakerAccounts: Instructions.Item.VerifyIngredientAccounts = {
+      ingredientMint: claymakerItemClass.mints[0],
+      itemClass: outputItemClass.itemClass,
+      payer: payer.publicKey,
+      builder: builder.publicKey,
+      ingredientItemClass: claymakerItemClass.itemClass,
+    }
+
+    const proof1 = claymakerItemClass.tree.getProof(0);
+
+    const verifyClaymakerArgs: Instructions.Item.VerifyIngredientArgs = {
+      root: proof1.root,
+      leafIndex: 0,
+      proof: proof1.proof,
+    }
+
+    const verifyClaymakerResult = await itemProgramPayer.verifyIngredient(verifyClaymakerAccounts, verifyClaymakerArgs);
+    console.log("verifyclaymakerTxSig: %s", verifyClaymakerResult.txid);
+
+    // have payer instead of builder add claymaker
+
+    const addClaymakerAccounts: Instructions.Item.AddIngredientAccounts = {
+      ingredientMint: claymakerItemClass.mints[0],
+      itemClass: outputItemClass.itemClass,
+      payer: payer.publicKey,
+      builder: builder.publicKey,
+      ingredientItemClass: claymakerItemClass.itemClass,
+    };
+
+    const addClaymakerArgs: Instructions.Item.AddIngredientArgs ={
+      amount: new anchor.BN(1),
+    };
+
+    const addClaymakerResult = await itemProgramPayer.addIngredient(addClaymakerAccounts, addClaymakerArgs);
+    console.log("addClaymakerTxSig: %s", addClaymakerResult.txid);
+
+    // verify ingredient2 permissionless
+    const verifySardAccounts: Instructions.Item.VerifyIngredientAccounts = {
+      ingredientMint: sardItemClass.mints[0],
+      itemClass: outputItemClass.itemClass,
+      payer: payer.publicKey,
+      builder: builder.publicKey,
+      ingredientItemClass: sardItemClass.itemClass,
+    }
+
+    const proof = sardItemClass.tree.getProof(0);
+
+    const verifySardArgs: Instructions.Item.VerifyIngredientArgs = {
+      root: proof.root,
+      leafIndex: 0,
+      proof: proof.proof,
+    }
+
+    const verifySardResult = await itemProgramPayer.verifyIngredient(verifySardAccounts, verifySardArgs);
+    console.log("verifySardTxSig: %s", verifySardResult.txid);
+
+    // have payer instead of builder add ingredient
+
+    const addSardAccounts: Instructions.Item.AddIngredientAccounts = {
+      ingredientMint: sardItemClass.mints[0],
+      itemClass: outputItemClass.itemClass,
+      payer: payer.publicKey,
+      builder: builder.publicKey,
+      ingredientItemClass: sardItemClass.itemClass,
+    };
+
+    const addSardArgs: Instructions.Item.AddIngredientArgs ={
+      amount: new anchor.BN(1),
+    };
+
+    const addIngredientResult = await itemProgramPayer.addIngredient(addSardAccounts, addSardArgs);
+    console.log("addSardTxSig: %s", addIngredientResult.txid);
+  });
 });
 
 async function newPayer(
@@ -758,7 +1105,10 @@ async function createItemClass(
         //collection: ingredientCollectionNft,
         //collectionAuthority: payer,
       });
-      console.log("createPNftTxSig: %s", ingredientMintOutput.response.signature);
+      console.log(
+        "createPNftTxSig: %s",
+        ingredientMintOutput.response.signature
+      );
     } else {
       ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.NonFungible,
@@ -769,7 +1119,10 @@ async function createItemClass(
         collection: ingredientCollectionNft,
         collectionAuthority: payer,
       });
-      console.log("createNftTxSig: %s", ingredientMintOutput.response.signature);
+      console.log(
+        "createNftTxSig: %s",
+        ingredientMintOutput.response.signature
+      );
     }
 
     // add mint to the items tree on chain
@@ -915,11 +1268,14 @@ async function transferPNft(
   console.log("itemTransferTxSig: %s", itemTransferTxSig);
 }
 
-async function createCollectionNft(payer: anchor.web3.Keypair, connection: anchor.web3.Connection): Promise<anchor.web3.PublicKey> {
+async function createCollectionNft(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection
+): Promise<anchor.web3.PublicKey> {
   const client = new metaplex.Metaplex(connection, {}).use(
     metaplex.keypairIdentity(payer)
   );
-  
+
   const result = await client.nfts().create({
     tokenStandard: mpl.TokenStandard.NonFungible,
     uri: "https://foo.com/bar.json",
@@ -929,7 +1285,7 @@ async function createCollectionNft(payer: anchor.web3.Keypair, connection: ancho
     isCollection: true,
   });
 
-  return result.mintAddress
+  return result.mintAddress;
 }
 
 async function createRuleSet(
@@ -950,9 +1306,8 @@ async function createRuleSet(
     owner: Array.from(payer.publicKey.toBytes()),
     operations: {
       "Delegate:Transfer": {
-        ProgramOwnedList: {
-          programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
-          field: "Delegate",
+        All: {
+          rules: [],
         },
       },
       "Transfer:Owner": {
@@ -1060,14 +1415,13 @@ async function addIngredient(
   ingredientAmount: anchor.BN
 ) {
   // verify build ingredient
-  const verifyIngredientAccounts: Instructions.Item.VerifyIngredientAccounts =
-    {
-      ingredientMint: ingredientMint,
-      ingredientItemClass: ingredientItemClass,
-      itemClass: outputItemClass,
-      builder: itemProgram.client.provider.publicKey,
-      payer: itemProgram.client.provider.publicKey,
-    };
+  const verifyIngredientAccounts: Instructions.Item.VerifyIngredientAccounts = {
+    ingredientMint: ingredientMint,
+    ingredientItemClass: ingredientItemClass,
+    itemClass: outputItemClass,
+    builder: itemProgram.client.provider.publicKey,
+    payer: itemProgram.client.provider.publicKey,
+  };
 
   // get proof for mint
   const proof = tree.getProof(0);
@@ -1147,8 +1501,10 @@ async function cleanBuild(
   // get all build ingredient mints/item classes
   const buildData = await itemProgram.client.account.build.fetch(build);
   // [item_class, mint pubkeys]
-  const buildIngredientMints: [anchor.web3.PublicKey, anchor.web3.PublicKey[]][] =
-    [];
+  const buildIngredientMints: [
+    anchor.web3.PublicKey,
+    anchor.web3.PublicKey[]
+  ][] = [];
   for (let ingredientData of buildData.ingredients as any[]) {
     let mints: anchor.web3.PublicKey[] = [];
     for (let mintData of ingredientData.mints) {
@@ -1197,12 +1553,10 @@ async function cleanBuild(
             payer: itemProgram.client.provider.publicKey,
           };
 
-        const consumeIngredientResult =
-          await itemProgram.consumeIngredient(consumeIngredientAccounts);
-        console.log(
-          "consumeIngredientTxSig: %s",
-          consumeIngredientResult.txid
+        const consumeIngredientResult = await itemProgram.consumeIngredient(
+          consumeIngredientAccounts
         );
+        console.log("consumeIngredientTxSig: %s", consumeIngredientResult.txid);
       } else {
         // return it
         const returnIngredientAccounts: Instructions.Item.ReturnIngredientAccounts =
@@ -1216,10 +1570,7 @@ async function cleanBuild(
         const returnIngredientResult = await itemProgram.returnIngredient(
           returnIngredientAccounts
         );
-        console.log(
-          "returnIngredientTxSig: %s",
-          returnIngredientResult.txid
-        );
+        console.log("returnIngredientTxSig: %s", returnIngredientResult.txid);
         // assert builder received their item back
         const builderItemAta = splToken.getAssociatedTokenAddressSync(
           mint,

@@ -1343,6 +1343,7 @@ export class Instruction extends SolKitInstruction {
         ingredientDestinationTokenRecord: ingredientDestinationTokenRecord,
         build: build,
         item: item,
+        payer: accounts.payer,
         builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2377,6 +2378,7 @@ export interface AddIngredientAccounts {
   ingredientMint: web3.PublicKey;
   ingredientItemClass: web3.PublicKey;
   itemClass: web3.PublicKey;
+  payer: web3.PublicKey;
   builder: web3.PublicKey;
 }
 

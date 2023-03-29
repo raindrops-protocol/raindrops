@@ -30,28 +30,35 @@ pub struct AddIngredientPNft<'info> {
     /// CHECK: Done by token metadata
     pub auth_rules: UncheckedAccount<'info>,
 
-    #[account(mut, associated_token::mint = ingredient_mint, associated_token::authority = builder)]
+    //#[account(mut, associated_token::mint = ingredient_mint, associated_token::authority = builder)]
+    #[account(mut)]
     pub ingredient_source: Box<Account<'info, token::TokenAccount>>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
     pub ingredient_source_token_record: UncheckedAccount<'info>,
 
-    #[account(init_if_needed, payer = builder, associated_token::mint = ingredient_mint, associated_token::authority = build)]
+    #[account(init_if_needed, payer = payer, associated_token::mint = ingredient_mint, associated_token::authority = build)]
     pub ingredient_destination: Box<Account<'info, token::TokenAccount>>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
     pub ingredient_destination_token_record: UncheckedAccount<'info>,
 
-    #[account(mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
+    #[account(mut,
+        has_one = builder,
+        seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(init_if_needed, payer = builder, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), ingredient_item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump)]
+    #[account(init_if_needed, payer = payer, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), ingredient_item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
+    /// CHECK: done by build pda
     #[account(mut)]
-    pub builder: Signer<'info>,
+    pub builder: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
 
     pub rent: Sysvar<'info, Rent>,
 
@@ -120,8 +127,8 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
         edition: Some(ctx.accounts.ingredient_edition.key()),
         owner_token_record: Some(ctx.accounts.ingredient_source_token_record.key()),
         destination_token_record: Some(ctx.accounts.ingredient_destination_token_record.key()),
-        authority: ctx.accounts.builder.key(),
-        payer: ctx.accounts.builder.key(),
+        authority: ctx.accounts.payer.key(),
+        payer: ctx.accounts.payer.key(),
         system_program: ctx.accounts.system_program.key(),
         sysvar_instructions: ctx.accounts.instructions.key(),
         spl_token_program: ctx.accounts.token_program.key(),
@@ -144,7 +151,7 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
             .ingredient_destination_token_record
             .to_account_info(),
         ctx.accounts.build.to_account_info(),
-        ctx.accounts.builder.to_account_info(),
+        ctx.accounts.payer.to_account_info(),
         ctx.accounts.system_program.to_account_info(),
         ctx.accounts.instructions.to_account_info(),
         ctx.accounts.token_program.to_account_info(),

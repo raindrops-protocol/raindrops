@@ -27,7 +27,7 @@
   "dependencies": {
     "@metaplex-foundation/js": "^0.18.1",
     "@metaplex-foundation/mpl-token-auth-rules": "1.1.0",
-    "@metaplex-foundation/mpl-token-metadata": "^2.8.3",
+    "@metaplex-foundation/mpl-token-metadata": "^2.9.1",
     "@msgpack/msgpack": "^2.8.0",
     "@project-serum/anchor": "^0.26.0",
     "@project-serum/common": "^0.0.1-beta.3",
