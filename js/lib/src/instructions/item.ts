@@ -1807,14 +1807,12 @@ export class Instruction extends SolKitInstruction {
 
     const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-      const pNftIxns = await this.consumeIngredientPnft(
+      const pNftIx = await this.consumeIngredientPnft(
         accounts,
         item,
         itemSource,
-        outputItemClass,
-        outputItemClassAuthority
       );
-      ixns.push(...pNftIxns);
+      ixns.push(pNftIx);
     } else {
       const ix = await this.consumeIngredientSpl(
         accounts,
@@ -1831,10 +1829,8 @@ export class Instruction extends SolKitInstruction {
   private async consumeIngredientPnft(
     accounts: ConsumeIngredientAccounts,
     item: web3.PublicKey,
-    itemSource: web3.PublicKey,
-    outputItemClass: web3.PublicKey,
-    outputItemClassAuthority: web3.PublicKey
-  ): Promise<web3.TransactionInstruction[]> {
+    itemAta: web3.PublicKey,
+  ): Promise<web3.TransactionInstruction> {
     const [itemMetadata, _itemMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
         [
@@ -1844,12 +1840,6 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
-
-    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
-      this.program.client.provider.connection,
-      itemMetadata,
-      "confirmed"
-    );
 
     const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -1861,44 +1851,17 @@ export class Instruction extends SolKitInstruction {
       mpl.PROGRAM_ID
     );
 
-    const itemDestination = await splToken.getAssociatedTokenAddress(
-      accounts.ingredientMint,
-      outputItemClassAuthority
-    );
-
-    const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
+    const [itemTokenRecord, _itemTokenRecordBump] =
       web3.PublicKey.findProgramAddressSync(
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
           accounts.ingredientMint.toBuffer(),
           Buffer.from("token_record"),
-          itemSource.toBuffer(),
+          itemAta.toBuffer(),
         ],
         mpl.PROGRAM_ID
       );
-
-    const [itemDestinationTokenRecord, _itemDestinationTokenRecordBump] =
-      web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          mpl.PROGRAM_ID.toBuffer(),
-          accounts.ingredientMint.toBuffer(),
-          Buffer.from("token_record"),
-          itemDestination.toBuffer(),
-        ],
-        mpl.PROGRAM_ID
-      );
-
-    // double CU and fee
-
-    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
-      units: 400000,
-    });
-
-    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 5000,
-    });
 
     const ix = await this.program.client.methods
       .consumeIngredientPnft()
@@ -1907,24 +1870,17 @@ export class Instruction extends SolKitInstruction {
         itemMint: accounts.ingredientMint,
         itemMetadata: itemMetadata,
         itemEdition: itemME,
-        authRules: itemMetadataData.programmableConfig.ruleSet,
-        itemSource: itemSource,
-        itemSourceTokenRecord: itemSourceTokenRecord,
-        itemDestination: itemDestination,
-        itemDestinationTokenRecord: itemDestinationTokenRecord,
+        itemAta: itemAta,
+        itemTokenRecord: itemTokenRecord,
         build: accounts.build,
-        outputItemClass: outputItemClass,
-        outputItemClassAuthority: outputItemClassAuthority,
         payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
-        authRulesProgram: MPL_AUTH_RULES_PROGRAM_ID,
       })
       .instruction();
 
-    return [increaseCUIx, addPriorityFeeIx, ix];
+    return ix;
   }
 
   private async consumeIngredientSpl(

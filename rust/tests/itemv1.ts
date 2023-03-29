@@ -166,7 +166,7 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgram, build);
   });
 
-  it("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
+  it.only("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {

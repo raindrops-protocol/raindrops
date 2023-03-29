@@ -1665,7 +1665,7 @@ export type RaindropsItem = {
         },
         {
           "name": "itemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1679,43 +1679,18 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "authRules",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemSource",
+          "name": "itemAta",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "itemSourceTokenRecord",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemDestination",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemDestinationTokenRecord",
+          "name": "itemTokenRecord",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "outputItemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "outputItemClassAuthority",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1744,17 +1719,7 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "tokenMetadata",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "authRulesProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -6123,7 +6088,7 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "itemMint",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -6137,43 +6102,18 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "authRules",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemSource",
+          "name": "itemAta",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "itemSourceTokenRecord",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemDestination",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemDestinationTokenRecord",
+          "name": "itemTokenRecord",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "build",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "outputItemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "outputItemClassAuthority",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -6202,17 +6142,7 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "tokenMetadata",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "authRulesProgram",
           "isMut": false,
           "isSigner": false
         }
