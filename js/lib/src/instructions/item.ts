@@ -1052,43 +1052,43 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const materials: any[] = [];
-    for (let materialArg of args.recipeArgs.materialArgs) {
+    const ingredients: any[] = [];
+    for (let ingredientArg of args.recipeArgs.ingredientArgs) {
       let degredationBuildEffect;
-      if (materialArg.buildEffect.degredation) {
+      if (ingredientArg.buildEffect.degredation) {
         degredationBuildEffect = {
-          on: { amount: materialArg.buildEffect.degredation.amount },
+          on: { amount: ingredientArg.buildEffect.degredation.amount },
         };
       } else {
         degredationBuildEffect = { off: {} };
       }
 
       let cooldownBuildEffect;
-      if (materialArg.buildEffect.cooldown) {
+      if (ingredientArg.buildEffect.cooldown) {
         cooldownBuildEffect = {
-          on: { seconds: materialArg.buildEffect.cooldown.seconds },
+          on: { seconds: ingredientArg.buildEffect.cooldown.seconds },
         };
       } else {
         cooldownBuildEffect = { off: {} };
       }
 
-      let material = {
-        itemClass: materialArg.itemClass,
-        requiredAmount: materialArg.requiredAmount,
+      let ingredient = {
+        itemClass: ingredientArg.itemClass,
+        requiredAmount: ingredientArg.requiredAmount,
         buildEffect: {
           degredation: degredationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
       };
 
-      materials.push(material);
+      ingredients.push(ingredient);
     }
 
     const ixArgs = {
       recipeArgs: {
         buildEnabled: args.recipeArgs.buildEnabled,
         payment: args.recipeArgs.payment,
-        materials: materials,
+        ingredients: ingredients,
       },
     };
 
@@ -1174,15 +1174,15 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async addBuildMaterial(
-    accounts: AddBuildMaterialAccounts,
-    args: AddBuildMaterialArgs
+  async addIngredient(
+    accounts: AddIngredientAccounts,
+    args: AddIngredientArgs
   ): Promise<web3.TransactionInstruction[]> {
     const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("item_v1"),
-        accounts.materialItemClass.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientItemClass.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
       ],
       this.program.id
     );
@@ -1199,44 +1199,44 @@ export class Instruction extends SolKitInstruction {
     // detect what type of token we are adding
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
-      accounts.materialMint
+      accounts.ingredientMint
     );
 
     const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-      const pNftIxns = await this.addBuildMaterialPnft(accounts, build, item);
+      const pNftIxns = await this.addIngredientPnft(accounts, build, item);
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.addBuildMaterialSpl(accounts, build, item, args);
+      const ix = await this.addIngredientSpl(accounts, build, item, args);
       ixns.push(ix);
     }
 
     return ixns;
   }
 
-  private async addBuildMaterialSpl(
-    accounts: AddBuildMaterialAccounts,
+  private async addIngredientSpl(
+    accounts: AddIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey,
-    args: AddBuildMaterialArgs
+    args: AddIngredientArgs
   ): Promise<web3.TransactionInstruction> {
-    const materialSource = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+    const ingredientSource = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
       accounts.builder
     );
-    const materialDestination = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+    const ingredientDestination = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
       build,
       true
     );
 
     const ix = await this.program.client.methods
-      .addBuildMaterialSpl(args)
+      .addIngredientSpl(args)
       .accounts({
-        materialMint: accounts.materialMint,
-        materialItemClass: accounts.materialItemClass,
-        materialSource: materialSource,
-        materialDestination: materialDestination,
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientSource: ingredientSource,
+        ingredientDestination: ingredientDestination,
         build: build,
         item: item,
         builder: accounts.builder,
@@ -1251,70 +1251,70 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  private async addBuildMaterialPnft(
-    accounts: AddBuildMaterialAccounts,
+  private async addIngredientPnft(
+    accounts: AddIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey
   ): Promise<web3.TransactionInstruction[]> {
-    const [materialMetadata, _materialMetadataBump] =
+    const [ingredientMetadata, _ingredientMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
         ],
         mpl.PROGRAM_ID
       );
 
-    const materialMetadataData = await mpl.Metadata.fromAccountAddress(
+    const ingredientMetadataData = await mpl.Metadata.fromAccountAddress(
       this.program.client.provider.connection,
-      materialMetadata,
+      ingredientMetadata,
       "confirmed"
     );
 
-    const [materialME, _materialMEBump] = web3.PublicKey.findProgramAddressSync(
+    const [ingredientME, _ingredientMEBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("metadata"),
         mpl.PROGRAM_ID.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
         Buffer.from("edition"),
       ],
       mpl.PROGRAM_ID
     );
 
-    const materialSource = splToken.getAssociatedTokenAddressSync(
-      accounts.materialMint,
+    const ingredientSource = splToken.getAssociatedTokenAddressSync(
+      accounts.ingredientMint,
       accounts.builder
     );
 
-    const materialDestination = splToken.getAssociatedTokenAddressSync(
-      accounts.materialMint,
+    const ingredientDestination = splToken.getAssociatedTokenAddressSync(
+      accounts.ingredientMint,
       build,
       true
     );
 
-    const [materialSourceTokenRecord, _materialSourceTokenRecordBump] =
+    const [ingredientSourceTokenRecord, _ingredientSourceTokenRecordBump] =
       web3.PublicKey.findProgramAddressSync(
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
           Buffer.from("token_record"),
-          materialSource.toBuffer(),
+          ingredientSource.toBuffer(),
         ],
         mpl.PROGRAM_ID
       );
 
     const [
-      materialDestinationTokenRecord,
-      _materialDestinationTokenRecordBump,
+      ingredientDestinationTokenRecord,
+      _ingredientDestinationTokenRecordBump,
     ] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("metadata"),
         mpl.PROGRAM_ID.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
         Buffer.from("token_record"),
-        materialDestination.toBuffer(),
+        ingredientDestination.toBuffer(),
       ],
       mpl.PROGRAM_ID
     );
@@ -1330,17 +1330,17 @@ export class Instruction extends SolKitInstruction {
     });
 
     const ix = await this.program.client.methods
-      .addBuildMaterialPnft()
+      .addIngredientPnft()
       .accounts({
-        materialMint: accounts.materialMint,
-        materialItemClass: accounts.materialItemClass,
-        materialMetadata: materialMetadata,
-        materialEdition: materialME,
-        authRules: materialMetadataData.programmableConfig.ruleSet,
-        materialSource: materialSource,
-        materialSourceTokenRecord: materialSourceTokenRecord,
-        materialDestination: materialDestination,
-        materialDestinationTokenRecord: materialDestinationTokenRecord,
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientMetadata: ingredientMetadata,
+        ingredientEdition: ingredientME,
+        authRules: ingredientMetadataData.programmableConfig.ruleSet,
+        ingredientSource: ingredientSource,
+        ingredientSourceTokenRecord: ingredientSourceTokenRecord,
+        ingredientDestination: ingredientDestination,
+        ingredientDestinationTokenRecord: ingredientDestinationTokenRecord,
         build: build,
         item: item,
         builder: accounts.builder,
@@ -1357,16 +1357,16 @@ export class Instruction extends SolKitInstruction {
     return [increaseCUIx, addPriorityFeeIx, ix];
   }
 
-  async verifyBuildMaterial(
-    accounts: VerifyBuildMaterialAccounts,
-    args: VerifyBuildMaterialArgs
+  async verifyIngredient(
+    accounts: VerifyIngredientAccounts,
+    args: VerifyIngredientArgs
   ): Promise<web3.TransactionInstruction> {
-    const materialItemClassData =
+    const ingredientItemClassData =
       await this.program.client.account.itemClassV1.fetch(
-        accounts.materialItemClass
+        accounts.ingredientItemClass
       );
-    const materialItemClassItems = new web3.PublicKey(
-      materialItemClassData.items
+    const ingredientItemClassItems = new web3.PublicKey(
+      ingredientItemClassData.items
     );
 
     const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
@@ -1394,11 +1394,11 @@ export class Instruction extends SolKitInstruction {
     };
 
     const ix = await this.program.client.methods
-      .verifyBuildMaterial(ixArgs)
+      .verifyIngredient(ixArgs)
       .accounts({
-        materialMint: accounts.materialMint,
-        materialItemClass: accounts.materialItemClass,
-        materialItemClassItems: materialItemClassItems,
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientItemClassItems: ingredientItemClassItems,
         build: build,
         builder: accounts.builder,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
@@ -1571,8 +1571,8 @@ export class Instruction extends SolKitInstruction {
     const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("item_v1"),
-        accounts.materialItemClass.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientItemClass.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
       ],
       this.program.id
     );
@@ -1581,7 +1581,7 @@ export class Instruction extends SolKitInstruction {
       .applyBuildEffect()
       .accounts({
         item: item,
-        itemMint: accounts.materialMint,
+        itemMint: accounts.ingredientMint,
         build: accounts.build,
         payer: accounts.payer,
       })
@@ -1589,14 +1589,14 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async returnBuildMaterial(
-    accounts: ReturnBuildMaterialAccounts
+  async returnIngredient(
+    accounts: ReturnIngredientAccounts
   ): Promise<web3.TransactionInstruction[]> {
     const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("item_v1"),
-        accounts.materialItemClass.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientItemClass.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
       ],
       this.program.id
     );
@@ -1604,19 +1604,19 @@ export class Instruction extends SolKitInstruction {
     // detect what type of token we are adding
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
-      accounts.materialMint
+      accounts.ingredientMint
     );
 
     const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-      const pNftIxns = await this.returnBuildMaterialPNft(
+      const pNftIxns = await this.returnIngredientPNft(
         accounts,
         accounts.build,
         item
       );
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.returnBuildMaterialSpl(
+      const ix = await this.returnIngredientSpl(
         accounts,
         accounts.build,
         item
@@ -1627,8 +1627,8 @@ export class Instruction extends SolKitInstruction {
     return ixns;
   }
 
-  private async returnBuildMaterialPNft(
-    accounts: ReturnBuildMaterialAccounts,
+  private async returnIngredientPNft(
+    accounts: ReturnIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey
   ): Promise<web3.TransactionInstruction[]> {
@@ -1637,7 +1637,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
         ],
         mpl.PROGRAM_ID
       );
@@ -1652,7 +1652,7 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("metadata"),
         mpl.PROGRAM_ID.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
         Buffer.from("edition"),
       ],
       mpl.PROGRAM_ID
@@ -1662,12 +1662,12 @@ export class Instruction extends SolKitInstruction {
     const builder = new web3.PublicKey(buildData.builder);
 
     const itemSource = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+      accounts.ingredientMint,
       build,
       true
     );
     const itemDestination = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+      accounts.ingredientMint,
       builder
     );
 
@@ -1676,7 +1676,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
           Buffer.from("token_record"),
           itemSource.toBuffer(),
         ],
@@ -1688,7 +1688,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
           Buffer.from("token_record"),
           itemDestination.toBuffer(),
         ],
@@ -1706,10 +1706,10 @@ export class Instruction extends SolKitInstruction {
     });
 
     const ix = await this.program.client.methods
-      .returnBuildMaterialPnft()
+      .returnIngredientPnft()
       .accounts({
         item: item,
-        itemMint: accounts.materialMint,
+        itemMint: accounts.ingredientMint,
         itemMetadata: itemMetadata,
         itemEdition: itemME,
         authRules: itemMetadataData.programmableConfig.ruleSet,
@@ -1733,8 +1733,8 @@ export class Instruction extends SolKitInstruction {
     return [increaseCUIx, addPriorityFeeIx, ix];
   }
 
-  private async returnBuildMaterialSpl(
-    accounts: ReturnBuildMaterialAccounts,
+  private async returnIngredientSpl(
+    accounts: ReturnIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey
   ): Promise<web3.TransactionInstruction> {
@@ -1742,20 +1742,20 @@ export class Instruction extends SolKitInstruction {
     const builder = new web3.PublicKey(buildData.builder);
 
     const itemSource = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+      accounts.ingredientMint,
       build,
       true
     );
     const itemDestination = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+      accounts.ingredientMint,
       builder
     );
 
     const ix = await this.program.client.methods
-      .returnBuildMaterialSpl()
+      .returnIngredientSpl()
       .accounts({
         item: item,
-        itemMint: accounts.materialMint,
+        itemMint: accounts.ingredientMint,
         itemSource: itemSource,
         itemDestination: itemDestination,
         build: build,
@@ -1770,14 +1770,14 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async consumeBuildMaterial(
-    accounts: ConsumeBuildMaterialAccounts
+  async consumeIngredient(
+    accounts: ConsumeIngredientAccounts
   ): Promise<web3.TransactionInstruction[]> {
     const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("item_v1"),
-        accounts.materialItemClass.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientItemClass.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
       ],
       this.program.id
     );
@@ -1796,18 +1796,18 @@ export class Instruction extends SolKitInstruction {
 
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
-      accounts.materialMint
+      accounts.ingredientMint
     );
 
     const itemSource = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+      accounts.ingredientMint,
       accounts.build,
       true
     );
 
     const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-      const pNftIxns = await this.consumeBuildMaterialPnft(
+      const pNftIxns = await this.consumeIngredientPnft(
         accounts,
         item,
         itemSource,
@@ -1816,7 +1816,7 @@ export class Instruction extends SolKitInstruction {
       );
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.consumeBuildMaterialSpl(
+      const ix = await this.consumeIngredientSpl(
         accounts,
         item,
         builder,
@@ -1828,8 +1828,8 @@ export class Instruction extends SolKitInstruction {
     return ixns;
   }
 
-  private async consumeBuildMaterialPnft(
-    accounts: ConsumeBuildMaterialAccounts,
+  private async consumeIngredientPnft(
+    accounts: ConsumeIngredientAccounts,
     item: web3.PublicKey,
     itemSource: web3.PublicKey,
     outputItemClass: web3.PublicKey,
@@ -1840,7 +1840,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
         ],
         mpl.PROGRAM_ID
       );
@@ -1855,14 +1855,14 @@ export class Instruction extends SolKitInstruction {
       [
         Buffer.from("metadata"),
         mpl.PROGRAM_ID.toBuffer(),
-        accounts.materialMint.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
         Buffer.from("edition"),
       ],
       mpl.PROGRAM_ID
     );
 
     const itemDestination = await splToken.getAssociatedTokenAddress(
-      accounts.materialMint,
+      accounts.ingredientMint,
       outputItemClassAuthority
     );
 
@@ -1871,7 +1871,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
           Buffer.from("token_record"),
           itemSource.toBuffer(),
         ],
@@ -1883,7 +1883,7 @@ export class Instruction extends SolKitInstruction {
         [
           Buffer.from("metadata"),
           mpl.PROGRAM_ID.toBuffer(),
-          accounts.materialMint.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
           Buffer.from("token_record"),
           itemDestination.toBuffer(),
         ],
@@ -1901,10 +1901,10 @@ export class Instruction extends SolKitInstruction {
     });
 
     const ix = await this.program.client.methods
-      .consumeBuildMaterialPnft()
+      .consumeIngredientPnft()
       .accounts({
         item: item,
-        itemMint: accounts.materialMint,
+        itemMint: accounts.ingredientMint,
         itemMetadata: itemMetadata,
         itemEdition: itemME,
         authRules: itemMetadataData.programmableConfig.ruleSet,
@@ -1927,17 +1927,17 @@ export class Instruction extends SolKitInstruction {
     return [increaseCUIx, addPriorityFeeIx, ix];
   }
 
-  private async consumeBuildMaterialSpl(
-    accounts: ConsumeBuildMaterialAccounts,
+  private async consumeIngredientSpl(
+    accounts: ConsumeIngredientAccounts,
     item: web3.PublicKey,
     builder: web3.PublicKey,
     itemSource: web3.PublicKey
   ): Promise<web3.TransactionInstruction> {
     const ix = await this.program.client.methods
-      .consumeBuildMaterialSpl()
+      .consumeIngredientSpl()
       .accounts({
         item: item,
-        itemMint: accounts.materialMint,
+        itemMint: accounts.ingredientMint,
         itemSource: itemSource,
         build: accounts.build,
         builder: builder,
@@ -1953,41 +1953,41 @@ export class Instruction extends SolKitInstruction {
     accounts: CreateRecipeAccounts,
     args: CreateRecipeArgs
   ): Promise<web3.TransactionInstruction> {
-    const materials: any[] = [];
-    for (const materialArg of args.args.materialArgs) {
+    const ingredients: any[] = [];
+    for (const ingredientArg of args.args.ingredientArgs) {
       let degredationBuildEffect;
-      if (materialArg.buildEffect.degredation) {
+      if (ingredientArg.buildEffect.degredation) {
         degredationBuildEffect = {
-          on: { amount: materialArg.buildEffect.degredation.amount },
+          on: { amount: ingredientArg.buildEffect.degredation.amount },
         };
       } else {
         degredationBuildEffect = { off: {} };
       }
 
       let cooldownBuildEffect;
-      if (materialArg.buildEffect.cooldown) {
+      if (ingredientArg.buildEffect.cooldown) {
         cooldownBuildEffect = {
-          on: { seconds: materialArg.buildEffect.cooldown.seconds },
+          on: { seconds: ingredientArg.buildEffect.cooldown.seconds },
         };
       } else {
         cooldownBuildEffect = { off: {} };
       }
 
-      const material = {
-        itemClass: materialArg.itemClass,
-        requiredAmount: materialArg.requiredAmount,
+      const ingredient = {
+        itemClass: ingredientArg.itemClass,
+        requiredAmount: ingredientArg.requiredAmount,
         buildEffect: {
           degredation: degredationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
       };
 
-      materials.push(material);
+      ingredients.push(ingredient);
     }
 
     const ixArgs = {
       buildEnabled: args.args.buildEnabled,
-      materials: materials,
+      ingredients: ingredients,
       payment: args.args.payment,
     };
 
@@ -2376,7 +2376,7 @@ export interface CreateItemClassV1Args {
 export interface RecipeArgs {
   buildEnabled: boolean;
   payment: Payment | null;
-  materialArgs: RecipeMaterialDataArgs[];
+  ingredientArgs: RecipeIngredientDataArgs[];
 }
 
 export interface PaymentState {
@@ -2389,7 +2389,7 @@ export interface Payment {
   amount: BN;
 }
 
-export interface RecipeMaterialDataArgs {
+export interface RecipeIngredientDataArgs {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
   buildEffect: BuildEffect;
@@ -2417,25 +2417,25 @@ export interface StartBuildArgs {
   recipeIndex: BN;
 }
 
-export interface AddBuildMaterialAccounts {
-  materialMint: web3.PublicKey;
-  materialItemClass: web3.PublicKey;
+export interface AddIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
   itemClass: web3.PublicKey;
   builder: web3.PublicKey;
 }
 
-export interface AddBuildMaterialArgs {
+export interface AddIngredientArgs {
   amount: BN;
 }
 
-export interface VerifyBuildMaterialAccounts {
-  materialMint: web3.PublicKey;
-  materialItemClass: web3.PublicKey;
+export interface VerifyIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
   itemClass: web3.PublicKey;
   builder: web3.PublicKey;
 }
 
-export interface VerifyBuildMaterialArgs {
+export interface VerifyIngredientArgs {
   root: Buffer;
   leafIndex: number;
   proof: Buffer[];
@@ -2464,15 +2464,15 @@ export interface AddItemsToItemClass {
 }
 
 export interface ApplyBuildEffectAccounts {
-  materialMint: web3.PublicKey;
-  materialItemClass: web3.PublicKey;
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
   build: web3.PublicKey;
   payer: web3.PublicKey;
 }
 
-export interface ReturnBuildMaterialAccounts {
-  materialMint: web3.PublicKey;
-  materialItemClass: web3.PublicKey;
+export interface ReturnIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
   build: web3.PublicKey;
   payer: web3.PublicKey;
 }
@@ -2486,9 +2486,9 @@ export interface CreateRecipeArgs {
   args: RecipeArgs;
 }
 
-export interface ConsumeBuildMaterialAccounts {
-  materialMint: web3.PublicKey;
-  materialItemClass: web3.PublicKey;
+export interface ConsumeIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
   payer: web3.PublicKey;
   build: web3.PublicKey;
 }

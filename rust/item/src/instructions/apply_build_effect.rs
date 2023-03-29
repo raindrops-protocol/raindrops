@@ -33,17 +33,17 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
 
     // apply build effect defined in the build pda (derived from the schema)
     let mut applied = false;
-    for build_material_data in ctx.accounts.build.materials.iter_mut() {
+    for build_ingredient_data in ctx.accounts.build.ingredients.iter_mut() {
         // find the correct item class for the item
-        if build_material_data
+        if build_ingredient_data
             .item_class
             .ne(&ctx.accounts.item.item_class.key())
         {
             continue;
         }
 
-        // find the specific item within the build material that is referenced in this instruction
-        for mint_data in build_material_data.mints.iter_mut() {
+        // find the specific item within the build ingredient that is referenced in this instruction
+        for mint_data in build_ingredient_data.mints.iter_mut() {
             if mint_data.mint.ne(&ctx.accounts.item_mint.key()) {
                 continue;
             }
@@ -56,13 +56,13 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
             mint_data.build_effect_applied = true;
 
             // apply degredation
-            build_material_data
+            build_ingredient_data
                 .build_effect
                 .degredation
                 .apply(&mut ctx.accounts.item.item_state);
 
             // apply cooldown
-            build_material_data
+            build_ingredient_data
                 .build_effect
                 .cooldown
                 .apply(&mut ctx.accounts.item.item_state);
@@ -70,7 +70,7 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
             applied = true;
         }
     }
-    require!(applied, ErrorCode::IncorrectMaterial);
+    require!(applied, ErrorCode::IncorrectIngredient);
 
     Ok(())
 }

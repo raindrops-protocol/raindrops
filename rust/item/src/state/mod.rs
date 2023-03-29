@@ -6,8 +6,8 @@ pub mod accounts;
 pub mod errors;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct BuildMaterialData {
-    // each item used for this build material must be a member of this item class
+pub struct BuildIngredientData {
+    // each item used for this build ingredient must be a member of this item class
     pub item_class: Pubkey,
 
     // current amount of items escrowed
@@ -19,22 +19,22 @@ pub struct BuildMaterialData {
     // defines what happens to these items after being used in a build
     pub build_effect: BuildEffect,
 
-    pub mints: Vec<BuildMaterialMint>,
+    pub mints: Vec<IngredientMint>,
 }
 
-impl BuildMaterialData {
+impl BuildIngredientData {
     pub fn space(required_amount: usize) -> usize {
         (1 + 32) + // verified_item_mint
         32 + // item_class
         8 + // current amount
         8 + // required amount
         BuildEffect::SPACE + // build effect
-        (4 + (required_amount * BuildMaterialMint::SPACE))
+        (4 + (required_amount * IngredientMint::SPACE))
     }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct BuildMaterialMint {
+pub struct IngredientMint {
     // a mint which has been escrowed to the build
     pub mint: Pubkey,
 
@@ -43,13 +43,13 @@ pub struct BuildMaterialMint {
     pub build_effect_applied: bool,
 }
 
-impl BuildMaterialMint {
+impl IngredientMint {
     pub const SPACE: usize = 32 + // mint
     1; // build_effect_applied
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct RecipeMaterialData {
+pub struct RecipeIngredientData {
     // the item must be a member of this item class
     pub item_class: Pubkey,
 
@@ -60,15 +60,15 @@ pub struct RecipeMaterialData {
     pub build_effect: BuildEffect,
 }
 
-impl RecipeMaterialData {
+impl RecipeIngredientData {
     pub const SPACE: usize = 32 + // item class
     8 + // required amount
     BuildEffect::SPACE; // build effect
 }
 
-impl From<RecipeMaterialData> for BuildMaterialData {
-    fn from(value: RecipeMaterialData) -> Self {
-        BuildMaterialData {
+impl From<RecipeIngredientData> for BuildIngredientData {
+    fn from(value: RecipeIngredientData) -> Self {
+        BuildIngredientData {
             item_class: value.item_class,
             current_amount: 0,
             required_amount: value.required_amount,

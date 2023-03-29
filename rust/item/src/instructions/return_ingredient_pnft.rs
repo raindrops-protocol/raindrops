@@ -6,13 +6,13 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, ItemV1},
+    accounts::{Build, ItemV1},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, TokenMetadataProgram,
 };
 
 #[derive(Accounts)]
-pub struct ConsumeBuildMaterialPNft<'info> {
+pub struct ReturnIngredientPNft<'info> {
     #[account(mut,
         has_one = item_mint,
         seeds = [ItemV1::PREFIX.as_bytes(), item.item_class.key().as_ref(), item_mint.key().as_ref()], bump)]
@@ -38,7 +38,7 @@ pub struct ConsumeBuildMaterialPNft<'info> {
     #[account(mut)]
     pub item_source_token_record: UncheckedAccount<'info>,
 
-    #[account(init_if_needed, payer = payer, associated_token::mint = item_mint, associated_token::authority = output_item_class_authority)]
+    #[account(init_if_needed, payer = payer, associated_token::mint = item_mint, associated_token::authority = builder)]
     pub item_destination: Box<Account<'info, token::TokenAccount>>,
 
     /// CHECK: Done by token metadata
@@ -46,16 +46,12 @@ pub struct ConsumeBuildMaterialPNft<'info> {
     pub item_destination_token_record: UncheckedAccount<'info>,
 
     #[account(
-        mut, seeds = [Build::PREFIX.as_bytes(), output_item_class.key().as_ref(), build.builder.key().as_ref()], bump)]
+        has_one = builder,
+        mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(
-        constraint = output_item_class.authority.eq(&output_item_class_authority.key()),
-        seeds = [ItemClassV1::PREFIX.as_bytes(), output_item_class.items.key().as_ref()], bump)]
-    pub output_item_class: Account<'info, ItemClassV1>,
-
-    /// CHECK: output_item_class constraint
-    pub output_item_class_authority: UncheckedAccount<'info>,
+    /// CHECK: build pda checks this account
+    pub builder: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -77,34 +73,35 @@ pub struct ConsumeBuildMaterialPNft<'info> {
     pub auth_rules_program: Program<'info, AuthRulesProgram>,
 }
 
-pub fn handler(ctx: Context<ConsumeBuildMaterialPNft>) -> Result<()> {
-    // check build status
+pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
     match ctx.accounts.build.status {
+        BuildStatus::InProgress => {
+            // if the build is still in progress allow the builder to withdraw
+        }
         BuildStatus::ItemReceived => {
+            // verify item is eligible to be returned to the builder
+            // if the item has no durability left, the token must be burned
+            require!(
+                ctx.accounts.item.item_state.returnable(),
+                ErrorCode::ItemNotReturnable
+            );
+
             // check that the build effect is applied
             require!(
                 ctx.accounts.build.build_effect_applied(
-                    ctx.accounts.item.item_class.key(),
+                    ctx.accounts.item.item_class,
                     ctx.accounts.item_mint.key()
                 ),
                 ErrorCode::BuildEffectNotApplied
             );
-
-            // the durability must be 0 to be consumed,
-            // its the responsibility of the schema to decrement the durability via apply_build_effect
-            require!(
-                ctx.accounts.item.item_state.broken(),
-                ErrorCode::ItemNotConsumable
-            );
-
-            // decrement the amount in the build pda so we know its been burned
-            ctx.accounts.build.decrement_build_amount(
-                ctx.accounts.item.item_class.key(),
-                ctx.accounts.item_source.amount,
-            );
         }
-        _ => return Err(ErrorCode::ItemNotConsumable.into()),
+        _ => return Err(ErrorCode::ItemNotReturnable.into()),
     }
+
+    // decrement the amount in the build pda so we know its been returned
+    ctx.accounts
+        .build
+        .decrement_build_amount(ctx.accounts.item.item_class.key(), 1);
 
     // transfer the pNFT to the builder
     // transfer item_mint to destination
@@ -117,7 +114,7 @@ pub fn handler(ctx: Context<ConsumeBuildMaterialPNft>) -> Result<()> {
         token: ctx.accounts.item_source.key(),
         token_owner: ctx.accounts.build.key(),
         destination: ctx.accounts.item_destination.key(),
-        destination_owner: ctx.accounts.output_item_class_authority.key(),
+        destination_owner: ctx.accounts.builder.key(),
         mint: ctx.accounts.item_mint.key(),
         metadata: ctx.accounts.item_metadata.key(),
         edition: Some(ctx.accounts.item_edition.key()),
@@ -138,7 +135,7 @@ pub fn handler(ctx: Context<ConsumeBuildMaterialPNft>) -> Result<()> {
         ctx.accounts.item_source.to_account_info(),
         ctx.accounts.build.to_account_info(),
         ctx.accounts.item_destination.to_account_info(),
-        ctx.accounts.output_item_class_authority.to_account_info(),
+        ctx.accounts.builder.to_account_info(),
         ctx.accounts.item_mint.to_account_info(),
         ctx.accounts.item_metadata.to_account_info(),
         ctx.accounts.item_edition.to_account_info(),
@@ -160,10 +157,12 @@ pub fn handler(ctx: Context<ConsumeBuildMaterialPNft>) -> Result<()> {
         &[&[
             Build::PREFIX.as_bytes(),
             ctx.accounts.build.item_class.key().as_ref(),
-            ctx.accounts.build.builder.as_ref(),
+            ctx.accounts.builder.key().as_ref(),
             &[*ctx.bumps.get("build").unwrap()],
         ]],
     )?;
 
     Ok(())
+
+    // TODO: close mpl token account via mpl instruction
 }

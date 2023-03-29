@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import * as errors from "./errors";
-import { Build, BuildMaterialData, BuildStatus } from "../state/item";
+import { Build, BuildIngredientData, BuildStatus } from "../state/item";
 import { fetch } from "cross-fetch";
 
 export class Client {
@@ -31,21 +31,21 @@ export class Client {
     }
   }
 
-  // check this list of materials can build the item
-  async checkMaterials(
+  // check this list of ingredients can build the item
+  async checkIngredients(
     itemClass: anchor.web3.PublicKey,
-    materials: MaterialArg[]
+    ingredients: IngredientArg[]
   ): Promise<Recipe[]> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
     });
 
-    for (const material of materials) {
-      params.append("materialMints", material.itemMint.toString());
-      params.append("materialAmounts", material.amount.toString());
+    for (const ingredient of ingredients) {
+      params.append("ingredientMints", ingredient.itemMint.toString());
+      params.append("ingredientAmounts", ingredient.amount.toString());
     }
 
-    const response = await fetch(`${this.baseUrl}/checkMaterials?` + params);
+    const response = await fetch(`${this.baseUrl}/checkIngredients?` + params);
 
     if (response.status === 404) {
       return [];
@@ -56,13 +56,13 @@ export class Client {
     return recipes;
   }
 
-  // use these materials to build the item
+  // use these ingredients to build the item
   async build(
     itemClass: anchor.web3.PublicKey,
-    materialArgs: MaterialArg[]
+    ingredientArgs: IngredientArg[]
   ): Promise<anchor.web3.PublicKey> {
-    // find valid recipe with these materials
-    const buildableRecipes = await this.checkMaterials(itemClass, materialArgs);
+    // find valid recipe with these ingredients
+    const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs);
     if (buildableRecipes.length <= 0) {
       throw new Error(`No Recipes Found`);
     }
@@ -79,15 +79,15 @@ export class Client {
     const build = await this.startBuild(itemClass, recipe.recipeIndex);
     console.log("build started: %s", build.toString());
 
-    for (const material of recipe.materials) {
-      await this.verifyBuildMaterial(
+    for (const ingredient of recipe.ingredients) {
+      await this.verifyBuildIngredient(
         itemClass,
-        material.itemMint,
-        material.itemClass
+        ingredient.itemMint,
+        ingredient.itemClass
       );
 
       // add build items
-      await this.addBuildMaterial(itemClass, material);
+      await this.addBuildIngredient(itemClass, ingredient);
     }
 
     // if a payment is required, pay it now
@@ -103,7 +103,7 @@ export class Client {
 
   async continueBuild(
     itemClass: anchor.web3.PublicKey,
-    materialArgs: MaterialArg[]
+    ingredientArgs: IngredientArg[]
   ) {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
@@ -118,22 +118,22 @@ export class Client {
     const buildData: Build = JSON.parse(body.buildData);
     const build = new anchor.web3.PublicKey(body.build);
 
-    // if build status is still in progress, check the materials we have and add them
+    // if build status is still in progress, check the ingredients we have and add them
     let itemMint: anchor.web3.PublicKey;
     if (buildData.status === BuildStatus.InProgress) {
 
       // get the matching recipe for this build
-      const buildableRecipes = await this.checkMaterials(itemClass, materialArgs)
+      const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs)
       const recipe = buildableRecipes.find(recipe => recipe.recipeIndex === buildData.recipeIndex);
 
-      // filter out already added materials
-      const missingMaterials = getMissingBuildMaterials(recipe.materials, buildData);
+      // filter out already added ingredients
+      const missingIngredients = getMissingBuildIngredients(recipe.ingredients, buildData);
 
-      // add the remaining materials
-      for (let material of missingMaterials) {
-        await this.verifyBuildMaterial(itemClass, material.itemMint, material.itemClass);
+      // add the remaining ingredients
+      for (let ingredient of missingIngredients) {
+        await this.verifyBuildIngredient(itemClass, ingredient.itemMint, ingredient.itemClass);
 
-        await this.addBuildMaterial(itemClass, material);
+        await this.addBuildIngredient(itemClass, ingredient);
       }
 
       // if payment is not paid do that now
@@ -169,8 +169,8 @@ export class Client {
       throw new Error(`Build Cannot be cancelled, please call 'continueBuild'`);
     };
 
-    // return any build materials that were added
-    await this.returnOrConsumeMaterials(build)
+    // return any build ingredients that were added
+    await this.returnOrConsumeIngredients(build)
 
     // clean up build accounts
     await this.cleanBuild(build)
@@ -217,24 +217,24 @@ export class Client {
   }
 
   // escrow items from builder to the build pda
-  private async addBuildMaterial(
+  private async addBuildIngredient(
     itemClass: anchor.web3.PublicKey,
-    material: Material
+    ingredient: Ingredient
   ): Promise<void> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       builder: this.provider.publicKey.toString(),
-      materialMint: material.itemMint.toString(),
-      materialItemClass: material.itemClass.toString(),
-      amount: material.amount.toString(),
+      ingredientMint: ingredient.itemMint.toString(),
+      ingredientItemClass: ingredient.itemClass.toString(),
+      amount: ingredient.amount.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/addBuildMaterial?` + params);
+    const response = await fetch(`${this.baseUrl}/addBuildIngredient?` + params);
     const body = await errors.handleResponse(response);
 
-    // send material to build
-    const addBuildMaterialTxSig = await this.send(body.tx);
-    console.log("addBuildMaterialTxSig: %s", addBuildMaterialTxSig);
+    // send ingredient to build
+    const addBuildIngredientTxSig = await this.send(body.tx);
+    console.log("addBuildIngredientTxSig: %s", addBuildIngredientTxSig);
   }
 
   // TODO: we only support native sol right now
@@ -257,7 +257,7 @@ export class Client {
     } 
   }
 
-  // mark build as complete, contract checks that required materials have been escrowed
+  // mark build as complete, contract checks that required ingredients have been escrowed
   private async completeBuild(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
@@ -300,7 +300,7 @@ export class Client {
     return body.itemMint;
   }
 
-  // apply the post build effects to each material
+  // apply the post build effects to each ingredient
   // things like cooldowns and degredation
   private async applyBuildEffects(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
@@ -313,29 +313,29 @@ export class Client {
     console.log("applyBuildEffectTxSig: %s", body.txSig);
   }
 
-  private async verifyBuildMaterial(
+  private async verifyBuildIngredient(
     itemClass: anchor.web3.PublicKey,
-    materialMint: anchor.web3.PublicKey,
-    materialItemClass: anchor.web3.PublicKey
+    ingredientMint: anchor.web3.PublicKey,
+    ingredientItemClass: anchor.web3.PublicKey
   ): Promise<void> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
-      materialMint: materialMint.toString(),
-      materialItemClass: materialItemClass.toString(),
+      ingredientMint: ingredientMint.toString(),
+      ingredientItemClass: ingredientItemClass.toString(),
       builder: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(
-      `${this.baseUrl}/verifyBuildMaterial?` + params
+      `${this.baseUrl}/verifyBuildIngredient?` + params
     );
 
     const body = await errors.handleResponse(response);
 
     const txSig = await this.send(body.tx);
-    console.log("verifyBuildMaterialTxSig: %s", txSig);
+    console.log("verifyBuildIngredientTxSig: %s", txSig);
   }
 
-  private async returnOrConsumeMaterials(
+  private async returnOrConsumeIngredients(
     build: anchor.web3.PublicKey
   ): Promise<void> {
     const params = new URLSearchParams({
@@ -345,7 +345,7 @@ export class Client {
     let done = false;
     while (!done) {
       const response = await fetch(
-        `${this.baseUrl}/returnOrConsumeMaterials?` + params
+        `${this.baseUrl}/returnOrConsumeIngredients?` + params
       );
 
       const body = await errors.handleResponse(response);
@@ -355,7 +355,7 @@ export class Client {
         return;
       }
 
-      console.log("returnOrConsumeMaterialsTxSig: %s", body.txSig);
+      console.log("returnOrConsumeIngredientsTxSig: %s", body.txSig);
       done = body.done;
     }
   }
@@ -368,11 +368,11 @@ export class Client {
     // receive item
     const itemMint = await this.receiveItem(build);
 
-    // apply build effects to the materials used
+    // apply build effects to the ingredients used
     await this.applyBuildEffects(build);
 
-    // return or consume the build materials in accordance with the effects
-    await this.returnOrConsumeMaterials(build);
+    // return or consume the build ingredients in accordance with the effects
+    await this.returnOrConsumeIngredients(build);
 
     // clean up
     await this.cleanBuild(build);
@@ -405,15 +405,15 @@ export interface Recipe {
   itemClass: anchor.web3.PublicKey;
   recipeIndex: anchor.BN;
   payment: Payment | null;
-  materials: Material[];
+  ingredients: Ingredient[];
 }
 
-export interface MaterialArg {
+export interface IngredientArg {
   itemMint: anchor.web3.PublicKey;
   amount: anchor.BN;
 }
 
-export interface Material {
+export interface Ingredient {
   itemMint: anchor.web3.PublicKey;
   itemClass: anchor.web3.PublicKey;
   amount: anchor.BN;
@@ -424,23 +424,23 @@ export interface Payment {
   amount: anchor.BN;
 }
 
-function getMissingBuildMaterials(recipeMaterials: Material[], buildData: Build): Material[] {
-  const missingMaterials: Material[] = [];
-  for (let currentBuildMaterial of buildData.materials) {
-    console.log(currentBuildMaterial);
+function getMissingBuildIngredients(recipeIngredients: Ingredient[], buildData: Build): Ingredient[] {
+  const missingIngredients: Ingredient[] = [];
+  for (let currentBuildIngredient of buildData.ingredients) {
+    console.log(currentBuildIngredient);
 
-    // if this build material already has escrowed the required amount, we dont need it
-    if (new anchor.BN(currentBuildMaterial.currentAmount).gte(new anchor.BN(currentBuildMaterial.requiredAmount))) {
+    // if this build ingredient already has escrowed the required amount, we dont need it
+    if (new anchor.BN(currentBuildIngredient.currentAmount).gte(new anchor.BN(currentBuildIngredient.requiredAmount))) {
       continue
     }
 
-    // find the recipe material which matches the build material required item class
-    for (let recipeMaterial of recipeMaterials) {
-      if (recipeMaterial.itemClass.equals(currentBuildMaterial.itemClass)) {
-        missingMaterials.push(recipeMaterial);
+    // find the recipe ingredient which matches the build ingredient required item class
+    for (let recipeIngredient of recipeIngredients) {
+      if (recipeIngredient.itemClass.equals(currentBuildIngredient.itemClass)) {
+        missingIngredients.push(recipeIngredient);
       }
     }
   }
 
-  return missingMaterials
+  return missingIngredients
 }

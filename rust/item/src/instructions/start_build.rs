@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{Build, ItemClassV1, Recipe},
     errors::ErrorCode,
-    BuildMaterialData, BuildStatus, PaymentState,
+    BuildIngredientData, BuildStatus, PaymentState,
 };
 
 #[derive(Accounts)]
@@ -13,7 +13,7 @@ use crate::state::{
 pub struct StartBuild<'info> {
     #[account(init,
         payer = builder,
-        space = Build::space(&recipe.materials),
+        space = Build::space(&recipe.ingredients),
         seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
@@ -40,11 +40,11 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
     // check this recipe is enabled for building
     require!(ctx.accounts.recipe.build_enabled, ErrorCode::BuildDisabled);
 
-    // set initial build material state
-    let mut materials: Vec<BuildMaterialData> =
-        Vec::with_capacity(ctx.accounts.recipe.materials.len());
-    for required_material in ctx.accounts.recipe.materials.clone() {
-        materials.push(required_material.into());
+    // set initial build ingredient state
+    let mut ingredients: Vec<BuildIngredientData> =
+        Vec::with_capacity(ctx.accounts.recipe.ingredients.len());
+    for required_ingredient in ctx.accounts.recipe.ingredients.clone() {
+        ingredients.push(required_ingredient.into());
     }
 
     let payment: Option<PaymentState> = match &ctx.accounts.recipe.payment {
@@ -63,7 +63,7 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         item_mint: None,
         status: BuildStatus::InProgress,
         payment: payment,
-        materials: materials,
+        ingredients: ingredients,
     });
 
     Ok(())

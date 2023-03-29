@@ -11,14 +11,14 @@ import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
 import {
   Build,
-  BuildMaterialData,
-  BuildMaterialMint,
+  BuildIngredientData,
+  IngredientMint,
   convertToBuildStatus,
   decodeItemClass,
   ItemClass,
   ItemClassV1,
   ItemV1,
-  Material,
+  Ingredient,
   Recipe,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
@@ -321,21 +321,21 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addBuildMaterial(
-    accounts: ItemInstruction.AddBuildMaterialAccounts,
-    args: ItemInstruction.AddBuildMaterialArgs,
+  async addIngredient(
+    accounts: ItemInstruction.AddIngredientAccounts,
+    args: ItemInstruction.AddIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.addBuildMaterial(accounts, args);
+    const ixns = await this.instruction.addIngredient(accounts, args);
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async verifyBuildMaterial(
-    accounts: ItemInstruction.VerifyBuildMaterialAccounts,
-    args: ItemInstruction.VerifyBuildMaterialArgs,
+  async verifyIngredient(
+    accounts: ItemInstruction.VerifyIngredientAccounts,
+    args: ItemInstruction.VerifyIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.verifyBuildMaterial(accounts, args);
+    const ix = await this.instruction.verifyIngredient(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -364,19 +364,19 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async returnBuildMaterial(
-    accounts: ItemInstruction.ReturnBuildMaterialAccounts,
+  async returnIngredient(
+    accounts: ItemInstruction.ReturnIngredientAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.returnBuildMaterial(accounts);
+    const ixns = await this.instruction.returnIngredient(accounts);
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async consumeBuildMaterial(
-    accounts: ItemInstruction.ConsumeBuildMaterialAccounts,
+  async consumeIngredient(
+    accounts: ItemInstruction.ConsumeIngredientAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.consumeBuildMaterial(accounts);
+    const ixns = await this.instruction.consumeIngredient(accounts);
     return await this.sendWithRetry(ixns, [], options);
   }
 
@@ -420,15 +420,15 @@ export class ItemProgram extends Program.Program {
 
       const recipeData = await this.client.account.recipe.fetch(recipeAddr);
 
-      // get recipe materials
-      const materials: Material[] = [];
-      for (const recipeMaterial of recipeData.materials as any[]) {
-        const material: Material = {
-          itemClass: new web3.PublicKey(recipeMaterial.itemClass),
-          requiredAmount: new BN(recipeMaterial.requiredAmount as string),
+      // get recipe ingredients
+      const ingredients: Ingredient[] = [];
+      for (const recipeIngredient of recipeData.ingredients as any[]) {
+        const ingredient: Ingredient = {
+          itemClass: new web3.PublicKey(recipeIngredient.itemClass),
+          requiredAmount: new BN(recipeIngredient.requiredAmount as string),
         };
 
-        materials.push(material);
+        ingredients.push(ingredient);
       }
 
       // get payment data
@@ -445,7 +445,7 @@ export class ItemProgram extends Program.Program {
         recipeIndex: new BN(i),
         payment: payment,
         buildEnabled: recipeData.buildEnabled as boolean,
-        materials: materials,
+        ingredients: ingredients,
       };
 
       recipes.push(recipe);
@@ -467,22 +467,22 @@ export class ItemProgram extends Program.Program {
       return null;
     }
 
-    const buildMaterialData: BuildMaterialData[] = [];
+    const buildIngredientData: BuildIngredientData[] = [];
 
-    for (const rawMaterial of buildDataRaw.materials as any[]) {
-      const mints: BuildMaterialMint[] = [];
-      for (const rawMaterialMint of rawMaterial.mints as any[]) {
+    for (const rawIngredient of buildDataRaw.ingredients as any[]) {
+      const mints: IngredientMint[] = [];
+      for (const rawIngredientMint of rawIngredient.mints as any[]) {
         mints.push({
-          mint: new web3.PublicKey(rawMaterialMint.mint),
-          buildEffectApplied: rawMaterialMint.buildEffectApplied,
+          mint: new web3.PublicKey(rawIngredientMint.mint),
+          buildEffectApplied: rawIngredientMint.buildEffectApplied,
         });
       }
 
-      buildMaterialData.push({
-        itemClass: new web3.PublicKey(rawMaterial.itemClass),
-        currentAmount: new BN(rawMaterial.currentAmount),
-        requiredAmount: new BN(rawMaterial.requiredAmount),
-        buildEffect: rawMaterial.buildEffect,
+      buildIngredientData.push({
+        itemClass: new web3.PublicKey(rawIngredient.itemClass),
+        currentAmount: new BN(rawIngredient.currentAmount),
+        requiredAmount: new BN(rawIngredient.requiredAmount),
+        buildEffect: rawIngredient.buildEffect,
         mints: mints,
       });
     }
@@ -506,7 +506,7 @@ export class ItemProgram extends Program.Program {
           amount: new BN(payment.paymentDetails.amount as string),
         },
       },
-      materials: buildMaterialData,
+      ingredients: buildIngredientData,
       status: convertToBuildStatus(buildDataRaw.status),
     };
 

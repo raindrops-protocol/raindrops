@@ -552,10 +552,10 @@ export interface Recipe {
   itemClass: web3.PublicKey;
   buildEnabled: boolean;
   payment: Payment | null;
-  materials: Material[];
+  ingredients: Ingredient[];
 }
 
-export interface Material {
+export interface Ingredient {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
 }
@@ -578,19 +578,19 @@ export interface Build {
   itemClass: web3.PublicKey;
   itemMint: web3.PublicKey | null;
   payment: PaymentState;
-  materials: BuildMaterialData[];
+  ingredients: BuildIngredientData[];
   status: BuildStatus;
 }
 
-export interface BuildMaterialData {
+export interface BuildIngredientData {
   itemClass: web3.PublicKey;
   currentAmount: BN;
   requiredAmount: BN;
   buildEffect: any;
-  mints: BuildMaterialMint[];
+  mints: IngredientMint[];
 }
 
-export interface BuildMaterialMint {
+export interface IngredientMint {
   mint: web3.PublicKey;
   buildEffectApplied: boolean;
 }

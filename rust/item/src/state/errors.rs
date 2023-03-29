@@ -9,10 +9,10 @@ pub enum ErrorCode {
     BuildDisabled,
 
     #[msg("Cannot Complete Build, Missing at least one build material")]
-    MissingBuildMaterial,
+    MissingIngredient,
 
     #[msg("Incorrect material for build")]
-    IncorrectMaterial,
+    IncorrectIngredient,
 
     #[msg("Build Status is incompatible with this instruction")]
     InvalidBuildStatus,

@@ -21,9 +21,9 @@ pub struct CloseBuild<'info> {
 
 pub fn handler(ctx: Context<CloseBuild>) -> Result<()> {
     // check build is empty
-    for build_material_data in &ctx.accounts.build.materials {
+    for build_ingredient_data in &ctx.accounts.build.ingredients {
         require!(
-            build_material_data.current_amount == 0,
+            build_ingredient_data.current_amount == 0,
             ErrorCode::BuildNotEmpty
         );
     }

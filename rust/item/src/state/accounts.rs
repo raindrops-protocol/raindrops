@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use anchor_lang::prelude::*;
 
-use super::{BuildMaterialData, BuildStatus, ItemState, Payment, PaymentState, RecipeMaterialData};
+use super::{BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState, RecipeIngredientData};
 
 // seeds = ['item_class_v1', items.key().as_ref()]
 #[account]
@@ -49,7 +49,7 @@ impl ItemV1 {
     ItemState::SPACE; // state
 }
 
-// a recipe contains all materials and build information for an item class v1
+// a recipe contains all ingredients and build information for an item class v1
 // seeds = ['recipe', recipe_index.to_le_bytes(), item_class.key()]
 #[account]
 pub struct Recipe {
@@ -64,20 +64,20 @@ pub struct Recipe {
     // if Some, SOL is required
     pub payment: Option<Payment>,
 
-    // list of materials required to use this recipe to build the item class v1
-    pub materials: Vec<RecipeMaterialData>,
+    // list of ingredients required to use this recipe to build the item class v1
+    pub ingredients: Vec<RecipeIngredientData>,
 }
 
 impl Recipe {
     pub const PREFIX: &'static str = "recipe";
     pub const INITIAL_INDEX: u64 = 0;
-    pub fn space(material_count: usize) -> usize {
+    pub fn space(ingredient_count: usize) -> usize {
         8 + // anchor
         8 + // recipe index
         32 + // item_class
         1 + // enabled
         (1 + Payment::SPACE) + // payment
-        4 + (RecipeMaterialData::SPACE * material_count) // materials
+        4 + (RecipeIngredientData::SPACE * ingredient_count) // ingredients
     }
 }
 
@@ -99,8 +99,8 @@ pub struct Build {
     // payment state
     pub payment: Option<PaymentState>,
 
-    // current build materials
-    pub materials: Vec<BuildMaterialData>,
+    // current build ingredients
+    pub ingredients: Vec<BuildIngredientData>,
 
     // current status of the build
     pub status: BuildStatus,
@@ -108,7 +108,7 @@ pub struct Build {
 
 impl Build {
     pub const PREFIX: &'static str = "build";
-    pub fn space(recipe_material_data: &Vec<RecipeMaterialData>) -> usize {
+    pub fn space(recipe_ingredient_data: &Vec<RecipeIngredientData>) -> usize {
         8 + // anchor
         8 + // recipe_index
         32 + // builder
@@ -116,26 +116,26 @@ impl Build {
         (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
-        4 + (Self::build_material_data_space(recipe_material_data)) // materials
+        4 + (Self::build_ingredient_data_space(recipe_ingredient_data)) // ingredients
     }
 
-    fn build_material_data_space(recipe_material_data: &Vec<RecipeMaterialData>) -> usize {
-        let mut total_build_material_space: usize = 0;
-        for material_data in recipe_material_data {
-            total_build_material_space +=
-                BuildMaterialData::space(material_data.required_amount.try_into().unwrap())
+    fn build_ingredient_data_space(recipe_ingredient_data: &Vec<RecipeIngredientData>) -> usize {
+        let mut total_build_ingredient_space: usize = 0;
+        for ingredient_data in recipe_ingredient_data {
+            total_build_ingredient_space +=
+                BuildIngredientData::space(ingredient_data.required_amount.try_into().unwrap())
         }
 
-        total_build_material_space
+        total_build_ingredient_space
     }
 
-    pub fn build_effect_applied(&self, material_item_class: Pubkey, material_mint: Pubkey) -> bool {
-        for build_material_data in &self.materials {
+    pub fn build_effect_applied(&self, ingredient_item_class: Pubkey, ingredient_mint: Pubkey) -> bool {
+        for build_ingredient_data in &self.ingredients {
             // get corresponding item class
-            if build_material_data.item_class.eq(&material_item_class) {
+            if build_ingredient_data.item_class.eq(&ingredient_item_class) {
                 // find the specific mint within the item class and verify the build effect has been applied
-                for mint_data in &build_material_data.mints {
-                    if mint_data.mint.eq(&material_mint) {
+                for mint_data in &build_ingredient_data.mints {
+                    if mint_data.mint.eq(&ingredient_mint) {
                         return mint_data.build_effect_applied;
                     }
                 }
@@ -144,36 +144,36 @@ impl Build {
         return false;
     }
 
-    pub fn verify_build_mint(&self, material_item_class: Pubkey, material_mint: Pubkey) -> bool {
-        // verify material_mint
-        for build_material_data in &self.materials {
+    pub fn verify_build_mint(&self, ingredient_item_class: Pubkey, ingredient_mint: Pubkey) -> bool {
+        // verify ingredient_mint
+        for build_ingredient_data in &self.ingredients {
             // find the corresponding item class
-            if material_item_class.eq(&build_material_data.item_class) {
-                // check the material mint exists in the list of verified mints
-                let verified = build_material_data
+            if ingredient_item_class.eq(&build_ingredient_data.item_class) {
+                // check the ingredient mint exists in the list of verified mints
+                let verified = build_ingredient_data
                     .mints
                     .iter()
-                    .any(|mint_data| mint_data.mint.eq(&material_mint));
+                    .any(|mint_data| mint_data.mint.eq(&ingredient_mint));
                 return verified;
             }
         }
         false
     }
 
-    pub fn increment_build_amount(&mut self, material_item_class: Pubkey, amount: u64) {
-        for build_material_data in self.materials.iter_mut() {
+    pub fn increment_build_amount(&mut self, ingredient_item_class: Pubkey, amount: u64) {
+        for build_ingredient_data in self.ingredients.iter_mut() {
             // find the corresponding item class
-            if material_item_class.eq(&build_material_data.item_class) {
-                build_material_data.current_amount += amount;
+            if ingredient_item_class.eq(&build_ingredient_data.item_class) {
+                build_ingredient_data.current_amount += amount;
             }
         }
     }
 
-    pub fn decrement_build_amount(&mut self, material_item_class: Pubkey, amount: u64) {
-        for build_material_data in self.materials.iter_mut() {
+    pub fn decrement_build_amount(&mut self, ingredient_item_class: Pubkey, amount: u64) {
+        for build_ingredient_data in self.ingredients.iter_mut() {
             // find the corresponding item class
-            if material_item_class.eq(&build_material_data.item_class) {
-                build_material_data.current_amount -= amount;
+            if ingredient_item_class.eq(&build_ingredient_data.item_class) {
+                build_ingredient_data.current_amount -= amount;
             }
         }
     }

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::state::{
     accounts::{ItemClassV1, Recipe},
-    Payment, RecipeMaterialData,
+    Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
@@ -10,7 +10,7 @@ use crate::state::{
 pub struct CreateRecipe<'info> {
     #[account(init,
         payer = authority,
-        space = Recipe::space(args.materials.len()),
+        space = Recipe::space(args.ingredients.len()),
         seeds = [Recipe::PREFIX.as_bytes(), &(item_class.recipe_index + 1).to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
@@ -31,7 +31,7 @@ pub struct CreateRecipe<'info> {
 pub struct CreateRecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
-    pub materials: Vec<RecipeMaterialData>,
+    pub ingredients: Vec<RecipeIngredientData>,
 }
 
 pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()> {
@@ -44,7 +44,7 @@ pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()>
         recipe_index: ctx.accounts.item_class.recipe_index,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.build_enabled,
-        materials: args.materials,
+        ingredients: args.ingredients,
         payment: args.payment,
     });
 

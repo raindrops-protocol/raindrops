@@ -1982,22 +1982,22 @@ pub mod raindrops_item {
         start_build::handler(ctx, args)
     }
 
-    pub fn add_build_material_pnft(ctx: Context<AddBuildMaterialPNft>) -> Result<()> {
-        add_build_material_pnft::handler(ctx)
+    pub fn add_ingredient_pnft(ctx: Context<AddIngredientPNft>) -> Result<()> {
+        add_ingredient_pnft::handler(ctx)
     }
 
-    pub fn add_build_material_spl(
-        ctx: Context<AddBuildMaterialSpl>,
-        args: AddBuildMaterialSplArgs,
+    pub fn add_ingredient_spl(
+        ctx: Context<AddIngredientSpl>,
+        args: AddIngredientSplArgs,
     ) -> Result<()> {
-        add_build_material_spl::handler(ctx, args)
+        add_ingredient_spl::handler(ctx, args)
     }
 
-    pub fn verify_build_material<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, VerifyBuildMaterial<'info>>,
-        args: VerifyBuildMaterialArgs,
+    pub fn verify_ingredient<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, VerifyIngredient<'info>>,
+        args: VerifyIngredientArgs,
     ) -> Result<()> {
-        verify_build_material::handler(ctx, args)
+        verify_ingredient::handler(ctx, args)
     }
 
     pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
@@ -2015,20 +2015,20 @@ pub mod raindrops_item {
         apply_build_effect::handler(ctx)
     }
 
-    pub fn return_build_material_pnft(ctx: Context<ReturnBuildMaterialPNft>) -> Result<()> {
-        return_build_material_pnft::handler(ctx)
+    pub fn return_ingredient_pnft(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
+        return_ingredient_pnft::handler(ctx)
     }
 
-    pub fn return_build_material_spl(ctx: Context<ReturnBuildMaterialSpl>) -> Result<()> {
-        return_build_material_spl::handler(ctx)
+    pub fn return_ingredient_spl(ctx: Context<ReturnIngredientSpl>) -> Result<()> {
+        return_ingredient_spl::handler(ctx)
     }
 
-    pub fn consume_build_material_spl(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
-        consume_build_material_spl::handler(ctx)
+    pub fn consume_ingredient_spl(ctx: Context<ConsumeIngredientSpl>) -> Result<()> {
+        consume_ingredient_spl::handler(ctx)
     }
 
-    pub fn consume_build_material_pnft(ctx: Context<ConsumeBuildMaterialPNft>) -> Result<()> {
-        consume_build_material_pnft::handler(ctx)
+    pub fn consume_ingredient_pnft(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
+        consume_ingredient_pnft::handler(ctx)
     }
 
     pub fn close_build(ctx: Context<CloseBuild>) -> Result<()> {

@@ -1061,25 +1061,25 @@ export type RaindropsItem = {
       ]
     },
     {
-      "name": "addBuildMaterialPnft",
+      "name": "addIngredientPnft",
       "accounts": [
         {
-          "name": "materialMint",
+          "name": "ingredientMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
+          "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialMetadata",
+          "name": "ingredientMetadata",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialEdition",
+          "name": "ingredientEdition",
           "isMut": true,
           "isSigner": false
         },
@@ -1089,22 +1089,22 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "materialSource",
+          "name": "ingredientSource",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialSourceTokenRecord",
+          "name": "ingredientSourceTokenRecord",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialDestination",
+          "name": "ingredientDestination",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialDestinationTokenRecord",
+          "name": "ingredientDestinationTokenRecord",
           "isMut": true,
           "isSigner": false
         },
@@ -1162,25 +1162,25 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "addBuildMaterialSpl",
+      "name": "addIngredientSpl",
       "accounts": [
         {
-          "name": "materialMint",
+          "name": "ingredientMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
+          "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialSource",
+          "name": "ingredientSource",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialDestination",
+          "name": "ingredientDestination",
           "isMut": true,
           "isSigner": false
         },
@@ -1224,26 +1224,26 @@ export type RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "AddBuildMaterialSplArgs"
+            "defined": "AddIngredientSplArgs"
           }
         }
       ]
     },
     {
-      "name": "verifyBuildMaterial",
+      "name": "verifyIngredient",
       "accounts": [
         {
-          "name": "materialMint",
+          "name": "ingredientMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
+          "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClassItems",
+          "name": "ingredientItemClassItems",
           "isMut": false,
           "isSigner": false
         },
@@ -1272,7 +1272,7 @@ export type RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "VerifyBuildMaterialArgs"
+            "defined": "VerifyIngredientArgs"
           }
         }
       ]
@@ -1453,7 +1453,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "returnBuildMaterialPnft",
+      "name": "returnIngredientPnft",
       "accounts": [
         {
           "name": "item",
@@ -1554,7 +1554,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "returnBuildMaterialSpl",
+      "name": "returnIngredientSpl",
       "accounts": [
         {
           "name": "item",
@@ -1615,7 +1615,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeBuildMaterialSpl",
+      "name": "consumeIngredientSpl",
       "accounts": [
         {
           "name": "item",
@@ -1656,7 +1656,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeBuildMaterialPnft",
+      "name": "consumeIngredientPnft",
       "accounts": [
         {
           "name": "item",
@@ -1887,10 +1887,10 @@ export type RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "RecipeMaterialData"
+                "defined": "RecipeIngredientData"
               }
             }
           }
@@ -1929,10 +1929,10 @@ export type RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "BuildMaterialData"
+                "defined": "BuildIngredientData"
               }
             }
           },
@@ -2168,7 +2168,7 @@ export type RaindropsItem = {
   ],
   "types": [
     {
-      "name": "AddBuildMaterialSplArgs",
+      "name": "AddIngredientSplArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2232,10 +2232,10 @@ export type RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "RecipeMaterialData"
+                "defined": "RecipeIngredientData"
               }
             }
           }
@@ -2260,10 +2260,10 @@ export type RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "RecipeMaterialData"
+                "defined": "RecipeIngredientData"
               }
             }
           }
@@ -2283,7 +2283,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "VerifyBuildMaterialArgs",
+      "name": "VerifyIngredientArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2304,7 +2304,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "BuildMaterialData",
+      "name": "BuildIngredientData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2330,7 +2330,7 @@ export type RaindropsItem = {
             "name": "mints",
             "type": {
               "vec": {
-                "defined": "BuildMaterialMint"
+                "defined": "IngredientMint"
               }
             }
           }
@@ -2338,7 +2338,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "BuildMaterialMint",
+      "name": "IngredientMint",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2354,7 +2354,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "RecipeMaterialData",
+      "name": "RecipeIngredientData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -4405,12 +4405,12 @@ export type RaindropsItem = {
     },
     {
       "code": 6002,
-      "name": "MissingBuildMaterial",
+      "name": "MissingIngredient",
       "msg": "Cannot Complete Build, Missing at least one build material"
     },
     {
       "code": 6003,
-      "name": "IncorrectMaterial",
+      "name": "IncorrectIngredient",
       "msg": "Incorrect material for build"
     },
     {
@@ -5519,25 +5519,25 @@ export const IDL: RaindropsItem = {
       ]
     },
     {
-      "name": "addBuildMaterialPnft",
+      "name": "addIngredientPnft",
       "accounts": [
         {
-          "name": "materialMint",
+          "name": "ingredientMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
+          "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialMetadata",
+          "name": "ingredientMetadata",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialEdition",
+          "name": "ingredientEdition",
           "isMut": true,
           "isSigner": false
         },
@@ -5547,22 +5547,22 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "materialSource",
+          "name": "ingredientSource",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialSourceTokenRecord",
+          "name": "ingredientSourceTokenRecord",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialDestination",
+          "name": "ingredientDestination",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialDestinationTokenRecord",
+          "name": "ingredientDestinationTokenRecord",
           "isMut": true,
           "isSigner": false
         },
@@ -5620,25 +5620,25 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "addBuildMaterialSpl",
+      "name": "addIngredientSpl",
       "accounts": [
         {
-          "name": "materialMint",
+          "name": "ingredientMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
+          "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialSource",
+          "name": "ingredientSource",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "materialDestination",
+          "name": "ingredientDestination",
           "isMut": true,
           "isSigner": false
         },
@@ -5682,26 +5682,26 @@ export const IDL: RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "AddBuildMaterialSplArgs"
+            "defined": "AddIngredientSplArgs"
           }
         }
       ]
     },
     {
-      "name": "verifyBuildMaterial",
+      "name": "verifyIngredient",
       "accounts": [
         {
-          "name": "materialMint",
+          "name": "ingredientMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClass",
+          "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "materialItemClassItems",
+          "name": "ingredientItemClassItems",
           "isMut": false,
           "isSigner": false
         },
@@ -5730,7 +5730,7 @@ export const IDL: RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "VerifyBuildMaterialArgs"
+            "defined": "VerifyIngredientArgs"
           }
         }
       ]
@@ -5911,7 +5911,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "returnBuildMaterialPnft",
+      "name": "returnIngredientPnft",
       "accounts": [
         {
           "name": "item",
@@ -6012,7 +6012,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "returnBuildMaterialSpl",
+      "name": "returnIngredientSpl",
       "accounts": [
         {
           "name": "item",
@@ -6073,7 +6073,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeBuildMaterialSpl",
+      "name": "consumeIngredientSpl",
       "accounts": [
         {
           "name": "item",
@@ -6114,7 +6114,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeBuildMaterialPnft",
+      "name": "consumeIngredientPnft",
       "accounts": [
         {
           "name": "item",
@@ -6345,10 +6345,10 @@ export const IDL: RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "RecipeMaterialData"
+                "defined": "RecipeIngredientData"
               }
             }
           }
@@ -6387,10 +6387,10 @@ export const IDL: RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "BuildMaterialData"
+                "defined": "BuildIngredientData"
               }
             }
           },
@@ -6626,7 +6626,7 @@ export const IDL: RaindropsItem = {
   ],
   "types": [
     {
-      "name": "AddBuildMaterialSplArgs",
+      "name": "AddIngredientSplArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -6690,10 +6690,10 @@ export const IDL: RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "RecipeMaterialData"
+                "defined": "RecipeIngredientData"
               }
             }
           }
@@ -6718,10 +6718,10 @@ export const IDL: RaindropsItem = {
             }
           },
           {
-            "name": "materials",
+            "name": "ingredients",
             "type": {
               "vec": {
-                "defined": "RecipeMaterialData"
+                "defined": "RecipeIngredientData"
               }
             }
           }
@@ -6741,7 +6741,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "VerifyBuildMaterialArgs",
+      "name": "VerifyIngredientArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -6762,7 +6762,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "BuildMaterialData",
+      "name": "BuildIngredientData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -6788,7 +6788,7 @@ export const IDL: RaindropsItem = {
             "name": "mints",
             "type": {
               "vec": {
-                "defined": "BuildMaterialMint"
+                "defined": "IngredientMint"
               }
             }
           }
@@ -6796,7 +6796,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "BuildMaterialMint",
+      "name": "IngredientMint",
       "type": {
         "kind": "struct",
         "fields": [
@@ -6812,7 +6812,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "RecipeMaterialData",
+      "name": "RecipeIngredientData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -8863,12 +8863,12 @@ export const IDL: RaindropsItem = {
     },
     {
       "code": 6002,
-      "name": "MissingBuildMaterial",
+      "name": "MissingIngredient",
       "msg": "Cannot Complete Build, Missing at least one build material"
     },
     {
       "code": 6003,
-      "name": "IncorrectMaterial",
+      "name": "IncorrectIngredient",
       "msg": "Incorrect material for build"
     },
     {

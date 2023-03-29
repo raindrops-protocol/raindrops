@@ -33,18 +33,18 @@ describe.only("itemv1", () => {
       idl: Idls.ItemIDL,
     });
 
-    // material 1, pNFT
+    // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
-    // material 2, NFT
+    // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
     // output pNft
@@ -54,7 +54,7 @@ describe.only("itemv1", () => {
         treasury: payer.publicKey,
         amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
       },
-      materialArgs: [
+      ingredientArgs: [
         {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
@@ -112,7 +112,7 @@ describe.only("itemv1", () => {
     );
 
     // add pNFT to build
-    await addMaterial(
+    await addIngredient(
       itemProgram,
       pNftItemClass.tree,
       outputItemClass.itemClass,
@@ -122,7 +122,7 @@ describe.only("itemv1", () => {
     );
 
     // add NFT to build
-    await addMaterial(
+    await addIngredient(
       itemProgram,
       pNftItemClass.tree,
       outputItemClass.itemClass,
@@ -179,18 +179,18 @@ describe.only("itemv1", () => {
       idl: Idls.ItemIDL,
     });
 
-    // material 1, pNFT
+    // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
-    // material 2, NFT
+    // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
     // output pNft
@@ -200,7 +200,7 @@ describe.only("itemv1", () => {
         treasury: payer.publicKey,
         amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
       },
-      materialArgs: [
+      ingredientArgs: [
         {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
@@ -258,7 +258,7 @@ describe.only("itemv1", () => {
     );
 
     // add pNFT to build
-    await addMaterial(
+    await addIngredient(
       itemProgram,
       pNftItemClass.tree,
       outputItemClass.itemClass,
@@ -268,7 +268,7 @@ describe.only("itemv1", () => {
     );
 
     // add NFT to build
-    await addMaterial(
+    await addIngredient(
       itemProgram,
       pNftItemClass.tree,
       outputItemClass.itemClass,
@@ -325,18 +325,18 @@ describe.only("itemv1", () => {
       idl: Idls.ItemIDL,
     });
 
-    // material 1, pNFT
+    // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
-    // material 2, NFT
+    // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
     // output pNft
@@ -352,7 +352,7 @@ describe.only("itemv1", () => {
           treasury: payer.publicKey,
           amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
         },
-        materialArgs: [
+        ingredientArgs: [
           {
             itemClass: pNftItemClass.itemClass,
             requiredAmount: new BN(1),
@@ -414,7 +414,7 @@ describe.only("itemv1", () => {
       );
 
       // add pNFT to build
-      await addMaterial(
+      await addIngredient(
         itemProgram,
         pNftItemClass.tree,
         outputItemClass.itemClass,
@@ -424,7 +424,7 @@ describe.only("itemv1", () => {
       );
 
       // add NFT to build
-      await addMaterial(
+      await addIngredient(
         itemProgram,
         pNftItemClass.tree,
         outputItemClass.itemClass,
@@ -498,18 +498,18 @@ describe.only("itemv1", () => {
       }
     );
 
-    // material 1, pNFT
+    // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
-    // material 2, NFT
+    // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
-      materialArgs: [],
+      ingredientArgs: [],
     });
 
     // output pNft
@@ -519,7 +519,7 @@ describe.only("itemv1", () => {
         treasury: payer.publicKey,
         amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
       },
-      materialArgs: [
+      ingredientArgs: [
         {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
@@ -577,7 +577,7 @@ describe.only("itemv1", () => {
     );
 
     // add pNFT to build
-    await addMaterial(
+    await addIngredient(
       builderItemProgram,
       pNftItemClass.tree,
       outputItemClass.itemClass,
@@ -587,7 +587,7 @@ describe.only("itemv1", () => {
     );
 
     // add NFT to build
-    await addMaterial(
+    await addIngredient(
       builderItemProgram,
       pNftItemClass.tree,
       outputItemClass.itemClass,
@@ -650,7 +650,7 @@ describe.only("itemv1", () => {
       recipeArgs: {
         buildEnabled: false,
         payment: null,
-        materialArgs: [],
+        ingredientArgs: [],
       },
     };
 
@@ -671,7 +671,7 @@ describe.only("itemv1", () => {
       args: {
         buildEnabled: false,
         payment: null,
-        materialArgs: [],
+        ingredientArgs: [],
       },
     };
 
@@ -710,7 +710,7 @@ function initTree(depthSizePair: cmp.ValidDepthSizePair): cmp.MerkleTree {
 async function createItemClass(
   payer: anchor.web3.Keypair,
   connection: anchor.web3.Connection,
-  materialCount: number,
+  ingredientCount: number,
   isPNft: boolean,
   recipeArgs: Instructions.Item.RecipeArgs
 ): Promise<ItemClassContainer> {
@@ -735,16 +735,16 @@ async function createItemClass(
   console.log("tree created: %s", itemClass.toString());
 
   const mints: anchor.web3.PublicKey[] = [];
-  for (let i = 0; i < materialCount; i++) {
+  for (let i = 0; i < ingredientCount; i++) {
     const client = new metaplex.Metaplex(connection, {}).use(
       metaplex.keypairIdentity(payer)
     );
 
-    let materialMintOutput: metaplex.CreateNftOutput;
+    let ingredientMintOutput: metaplex.CreateNftOutput;
     if (isPNft) {
       const ruleSetPda = await createRuleSet(payer, connection);
 
-      materialMintOutput = await client.nfts().create({
+      ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
         uri: "https://foo.com/bar.json",
         name: "pNFT1",
@@ -752,22 +752,22 @@ async function createItemClass(
         symbol: "PN",
         ruleSet: ruleSetPda,
       });
-      console.log("createPNftTxSig: %s", materialMintOutput.response.signature);
+      console.log("createPNftTxSig: %s", ingredientMintOutput.response.signature);
     } else {
-      materialMintOutput = await client.nfts().create({
+      ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.NonFungible,
         uri: "https://foo.com/bar.json",
         name: "pNFT1",
         sellerFeeBasisPoints: 500,
         symbol: "PN",
       });
-      console.log("createNftTxSig: %s", materialMintOutput.response.signature);
+      console.log("createNftTxSig: %s", ingredientMintOutput.response.signature);
     }
 
     // add mint to the items tree on chain
     const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass = {
       itemClass: itemClass,
-      itemMints: [materialMintOutput.mintAddress],
+      itemMints: [ingredientMintOutput.mintAddress],
     };
 
     const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(
@@ -777,13 +777,13 @@ async function createItemClass(
     console.log(
       "itemClass: %s, item: %s",
       itemClass.toString(),
-      materialMintOutput.mintAddress.toString()
+      ingredientMintOutput.mintAddress.toString()
     );
 
     // add mint to items tree off chain
-    tree.updateLeaf(i, materialMintOutput.mintAddress.toBuffer());
+    tree.updateLeaf(i, ingredientMintOutput.mintAddress.toBuffer());
 
-    mints.push(materialMintOutput.mintAddress);
+    mints.push(ingredientMintOutput.mintAddress);
   }
 
   return { itemClass: itemClass, mints: mints, tree: tree };
@@ -1026,19 +1026,19 @@ async function createRuleSet(
   return ruleSetPda;
 }
 
-async function addMaterial(
+async function addIngredient(
   itemProgram: ItemProgram,
   tree: cmp.MerkleTree,
   outputItemClass: anchor.web3.PublicKey,
-  materialMint: anchor.web3.PublicKey,
-  materialItemClass: anchor.web3.PublicKey,
-  materialAmount: anchor.BN
+  ingredientMint: anchor.web3.PublicKey,
+  ingredientItemClass: anchor.web3.PublicKey,
+  ingredientAmount: anchor.BN
 ) {
-  // verify build material
-  const verifyBuildMaterialAccounts: Instructions.Item.VerifyBuildMaterialAccounts =
+  // verify build ingredient
+  const verifyIngredientAccounts: Instructions.Item.VerifyIngredientAccounts =
     {
-      materialMint: materialMint,
-      materialItemClass: materialItemClass,
+      ingredientMint: ingredientMint,
+      ingredientItemClass: ingredientItemClass,
       itemClass: outputItemClass,
       builder: itemProgram.client.provider.publicKey,
     };
@@ -1046,34 +1046,34 @@ async function addMaterial(
   // get proof for mint
   const proof = tree.getProof(0);
 
-  const verifyBuildMaterialArgs: Instructions.Item.VerifyBuildMaterialArgs = {
+  const verifyIngredientArgs: Instructions.Item.VerifyIngredientArgs = {
     root: proof.root,
     leafIndex: proof.leafIndex,
     proof: proof.proof,
   };
 
-  const verifyBuildMaterialResult = await itemProgram.verifyBuildMaterial(
-    verifyBuildMaterialAccounts,
-    verifyBuildMaterialArgs
+  const verifyIngredientResult = await itemProgram.verifyIngredient(
+    verifyIngredientAccounts,
+    verifyIngredientArgs
   );
-  console.log("verifyBuildMaterialTxSig: %s", verifyBuildMaterialResult.txid);
+  console.log("verifyIngredientTxSig: %s", verifyIngredientResult.txid);
 
-  const addBuildMaterialAccounts: Instructions.Item.AddBuildMaterialAccounts = {
+  const addIngredientAccounts: Instructions.Item.AddIngredientAccounts = {
     itemClass: outputItemClass,
-    materialMint: materialMint,
-    materialItemClass: materialItemClass,
+    ingredientMint: ingredientMint,
+    ingredientItemClass: ingredientItemClass,
     builder: itemProgram.client.provider.publicKey,
   };
 
-  const addBuildMaterialArgs: Instructions.Item.AddBuildMaterialArgs = {
-    amount: materialAmount,
+  const addIngredientArgs: Instructions.Item.AddIngredientArgs = {
+    amount: ingredientAmount,
   };
 
-  const addBuildMaterialResult = await itemProgram.addBuildMaterial(
-    addBuildMaterialAccounts,
-    addBuildMaterialArgs
+  const addIngredientResult = await itemProgram.addIngredient(
+    addIngredientAccounts,
+    addIngredientArgs
   );
-  console.log("addBuildMaterialTxSig: %s", addBuildMaterialResult.txid);
+  console.log("addIngredientTxSig: %s", addIngredientResult.txid);
 }
 
 async function completeBuildAndReceiveItem(
@@ -1118,29 +1118,29 @@ async function cleanBuild(
   itemProgram: ItemProgram,
   build: anchor.web3.PublicKey
 ) {
-  // get all build material mints/item classes
+  // get all build ingredient mints/item classes
   const buildData = await itemProgram.client.account.build.fetch(build);
   // [item_class, mint pubkeys]
-  const buildMaterialMints: [anchor.web3.PublicKey, anchor.web3.PublicKey[]][] =
+  const buildIngredientMints: [anchor.web3.PublicKey, anchor.web3.PublicKey[]][] =
     [];
-  for (let materialData of buildData.materials as any[]) {
+  for (let ingredientData of buildData.ingredients as any[]) {
     let mints: anchor.web3.PublicKey[] = [];
-    for (let mintData of materialData.mints) {
+    for (let mintData of ingredientData.mints) {
       if (mintData.buildEffectApplied) {
         continue;
       }
 
       mints.push(mintData.mint);
     }
-    buildMaterialMints.push([materialData.itemClass, mints]);
+    buildIngredientMints.push([ingredientData.itemClass, mints]);
   }
-  // apply the build effect to each material and then return them to the builder
-  for (let buildMaterialData of buildMaterialMints) {
-    for (let mint of buildMaterialData[1]) {
+  // apply the build effect to each ingredient and then return them to the builder
+  for (let buildIngredientData of buildIngredientMints) {
+    for (let mint of buildIngredientData[1]) {
       const applyBuildEffectAccounts: Instructions.Item.ApplyBuildEffectAccounts =
         {
-          materialItemClass: buildMaterialData[0],
-          materialMint: mint,
+          ingredientItemClass: buildIngredientData[0],
+          ingredientMint: mint,
           payer: itemProgram.client.provider.publicKey,
           build: build,
         };
@@ -1154,7 +1154,7 @@ async function cleanBuild(
       const [item, _itemBump] = anchor.web3.PublicKey.findProgramAddressSync(
         [
           Buffer.from("item_v1"),
-          buildMaterialData[0].toBuffer(),
+          buildIngredientData[0].toBuffer(),
           mint.toBuffer(),
         ],
         itemProgram.PROGRAM_ID
@@ -1163,36 +1163,36 @@ async function cleanBuild(
 
       if (itemData.itemState.durability.lte(new anchor.BN(0))) {
         // consume it
-        const consumeBuildMaterialAccounts: Instructions.Item.ConsumeBuildMaterialAccounts =
+        const consumeIngredientAccounts: Instructions.Item.ConsumeIngredientAccounts =
           {
-            materialMint: mint,
-            materialItemClass: buildMaterialData[0],
+            ingredientMint: mint,
+            ingredientItemClass: buildIngredientData[0],
             build: build,
             payer: itemProgram.client.provider.publicKey,
           };
 
-        const consumeBuildMaterialResult =
-          await itemProgram.consumeBuildMaterial(consumeBuildMaterialAccounts);
+        const consumeIngredientResult =
+          await itemProgram.consumeIngredient(consumeIngredientAccounts);
         console.log(
-          "consumeBuildMaterialTxSig: %s",
-          consumeBuildMaterialResult.txid
+          "consumeIngredientTxSig: %s",
+          consumeIngredientResult.txid
         );
       } else {
         // return it
-        const returnBuildMaterialAccounts: Instructions.Item.ReturnBuildMaterialAccounts =
+        const returnIngredientAccounts: Instructions.Item.ReturnIngredientAccounts =
           {
-            materialMint: mint,
-            materialItemClass: buildMaterialData[0],
+            ingredientMint: mint,
+            ingredientItemClass: buildIngredientData[0],
             build: build,
             payer: itemProgram.client.provider.publicKey,
           };
 
-        const returnBuildMaterialResult = await itemProgram.returnBuildMaterial(
-          returnBuildMaterialAccounts
+        const returnIngredientResult = await itemProgram.returnIngredient(
+          returnIngredientAccounts
         );
         console.log(
-          "returnBuildMaterialTxSig: %s",
-          returnBuildMaterialResult.txid
+          "returnIngredientTxSig: %s",
+          returnIngredientResult.txid
         );
         // assert builder received their item back
         const builderItemAta = splToken.getAssociatedTokenAddressSync(
@@ -1236,8 +1236,8 @@ async function assertFreshBuild(
   assert.isTrue(buildData.builder.equals(builder));
   assert.isTrue(buildData.itemClass.equals(itemClass));
   assert.isFalse(buildData.payment.paid);
-  for (let material of buildData.materials) {
-    assert.isTrue(material.currentAmount.eq(new anchor.BN(0)));
-    assert.equal(material.mints.length, 0);
+  for (let ingredient of buildData.ingredients) {
+    assert.isTrue(ingredient.currentAmount.eq(new anchor.BN(0)));
+    assert.equal(ingredient.mints.length, 0);
   }
 }

@@ -6,7 +6,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Recipe},
-    NoopProgram, Payment, RecipeMaterialData,
+    NoopProgram, Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
@@ -23,7 +23,7 @@ pub struct CreateItemClassV1<'info> {
 
     #[account(init,
         payer = authority,
-        space = Recipe::space(args.recipe_args.materials.len()),
+        space = Recipe::space(args.recipe_args.ingredients.len()),
         seeds = [Recipe::PREFIX.as_bytes(), &Recipe::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
@@ -48,7 +48,7 @@ pub struct CreateItemClassV1Args {
 pub struct RecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
-    pub materials: Vec<RecipeMaterialData>,
+    pub ingredients: Vec<RecipeIngredientData>,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
@@ -64,7 +64,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         recipe_index: Recipe::INITIAL_INDEX,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.recipe_args.build_enabled,
-        materials: args.recipe_args.materials,
+        ingredients: args.recipe_args.ingredients,
         payment: args.recipe_args.payment,
     });
 

@@ -10,19 +10,19 @@ use spl_account_compression::{
 use crate::state::{
     accounts::{Build, ItemClassV1},
     errors::ErrorCode,
-    BuildMaterialMint, NoopProgram,
+    IngredientMint, NoopProgram,
 };
 
 #[derive(Accounts)]
-pub struct VerifyBuildMaterial<'info> {
-    pub material_mint: Box<Account<'info, token::Mint>>,
+pub struct VerifyIngredient<'info> {
+    pub ingredient_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), material_item_class_items.key().as_ref()], bump)]
-    pub material_item_class: Box<Account<'info, ItemClassV1>>,
+        seeds = [ItemClassV1::PREFIX.as_bytes(), ingredient_item_class_items.key().as_ref()], bump)]
+    pub ingredient_item_class: Box<Account<'info, ItemClassV1>>,
 
     /// CHECK: checked by spl-account-compression
-    pub material_item_class_items: UncheckedAccount<'info>,
+    pub ingredient_item_class_items: UncheckedAccount<'info>,
 
     #[account(mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
@@ -36,18 +36,18 @@ pub struct VerifyBuildMaterial<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct VerifyBuildMaterialArgs {
+pub struct VerifyIngredientArgs {
     pub root: [u8; 32],
     pub leaf_index: u32,
 }
 
 pub fn handler<'a, 'b, 'c, 'info>(
-    ctx: Context<'a, 'b, 'c, 'info, VerifyBuildMaterial<'info>>,
-    args: VerifyBuildMaterialArgs,
+    ctx: Context<'a, 'b, 'c, 'info, VerifyIngredient<'info>>,
+    args: VerifyIngredientArgs,
 ) -> Result<()> {
     // verify mint exists in the items tree
     let verify_item_accounts = VerifyLeaf {
-        merkle_tree: ctx.accounts.material_item_class_items.to_account_info(),
+        merkle_tree: ctx.accounts.ingredient_item_class_items.to_account_info(),
     };
 
     verify_leaf(
@@ -58,7 +58,7 @@ pub fn handler<'a, 'b, 'c, 'info>(
         .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
         args.root,
         ctx.accounts
-            .material_mint
+            .ingredient_mint
             .key()
             .as_ref()
             .try_into()
@@ -69,30 +69,30 @@ pub fn handler<'a, 'b, 'c, 'info>(
     // set the verified mint in the build data
     let build = &mut ctx.accounts.build;
     let mut verified = false;
-    for build_material_data in build.materials.iter_mut() {
-        if build_material_data
+    for build_ingredient_data in build.ingredients.iter_mut() {
+        if build_ingredient_data
             .item_class
-            .eq(&ctx.accounts.material_item_class.key())
+            .eq(&ctx.accounts.ingredient_item_class.key())
         {
-            // error if builder already escrowed enough of this material
+            // error if builder already escrowed enough of this ingredient
             require!(
-                build_material_data.current_amount < build_material_data.required_amount,
-                ErrorCode::IncorrectMaterial
+                build_ingredient_data.current_amount < build_ingredient_data.required_amount,
+                ErrorCode::IncorrectIngredient
             );
 
-            let material_mint = ctx.accounts.material_mint.key();
+            let ingredient_mint = ctx.accounts.ingredient_mint.key();
 
             // check this mint wasn't already verified
-            let already_verified = build_material_data
+            let already_verified = build_ingredient_data
                 .mints
                 .iter()
-                .any(|mint_data| mint_data.mint.eq(&material_mint));
-            require!(!already_verified, ErrorCode::IncorrectMaterial);
+                .any(|mint_data| mint_data.mint.eq(&ingredient_mint));
+            require!(!already_verified, ErrorCode::IncorrectIngredient);
 
-            // add the mint to the list of build materials
-            build_material_data.mints.push(BuildMaterialMint {
+            // add the mint to the list of build ingredients
+            build_ingredient_data.mints.push(IngredientMint {
                 build_effect_applied: false,
-                mint: ctx.accounts.material_mint.key(),
+                mint: ctx.accounts.ingredient_mint.key(),
             });
 
             verified = true;
@@ -100,7 +100,7 @@ pub fn handler<'a, 'b, 'c, 'info>(
             break;
         }
     }
-    require!(verified, ErrorCode::IncorrectMaterial);
+    require!(verified, ErrorCode::IncorrectIngredient);
 
     Ok(())
 }

@@ -8,7 +8,7 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
-pub struct ConsumeBuildMaterialSpl<'info> {
+pub struct ConsumeIngredientSpl<'info> {
     #[account(
         has_one = item_mint,
         seeds = [ItemV1::PREFIX.as_bytes(), item.item_class.key().as_ref(), item_mint.key().as_ref()], bump)]
@@ -35,7 +35,7 @@ pub struct ConsumeBuildMaterialSpl<'info> {
     pub token_program: Program<'info, token::Token>,
 }
 
-pub fn handler(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
+pub fn handler(ctx: Context<ConsumeIngredientSpl>) -> Result<()> {
     // check build status
     match ctx.accounts.build.status {
         BuildStatus::ItemReceived => {

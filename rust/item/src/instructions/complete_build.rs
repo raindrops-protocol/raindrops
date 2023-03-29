@@ -56,10 +56,10 @@ pub fn handler<'a, 'b, 'c, 'info>(
     let build_requirements_met = ctx
         .accounts
         .build
-        .materials
+        .ingredients
         .iter()
-        .all(|material| material.current_amount >= material.required_amount);
-    require!(build_requirements_met, ErrorCode::MissingBuildMaterial);
+        .all(|ingredient| ingredient.current_amount >= ingredient.required_amount);
+    require!(build_requirements_met, ErrorCode::MissingIngredient);
 
     // check payment has been made
     match &ctx.accounts.build.payment {
