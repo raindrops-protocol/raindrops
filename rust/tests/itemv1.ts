@@ -687,7 +687,7 @@ describe.only("itemv1", () => {
     assert.isTrue(itemClassDataPost.recipeIndex.eq(new anchor.BN(1)));
   });
 
-  it.only("build pNFT with only 1 signature from builder", async () => {
+  it("build pNFT with only 1 signature from builder", async () => {
     const builder = await newPayer(connection);
     const payer = await newPayer(connection);
 
@@ -1443,6 +1443,7 @@ async function addIngredient(
     ingredientMint: ingredientMint,
     ingredientItemClass: ingredientItemClass,
     builder: itemProgram.client.provider.publicKey,
+    payer: itemProgram.client.provider.publicKey,
   };
 
   const addIngredientArgs: Instructions.Item.AddIngredientArgs = {
