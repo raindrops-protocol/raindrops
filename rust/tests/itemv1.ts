@@ -206,7 +206,7 @@ describe.only("itemv1", () => {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degradation: { amount: new anchor.BN(100000) }, // single use
+            degradation: { rate: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
@@ -214,7 +214,7 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degradation: { amount: new anchor.BN(100000) }, // single use
+            degradation: { rate: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
@@ -1465,8 +1465,8 @@ async function cleanBuild(
       const itemData = await itemProgram.getItemV1(item);
 
       if (itemData.itemState.durability.lte(new anchor.BN(0))) {
-        // consume it
-        const consumeIngredientAccounts: Instructions.Item.ConsumeIngredientAccounts =
+        // destroy it
+        const destroyIngredientAccounts: Instructions.Item.DestroyIngredientAccounts =
           {
             ingredientMint: mint,
             ingredientItemClass: buildIngredientData[0],
@@ -1474,10 +1474,10 @@ async function cleanBuild(
             payer: itemProgram.client.provider.publicKey,
           };
 
-        const consumeIngredientResult = await itemProgram.consumeIngredient(
-          consumeIngredientAccounts
+        const destroyIngredientResult = await itemProgram.destroyIngredient(
+          destroyIngredientAccounts
         );
-        console.log("consumeIngredientTxSig: %s", consumeIngredientResult.txid);
+        console.log("destroyIngredientTxSig: %s", destroyIngredientResult.txid);
       } else {
         // return it
         const returnIngredientAccounts: Instructions.Item.ReturnIngredientAccounts =

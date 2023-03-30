@@ -1723,8 +1723,8 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async consumeIngredient(
-    accounts: ConsumeIngredientAccounts
+  async destroyIngredient(
+    accounts: DestroyIngredientAccounts
   ): Promise<web3.TransactionInstruction[]> {
     const item = Utils.PDA.getItemV1(accounts.ingredientMint);
 
@@ -1753,14 +1753,14 @@ export class Instruction extends SolKitInstruction {
 
     const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-      const pNftIx = await this.consumeIngredientPnft(
+      const pNftIx = await this.destroyIngredientPnft(
         accounts,
         item,
         itemSource
       );
       ixns.push(pNftIx);
     } else {
-      const ix = await this.consumeIngredientSpl(
+      const ix = await this.destroyIngredientSpl(
         accounts,
         item,
         builder,
@@ -1772,8 +1772,8 @@ export class Instruction extends SolKitInstruction {
     return ixns;
   }
 
-  private async consumeIngredientPnft(
-    accounts: ConsumeIngredientAccounts,
+  private async destroyIngredientPnft(
+    accounts: DestroyIngredientAccounts,
     item: web3.PublicKey,
     itemAta: web3.PublicKey
   ): Promise<web3.TransactionInstruction> {
@@ -1810,7 +1810,7 @@ export class Instruction extends SolKitInstruction {
       );
 
     const ix = await this.program.client.methods
-      .consumeIngredientPnft()
+      .destroyIngredientPnft()
       .accounts({
         item: item,
         itemMint: accounts.ingredientMint,
@@ -1829,14 +1829,14 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  private async consumeIngredientSpl(
-    accounts: ConsumeIngredientAccounts,
+  private async destroyIngredientSpl(
+    accounts: DestroyIngredientAccounts,
     item: web3.PublicKey,
     builder: web3.PublicKey,
     itemSource: web3.PublicKey
   ): Promise<web3.TransactionInstruction> {
     const ix = await this.program.client.methods
-      .consumeIngredientSpl()
+      .destroyIngredientSpl()
       .accounts({
         item: item,
         itemMint: accounts.ingredientMint,
@@ -2390,7 +2390,7 @@ export interface CreateRecipeArgs {
   args: RecipeArgs;
 }
 
-export interface ConsumeIngredientAccounts {
+export interface DestroyIngredientAccounts {
   ingredientMint: web3.PublicKey;
   ingredientItemClass: web3.PublicKey;
   payer: web3.PublicKey;

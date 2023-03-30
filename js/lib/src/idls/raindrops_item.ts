@@ -1625,7 +1625,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeIngredientSpl",
+      "name": "destroyIngredientSpl",
       "accounts": [
         {
           "name": "item",
@@ -1666,7 +1666,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeIngredientPnft",
+      "name": "destroyIngredientPnft",
       "accounts": [
         {
           "name": "item",
@@ -4396,8 +4396,8 @@ export type RaindropsItem = {
     },
     {
       "code": 6006,
-      "name": "ItemNotConsumable",
-      "msg": "Item cannot be consumed"
+      "name": "ItemIneligibleForDestruction",
+      "msg": "Item cannot be destroyed"
     },
     {
       "code": 6007,
@@ -6054,7 +6054,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeIngredientSpl",
+      "name": "destroyIngredientSpl",
       "accounts": [
         {
           "name": "item",
@@ -6095,7 +6095,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "consumeIngredientPnft",
+      "name": "destroyIngredientPnft",
       "accounts": [
         {
           "name": "item",
@@ -8825,8 +8825,8 @@ export const IDL: RaindropsItem = {
     },
     {
       "code": 6006,
-      "name": "ItemNotConsumable",
-      "msg": "Item cannot be consumed"
+      "name": "ItemIneligibleForDestruction",
+      "msg": "Item cannot be destroyed"
     },
     {
       "code": 6007,

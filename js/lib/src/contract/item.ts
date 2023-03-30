@@ -373,11 +373,11 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async consumeIngredient(
-    accounts: ItemInstruction.ConsumeIngredientAccounts,
+  async destroyIngredient(
+    accounts: ItemInstruction.DestroyIngredientAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.consumeIngredient(accounts);
+    const ixns = await this.instruction.destroyIngredient(accounts);
     return await this.sendWithRetry(ixns, [], options);
   }
 

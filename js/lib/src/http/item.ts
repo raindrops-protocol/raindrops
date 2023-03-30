@@ -184,7 +184,7 @@ export class Client {
     }
 
     // return any build ingredients that were added
-    await this.returnOrConsumeIngredients(build);
+    await this.returnOrDestroyIngredients(build);
 
     // clean up build accounts
     await this.cleanBuild(build);
@@ -399,7 +399,7 @@ export class Client {
     console.log("verifyIngredientTxSig: %s", txSig);
   }
 
-  private async returnOrConsumeIngredients(
+  private async returnOrDestroyIngredients(
     build: anchor.web3.PublicKey
   ): Promise<void> {
     const params = new URLSearchParams({
@@ -409,7 +409,7 @@ export class Client {
     let done = false;
     while (!done) {
       const response = await fetch(
-        `${this.baseUrl}/returnOrConsumeIngredients?` + params
+        `${this.baseUrl}/returnOrDestroyIngredients?` + params
       );
 
       const body = await errors.handleResponse(response);
@@ -419,7 +419,7 @@ export class Client {
         return;
       }
 
-      console.log("returnOrConsumeIngredientsTxSig: %s", body.txSig);
+      console.log("returnOrDestroyIngredientsTxSig: %s", body.txSig);
       done = body.done;
     }
   }
@@ -437,8 +437,8 @@ export class Client {
     // apply build effects to the ingredients used
     await this.applyBuildEffects(build);
 
-    // return or consume the build ingredients in accordance with the effects
-    await this.returnOrConsumeIngredients(build);
+    // return or destroy the build ingredients in accordance with the effects
+    await this.returnOrDestroyIngredients(build);
 
     // clean up
     await this.cleanBuild(build);

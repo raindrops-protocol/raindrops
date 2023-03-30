@@ -20,8 +20,8 @@ pub enum ErrorCode {
     #[msg("Item cannot be returned")]
     ItemNotReturnable,
 
-    #[msg("Item cannot be consumed")]
-    ItemNotConsumable,
+    #[msg("Item cannot be destroyed")]
+    ItemIneligibleForDestruction,
 
     #[msg("Build Effect Already Applied")]
     BuildEffectAlreadyApplied,

@@ -2023,12 +2023,12 @@ pub mod raindrops_item {
         return_ingredient_spl::handler(ctx)
     }
 
-    pub fn consume_ingredient_spl(ctx: Context<ConsumeIngredientSpl>) -> Result<()> {
-        consume_ingredient_spl::handler(ctx)
+    pub fn destroy_ingredient_spl(ctx: Context<DestroyIngredientSpl>) -> Result<()> {
+        destroy_ingredient_spl::handler(ctx)
     }
 
-    pub fn consume_ingredient_pnft(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
-        consume_ingredient_pnft::handler(ctx)
+    pub fn destroy_ingredient_pnft(ctx: Context<DestroyIngredientPNft>) -> Result<()> {
+        destroy_ingredient_pnft::handler(ctx)
     }
 
     pub fn close_build(ctx: Context<CloseBuild>) -> Result<()> {

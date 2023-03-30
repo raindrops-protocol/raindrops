@@ -12,7 +12,7 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
-pub struct ConsumeIngredientPNft<'info> {
+pub struct DestroyIngredientPNft<'info> {
     #[account(mut,
         has_one = item_mint,
         seeds = [ItemV1::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
@@ -56,7 +56,7 @@ pub struct ConsumeIngredientPNft<'info> {
     pub token_metadata: Program<'info, TokenMetadataProgram>,
 }
 
-pub fn handler(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
+pub fn handler(ctx: Context<DestroyIngredientPNft>) -> Result<()> {
     // check build status
     match ctx.accounts.build.status {
         BuildStatus::ItemReceived => {
@@ -66,11 +66,11 @@ pub fn handler(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
                 .build_effect_applied(ctx.accounts.item_mint.key())
                 .unwrap();
 
-            // the durability must be 0 to be consumed,
+            // the durability must be 0 to be destroyed
             // its the responsibility of the schema to decrement the durability via apply_build_effect
             require!(
                 ctx.accounts.item.item_state.broken(),
-                ErrorCode::ItemNotConsumable
+                ErrorCode::ItemIneligibleForDestruction
             );
 
             // decrement the amount in the build pda so we know its been burned
@@ -82,7 +82,7 @@ pub fn handler(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
                 )
                 .unwrap();
         }
-        _ => return Err(ErrorCode::ItemNotConsumable.into()),
+        _ => return Err(ErrorCode::ItemIneligibleForDestruction.into()),
     }
 
     let burn_ix = Burn {
