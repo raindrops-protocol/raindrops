@@ -62,7 +62,10 @@ export class Client {
     ingredientArgs: IngredientArg[]
   ): Promise<anchor.web3.PublicKey> {
     // find valid recipe with these ingredients
-    const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs);
+    const buildableRecipes = await this.checkIngredients(
+      itemClass,
+      ingredientArgs
+    );
     if (buildableRecipes.length <= 0) {
       throw new Error(`No Recipes Found`);
     }
@@ -121,17 +124,28 @@ export class Client {
     // if build status is still in progress, check the ingredients we have and add them
     let itemMint: anchor.web3.PublicKey;
     if (buildData.status === BuildStatus.InProgress) {
-
       // get the matching recipe for this build
-      const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs)
-      const recipe = buildableRecipes.find(recipe => recipe.recipeIndex === buildData.recipeIndex);
+      const buildableRecipes = await this.checkIngredients(
+        itemClass,
+        ingredientArgs
+      );
+      const recipe = buildableRecipes.find(
+        (recipe) => recipe.recipeIndex === buildData.recipeIndex
+      );
 
       // filter out already added ingredients
-      const missingIngredients = getMissingIngredients(recipe.ingredients, buildData);
+      const missingIngredients = getMissingIngredients(
+        recipe.ingredients,
+        buildData
+      );
 
       // add the remaining ingredients
       for (let ingredient of missingIngredients) {
-        await this.verifyIngredient(itemClass, ingredient.itemMint, ingredient.itemClass);
+        await this.verifyIngredient(
+          itemClass,
+          ingredient.itemMint,
+          ingredient.itemClass
+        );
 
         await this.addIngredient(itemClass, ingredient);
       }
@@ -142,12 +156,12 @@ export class Client {
         await this.addPayment(build);
       }
 
-      itemMint = await this.driveBuild(build)
+      itemMint = await this.driveBuild(build);
     } else {
       itemMint = await this.driveBuild(build);
     }
 
-    return itemMint
+    return itemMint;
   }
 
   async cancelBuild(itemClass: anchor.web3.PublicKey) {
@@ -162,21 +176,24 @@ export class Client {
     const body = await errors.handleResponse(response);
 
     const buildData: Build = JSON.parse(body.buildData);
-    const build = new anchor.web3.PublicKey(body.build); 
+    const build = new anchor.web3.PublicKey(body.build);
 
     // if the build is not in progress then you must continue
     if (buildData.status !== BuildStatus.InProgress) {
       throw new Error(`Build Cannot be cancelled, please call 'continueBuild'`);
-    };
+    }
 
     // return any build ingredients that were added
-    await this.returnOrConsumeIngredients(build)
+    await this.returnOrConsumeIngredients(build);
 
     // clean up build accounts
-    await this.cleanBuild(build)
+    await this.cleanBuild(build);
   }
 
-  async getBuild(itemClass: anchor.web3.PublicKey, builder: anchor.web3.PublicKey): Promise<[anchor.web3.PublicKey, Build]> {
+  async getBuild(
+    itemClass: anchor.web3.PublicKey,
+    builder: anchor.web3.PublicKey
+  ): Promise<[anchor.web3.PublicKey, Build]> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       builder: builder.toString(),
@@ -188,9 +205,9 @@ export class Client {
     const body = await errors.handleResponse(response);
 
     const buildData: Build = JSON.parse(body.buildData);
-    const build = new anchor.web3.PublicKey(body.build); 
+    const build = new anchor.web3.PublicKey(body.build);
 
-    return [build, buildData]
+    return [build, buildData];
   }
 
   // start the build process for an item class via the recipe
@@ -198,8 +215,8 @@ export class Client {
     itemClass: anchor.web3.PublicKey,
     recipeIndex: anchor.BN
   ): Promise<anchor.web3.PublicKey> {
-    const builder = this.provider.publicKey.toString(); 
-    console.log('builder: %s', builder);
+    const builder = this.provider.publicKey.toString();
+    console.log("builder: %s", builder);
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       recipeIndex: recipeIndex.toString(),
@@ -253,9 +270,9 @@ export class Client {
 
       const txSig = await this.send(body.tx);
       console.log("addPaymentTxSig: %s", txSig);
-    } catch(e) {
-      console.error(e)
-    } 
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   // mark build as complete, contract checks that required ingredients have been escrowed
@@ -327,9 +344,7 @@ export class Client {
       payer: this.provider.publicKey.toString(),
     });
 
-    const response = await fetch(
-      `${this.baseUrl}/verifyIngredient?` + params
-    );
+    const response = await fetch(`${this.baseUrl}/verifyIngredient?` + params);
 
     const body = await errors.handleResponse(response);
 
@@ -363,7 +378,9 @@ export class Client {
   }
 
   // drive build to completion, these are all permissionless steps
-  private async driveBuild(build: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey> {
+  private async driveBuild(
+    build: anchor.web3.PublicKey
+  ): Promise<anchor.web3.PublicKey> {
     // complete build
     await this.completeBuild(build);
 
@@ -379,7 +396,7 @@ export class Client {
     // clean up
     await this.cleanBuild(build);
 
-    return itemMint; 
+    return itemMint;
   }
 
   // sign and send a transaction received from the items api
@@ -422,14 +439,21 @@ export interface Payment {
   amount: anchor.BN;
 }
 
-function getMissingIngredients(recipeIngredients: Ingredient[], buildData: Build): Ingredient[] {
+function getMissingIngredients(
+  recipeIngredients: Ingredient[],
+  buildData: Build
+): Ingredient[] {
   const missingIngredients: Ingredient[] = [];
   for (let currentIngredient of buildData.ingredients) {
     console.log(currentIngredient);
 
     // if this build ingredient already has escrowed the required amount, we dont need it
-    if (new anchor.BN(currentIngredient.currentAmount).gte(new anchor.BN(currentIngredient.requiredAmount))) {
-      continue
+    if (
+      new anchor.BN(currentIngredient.currentAmount).gte(
+        new anchor.BN(currentIngredient.requiredAmount)
+      )
+    ) {
+      continue;
     }
 
     // find the recipe ingredient which matches the build ingredient required item class
@@ -440,5 +464,5 @@ function getMissingIngredients(recipeIngredients: Ingredient[], buildData: Build
     }
   }
 
-  return missingIngredients
+  return missingIngredients;
 }

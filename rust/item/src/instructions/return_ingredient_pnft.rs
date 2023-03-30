@@ -15,7 +15,7 @@ use crate::state::{
 pub struct ReturnIngredientPNft<'info> {
     #[account(mut,
         has_one = item_mint,
-        seeds = [ItemV1::PREFIX.as_bytes(), item.item_class.key().as_ref(), item_mint.key().as_ref()], bump)]
+        seeds = [ItemV1::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
     pub item_mint: Box<Account<'info, token::Mint>>,
@@ -87,13 +87,10 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
             );
 
             // check that the build effect is applied
-            require!(
-                ctx.accounts.build.build_effect_applied(
-                    ctx.accounts.item.item_class,
-                    ctx.accounts.item_mint.key()
-                ),
-                ErrorCode::BuildEffectNotApplied
-            );
+            ctx.accounts
+                .build
+                .build_effect_applied(ctx.accounts.item_mint.key())
+                .unwrap();
         }
         _ => return Err(ErrorCode::ItemNotReturnable.into()),
     }
@@ -101,7 +98,8 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
     // decrement the amount in the build pda so we know its been returned
     ctx.accounts
         .build
-        .decrement_build_amount(ctx.accounts.item.item_class.key(), 1);
+        .decrement_build_amount(ctx.accounts.item_mint.key(), 1)
+        .unwrap();
 
     // transfer the pNFT to the builder
     // transfer item_mint to destination

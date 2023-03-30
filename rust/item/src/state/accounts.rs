@@ -2,7 +2,10 @@ use std::convert::TryInto;
 
 use anchor_lang::prelude::*;
 
-use super::{BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState, RecipeIngredientData};
+use super::{
+    errors::ErrorCode, BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState,
+    RecipeIngredientData,
+};
 
 // seeds = ['item_class_v1', items.key().as_ref()]
 #[account]
@@ -24,14 +27,11 @@ impl ItemClassV1 {
     8; // recipe_index
 }
 
-// seeds = ['item_v1', item_class.key().as_ref(), item_mint.key().as_ref()]
+// seeds = ['item_v1', item_mint.key().as_ref()]
 
 #[account]
 pub struct ItemV1 {
     pub initialized: bool,
-
-    // item class this item is a part of
-    pub item_class: Pubkey,
 
     // mint this item represents
     pub item_mint: Pubkey,
@@ -44,7 +44,6 @@ impl ItemV1 {
     pub const PREFIX: &'static str = "item_v1";
     pub const SPACE: usize = 8 + // anchor
     1 + // initialized 
-    32 + // item class
     32 + // mint
     ItemState::SPACE; // state
 }
@@ -129,22 +128,27 @@ impl Build {
         total_build_ingredient_space
     }
 
-    pub fn build_effect_applied(&self, ingredient_item_class: Pubkey, ingredient_mint: Pubkey) -> bool {
+    pub fn build_effect_applied(&self, ingredient_mint: Pubkey) -> Result<()> {
+        // find the ingredient mint in the build data
         for build_ingredient_data in &self.ingredients {
-            // get corresponding item class
-            if build_ingredient_data.item_class.eq(&ingredient_item_class) {
-                // find the specific mint within the item class and verify the build effect has been applied
-                for mint_data in &build_ingredient_data.mints {
-                    if mint_data.mint.eq(&ingredient_mint) {
-                        return mint_data.build_effect_applied;
+            for mint_data in &build_ingredient_data.mints {
+                if mint_data.mint.eq(&ingredient_mint) {
+                    if mint_data.build_effect_applied {
+                        return Ok(());
+                    } else {
+                        return Err(ErrorCode::BuildEffectNotApplied.into());
                     }
                 }
             }
         }
-        return false;
+        Err(ErrorCode::IncorrectIngredient.into())
     }
 
-    pub fn verify_build_mint(&self, ingredient_item_class: Pubkey, ingredient_mint: Pubkey) -> bool {
+    pub fn verify_build_mint(
+        &self,
+        ingredient_item_class: Pubkey,
+        ingredient_mint: Pubkey,
+    ) -> bool {
         // verify ingredient_mint
         for build_ingredient_data in &self.ingredients {
             // find the corresponding item class
@@ -160,21 +164,43 @@ impl Build {
         false
     }
 
-    pub fn increment_build_amount(&mut self, ingredient_item_class: Pubkey, amount: u64) {
+    pub fn increment_build_amount(&mut self, ingredient_mint: Pubkey, amount: u64) -> Result<()> {
+        let mut found = false;
         for build_ingredient_data in self.ingredients.iter_mut() {
-            // find the corresponding item class
-            if ingredient_item_class.eq(&build_ingredient_data.item_class) {
+            if build_ingredient_data
+                .mints
+                .iter()
+                .any(|mint_data| mint_data.mint.eq(&ingredient_mint))
+            {
                 build_ingredient_data.current_amount += amount;
+                found = true;
+                break;
             }
+        }
+        if found {
+            Ok(())
+        } else {
+            Err(ErrorCode::IncorrectIngredient.into())
         }
     }
 
-    pub fn decrement_build_amount(&mut self, ingredient_item_class: Pubkey, amount: u64) {
+    pub fn decrement_build_amount(&mut self, ingredient_mint: Pubkey, amount: u64) -> Result<()> {
+        let mut found = false;
         for build_ingredient_data in self.ingredients.iter_mut() {
-            // find the corresponding item class
-            if ingredient_item_class.eq(&build_ingredient_data.item_class) {
+            if build_ingredient_data
+                .mints
+                .iter()
+                .any(|mint_data| mint_data.mint.eq(&ingredient_mint))
+            {
                 build_ingredient_data.current_amount -= amount;
+                found = true;
+                break;
             }
+        }
+        if found {
+            Ok(())
+        } else {
+            Err(ErrorCode::IncorrectIngredient.into())
         }
     }
 }

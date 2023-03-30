@@ -15,7 +15,7 @@ use crate::state::{
 pub struct ConsumeIngredientPNft<'info> {
     #[account(mut,
         has_one = item_mint,
-        seeds = [ItemV1::PREFIX.as_bytes(), item.item_class.key().as_ref(), item_mint.key().as_ref()], bump)]
+        seeds = [ItemV1::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
     #[account(mut)]
@@ -61,13 +61,10 @@ pub fn handler(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
     match ctx.accounts.build.status {
         BuildStatus::ItemReceived => {
             // check that the build effect is applied
-            require!(
-                ctx.accounts.build.build_effect_applied(
-                    ctx.accounts.item.item_class.key(),
-                    ctx.accounts.item_mint.key()
-                ),
-                ErrorCode::BuildEffectNotApplied
-            );
+            ctx.accounts
+                .build
+                .build_effect_applied(ctx.accounts.item_mint.key())
+                .unwrap();
 
             // the durability must be 0 to be consumed,
             // its the responsibility of the schema to decrement the durability via apply_build_effect
@@ -77,10 +74,13 @@ pub fn handler(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
             );
 
             // decrement the amount in the build pda so we know its been burned
-            ctx.accounts.build.decrement_build_amount(
-                ctx.accounts.item.item_class.key(),
-                ctx.accounts.item_ata.amount,
-            );
+            ctx.accounts
+                .build
+                .decrement_build_amount(
+                    ctx.accounts.item.item_mint.key(),
+                    ctx.accounts.item_ata.amount,
+                )
+                .unwrap();
         }
         _ => return Err(ErrorCode::ItemNotConsumable.into()),
     }
@@ -116,12 +116,16 @@ pub fn handler(ctx: Context<ConsumeIngredientPNft>) -> Result<()> {
         ctx.accounts.token_program.to_account_info(),
     ];
 
-    invoke_signed(&burn_ix.instruction(), &burn_accounts, &[&[
-        Build::PREFIX.as_bytes(),
-        ctx.accounts.build.item_class.key().as_ref(),
-        ctx.accounts.build.builder.key().as_ref(),
-        &[*ctx.bumps.get("build").unwrap()],
-    ]])?;
+    invoke_signed(
+        &burn_ix.instruction(),
+        &burn_accounts,
+        &[&[
+            Build::PREFIX.as_bytes(),
+            ctx.accounts.build.item_class.key().as_ref(),
+            ctx.accounts.build.builder.key().as_ref(),
+            &[*ctx.bumps.get("build").unwrap()],
+        ]],
+    )?;
 
     Ok(())
 }

@@ -562,7 +562,6 @@ export interface Ingredient {
 
 export interface ItemV1 {
   initialized: boolean;
-  itemClass: web3.PublicKey;
   itemMint: web3.PublicKey;
   itemState: ItemState;
 }
@@ -605,13 +604,13 @@ export function convertToBuildStatus(buildStatusRaw: any): BuildStatus {
   const buildStatusStr = JSON.stringify(buildStatusRaw);
 
   switch (true) {
-    case buildStatusStr.includes('inProgress'):
-      return BuildStatus.InProgress
-    case buildStatusStr.includes('complete'): 
-      return BuildStatus.Complete
-    case buildStatusStr.includes('itemReceived'):
-      return BuildStatus.ItemReceived
+    case buildStatusStr.includes("inProgress"):
+      return BuildStatus.InProgress;
+    case buildStatusStr.includes("complete"):
+      return BuildStatus.Complete;
+    case buildStatusStr.includes("itemReceived"):
+      return BuildStatus.ItemReceived;
     default:
-      throw new Error(`Invalid Build Status: ${buildStatusRaw}`)
+      throw new Error(`Invalid Build Status: ${buildStatusRaw}`);
   }
 }

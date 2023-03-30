@@ -1820,10 +1820,6 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
-            "name": "itemClass",
-            "type": "publicKey"
-          },
-          {
             "name": "itemMint",
             "type": "publicKey"
           },
@@ -6251,10 +6247,6 @@ export const IDL: RaindropsItem = {
           {
             "name": "initialized",
             "type": "bool"
-          },
-          {
-            "name": "itemClass",
-            "type": "publicKey"
           },
           {
             "name": "itemMint",

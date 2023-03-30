@@ -50,7 +50,7 @@ pub struct AddIngredientPNft<'info> {
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(init_if_needed, payer = payer, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), ingredient_item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump)]
+    #[account(init_if_needed, payer = payer, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
     /// CHECK: done by build pda
@@ -94,13 +94,14 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
     require!(verified, ErrorCode::IncorrectIngredient);
 
     // increment current_amount by transfer amount (1)
-    build.increment_build_amount(ctx.accounts.ingredient_item_class.key(), 1);
+    build
+        .increment_build_amount(ctx.accounts.ingredient_mint.key(), 1)
+        .unwrap();
 
     // set the initial data if item pda has not been initialized until this instruction
     if !ctx.accounts.item.initialized {
         ctx.accounts.item.set_inner(ItemV1 {
             initialized: true,
-            item_class: ctx.accounts.ingredient_item_class.key(),
             item_mint: ctx.accounts.ingredient_mint.key(),
             item_state: ItemState::new(),
         })
@@ -146,7 +147,9 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
         ctx.accounts.ingredient_mint.to_account_info(),
         ctx.accounts.ingredient_metadata.to_account_info(),
         ctx.accounts.ingredient_edition.to_account_info(),
-        ctx.accounts.ingredient_source_token_record.to_account_info(),
+        ctx.accounts
+            .ingredient_source_token_record
+            .to_account_info(),
         ctx.accounts
             .ingredient_destination_token_record
             .to_account_info(),

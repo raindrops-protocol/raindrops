@@ -687,7 +687,7 @@ describe.only("itemv1", () => {
     assert.isTrue(itemClassDataPost.recipeIndex.eq(new anchor.BN(1)));
   });
 
-  it.only("build pNFT with only 1 signature from builder", async () => {
+  it("build pNFT with only 1 signature from builder", async () => {
     const builder = await newPayer(connection);
     const payer = await newPayer(connection);
 
@@ -1461,14 +1461,7 @@ async function cleanBuild(
       console.log("applyBuildEffectTxSig: %s", applyBuildEffectResult.txid);
 
       // detect if item is returnable or consumable
-      const [item, _itemBump] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("item_v1"),
-          buildIngredientData[0].toBuffer(),
-          mint.toBuffer(),
-        ],
-        itemProgram.PROGRAM_ID
-      );
+      const item = Utils.PDA.getItemV1(mint);
       const itemData = await itemProgram.getItemV1(item);
 
       if (itemData.itemState.durability.lte(new anchor.BN(0))) {

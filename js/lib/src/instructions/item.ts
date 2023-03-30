@@ -1038,10 +1038,7 @@ export class Instruction extends SolKitInstruction {
       programId: cmp.PROGRAM_ID,
     });
 
-    const [itemClass, _itemClassBump] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("item_class_v1"), items.publicKey.toBuffer()],
-      this.program.id
-    );
+    const itemClass = Utils.PDA.getItemClassV1(items.publicKey);
 
     const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -1150,14 +1147,7 @@ export class Instruction extends SolKitInstruction {
       this.program.id
     );
 
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
+    const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
 
     const ix = await this.program.client.methods
       .startBuild(args)
@@ -1178,23 +1168,8 @@ export class Instruction extends SolKitInstruction {
     accounts: AddIngredientAccounts,
     args: AddIngredientArgs
   ): Promise<web3.TransactionInstruction[]> {
-    const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("item_v1"),
-        accounts.ingredientItemClass.toBuffer(),
-        accounts.ingredientMint.toBuffer(),
-      ],
-      this.program.id
-    );
-
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
+    const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
 
     // detect what type of token we are adding
     const tokenStandard = await Utils.Item.getTokenStandard(
@@ -1273,15 +1248,16 @@ export class Instruction extends SolKitInstruction {
       "confirmed"
     );
 
-    const [ingredientME, _ingredientMEBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("metadata"),
-        mpl.PROGRAM_ID.toBuffer(),
-        accounts.ingredientMint.toBuffer(),
-        Buffer.from("edition"),
-      ],
-      mpl.PROGRAM_ID
-    );
+    const [ingredientME, _ingredientMEBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+          Buffer.from("edition"),
+        ],
+        mpl.PROGRAM_ID
+      );
 
     const ingredientSource = splToken.getAssociatedTokenAddressSync(
       accounts.ingredientMint,
@@ -1371,14 +1347,7 @@ export class Instruction extends SolKitInstruction {
       ingredientItemClassData.items
     );
 
-    const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build"),
-        accounts.itemClass.toBuffer(),
-        accounts.builder.toBuffer(),
-      ],
-      this.program.id
-    );
+    const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
 
     const proofAsRemainingAccounts = [];
     for (const node of args.proof) {
@@ -1570,14 +1539,7 @@ export class Instruction extends SolKitInstruction {
   async applyBuildEffect(
     accounts: ApplyBuildEffectAccounts
   ): Promise<web3.TransactionInstruction> {
-    const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("item_v1"),
-        accounts.ingredientItemClass.toBuffer(),
-        accounts.ingredientMint.toBuffer(),
-      ],
-      this.program.id
-    );
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
 
     const ix = await this.program.client.methods
       .applyBuildEffect()
@@ -1594,14 +1556,7 @@ export class Instruction extends SolKitInstruction {
   async returnIngredient(
     accounts: ReturnIngredientAccounts
   ): Promise<web3.TransactionInstruction[]> {
-    const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("item_v1"),
-        accounts.ingredientItemClass.toBuffer(),
-        accounts.ingredientMint.toBuffer(),
-      ],
-      this.program.id
-    );
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
 
     // detect what type of token we are adding
     const tokenStandard = await Utils.Item.getTokenStandard(
@@ -1618,11 +1573,7 @@ export class Instruction extends SolKitInstruction {
       );
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.returnIngredientSpl(
-        accounts,
-        accounts.build,
-        item
-      );
+      const ix = await this.returnIngredientSpl(accounts, accounts.build, item);
       ixns.push(ix);
     }
 
@@ -1775,14 +1726,7 @@ export class Instruction extends SolKitInstruction {
   async consumeIngredient(
     accounts: ConsumeIngredientAccounts
   ): Promise<web3.TransactionInstruction[]> {
-    const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("item_v1"),
-        accounts.ingredientItemClass.toBuffer(),
-        accounts.ingredientMint.toBuffer(),
-      ],
-      this.program.id
-    );
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
 
     const buildData = await this.program.client.account.build.fetch(
       accounts.build
@@ -1812,7 +1756,7 @@ export class Instruction extends SolKitInstruction {
       const pNftIx = await this.consumeIngredientPnft(
         accounts,
         item,
-        itemSource,
+        itemSource
       );
       ixns.push(pNftIx);
     } else {
@@ -1831,7 +1775,7 @@ export class Instruction extends SolKitInstruction {
   private async consumeIngredientPnft(
     accounts: ConsumeIngredientAccounts,
     item: web3.PublicKey,
-    itemAta: web3.PublicKey,
+    itemAta: web3.PublicKey
   ): Promise<web3.TransactionInstruction> {
     const [itemMetadata, _itemMetadataBump] =
       web3.PublicKey.findProgramAddressSync(

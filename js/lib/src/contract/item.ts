@@ -23,6 +23,7 @@ import {
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
+import { Utils } from "../main";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
@@ -408,15 +409,7 @@ export class ItemProgram extends Program.Program {
 
     const recipes: Recipe[] = [];
     for (let i = 0; i <= recipeIndex.toNumber(); i++) {
-      const [recipeAddr, _recipeAddrBump] =
-        web3.PublicKey.findProgramAddressSync(
-          [
-            Buffer.from("recipe"),
-            recipeIndex.toArrayLike(Buffer, "le", 8),
-            itemClass.toBuffer(),
-          ],
-          this.PROGRAM_ID
-        );
+      const recipeAddr = Utils.PDA.getRecipe(itemClass, recipeIndex);
 
       const recipeData = await this.client.account.recipe.fetch(recipeAddr);
 
@@ -526,7 +519,6 @@ export class ItemProgram extends Program.Program {
 
     const itemData: ItemV1 = {
       initialized: itemDataRaw.initialized as boolean,
-      itemClass: new web3.PublicKey(itemDataRaw.itemClass),
       itemMint: new web3.PublicKey(itemDataRaw.itemMint),
       itemState: {
         cooldown: cooldown,
