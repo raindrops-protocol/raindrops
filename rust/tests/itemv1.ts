@@ -60,7 +60,7 @@ describe.only("itemv1", () => {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: null,
+            degradation: null,
             cooldown: null,
           },
         },
@@ -68,7 +68,7 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: { amount: new anchor.BN(100000) }, // single use
+            degradation: { amount: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
@@ -206,7 +206,7 @@ describe.only("itemv1", () => {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: { amount: new anchor.BN(100000) }, // single use
+            degradation: { amount: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
@@ -214,7 +214,7 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: { amount: new anchor.BN(100000) }, // single use
+            degradation: { amount: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
@@ -358,7 +358,7 @@ describe.only("itemv1", () => {
             itemClass: pNftItemClass.itemClass,
             requiredAmount: new BN(1),
             buildEffect: {
-              degredation: null,
+              degradation: null,
               cooldown: null,
             },
           },
@@ -366,7 +366,7 @@ describe.only("itemv1", () => {
             itemClass: nftItemClass.itemClass,
             requiredAmount: new BN(1),
             buildEffect: {
-              degredation: null,
+              degradation: null,
               cooldown: null,
             },
           },
@@ -525,7 +525,7 @@ describe.only("itemv1", () => {
           itemClass: pNftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: null,
+            degradation: null,
             cooldown: null,
           },
         },
@@ -533,7 +533,7 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degredation: null,
+            degradation: null,
             cooldown: null,
           },
         },
@@ -761,7 +761,7 @@ describe.only("itemv1", () => {
             itemClass: claymakerItemClass.itemClass,
             requiredAmount: new BN(1),
             buildEffect: {
-              degredation: null,
+              degradation: null,
               cooldown: null,
             },
           },
@@ -769,7 +769,7 @@ describe.only("itemv1", () => {
             itemClass: sardItemClass.itemClass,
             requiredAmount: new BN(1),
             buildEffect: {
-              degredation: { amount: new anchor.BN(100000) }, // single use
+              degradation: { rate: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
           },
@@ -777,7 +777,7 @@ describe.only("itemv1", () => {
             itemClass: clayItemClass.itemClass,
             requiredAmount: new BN(1),
             buildEffect: {
-              degredation: { amount: new anchor.BN(100000) }, // single use
+              degradation: { rate: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
           },

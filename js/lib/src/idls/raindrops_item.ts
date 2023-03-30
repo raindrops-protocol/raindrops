@@ -2352,9 +2352,9 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "degredation",
+            "name": "degradation",
             "type": {
-              "defined": "Degredation"
+              "defined": "Degradation"
             }
           },
           {
@@ -4096,7 +4096,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "Degredation",
+      "name": "Degradation",
       "type": {
         "kind": "enum",
         "variants": [
@@ -4107,7 +4107,7 @@ export type RaindropsItem = {
             "name": "On",
             "fields": [
               {
-                "name": "amount",
+                "name": "rate",
                 "type": "u64"
               }
             ]
@@ -6781,9 +6781,9 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "degredation",
+            "name": "degradation",
             "type": {
-              "defined": "Degredation"
+              "defined": "Degradation"
             }
           },
           {
@@ -8525,7 +8525,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "Degredation",
+      "name": "Degradation",
       "type": {
         "kind": "enum",
         "variants": [
@@ -8536,7 +8536,7 @@ export const IDL: RaindropsItem = {
             "name": "On",
             "fields": [
               {
-                "name": "amount",
+                "name": "rate",
                 "type": "u64"
               }
             ]

@@ -87,21 +87,21 @@ pub enum BuildStatus {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BuildEffect {
-    pub degredation: Degredation,
+    pub degradation: Degradation,
     pub cooldown: Cooldown,
 }
 
 impl BuildEffect {
-    pub const SPACE: usize = Degredation::SPACE + Cooldown::SPACE;
+    pub const SPACE: usize = Degradation::SPACE + Cooldown::SPACE;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
-pub enum Degredation {
+pub enum Degradation {
     Off,
-    On { amount: u64 },
+    On { rate: u64 },
 }
 
-impl Degredation {
+impl Degradation {
     pub const SPACE: usize = (1 + 8);
 
     pub fn apply(&self, item_state: &mut ItemState) {
@@ -111,12 +111,12 @@ impl Degredation {
                 durability,
                 cooldown: _,
             } => match self {
-                Degredation::Off => return,
-                Degredation::On { amount } => {
-                    if amount >= durability {
+                Degradation::Off => return,
+                Degradation::On { rate } => {
+                    if rate >= durability {
                         *durability = 0;
                     } else {
-                        *durability -= amount;
+                        *durability -= rate;
                     }
                 }
             },

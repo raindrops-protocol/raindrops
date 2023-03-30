@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import * as errors from "./errors";
-import { Build, BuildIngredientData, BuildStatus } from "../state/item";
+import { Build, BuildIngredientData, BuildStatus, ItemClassV1, ItemV1 } from "../state/item";
 import { fetch } from "cross-fetch";
 
 export class Client {
@@ -202,12 +202,59 @@ export class Client {
     // return the current build data
     const response = await fetch(`${this.baseUrl}/build?` + params);
 
+    if (response.status === 400) {
+      return [null, null]
+    }
+
     const body = await errors.handleResponse(response);
 
     const buildData: Build = JSON.parse(body.buildData);
     const build = new anchor.web3.PublicKey(body.build);
 
     return [build, buildData];
+  }
+
+  async getItem(
+    itemMint: anchor.web3.PublicKey
+  ): Promise<[anchor.web3.PublicKey, ItemV1]> {
+    const params = new URLSearchParams({
+      itemMint: itemMint.toString(),
+    });
+
+    // return the current item data
+    const response = await fetch(`${this.baseUrl}/item?` + params);
+
+    if (response.status === 400) {
+      return [null, null]
+    }
+
+    const body = await errors.handleResponse(response);
+
+    const itemData: ItemV1 = JSON.parse(body.itemData);
+    const item = new anchor.web3.PublicKey(body.item);
+
+    return [item, itemData];
+  }
+
+  async getItemClass(
+    itemClass: anchor.web3.PublicKey,
+  ): Promise<ItemClassV1> {
+    const params = new URLSearchParams({
+      itemClass: itemClass.toString(),
+    });
+
+    // return the current build data
+    const response = await fetch(`${this.baseUrl}/itemClass?` + params);
+
+    if (response.status === 400) {
+      return null
+    }
+
+    const body = await errors.handleResponse(response);
+
+    const itemClassData: ItemClassV1 = JSON.parse(body.itemClassData);
+
+    return itemClassData;
   }
 
   // start the build process for an item class via the recipe
@@ -319,7 +366,7 @@ export class Client {
   }
 
   // apply the post build effects to each ingredient
-  // things like cooldowns and degredation
+  // things like cooldowns and degradation
   private async applyBuildEffects(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),

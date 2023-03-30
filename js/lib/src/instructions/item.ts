@@ -1051,13 +1051,13 @@ export class Instruction extends SolKitInstruction {
 
     const ingredients: any[] = [];
     for (let ingredientArg of args.recipeArgs.ingredientArgs) {
-      let degredationBuildEffect;
-      if (ingredientArg.buildEffect.degredation) {
-        degredationBuildEffect = {
-          on: { amount: ingredientArg.buildEffect.degredation.amount },
+      let degradationBuildEffect;
+      if (ingredientArg.buildEffect.degradation) {
+        degradationBuildEffect = {
+          on: { amount: ingredientArg.buildEffect.degradation.rate },
         };
       } else {
-        degredationBuildEffect = { off: {} };
+        degradationBuildEffect = { off: {} };
       }
 
       let cooldownBuildEffect;
@@ -1073,7 +1073,7 @@ export class Instruction extends SolKitInstruction {
         itemClass: ingredientArg.itemClass,
         requiredAmount: ingredientArg.requiredAmount,
         buildEffect: {
-          degredation: degredationBuildEffect,
+          degradation: degradationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
       };
@@ -1857,13 +1857,13 @@ export class Instruction extends SolKitInstruction {
   ): Promise<web3.TransactionInstruction> {
     const ingredients: any[] = [];
     for (const ingredientArg of args.args.ingredientArgs) {
-      let degredationBuildEffect;
-      if (ingredientArg.buildEffect.degredation) {
-        degredationBuildEffect = {
-          on: { amount: ingredientArg.buildEffect.degredation.amount },
+      let degradationBuildEffect;
+      if (ingredientArg.buildEffect.degradation) {
+        degradationBuildEffect = {
+          on: { amount: ingredientArg.buildEffect.degradation.rate },
         };
       } else {
-        degredationBuildEffect = { off: {} };
+        degradationBuildEffect = { off: {} };
       }
 
       let cooldownBuildEffect;
@@ -1879,7 +1879,7 @@ export class Instruction extends SolKitInstruction {
         itemClass: ingredientArg.itemClass,
         requiredAmount: ingredientArg.requiredAmount,
         buildEffect: {
-          degredation: degredationBuildEffect,
+          degradation: degradationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
       };
@@ -2298,12 +2298,12 @@ export interface RecipeIngredientDataArgs {
 }
 
 export interface BuildEffect {
-  degredation: Degredation | null;
+  degradation: Degradation | null;
   cooldown: Cooldown | null;
 }
 
-export interface Degredation {
-  amount: BN;
+export interface Degradation {
+  rate: BN;
 }
 
 export interface Cooldown {

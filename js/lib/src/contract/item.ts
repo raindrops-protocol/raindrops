@@ -455,9 +455,11 @@ export class ItemProgram extends Program.Program {
   }
 
   async getBuild(build: web3.PublicKey): Promise<Build | null> {
-    const buildDataRaw = await this.client.account.build.fetch(build);
-    if (!buildDataRaw) {
-      return null;
+    let buildDataRaw;
+    try {
+      buildDataRaw = await this.client.account.build.fetch(build);
+    } catch(_e) {
+      return null
     }
 
     const buildIngredientData: BuildIngredientData[] = [];
@@ -507,9 +509,11 @@ export class ItemProgram extends Program.Program {
   }
 
   async getItemV1(item: web3.PublicKey): Promise<ItemV1 | null> {
-    const itemDataRaw = await this.client.account.itemV1.fetch(item);
-    if (!itemDataRaw) {
-      return null;
+    let itemDataRaw;
+    try {
+      itemDataRaw = await this.client.account.itemV1.fetch(item);
+    } catch (_e) {
+      return null
     }
 
     let cooldown: BN | null = null;

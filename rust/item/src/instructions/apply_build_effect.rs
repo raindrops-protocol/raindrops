@@ -47,10 +47,10 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
             );
             mint_data.build_effect_applied = true;
 
-            // apply degredation
+            // apply degradation
             build_ingredient_data
                 .build_effect
-                .degredation
+                .degradation
                 .apply(&mut ctx.accounts.item.item_state);
 
             // apply cooldown
