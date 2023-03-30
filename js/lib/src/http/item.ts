@@ -80,14 +80,14 @@ export class Client {
     console.log("build started: %s", build.toString());
 
     for (const ingredient of recipe.ingredients) {
-      await this.verifyBuildIngredient(
+      await this.verifyIngredient(
         itemClass,
         ingredient.itemMint,
         ingredient.itemClass
       );
 
       // add build items
-      await this.addBuildIngredient(itemClass, ingredient);
+      await this.addIngredient(itemClass, ingredient);
     }
 
     // if a payment is required, pay it now
@@ -127,13 +127,13 @@ export class Client {
       const recipe = buildableRecipes.find(recipe => recipe.recipeIndex === buildData.recipeIndex);
 
       // filter out already added ingredients
-      const missingIngredients = getMissingBuildIngredients(recipe.ingredients, buildData);
+      const missingIngredients = getMissingIngredients(recipe.ingredients, buildData);
 
       // add the remaining ingredients
       for (let ingredient of missingIngredients) {
-        await this.verifyBuildIngredient(itemClass, ingredient.itemMint, ingredient.itemClass);
+        await this.verifyIngredient(itemClass, ingredient.itemMint, ingredient.itemClass);
 
-        await this.addBuildIngredient(itemClass, ingredient);
+        await this.addIngredient(itemClass, ingredient);
       }
 
       // if payment is not paid do that now
@@ -217,24 +217,25 @@ export class Client {
   }
 
   // escrow items from builder to the build pda
-  private async addBuildIngredient(
+  private async addIngredient(
     itemClass: anchor.web3.PublicKey,
     ingredient: Ingredient
   ): Promise<void> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       builder: this.provider.publicKey.toString(),
+      payer: this.provider.publicKey.toString(),
       ingredientMint: ingredient.itemMint.toString(),
       ingredientItemClass: ingredient.itemClass.toString(),
       amount: ingredient.amount.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/addBuildIngredient?` + params);
+    const response = await fetch(`${this.baseUrl}/addIngredient?` + params);
     const body = await errors.handleResponse(response);
 
     // send ingredient to build
-    const addBuildIngredientTxSig = await this.send(body.tx);
-    console.log("addBuildIngredientTxSig: %s", addBuildIngredientTxSig);
+    const addIngredientTxSig = await this.send(body.tx);
+    console.log("addIngredientTxSig: %s", addIngredientTxSig);
   }
 
   // TODO: we only support native sol right now
@@ -313,7 +314,7 @@ export class Client {
     console.log("applyBuildEffectTxSig: %s", body.txSig);
   }
 
-  private async verifyBuildIngredient(
+  private async verifyIngredient(
     itemClass: anchor.web3.PublicKey,
     ingredientMint: anchor.web3.PublicKey,
     ingredientItemClass: anchor.web3.PublicKey
@@ -323,16 +324,17 @@ export class Client {
       ingredientMint: ingredientMint.toString(),
       ingredientItemClass: ingredientItemClass.toString(),
       builder: this.provider.publicKey.toString(),
+      payer: this.provider.publicKey.toString(),
     });
 
     const response = await fetch(
-      `${this.baseUrl}/verifyBuildIngredient?` + params
+      `${this.baseUrl}/verifyIngredient?` + params
     );
 
     const body = await errors.handleResponse(response);
 
     const txSig = await this.send(body.tx);
-    console.log("verifyBuildIngredientTxSig: %s", txSig);
+    console.log("verifyIngredientTxSig: %s", txSig);
   }
 
   private async returnOrConsumeIngredients(
@@ -382,22 +384,18 @@ export class Client {
 
   // sign and send a transaction received from the items api
   private async send(txBase64: string): Promise<string> {
-    try {
-      const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
-      const signedTx = await this.provider.wallet.signTransaction(tx);
+    const tx = anchor.web3.Transaction.from(Buffer.from(txBase64, "base64"));
+    const signedTx = await this.provider.wallet.signTransaction(tx);
 
-      const response = await fetch(`${this.baseUrl}/send`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tx: signedTx.serialize().toString("base64") }),
-      });
+    const response = await fetch(`${this.baseUrl}/send`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tx: signedTx.serialize().toString("base64") }),
+    });
 
-      const body = await errors.handleResponse(response);
+    const body = await errors.handleResponse(response);
 
-      return body.txSig;
-    } catch (e) {
-      console.error(e)
-    } 
+    return body.txSig;
   }
 }
 
@@ -424,19 +422,19 @@ export interface Payment {
   amount: anchor.BN;
 }
 
-function getMissingBuildIngredients(recipeIngredients: Ingredient[], buildData: Build): Ingredient[] {
+function getMissingIngredients(recipeIngredients: Ingredient[], buildData: Build): Ingredient[] {
   const missingIngredients: Ingredient[] = [];
-  for (let currentBuildIngredient of buildData.ingredients) {
-    console.log(currentBuildIngredient);
+  for (let currentIngredient of buildData.ingredients) {
+    console.log(currentIngredient);
 
     // if this build ingredient already has escrowed the required amount, we dont need it
-    if (new anchor.BN(currentBuildIngredient.currentAmount).gte(new anchor.BN(currentBuildIngredient.requiredAmount))) {
+    if (new anchor.BN(currentIngredient.currentAmount).gte(new anchor.BN(currentIngredient.requiredAmount))) {
       continue
     }
 
     // find the recipe ingredient which matches the build ingredient required item class
     for (let recipeIngredient of recipeIngredients) {
-      if (recipeIngredient.itemClass.equals(currentBuildIngredient.itemClass)) {
+      if (recipeIngredient.itemClass.equals(currentIngredient.itemClass)) {
         missingIngredients.push(recipeIngredient);
       }
     }

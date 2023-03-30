@@ -1240,6 +1240,7 @@ export class Instruction extends SolKitInstruction {
         build: build,
         item: item,
         builder: accounts.builder,
+        payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
