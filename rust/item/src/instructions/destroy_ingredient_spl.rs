@@ -90,7 +90,7 @@ pub fn handler(ctx: Context<DestroyIngredientSpl>) -> Result<()> {
 
     let close_accounts = token::CloseAccount {
         account: ctx.accounts.item_source.to_account_info(),
-        destination: ctx.accounts.builder.to_account_info(),
+        destination: ctx.accounts.payer.to_account_info(),
         authority: ctx.accounts.build.to_account_info(),
     };
 
@@ -103,5 +103,8 @@ pub fn handler(ctx: Context<DestroyIngredientSpl>) -> Result<()> {
             ctx.accounts.builder.key().as_ref(),
             &[*ctx.bumps.get("build").unwrap()],
         ]],
-    ))
+    ))?;
+
+    // close item pda
+    ctx.accounts.item.close(ctx.accounts.payer.to_account_info())
 }

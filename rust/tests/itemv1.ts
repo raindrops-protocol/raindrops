@@ -7,7 +7,6 @@ import {
   Idls,
   ItemProgram,
   Utils,
-  State,
 } from "@raindrops-protocol/raindrops";
 import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";

@@ -103,6 +103,7 @@ pub enum Degradation {
 
 impl Degradation {
     pub const SPACE: usize = (1 + 8);
+    pub const BRAND_NEW: u64 = 100000;
 
     pub fn apply(&self, item_state: &mut ItemState) {
         match item_state {
@@ -163,7 +164,7 @@ impl ItemState {
     pub const SPACE: usize = 1 + (8 + (1 + 8));
     pub fn new() -> Self {
         ItemState::NonFungible {
-            durability: 100000,
+            durability: Degradation::BRAND_NEW,
             cooldown: None,
         }
     }
@@ -206,6 +207,21 @@ impl ItemState {
                 durability: _,
                 cooldown: _,
             } => !self.broken(),
+        }
+    }
+
+    // returns true if the item state is brand new and without cooldown
+    // we use this to destroy the ItemV1 PDA and return the rent after the build
+    // there's no reason to have an ItemV1 PDA if there's no state to keep, this saves money
+    pub fn no_state(&self) -> bool {
+        match self {
+            Self::Fungible => true,
+            Self::NonFungible { durability, cooldown } => {
+                if *durability == Degradation::BRAND_NEW && cooldown.is_none() {
+                    return true
+                }
+                return false
+            }
         }
     }
 }

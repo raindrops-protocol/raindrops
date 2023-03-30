@@ -160,7 +160,10 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
         ]],
     )?;
 
-    Ok(())
+    // if the item pda is holding no state we destroy it to save on rent
+    if ctx.accounts.item.item_state.no_state() {
+        ctx.accounts.item.close(ctx.accounts.payer.to_account_info()).unwrap();
+    };
 
-    // TODO: close mpl token account via mpl instruction
+    Ok(())
 }

@@ -70,7 +70,7 @@ pub fn handler(ctx: Context<ReturnIngredientSpl>) -> Result<()> {
     ctx.accounts
         .build
         .decrement_build_amount(
-            ctx.accounts.item.item_mint.key(),
+            ctx.accounts.item_mint.key(),
             ctx.accounts.item_source.amount,
         )
         .unwrap();
@@ -96,13 +96,13 @@ pub fn handler(ctx: Context<ReturnIngredientSpl>) -> Result<()> {
         ctx.accounts.item_source.amount,
     )?;
 
+    // close the account after transferring the tokens
+
     let close_accounts = token::CloseAccount {
         account: ctx.accounts.item_source.to_account_info(),
-        destination: ctx.accounts.builder.to_account_info(),
+        destination: ctx.accounts.payer.to_account_info(),
         authority: ctx.accounts.build.to_account_info(),
     };
-
-    // close the account after transferring the tokens
 
     token::close_account(CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
@@ -113,5 +113,12 @@ pub fn handler(ctx: Context<ReturnIngredientSpl>) -> Result<()> {
             ctx.accounts.builder.key().as_ref(),
             &[*ctx.bumps.get("build").unwrap()],
         ]],
-    ))
+    ))?;
+
+    // if the item pda is holding no state we destroy it to save on rent
+    if ctx.accounts.item.item_state.no_state() {
+        ctx.accounts.item.close(ctx.accounts.payer.to_account_info()).unwrap();
+    };
+
+    Ok(())
 }
