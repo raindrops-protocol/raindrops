@@ -687,11 +687,9 @@ describe.only("itemv1", () => {
     assert.isTrue(itemClassDataPost.recipeIndex.eq(new anchor.BN(1)));
   });
 
-  it("build pNFT with only 1 signature from builder", async () => {
+  it.only("build pNFT with only 1 signature from builder", async () => {
     const builder = await newPayer(connection);
     const payer = await newPayer(connection);
-
-    console.log("builder: %s", builder.publicKey.toString());
 
     const itemProgramPayer = await ItemProgram.getProgramWithConfig(
       ItemProgram,
@@ -720,11 +718,17 @@ describe.only("itemv1", () => {
     );
 
     // ingredient 1, pNFT
-    const claymakerItemClass = await createItemClass(builder, connection, 1, true, {
-      buildEnabled: false,
-      payment: null,
-      ingredientArgs: [],
-    });
+    const claymakerItemClass = await createItemClass(
+      builder,
+      connection,
+      1,
+      true,
+      {
+        buildEnabled: false,
+        payment: null,
+        ingredientArgs: [],
+      }
+    );
 
     // ingredient 2, NFT
     const sardItemClass = await createItemClass(builder, connection, 1, false, {
@@ -816,221 +820,92 @@ describe.only("itemv1", () => {
       builder: builder.publicKey,
       treasury: payer.publicKey,
     };
-    const addBuildPaymentIx = await itemProgramBuilder.instruction.addPayment(addBuildPaymentAccounts)
-
-    const claymakerAta = splToken.getAssociatedTokenAddressSync(
-      claymakerItemClass.mints[0],
-      builder.publicKey
+    const addBuildPaymentIx = await itemProgramBuilder.instruction.addPayment(
+      addBuildPaymentAccounts
     );
 
-    const [claymakerMetadata, _claymakerMetadataBump] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          mpl.PROGRAM_ID.toBuffer(),
-          claymakerItemClass.mints[0].toBuffer(),
-        ],
-        mpl.PROGRAM_ID
-      );
-
-    const [claymakerME, _claymakerMEBump] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("metadata"),
-        mpl.PROGRAM_ID.toBuffer(),
-        claymakerItemClass.mints[0].toBuffer(),
-        Buffer.from("edition"),
-      ],
-      mpl.PROGRAM_ID
+    // create approve instructions for each ingredient
+    const approveClaymakerIx = await createDelegateAuthorityPNftIx(
+      builder,
+      payer.publicKey,
+      claymakerItemClass.mints[0]
+    );
+    const approveSardIx = await createDelegateAuthoritySplIx(
+      builder,
+      payer.publicKey,
+      sardItemClass.mints[0],
+      1
+    );
+    const approveClayIx = await createDelegateAuthorityPNftIx(
+      builder,
+      payer.publicKey,
+      clayItemClass.mints[0]
     );
 
-    const [claymakerSourceTokenRecord, _claymakerSourceTokenRecordBump] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          mpl.PROGRAM_ID.toBuffer(),
-          claymakerItemClass.mints[0].toBuffer(),
-          Buffer.from("token_record"),
-          claymakerAta.toBuffer(),
-        ],
-        mpl.PROGRAM_ID
-      );
-     
-    const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
-      builder.publicKey,
-      "AllRuleSet"
+    // this is the tx signed by the builder
+    const tx = new anchor.web3.Transaction().add(
+      startBuildIx,
+      approveClaymakerIx,
+      approveSardIx,
+      approveClayIx,
+      addBuildPaymentIx
     );
-
-    // delegate claymaker ix
-    const approveClaymakerIx = mpl.createDelegateInstruction(
-      {
-        delegate: payer.publicKey,
-        metadata: claymakerMetadata,
-        masterEdition: claymakerME,
-        tokenRecord: claymakerSourceTokenRecord,
-        mint: claymakerItemClass.mints[0],
-        token: claymakerAta,
-        authority: builder.publicKey,
-        payer: builder.publicKey,
-        authorizationRules: ruleSetPda,
-        authorizationRulesProgram: mplAuth.PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-        splTokenProgram: splToken.TOKEN_PROGRAM_ID,
-      },
-      {
-        delegateArgs: {
-          __kind: "TransferV1",
-          amount: 1,
-          authorizationData: null,
-        },
-      }
-    );
-
-    // delegate ingredient 2 ix
-    const sardAta = splToken.getAssociatedTokenAddressSync(sardItemClass.mints[0], builder.publicKey);
-    const approveSardIx = splToken.createApproveInstruction(sardAta, payer.publicKey, builder.publicKey, 1);
-
-    // delegate ingredient 3 ix
-    const clayAta = splToken.getAssociatedTokenAddressSync(
-      clayItemClass.mints[0],
-      builder.publicKey
-    );
-
-    const [clayMetadata, _clayMetadataBump] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          mpl.PROGRAM_ID.toBuffer(),
-          clayItemClass.mints[0].toBuffer(),
-        ],
-        mpl.PROGRAM_ID
-      );
-
-    const [clayME, _clayMEBump] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("metadata"),
-        mpl.PROGRAM_ID.toBuffer(),
-        clayItemClass.mints[0].toBuffer(),
-        Buffer.from("edition"),
-      ],
-      mpl.PROGRAM_ID
-    );
-
-    const [claySourceTokenRecord, _claySourceTokenRecordBump] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          mpl.PROGRAM_ID.toBuffer(),
-          clayItemClass.mints[0].toBuffer(),
-          Buffer.from("token_record"),
-          clayAta.toBuffer(),
-        ],
-        mpl.PROGRAM_ID
-      );
-     
-    // delegate clay ix
-    const approveClayIx = mpl.createDelegateInstruction(
-      {
-        delegate: payer.publicKey,
-        metadata: clayMetadata,
-        masterEdition: clayME,
-        tokenRecord: claySourceTokenRecord,
-        mint: clayItemClass.mints[0],
-        token: clayAta,
-        authority: builder.publicKey,
-        payer: builder.publicKey,
-        authorizationRules: ruleSetPda,
-        authorizationRulesProgram: mplAuth.PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-        splTokenProgram: splToken.TOKEN_PROGRAM_ID,
-      },
-      {
-        delegateArgs: {
-          __kind: "TransferV1",
-          amount: 1,
-          authorizationData: null,
-        },
-      }
-    );
-
-    const tx = new anchor.web3.Transaction().add(startBuildIx, approveClaymakerIx, approveSardIx, approveClayIx, addBuildPaymentIx)
-    const delegateTxSig = await itemProgramBuilder.client.provider.sendAndConfirm!(tx, undefined, {skipPreflight: true});
+    const delegateTxSig = await itemProgramBuilder.client.provider
+      .sendAndConfirm!(tx, undefined, { skipPreflight: true });
     console.log("delegateTxSig: %s", delegateTxSig);
 
-    // verify claymaker permissionless
-    const verifyClaymakerAccounts: Instructions.Item.VerifyIngredientAccounts = {
-      ingredientMint: claymakerItemClass.mints[0],
-      itemClass: outputItemClass.itemClass,
-      payer: payer.publicKey,
-      builder: builder.publicKey,
-      ingredientItemClass: claymakerItemClass.itemClass,
-    }
+    // add ingredients to the build
+    await addIngredientPermissionless(
+      itemProgramPayer,
+      builder.publicKey,
+      claymakerItemClass.tree,
+      outputItemClass.itemClass,
+      claymakerItemClass.mints[0],
+      claymakerItemClass.itemClass,
+      new anchor.BN(1)
+    );
+    await addIngredientPermissionless(
+      itemProgramPayer,
+      builder.publicKey,
+      claymakerItemClass.tree,
+      outputItemClass.itemClass,
+      clayItemClass.mints[0],
+      clayItemClass.itemClass,
+      new anchor.BN(1)
+    );
+    await addIngredientPermissionless(
+      itemProgramPayer,
+      builder.publicKey,
+      claymakerItemClass.tree,
+      outputItemClass.itemClass,
+      sardItemClass.mints[0],
+      sardItemClass.itemClass,
+      new anchor.BN(1)
+    );
 
-    const proof1 = claymakerItemClass.tree.getProof(0);
+    // complete build and receive the item
+    await completeBuildAndReceiveItem(
+      itemProgramPayer,
+      outputItemClass.tree,
+      0,
+      build,
+      outputItemClass.mints
+    );
 
-    const verifyClaymakerArgs: Instructions.Item.VerifyIngredientArgs = {
-      root: proof1.root,
-      leafIndex: 0,
-      proof: proof1.proof,
-    }
+    // assert builder received their item
+    const builderItemAta = splToken.getAssociatedTokenAddressSync(
+      outputItemClass.mints[0],
+      builder.publicKey
+    );
+    const tokenBalanceResponse =
+      await itemProgramPayer.client.provider.connection.getTokenAccountBalance(
+        builderItemAta
+      );
+    assert.isTrue(
+      new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
+    );
 
-    const verifyClaymakerResult = await itemProgramPayer.verifyIngredient(verifyClaymakerAccounts, verifyClaymakerArgs);
-    console.log("verifyclaymakerTxSig: %s", verifyClaymakerResult.txid);
-
-    // have payer instead of builder add claymaker
-
-    const addClaymakerAccounts: Instructions.Item.AddIngredientAccounts = {
-      ingredientMint: claymakerItemClass.mints[0],
-      itemClass: outputItemClass.itemClass,
-      payer: payer.publicKey,
-      builder: builder.publicKey,
-      ingredientItemClass: claymakerItemClass.itemClass,
-    };
-
-    const addClaymakerArgs: Instructions.Item.AddIngredientArgs ={
-      amount: new anchor.BN(1),
-    };
-
-    const addClaymakerResult = await itemProgramPayer.addIngredient(addClaymakerAccounts, addClaymakerArgs);
-    console.log("addClaymakerTxSig: %s", addClaymakerResult.txid);
-
-    // verify ingredient2 permissionless
-    const verifySardAccounts: Instructions.Item.VerifyIngredientAccounts = {
-      ingredientMint: sardItemClass.mints[0],
-      itemClass: outputItemClass.itemClass,
-      payer: payer.publicKey,
-      builder: builder.publicKey,
-      ingredientItemClass: sardItemClass.itemClass,
-    }
-
-    const proof = sardItemClass.tree.getProof(0);
-
-    const verifySardArgs: Instructions.Item.VerifyIngredientArgs = {
-      root: proof.root,
-      leafIndex: 0,
-      proof: proof.proof,
-    }
-
-    const verifySardResult = await itemProgramPayer.verifyIngredient(verifySardAccounts, verifySardArgs);
-    console.log("verifySardTxSig: %s", verifySardResult.txid);
-
-    // have payer instead of builder add ingredient
-
-    const addSardAccounts: Instructions.Item.AddIngredientAccounts = {
-      ingredientMint: sardItemClass.mints[0],
-      itemClass: outputItemClass.itemClass,
-      payer: payer.publicKey,
-      builder: builder.publicKey,
-      ingredientItemClass: sardItemClass.itemClass,
-    };
-
-    const addSardArgs: Instructions.Item.AddIngredientArgs ={
-      amount: new anchor.BN(1),
-    };
-
-    const addIngredientResult = await itemProgramPayer.addIngredient(addSardAccounts, addSardArgs);
-    console.log("addSardTxSig: %s", addIngredientResult.txid);
+    await cleanBuild(itemProgramPayer, build);
   });
 });
 
@@ -1457,6 +1332,58 @@ async function addIngredient(
   console.log("addIngredientTxSig: %s", addIngredientResult.txid);
 }
 
+async function addIngredientPermissionless(
+  itemProgram: ItemProgram,
+  builder: anchor.web3.PublicKey,
+  tree: cmp.MerkleTree,
+  outputItemClass: anchor.web3.PublicKey,
+  ingredientMint: anchor.web3.PublicKey,
+  ingredientItemClass: anchor.web3.PublicKey,
+  ingredientAmount: anchor.BN
+) {
+  // verify build ingredient
+  const verifyIngredientAccounts: Instructions.Item.VerifyIngredientAccounts = {
+    ingredientMint: ingredientMint,
+    ingredientItemClass: ingredientItemClass,
+    itemClass: outputItemClass,
+    builder: builder,
+    payer: itemProgram.client.provider.publicKey,
+  };
+
+  // get proof for mint
+  const proof = tree.getProof(0);
+
+  const verifyIngredientArgs: Instructions.Item.VerifyIngredientArgs = {
+    root: proof.root,
+    leafIndex: proof.leafIndex,
+    proof: proof.proof,
+  };
+
+  const verifyIngredientResult = await itemProgram.verifyIngredient(
+    verifyIngredientAccounts,
+    verifyIngredientArgs
+  );
+  console.log("verifyIngredientTxSig: %s", verifyIngredientResult.txid);
+
+  const addIngredientAccounts: Instructions.Item.AddIngredientAccounts = {
+    itemClass: outputItemClass,
+    ingredientMint: ingredientMint,
+    ingredientItemClass: ingredientItemClass,
+    builder: builder,
+    payer: itemProgram.client.provider.publicKey,
+  };
+
+  const addIngredientArgs: Instructions.Item.AddIngredientArgs = {
+    amount: ingredientAmount,
+  };
+
+  const addIngredientResult = await itemProgram.addIngredient(
+    addIngredientAccounts,
+    addIngredientArgs
+  );
+  console.log("addIngredientPermissionlessTxSig: %s", addIngredientResult.txid);
+}
+
 async function completeBuildAndReceiveItem(
   itemProgram: ItemProgram,
   tree: cmp.MerkleTree,
@@ -1596,6 +1523,92 @@ async function cleanBuild(
   // clean up build pda
   const closeBuildResult = await itemProgram.closeBuild(closeBuildAccounts);
   console.log("closeBuildTxSig: %s", closeBuildResult.txid);
+}
+
+async function createDelegateAuthorityPNftIx(
+  authority: anchor.web3.Keypair,
+  delegate: anchor.web3.PublicKey,
+  mint: anchor.web3.PublicKey
+): Promise<anchor.web3.TransactionInstruction> {
+  const ata = splToken.getAssociatedTokenAddressSync(mint, authority.publicKey);
+
+  const [metadata, _metadataBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("metadata"), mpl.PROGRAM_ID.toBuffer(), mint.toBuffer()],
+      mpl.PROGRAM_ID
+    );
+
+  const [masterEdition, _masterEditionBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        mint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+  const [tokenRecord, _tokenRecordBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        mint.toBuffer(),
+        Buffer.from("token_record"),
+        ata.toBuffer(),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+  const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
+    authority.publicKey,
+    "AllRuleSet"
+  );
+
+  // delegate clay ix
+  const ix = mpl.createDelegateInstruction(
+    {
+      delegate: delegate,
+      metadata: metadata,
+      masterEdition: masterEdition,
+      tokenRecord: tokenRecord,
+      mint: mint,
+      token: ata,
+      authority: authority.publicKey,
+      payer: authority.publicKey,
+      authorizationRules: ruleSetPda,
+      authorizationRulesProgram: mplAuth.PROGRAM_ID,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+      splTokenProgram: splToken.TOKEN_PROGRAM_ID,
+    },
+    {
+      delegateArgs: {
+        __kind: "TransferV1",
+        amount: 1,
+        authorizationData: null,
+      },
+    }
+  );
+
+  return ix;
+}
+
+function createDelegateAuthoritySplIx(
+  authority: anchor.web3.Keypair,
+  delegate: anchor.web3.PublicKey,
+  mint: anchor.web3.PublicKey,
+  amount: number
+): anchor.web3.TransactionInstruction {
+  const ata = splToken.getAssociatedTokenAddressSync(mint, authority.publicKey);
+  const ix = splToken.createApproveInstruction(
+    ata,
+    delegate,
+    authority.publicKey,
+    amount
+  );
+  return ix;
 }
 
 interface ItemClassContainer {
