@@ -11,18 +11,20 @@ import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
 import {
   Build,
-  BuildMaterialData,
-  BuildMaterialMint,
+  BuildIngredientData,
+  IngredientMint,
   convertToBuildStatus,
   decodeItemClass,
   ItemClass,
   ItemClassV1,
   ItemV1,
-  Material,
-  Schema,
+  Ingredient,
+  Recipe,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
+import { Utils } from "../main";
+import { Payment } from "../instructions/item";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
@@ -303,12 +305,12 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async addSchema(
-    accounts: ItemInstruction.AddSchemaAccounts,
-    args: ItemInstruction.AddSchemaArgs,
+  async createRecipe(
+    accounts: ItemInstruction.CreateRecipeAccounts,
+    args: ItemInstruction.CreateRecipeArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.addSchema(accounts, args);
+    const ix = await this.instruction.createRecipe(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -321,21 +323,21 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addBuildMaterial(
-    accounts: ItemInstruction.AddBuildMaterialAccounts,
-    args: ItemInstruction.AddBuildMaterialArgs,
+  async addIngredient(
+    accounts: ItemInstruction.AddIngredientAccounts,
+    args: ItemInstruction.AddIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.addBuildMaterial(accounts, args);
+    const ixns = await this.instruction.addIngredient(accounts, args);
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async verifyBuildMaterial(
-    accounts: ItemInstruction.VerifyBuildMaterialAccounts,
-    args: ItemInstruction.VerifyBuildMaterialArgs,
+  async verifyIngredient(
+    accounts: ItemInstruction.VerifyIngredientAccounts,
+    args: ItemInstruction.VerifyIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.verifyBuildMaterial(accounts, args);
+    const ix = await this.instruction.verifyIngredient(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -364,19 +366,19 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async returnBuildMaterial(
-    accounts: ItemInstruction.ReturnBuildMaterialAccounts,
+  async returnIngredient(
+    accounts: ItemInstruction.ReturnIngredientAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.returnBuildMaterial(accounts);
+    const ixns = await this.instruction.returnIngredient(accounts);
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async consumeBuildMaterial(
-    accounts: ItemInstruction.ConsumeBuildMaterialAccounts,
+  async destroyIngredient(
+    accounts: ItemInstruction.DestroyIngredientAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.consumeBuildMaterial(accounts);
+    const ixns = await this.instruction.destroyIngredient(accounts);
     return await this.sendWithRetry(ixns, [], options);
   }
 
@@ -404,85 +406,79 @@ export class ItemProgram extends Program.Program {
       return null;
     }
 
-    const schemaIndex = new BN(itemClassData.schemaIndex as string);
+    const recipeIndex = new BN(itemClassData.recipeIndex as string);
 
-    const schemas: Schema[] = [];
-    for (let i = 0; i <= schemaIndex.toNumber(); i++) {
-      const [schemaAddr, _schemaAddrBump] =
-        web3.PublicKey.findProgramAddressSync(
-          [
-            Buffer.from("schema"),
-            schemaIndex.toArrayLike(Buffer, "le", 8),
-            itemClass.toBuffer(),
-          ],
-          this.PROGRAM_ID
-        );
+    const recipes: Recipe[] = [];
+    for (let i = 0; i <= recipeIndex.toNumber(); i++) {
+      const recipeAddr = Utils.PDA.getRecipe(itemClass, recipeIndex);
 
-      const schemaData = await this.client.account.schema.fetch(schemaAddr);
+      const recipeData = await this.client.account.recipe.fetch(recipeAddr);
 
-      // get schema materials
-      const materials: Material[] = [];
-      for (const schemaMaterial of schemaData.materials as any[]) {
-        const material: Material = {
-          itemClass: new web3.PublicKey(schemaMaterial.itemClass),
-          requiredAmount: new BN(schemaMaterial.requiredAmount as string),
+      // get recipe ingredients
+      const ingredients: Ingredient[] = [];
+      for (const recipeIngredient of recipeData.ingredients as any[]) {
+        const ingredient: Ingredient = {
+          itemClass: new web3.PublicKey(recipeIngredient.itemClass),
+          requiredAmount: new BN(recipeIngredient.requiredAmount as string),
         };
 
-        materials.push(material);
+        ingredients.push(ingredient);
       }
 
       // get payment data
       let payment: ItemInstruction.Payment | null = null;
-      if (schemaData.payment) {
+      if (recipeData.payment) {
         payment = {
-          amount: new BN((schemaData.payment as any).amount as string),
-          treasury: new web3.PublicKey((schemaData.payment as any).treasury),
+          amount: new BN((recipeData.payment as any).amount as string),
+          treasury: new web3.PublicKey((recipeData.payment as any).treasury),
         };
       }
 
-      const schema: Schema = {
+      const recipe: Recipe = {
         itemClass: itemClass,
-        schemaIndex: new BN(i),
+        recipeIndex: new BN(i),
         payment: payment,
-        buildEnabled: schemaData.buildEnabled as boolean,
-        materials: materials,
+        buildEnabled: recipeData.buildEnabled as boolean,
+        ingredients: ingredients,
       };
 
-      schemas.push(schema);
+      recipes.push(recipe);
     }
 
     const itemClassV1: ItemClassV1 = {
       authority: new web3.PublicKey(itemClassData.authority),
       items: new web3.PublicKey(itemClassData.items),
-      schemaIndex: schemaIndex,
-      schemas: schemas,
+      recipeIndex: recipeIndex,
+      recipes: recipes,
     };
 
     return itemClassV1;
   }
 
   async getBuild(build: web3.PublicKey): Promise<Build | null> {
-    const buildDataRaw = await this.client.account.build.fetch(build);
-    if (!buildDataRaw) {
-      return null;
+    let buildDataRaw;
+    try {
+      buildDataRaw = await this.client.account.build.fetch(build);
+    } catch(_e) {
+      return null
     }
 
-    const buildMaterialData: BuildMaterialData[] = [];
+    const buildIngredientData: BuildIngredientData[] = [];
 
-    for (const rawMaterial of buildDataRaw.materials as any[]) {
-      const mints: BuildMaterialMint[] = [];
-      for (const rawMaterialMint of rawMaterial.mints as any[]) {
+    for (const rawIngredient of buildDataRaw.ingredients as any[]) {
+      const mints: IngredientMint[] = [];
+      for (const rawIngredientMint of rawIngredient.mints as any[]) {
         mints.push({
-          mint: new web3.PublicKey(rawMaterialMint.mint),
-          buildEffectApplied: rawMaterialMint.buildEffectApplied,
+          mint: new web3.PublicKey(rawIngredientMint.mint),
+          buildEffectApplied: rawIngredientMint.buildEffectApplied,
         });
       }
 
-      buildMaterialData.push({
-        itemClass: new web3.PublicKey(rawMaterial.itemClass),
-        currentAmount: new BN(rawMaterial.currentAmount),
-        requiredAmount: new BN(rawMaterial.requiredAmount),
-        buildEffect: rawMaterial.buildEffect,
+      buildIngredientData.push({
+        itemClass: new web3.PublicKey(rawIngredient.itemClass),
+        currentAmount: new BN(rawIngredient.currentAmount),
+        requiredAmount: new BN(rawIngredient.requiredAmount),
+        buildEffect: rawIngredient.buildEffect,
         mints: mints,
       });
     }
@@ -495,7 +491,7 @@ export class ItemProgram extends Program.Program {
     const payment = buildDataRaw.payment as any;
 
     const buildData: Build = {
-      schemaIndex: new BN(buildDataRaw.schemaIndex as string),
+      recipeIndex: new BN(buildDataRaw.recipeIndex as string),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
       itemMint: itemMint,
@@ -506,7 +502,7 @@ export class ItemProgram extends Program.Program {
           amount: new BN(payment.paymentDetails.amount as string),
         },
       },
-      materials: buildMaterialData,
+      ingredients: buildIngredientData,
       status: convertToBuildStatus(buildDataRaw.status),
     };
 
@@ -514,9 +510,11 @@ export class ItemProgram extends Program.Program {
   }
 
   async getItemV1(item: web3.PublicKey): Promise<ItemV1 | null> {
-    const itemDataRaw = await this.client.account.itemV1.fetch(item);
-    if (!itemDataRaw) {
-      return null;
+    let itemDataRaw;
+    try {
+      itemDataRaw = await this.client.account.itemV1.fetch(item);
+    } catch (_e) {
+      return null
     }
 
     let cooldown: BN | null = null;
@@ -526,7 +524,6 @@ export class ItemProgram extends Program.Program {
 
     const itemData: ItemV1 = {
       initialized: itemDataRaw.initialized as boolean,
-      itemClass: new web3.PublicKey(itemDataRaw.itemClass),
       itemMint: new web3.PublicKey(itemDataRaw.itemMint),
       itemState: {
         cooldown: cooldown,
@@ -537,6 +534,41 @@ export class ItemProgram extends Program.Program {
     };
 
     return itemData;
+  }
+
+  async getRecipe(recipe: web3.PublicKey): Promise<Recipe | null> {
+    let recipeDataRaw;
+    try {
+      recipeDataRaw = await this.client.account.recipe.fetch(recipe);
+    } catch (_e) {
+      return null
+    }
+
+    let payment: Payment | null = null;
+    if (recipeDataRaw.payment) {
+      payment = {
+        treasury: new web3.PublicKey(recipeDataRaw.payment.treasury), 
+        amount: new BN(recipeDataRaw.payment.amount),
+      }
+    }
+
+    const ingredients: Ingredient[] = [];
+    for (let ingredient of recipeDataRaw.ingredients) {
+      ingredients.push({
+        itemClass: new web3.PublicKey(ingredient.itemClass),
+        requiredAmount: new BN(ingredient.requiredAmount),
+      })
+    }
+
+    const recipeData: Recipe = {
+      recipeIndex: new BN(recipeDataRaw.recipeIndex),
+      itemClass: new web3.PublicKey(recipeDataRaw.itemClass),
+      buildEnabled: recipeDataRaw.buildEnabled as boolean,
+      payment: payment, 
+      ingredients: ingredients,
+    }
+
+    return recipeData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

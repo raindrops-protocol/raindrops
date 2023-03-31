@@ -9,10 +9,10 @@ pub enum ErrorCode {
     BuildDisabled,
 
     #[msg("Cannot Complete Build, Missing at least one build material")]
-    MissingBuildMaterial,
+    MissingIngredient,
 
     #[msg("Incorrect material for build")]
-    IncorrectMaterial,
+    IncorrectIngredient,
 
     #[msg("Build Status is incompatible with this instruction")]
     InvalidBuildStatus,
@@ -20,8 +20,8 @@ pub enum ErrorCode {
     #[msg("Item cannot be returned")]
     ItemNotReturnable,
 
-    #[msg("Item cannot be consumed")]
-    ItemNotConsumable,
+    #[msg("Item cannot be destroyed")]
+    ItemIneligibleForDestruction,
 
     #[msg("Build Effect Already Applied")]
     BuildEffectAlreadyApplied,

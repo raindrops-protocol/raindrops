@@ -543,26 +543,25 @@ export const ITEM_SCHEMA = new Map<any, any>([
 export interface ItemClassV1 {
   authority: web3.PublicKey;
   items: web3.PublicKey;
-  schemaIndex: BN;
-  schemas: Schema[];
+  recipeIndex: BN;
+  recipes: Recipe[];
 }
 
-export interface Schema {
-  schemaIndex: BN;
+export interface Recipe {
+  recipeIndex: BN;
   itemClass: web3.PublicKey;
   buildEnabled: boolean;
   payment: Payment | null;
-  materials: Material[];
+  ingredients: Ingredient[];
 }
 
-export interface Material {
+export interface Ingredient {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
 }
 
 export interface ItemV1 {
   initialized: boolean;
-  itemClass: web3.PublicKey;
   itemMint: web3.PublicKey;
   itemState: ItemState;
 }
@@ -573,24 +572,24 @@ export interface ItemState {
 }
 
 export interface Build {
-  schemaIndex: BN;
+  recipeIndex: BN;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
   itemMint: web3.PublicKey | null;
   payment: PaymentState;
-  materials: BuildMaterialData[];
+  ingredients: BuildIngredientData[];
   status: BuildStatus;
 }
 
-export interface BuildMaterialData {
+export interface BuildIngredientData {
   itemClass: web3.PublicKey;
   currentAmount: BN;
   requiredAmount: BN;
   buildEffect: any;
-  mints: BuildMaterialMint[];
+  mints: IngredientMint[];
 }
 
-export interface BuildMaterialMint {
+export interface IngredientMint {
   mint: web3.PublicKey;
   buildEffectApplied: boolean;
 }
@@ -605,13 +604,13 @@ export function convertToBuildStatus(buildStatusRaw: any): BuildStatus {
   const buildStatusStr = JSON.stringify(buildStatusRaw);
 
   switch (true) {
-    case buildStatusStr.includes('inProgress'):
-      return BuildStatus.InProgress
-    case buildStatusStr.includes('complete'): 
-      return BuildStatus.Complete
-    case buildStatusStr.includes('itemReceived'):
-      return BuildStatus.ItemReceived
+    case buildStatusStr.includes("inProgress"):
+      return BuildStatus.InProgress;
+    case buildStatusStr.includes("complete"):
+      return BuildStatus.Complete;
+    case buildStatusStr.includes("itemReceived"):
+      return BuildStatus.ItemReceived;
     default:
-      throw new Error(`Invalid Build Status: ${buildStatusRaw}`)
+      throw new Error(`Invalid Build Status: ${buildStatusRaw}`);
   }
 }

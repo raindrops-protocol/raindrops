@@ -1,18 +1,18 @@
 use anchor_lang::prelude::*;
 
 use crate::state::{
-    accounts::{ItemClassV1, Schema},
-    Payment, SchemaMaterialData,
+    accounts::{ItemClassV1, Recipe},
+    Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
-#[instruction(args: AddSchemaArgs)]
-pub struct AddSchema<'info> {
+#[instruction(args: CreateRecipeArgs)]
+pub struct CreateRecipe<'info> {
     #[account(init,
         payer = authority,
-        space = Schema::space(args.materials.len()),
-        seeds = [Schema::PREFIX.as_bytes(), &(item_class.schema_index + 1).to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub schema: Account<'info, Schema>,
+        space = Recipe::space(args.ingredients.len()),
+        seeds = [Recipe::PREFIX.as_bytes(), &(item_class.recipe_index + 1).to_le_bytes(), item_class.key().as_ref()], bump)]
+    pub recipe: Account<'info, Recipe>,
 
     #[account(mut,
         has_one = authority,
@@ -28,23 +28,23 @@ pub struct AddSchema<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct AddSchemaArgs {
+pub struct CreateRecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
-    pub materials: Vec<SchemaMaterialData>,
+    pub ingredients: Vec<RecipeIngredientData>,
 }
 
-pub fn handler(ctx: Context<AddSchema>, args: AddSchemaArgs) -> Result<()> {
-    // increment schema index on item class
+pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()> {
+    // increment recipe index on item class
     let item_class = &mut ctx.accounts.item_class;
-    item_class.schema_index += 1;
+    item_class.recipe_index += 1;
 
-    // init schema
-    ctx.accounts.schema.set_inner(Schema {
-        schema_index: ctx.accounts.item_class.schema_index,
+    // init recipe
+    ctx.accounts.recipe.set_inner(Recipe {
+        recipe_index: ctx.accounts.item_class.recipe_index,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.build_enabled,
-        materials: args.materials,
+        ingredients: args.ingredients,
         payment: args.payment,
     });
 

@@ -6,8 +6,8 @@ pub mod accounts;
 pub mod errors;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct BuildMaterialData {
-    // each item used for this build material must be a member of this item class
+pub struct BuildIngredientData {
+    // each item used for this build ingredient must be a member of this item class
     pub item_class: Pubkey,
 
     // current amount of items escrowed
@@ -19,22 +19,22 @@ pub struct BuildMaterialData {
     // defines what happens to these items after being used in a build
     pub build_effect: BuildEffect,
 
-    pub mints: Vec<BuildMaterialMint>,
+    pub mints: Vec<IngredientMint>,
 }
 
-impl BuildMaterialData {
+impl BuildIngredientData {
     pub fn space(required_amount: usize) -> usize {
         (1 + 32) + // verified_item_mint
         32 + // item_class
         8 + // current amount
         8 + // required amount
         BuildEffect::SPACE + // build effect
-        (4 + (required_amount * BuildMaterialMint::SPACE))
+        (4 + (required_amount * IngredientMint::SPACE))
     }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct BuildMaterialMint {
+pub struct IngredientMint {
     // a mint which has been escrowed to the build
     pub mint: Pubkey,
 
@@ -43,13 +43,13 @@ pub struct BuildMaterialMint {
     pub build_effect_applied: bool,
 }
 
-impl BuildMaterialMint {
+impl IngredientMint {
     pub const SPACE: usize = 32 + // mint
     1; // build_effect_applied
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
-pub struct SchemaMaterialData {
+pub struct RecipeIngredientData {
     // the item must be a member of this item class
     pub item_class: Pubkey,
 
@@ -60,15 +60,15 @@ pub struct SchemaMaterialData {
     pub build_effect: BuildEffect,
 }
 
-impl SchemaMaterialData {
+impl RecipeIngredientData {
     pub const SPACE: usize = 32 + // item class
     8 + // required amount
     BuildEffect::SPACE; // build effect
 }
 
-impl From<SchemaMaterialData> for BuildMaterialData {
-    fn from(value: SchemaMaterialData) -> Self {
-        BuildMaterialData {
+impl From<RecipeIngredientData> for BuildIngredientData {
+    fn from(value: RecipeIngredientData) -> Self {
+        BuildIngredientData {
             item_class: value.item_class,
             current_amount: 0,
             required_amount: value.required_amount,
@@ -87,22 +87,23 @@ pub enum BuildStatus {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BuildEffect {
-    pub degredation: Degredation,
+    pub degradation: Degradation,
     pub cooldown: Cooldown,
 }
 
 impl BuildEffect {
-    pub const SPACE: usize = Degredation::SPACE + Cooldown::SPACE;
+    pub const SPACE: usize = Degradation::SPACE + Cooldown::SPACE;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
-pub enum Degredation {
+pub enum Degradation {
     Off,
-    On { amount: u64 },
+    On { rate: u64 },
 }
 
-impl Degredation {
+impl Degradation {
     pub const SPACE: usize = (1 + 8);
+    pub const BRAND_NEW: u64 = 100000;
 
     pub fn apply(&self, item_state: &mut ItemState) {
         match item_state {
@@ -111,12 +112,12 @@ impl Degredation {
                 durability,
                 cooldown: _,
             } => match self {
-                Degredation::Off => return,
-                Degredation::On { amount } => {
-                    if amount >= durability {
+                Degradation::Off => return,
+                Degradation::On { rate } => {
+                    if rate >= durability {
                         *durability = 0;
                     } else {
-                        *durability -= amount;
+                        *durability -= rate;
                     }
                 }
             },
@@ -163,7 +164,7 @@ impl ItemState {
     pub const SPACE: usize = 1 + (8 + (1 + 8));
     pub fn new() -> Self {
         ItemState::NonFungible {
-            durability: 100000,
+            durability: Degradation::BRAND_NEW,
             cooldown: None,
         }
     }
@@ -206,6 +207,21 @@ impl ItemState {
                 durability: _,
                 cooldown: _,
             } => !self.broken(),
+        }
+    }
+
+    // returns true if the item state is brand new and without cooldown
+    // we use this to destroy the ItemV1 PDA and return the rent after the build
+    // there's no reason to have an ItemV1 PDA if there's no state to keep, this saves money
+    pub fn no_state(&self) -> bool {
+        match self {
+            Self::Fungible => true,
+            Self::NonFungible { durability, cooldown } => {
+                if *durability == Degradation::BRAND_NEW && cooldown.is_none() {
+                    return true
+                }
+                return false
+            }
         }
     }
 }

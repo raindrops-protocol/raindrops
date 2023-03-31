@@ -5,8 +5,8 @@ use spl_account_compression::{
 };
 
 use crate::state::{
-    accounts::{ItemClassV1, Schema},
-    NoopProgram, Payment, SchemaMaterialData,
+    accounts::{ItemClassV1, Recipe},
+    NoopProgram, Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
@@ -23,9 +23,9 @@ pub struct CreateItemClassV1<'info> {
 
     #[account(init,
         payer = authority,
-        space = Schema::space(args.schema_args.materials.len()),
-        seeds = [Schema::PREFIX.as_bytes(), &Schema::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub schema: Account<'info, Schema>,
+        space = Recipe::space(args.recipe_args.ingredients.len()),
+        seeds = [Recipe::PREFIX.as_bytes(), &Recipe::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
+    pub recipe: Account<'info, Recipe>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -41,14 +41,14 @@ pub struct CreateItemClassV1<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassV1Args {
-    pub schema_args: SchemaArgs,
+    pub recipe_args: RecipeArgs,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct SchemaArgs {
+pub struct RecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
-    pub materials: Vec<SchemaMaterialData>,
+    pub ingredients: Vec<RecipeIngredientData>,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
@@ -56,16 +56,16 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
     ctx.accounts.item_class.set_inner(ItemClassV1 {
         authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
-        schema_index: Schema::INITIAL_INDEX,
+        recipe_index: Recipe::INITIAL_INDEX,
     });
 
-    // init schema
-    ctx.accounts.schema.set_inner(Schema {
-        schema_index: Schema::INITIAL_INDEX,
+    // init recipe
+    ctx.accounts.recipe.set_inner(Recipe {
+        recipe_index: Recipe::INITIAL_INDEX,
         item_class: ctx.accounts.item_class.key(),
-        build_enabled: args.schema_args.build_enabled,
-        materials: args.schema_args.materials,
-        payment: args.schema_args.payment,
+        build_enabled: args.recipe_args.build_enabled,
+        ingredients: args.recipe_args.ingredients,
+        payment: args.recipe_args.payment,
     });
 
     // initialize merkle tree

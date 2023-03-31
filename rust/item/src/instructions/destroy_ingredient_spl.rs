@@ -8,10 +8,10 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
-pub struct ConsumeBuildMaterialSpl<'info> {
+pub struct DestroyIngredientSpl<'info> {
     #[account(
         has_one = item_mint,
-        seeds = [ItemV1::PREFIX.as_bytes(), item.item_class.key().as_ref(), item_mint.key().as_ref()], bump)]
+        seeds = [ItemV1::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
     #[account(mut)]
@@ -35,33 +35,33 @@ pub struct ConsumeBuildMaterialSpl<'info> {
     pub token_program: Program<'info, token::Token>,
 }
 
-pub fn handler(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
+pub fn handler(ctx: Context<DestroyIngredientSpl>) -> Result<()> {
     // check build status
     match ctx.accounts.build.status {
         BuildStatus::ItemReceived => {
             // check that the build effect is applied
-            require!(
-                ctx.accounts.build.build_effect_applied(
-                    ctx.accounts.item.item_class.key(),
-                    ctx.accounts.item_mint.key()
-                ),
-                ErrorCode::BuildEffectNotApplied
-            );
+            ctx.accounts
+                .build
+                .build_effect_applied(ctx.accounts.item_mint.key())
+                .unwrap();
 
-            // the durability must be 0 to be consumed,
+            // the durability must be 0 to be destroyed
             // its the responsibility of the schema to decrement the durability via apply_build_effect
             require!(
                 ctx.accounts.item.item_state.broken(),
-                ErrorCode::ItemNotConsumable
+                ErrorCode::ItemIneligibleForDestruction
             );
 
             // decrement the amount in the build pda so we know its been burned
-            ctx.accounts.build.decrement_build_amount(
-                ctx.accounts.item.item_class.key(),
-                ctx.accounts.item_source.amount,
-            );
+            ctx.accounts
+                .build
+                .decrement_build_amount(
+                    ctx.accounts.item.item_mint.key(),
+                    ctx.accounts.item_source.amount,
+                )
+                .unwrap();
         }
-        _ => return Err(ErrorCode::ItemNotConsumable.into()),
+        _ => return Err(ErrorCode::ItemIneligibleForDestruction.into()),
     }
 
     // burn the tokens
@@ -90,7 +90,7 @@ pub fn handler(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
 
     let close_accounts = token::CloseAccount {
         account: ctx.accounts.item_source.to_account_info(),
-        destination: ctx.accounts.builder.to_account_info(),
+        destination: ctx.accounts.payer.to_account_info(),
         authority: ctx.accounts.build.to_account_info(),
     };
 
@@ -103,5 +103,8 @@ pub fn handler(ctx: Context<ConsumeBuildMaterialSpl>) -> Result<()> {
             ctx.accounts.builder.key().as_ref(),
             &[*ctx.bumps.get("build").unwrap()],
         ]],
-    ))
+    ))?;
+
+    // close item pda
+    ctx.accounts.item.close(ctx.accounts.payer.to_account_info())
 }

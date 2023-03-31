@@ -2,7 +2,10 @@ use std::convert::TryInto;
 
 use anchor_lang::prelude::*;
 
-use super::{BuildMaterialData, BuildStatus, ItemState, Payment, PaymentState, SchemaMaterialData};
+use super::{
+    errors::ErrorCode, BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState,
+    RecipeIngredientData,
+};
 
 // seeds = ['item_class_v1', items.key().as_ref()]
 #[account]
@@ -13,7 +16,7 @@ pub struct ItemClassV1 {
     // merkle tree containing all item addresses belonging to this item class
     pub items: Pubkey,
 
-    pub schema_index: u64,
+    pub recipe_index: u64,
 }
 
 impl ItemClassV1 {
@@ -21,17 +24,14 @@ impl ItemClassV1 {
     pub const SPACE: usize = 8 + // anchor
     32 + // authority
     32 + // items 
-    8; // schema_index
+    8; // recipe_index
 }
 
-// seeds = ['item_v1', item_class.key().as_ref(), item_mint.key().as_ref()]
+// seeds = ['item_v1', item_mint.key().as_ref()]
 
 #[account]
 pub struct ItemV1 {
     pub initialized: bool,
-
-    // item class this item is a part of
-    pub item_class: Pubkey,
 
     // mint this item represents
     pub item_mint: Pubkey,
@@ -44,18 +44,17 @@ impl ItemV1 {
     pub const PREFIX: &'static str = "item_v1";
     pub const SPACE: usize = 8 + // anchor
     1 + // initialized 
-    32 + // item class
     32 + // mint
     ItemState::SPACE; // state
 }
 
-// a schema contains all materials and build information for an item class v1
-// seeds = ['schema', schema_index.to_le_bytes(), item_class.key()]
+// a recipe contains all ingredients and build information for an item class v1
+// seeds = ['recipe', recipe_index.to_le_bytes(), item_class.key()]
 #[account]
-pub struct Schema {
-    pub schema_index: u64,
+pub struct Recipe {
+    pub recipe_index: u64,
 
-    // item class this schema builds
+    // item class this recipe builds
     pub item_class: Pubkey,
 
     // if false building is disabled for this item class
@@ -64,20 +63,20 @@ pub struct Schema {
     // if Some, SOL is required
     pub payment: Option<Payment>,
 
-    // list of materials required to use this schema to build the item class v1
-    pub materials: Vec<SchemaMaterialData>,
+    // list of ingredients required to use this recipe to build the item class v1
+    pub ingredients: Vec<RecipeIngredientData>,
 }
 
-impl Schema {
-    pub const PREFIX: &'static str = "schema";
+impl Recipe {
+    pub const PREFIX: &'static str = "recipe";
     pub const INITIAL_INDEX: u64 = 0;
-    pub fn space(material_count: usize) -> usize {
+    pub fn space(ingredient_count: usize) -> usize {
         8 + // anchor
-        8 + // schema index
+        8 + // recipe index
         32 + // item_class
         1 + // enabled
         (1 + Payment::SPACE) + // payment
-        4 + (SchemaMaterialData::SPACE * material_count) // materials
+        4 + (RecipeIngredientData::SPACE * ingredient_count) // ingredients
     }
 }
 
@@ -85,8 +84,8 @@ impl Schema {
 // seeds = ['build', item_class.key(), builder.key().as_ref()]
 #[account]
 pub struct Build {
-    // points to the schema used for this build
-    pub schema_index: u64,
+    // points to the recipe used for this build
+    pub recipe_index: u64,
 
     pub builder: Pubkey,
 
@@ -99,8 +98,8 @@ pub struct Build {
     // payment state
     pub payment: Option<PaymentState>,
 
-    // current build materials
-    pub materials: Vec<BuildMaterialData>,
+    // current build ingredients
+    pub ingredients: Vec<BuildIngredientData>,
 
     // current status of the build
     pub status: BuildStatus,
@@ -108,73 +107,100 @@ pub struct Build {
 
 impl Build {
     pub const PREFIX: &'static str = "build";
-    pub fn space(schema_material_data: &Vec<SchemaMaterialData>) -> usize {
+    pub fn space(recipe_ingredient_data: &Vec<RecipeIngredientData>) -> usize {
         8 + // anchor
-        8 + // schema_index
+        8 + // recipe_index
         32 + // builder
         32 + // item class
         (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
-        4 + (Self::build_material_data_space(schema_material_data)) // materials
+        4 + (Self::build_ingredient_data_space(recipe_ingredient_data)) // ingredients
     }
 
-    fn build_material_data_space(schema_material_data: &Vec<SchemaMaterialData>) -> usize {
-        let mut total_build_material_space: usize = 0;
-        for material_data in schema_material_data {
-            total_build_material_space +=
-                BuildMaterialData::space(material_data.required_amount.try_into().unwrap())
+    fn build_ingredient_data_space(recipe_ingredient_data: &Vec<RecipeIngredientData>) -> usize {
+        let mut total_build_ingredient_space: usize = 0;
+        for ingredient_data in recipe_ingredient_data {
+            total_build_ingredient_space +=
+                BuildIngredientData::space(ingredient_data.required_amount.try_into().unwrap())
         }
 
-        total_build_material_space
+        total_build_ingredient_space
     }
 
-    pub fn build_effect_applied(&self, material_item_class: Pubkey, material_mint: Pubkey) -> bool {
-        for build_material_data in &self.materials {
-            // get corresponding item class
-            if build_material_data.item_class.eq(&material_item_class) {
-                // find the specific mint within the item class and verify the build effect has been applied
-                for mint_data in &build_material_data.mints {
-                    if mint_data.mint.eq(&material_mint) {
-                        return mint_data.build_effect_applied;
+    pub fn build_effect_applied(&self, ingredient_mint: Pubkey) -> Result<()> {
+        // find the ingredient mint in the build data
+        for build_ingredient_data in &self.ingredients {
+            for mint_data in &build_ingredient_data.mints {
+                if mint_data.mint.eq(&ingredient_mint) {
+                    if mint_data.build_effect_applied {
+                        return Ok(());
+                    } else {
+                        return Err(ErrorCode::BuildEffectNotApplied.into());
                     }
                 }
             }
         }
-        return false;
+        Err(ErrorCode::IncorrectIngredient.into())
     }
 
-    pub fn verify_build_mint(&self, material_item_class: Pubkey, material_mint: Pubkey) -> bool {
-        // verify material_mint
-        for build_material_data in &self.materials {
+    pub fn verify_build_mint(
+        &self,
+        ingredient_item_class: Pubkey,
+        ingredient_mint: Pubkey,
+    ) -> bool {
+        // verify ingredient_mint
+        for build_ingredient_data in &self.ingredients {
             // find the corresponding item class
-            if material_item_class.eq(&build_material_data.item_class) {
-                // check the material mint exists in the list of verified mints
-                let verified = build_material_data
+            if ingredient_item_class.eq(&build_ingredient_data.item_class) {
+                // check the ingredient mint exists in the list of verified mints
+                let verified = build_ingredient_data
                     .mints
                     .iter()
-                    .any(|mint_data| mint_data.mint.eq(&material_mint));
+                    .any(|mint_data| mint_data.mint.eq(&ingredient_mint));
                 return verified;
             }
         }
         false
     }
 
-    pub fn increment_build_amount(&mut self, material_item_class: Pubkey, amount: u64) {
-        for build_material_data in self.materials.iter_mut() {
-            // find the corresponding item class
-            if material_item_class.eq(&build_material_data.item_class) {
-                build_material_data.current_amount += amount;
+    pub fn increment_build_amount(&mut self, ingredient_mint: Pubkey, amount: u64) -> Result<()> {
+        let mut found = false;
+        for build_ingredient_data in self.ingredients.iter_mut() {
+            if build_ingredient_data
+                .mints
+                .iter()
+                .any(|mint_data| mint_data.mint.eq(&ingredient_mint))
+            {
+                build_ingredient_data.current_amount += amount;
+                found = true;
+                break;
             }
+        }
+        if found {
+            Ok(())
+        } else {
+            Err(ErrorCode::IncorrectIngredient.into())
         }
     }
 
-    pub fn decrement_build_amount(&mut self, material_item_class: Pubkey, amount: u64) {
-        for build_material_data in self.materials.iter_mut() {
-            // find the corresponding item class
-            if material_item_class.eq(&build_material_data.item_class) {
-                build_material_data.current_amount -= amount;
+    pub fn decrement_build_amount(&mut self, ingredient_mint: Pubkey, amount: u64) -> Result<()> {
+        let mut found = false;
+        for build_ingredient_data in self.ingredients.iter_mut() {
+            if build_ingredient_data
+                .mints
+                .iter()
+                .any(|mint_data| mint_data.mint.eq(&ingredient_mint))
+            {
+                build_ingredient_data.current_amount -= amount;
+                found = true;
+                break;
             }
+        }
+        if found {
+            Ok(())
+        } else {
+            Err(ErrorCode::IncorrectIngredient.into())
         }
     }
 }
