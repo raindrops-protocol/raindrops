@@ -49,15 +49,18 @@
     "axios": "1.1.2",
     "borsh": "^0.4.0",
     "form-data": "^4.0.0",
+    "isomorphic-ws": "^5.0.0",
     "jsonschema": "^1.4.0",
     "node-fetch": "^2.6.1",
-    "spl-token-latest": "npm:@solana/spl-token@0.3.7"
+    "spl-token-latest": "npm:@solana/spl-token@0.3.7",
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.15.6",
     "@babel/preset-typescript": "^7.15.0",
     "@types/jest": "^28.1.5",
     "@types/node": "^18.0.3",
+    "@types/ws": "^8.5.4",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "eslint": "latest",

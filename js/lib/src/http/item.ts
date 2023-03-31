@@ -1,10 +1,13 @@
 import * as anchor from "@project-serum/anchor";
 import * as errors from "./errors";
-import { Build, BuildIngredientData, BuildStatus, ItemClassV1, ItemV1 } from "../state/item";
+import { Build, BuildStatus, ItemClassV1, ItemV1 } from "../state/item";
 import { fetch } from "cross-fetch";
+import { getBuild } from "../utils/pda";
+import Websocket from "isomorphic-ws";
 
 export class Client {
   readonly baseUrl: string;
+  readonly wsUrl: string;
   readonly provider: anchor.AnchorProvider;
 
   constructor(provider: anchor.AnchorProvider, cluster: string) {
@@ -13,14 +16,17 @@ export class Client {
     switch (cluster) {
       case "mainnet-beta": {
         this.baseUrl = "https://items.raindrops.xyz";
+        this.wsUrl = "wss://localhost:3001"; 
         break;
       }
       case "devnet": {
         this.baseUrl = "https://2tbu4lwr5b.execute-api.us-east-1.amazonaws.com";
+        this.wsUrl = "wss://localhost:3001"; 
         break;
       }
       case "localnet": {
         this.baseUrl = "http://localhost:3000";
+        this.wsUrl = "ws://localhost:3001"; 
         break;
       }
       default: {
@@ -84,13 +90,14 @@ export class Client {
 
     for (const ingredient of recipe.ingredients) {
       await this.verifyIngredient(
+        this.provider.publicKey,
         itemClass,
         ingredient.itemMint,
         ingredient.itemClass
       );
 
       // add build items
-      await this.addIngredient(itemClass, ingredient);
+      await this.addIngredient(this.provider.publicKey, itemClass, ingredient);
     }
 
     // if a payment is required, pay it now
@@ -102,6 +109,59 @@ export class Client {
     const itemMint = await this.driveBuild(build);
 
     return itemMint;
+  }
+
+  async buildWs(itemClass: anchor.web3.PublicKey, ingredientArgs: IngredientArg[]): Promise<anchor.web3.PublicKey> {
+    // check ingredients and find a valid recipe for the item class we want to build
+    const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs);
+    if (buildableRecipes.length <= 0) {
+      throw new Error(`No Recipes Found`);
+    }
+
+    const recipe = buildableRecipes[0];
+    console.log(
+      "building item class: %s from recipe: %s",
+      itemClass.toString(),
+      JSON.stringify(recipe)
+    );
+
+    // get start build tx and sign it
+    const serializedTx = await this.startBuild2(itemClass, recipe.recipeIndex, ingredientArgs);
+    const tx = anchor.web3.Transaction.from(Buffer.from(serializedTx, "base64"));
+    const signedTx = await this.provider.wallet.signTransaction(tx);
+
+    // open websocket connection
+    const socket = new Websocket.WebSocket(this.wsUrl);
+
+    const buildRequest = {
+      requestType: "build",
+      data: {
+        ingredients: JSON.stringify(recipe.ingredients),
+        startBuildTx: signedTx.serialize().toString("base64"),
+        build: getBuild(itemClass, this.provider.publicKey).toString(), 
+      },
+    };
+
+    // on connection open, send the signed start build tx
+    socket.onopen = (_event) => {
+      const buildRequestStr = JSON.stringify({ buildRequest: buildRequest });
+      console.log("sending build request: %s", buildRequestStr);
+      socket.send(JSON.stringify({ buildRequest: buildRequest }));
+    };
+
+    // wait for a response from the websocket api
+    const itemMintStr = await new Promise((resolve, reject) => {
+      socket.onmessage = (event) => {
+        try {
+          socket.close();
+          resolve(event.data.toString());
+        } catch (e) {
+          reject(e);
+        }
+      };
+    });
+
+    return new anchor.web3.PublicKey(itemMintStr)
   }
 
   async continueBuild(
@@ -142,12 +202,13 @@ export class Client {
       // add the remaining ingredients
       for (let ingredient of missingIngredients) {
         await this.verifyIngredient(
+          this.provider.publicKey,
           itemClass,
           ingredient.itemMint,
           ingredient.itemClass
         );
 
-        await this.addIngredient(itemClass, ingredient);
+        await this.addIngredient(this.provider.publicKey, itemClass, ingredient);
       }
 
       // if payment is not paid do that now
@@ -257,13 +318,32 @@ export class Client {
     return itemClassData;
   }
 
+  async getRecipe(recipe: anchor.web3.PublicKey): Promise<Recipe> {
+    const params = new URLSearchParams({
+      recipe: recipe.toString(),
+    });
+
+    // return the current build data
+    const response = await fetch(`${this.baseUrl}/recipe?` + params);
+
+    if (response.status === 400) {
+      return null
+    }
+
+    const body = await errors.handleResponse(response);
+
+    const recipeData: Recipe = JSON.parse(body.recipeData);
+
+    return recipeData;  
+  }
+
   // start the build process for an item class via the recipe
-  private async startBuild(
+  async startBuild(
     itemClass: anchor.web3.PublicKey,
     recipeIndex: anchor.BN
   ): Promise<anchor.web3.PublicKey> {
     const builder = this.provider.publicKey.toString();
-    console.log("builder: %s", builder);
+
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       recipeIndex: recipeIndex.toString(),
@@ -280,14 +360,32 @@ export class Client {
     return body.build;
   }
 
+  async startBuild2(itemClass: anchor.web3.PublicKey, recipeIndex: anchor.BN, ingredientArgs: IngredientArg[]): Promise<string> {
+    const startBuildTxResponse = await fetch(`${this.baseUrl}/startBuild2`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        itemClass: itemClass.toString(),
+        builder: this.provider.wallet.publicKey.toString(),
+        recipeIndex: recipeIndex.toString(),
+        ingredientArgs: JSON.stringify(ingredientArgs),
+      }),
+    });
+
+    const body = await errors.handleResponse(startBuildTxResponse);
+
+    return body.tx
+  }
+
   // escrow items from builder to the build pda
-  private async addIngredient(
+  async addIngredient(
+    builder: anchor.web3.PublicKey,
     itemClass: anchor.web3.PublicKey,
     ingredient: Ingredient
   ): Promise<void> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
-      builder: this.provider.publicKey.toString(),
+      builder: builder.toString(),
       payer: this.provider.publicKey.toString(),
       ingredientMint: ingredient.itemMint.toString(),
       ingredientItemClass: ingredient.itemClass.toString(),
@@ -303,7 +401,7 @@ export class Client {
   }
 
   // TODO: we only support native sol right now
-  private async addPayment(build: anchor.web3.PublicKey): Promise<void> {
+  async addPayment(build: anchor.web3.PublicKey): Promise<void> {
     console.log("adding payment to build: %s", build.toString());
     const params = new URLSearchParams({
       build: build.toString(),
@@ -323,7 +421,7 @@ export class Client {
   }
 
   // mark build as complete, contract checks that required ingredients have been escrowed
-  private async completeBuild(build: anchor.web3.PublicKey): Promise<void> {
+  async completeBuild(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
@@ -336,7 +434,7 @@ export class Client {
   }
 
   // the builder will receive the output of the build here
-  private async receiveItem(
+  async receiveItem(
     build: anchor.web3.PublicKey
   ): Promise<anchor.web3.PublicKey> {
     const params = new URLSearchParams({
@@ -352,7 +450,7 @@ export class Client {
   }
 
   // clean up all build artifacts
-  private async cleanBuild(build: anchor.web3.PublicKey): Promise<void> {
+  async cleanBuild(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
@@ -367,7 +465,7 @@ export class Client {
 
   // apply the post build effects to each ingredient
   // things like cooldowns and degradation
-  private async applyBuildEffects(build: anchor.web3.PublicKey): Promise<void> {
+  async applyBuildEffects(build: anchor.web3.PublicKey): Promise<void> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
@@ -378,16 +476,17 @@ export class Client {
     console.log("applyBuildEffectTxSig: %s", body.txSig);
   }
 
-  private async verifyIngredient(
+  async verifyIngredient(
+    builder: anchor.web3.PublicKey,
     itemClass: anchor.web3.PublicKey,
     ingredientMint: anchor.web3.PublicKey,
-    ingredientItemClass: anchor.web3.PublicKey
+    ingredientItemClass: anchor.web3.PublicKey,
   ): Promise<void> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
       ingredientMint: ingredientMint.toString(),
       ingredientItemClass: ingredientItemClass.toString(),
-      builder: this.provider.publicKey.toString(),
+      builder: builder.toString(),
       payer: this.provider.publicKey.toString(),
     });
 
@@ -399,7 +498,7 @@ export class Client {
     console.log("verifyIngredientTxSig: %s", txSig);
   }
 
-  private async returnOrDestroyIngredients(
+  async returnOrDestroyIngredients(
     build: anchor.web3.PublicKey
   ): Promise<void> {
     const params = new URLSearchParams({
@@ -425,7 +524,7 @@ export class Client {
   }
 
   // drive build to completion, these are all permissionless steps
-  private async driveBuild(
+  async driveBuild(
     build: anchor.web3.PublicKey
   ): Promise<anchor.web3.PublicKey> {
     // complete build

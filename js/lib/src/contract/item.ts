@@ -24,6 +24,7 @@ import {
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 import { Utils } from "../main";
+import { Payment } from "../instructions/item";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
@@ -533,6 +534,41 @@ export class ItemProgram extends Program.Program {
     };
 
     return itemData;
+  }
+
+  async getRecipe(recipe: web3.PublicKey): Promise<Recipe | null> {
+    let recipeDataRaw;
+    try {
+      recipeDataRaw = await this.client.account.recipe.fetch(recipe);
+    } catch (_e) {
+      return null
+    }
+
+    let payment: Payment | null = null;
+    if (recipeDataRaw.payment) {
+      payment = {
+        treasury: new web3.PublicKey(recipeDataRaw.payment.treasury), 
+        amount: new BN(recipeDataRaw.payment.amount),
+      }
+    }
+
+    const ingredients: Ingredient[] = [];
+    for (let ingredient of recipeDataRaw.ingredients) {
+      ingredients.push({
+        itemClass: new web3.PublicKey(ingredient.itemClass),
+        requiredAmount: new BN(ingredient.requiredAmount),
+      })
+    }
+
+    const recipeData: Recipe = {
+      recipeIndex: new BN(recipeDataRaw.recipeIndex),
+      itemClass: new web3.PublicKey(recipeDataRaw.itemClass),
+      buildEnabled: recipeDataRaw.buildEnabled as boolean,
+      payment: payment, 
+      ingredients: ingredients,
+    }
+
+    return recipeData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

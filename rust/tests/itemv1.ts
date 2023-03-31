@@ -20,7 +20,7 @@ describe.only("itemv1", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
+  it.only("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -67,7 +67,7 @@ describe.only("itemv1", () => {
           itemClass: nftItemClass.itemClass,
           requiredAmount: new BN(1),
           buildEffect: {
-            degradation: { amount: new anchor.BN(100000) }, // single use
+            degradation: { rate: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
         },
