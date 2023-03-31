@@ -62,56 +62,7 @@ export class Client {
     return recipes;
   }
 
-  // use these ingredients to build the item
-  async build(
-    itemClass: anchor.web3.PublicKey,
-    ingredientArgs: IngredientArg[]
-  ): Promise<anchor.web3.PublicKey> {
-    // find valid recipe with these ingredients
-    const buildableRecipes = await this.checkIngredients(
-      itemClass,
-      ingredientArgs
-    );
-    if (buildableRecipes.length <= 0) {
-      throw new Error(`No Recipes Found`);
-    }
-
-    // TODO: probably should have the builder pass in if there's N matching recipes
-    const recipe = buildableRecipes[0];
-    console.log(
-      "building item class: %s from recipe: %s",
-      itemClass.toString(),
-      JSON.stringify(recipe)
-    );
-
-    // start build
-    const build = await this.startBuild(itemClass, recipe.recipeIndex);
-    console.log("build started: %s", build.toString());
-
-    for (const ingredient of recipe.ingredients) {
-      await this.verifyIngredient(
-        this.provider.publicKey,
-        itemClass,
-        ingredient.itemMint,
-        ingredient.itemClass
-      );
-
-      // add build items
-      await this.addIngredient(this.provider.publicKey, itemClass, ingredient);
-    }
-
-    // if a payment is required, pay it now
-    if (recipe.payment !== null) {
-      await this.addPayment(build);
-    }
-
-    // drive build to completion
-    const itemMint = await this.driveBuild(build);
-
-    return itemMint;
-  }
-
-  async buildWs(itemClass: anchor.web3.PublicKey, ingredientArgs: IngredientArg[]): Promise<anchor.web3.PublicKey> {
+  async build(itemClass: anchor.web3.PublicKey, ingredientArgs: IngredientArg[]): Promise<anchor.web3.PublicKey> {
     // check ingredients and find a valid recipe for the item class we want to build
     const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs);
     if (buildableRecipes.length <= 0) {
@@ -126,7 +77,7 @@ export class Client {
     );
 
     // get start build tx and sign it
-    const serializedTx = await this.startBuild2(itemClass, recipe.recipeIndex, ingredientArgs);
+    const serializedTx = await this.startBuild(itemClass, recipe.recipeIndex, ingredientArgs);
     const tx = anchor.web3.Transaction.from(Buffer.from(serializedTx, "base64"));
     const signedTx = await this.provider.wallet.signTransaction(tx);
 
@@ -337,31 +288,8 @@ export class Client {
     return recipeData;  
   }
 
-  // start the build process for an item class via the recipe
-  async startBuild(
-    itemClass: anchor.web3.PublicKey,
-    recipeIndex: anchor.BN
-  ): Promise<anchor.web3.PublicKey> {
-    const builder = this.provider.publicKey.toString();
-
-    const params = new URLSearchParams({
-      itemClass: itemClass.toString(),
-      recipeIndex: recipeIndex.toString(),
-      builder: builder,
-    });
-
-    const response = await fetch(`${this.baseUrl}/startBuild?` + params);
-
-    const body = await errors.handleResponse(response);
-
-    const txSig = await this.send(body.tx);
-    console.log("startBuildTxSig: %s", txSig);
-
-    return body.build;
-  }
-
-  async startBuild2(itemClass: anchor.web3.PublicKey, recipeIndex: anchor.BN, ingredientArgs: IngredientArg[]): Promise<string> {
-    const startBuildTxResponse = await fetch(`${this.baseUrl}/startBuild2`, {
+  async startBuild(itemClass: anchor.web3.PublicKey, recipeIndex: anchor.BN, ingredientArgs: IngredientArg[]): Promise<string> {
+    const startBuildTxResponse = await fetch(`${this.baseUrl}/startBuild`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

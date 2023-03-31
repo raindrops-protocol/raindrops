@@ -15,8 +15,7 @@ pub struct AddIngredientSpl<'info> {
         seeds = [ItemClassV1::PREFIX.as_bytes(), ingredient_item_class.items.key().as_ref()], bump)]
     pub ingredient_item_class: Account<'info, ItemClassV1>,
 
-    //#[account(mut, associated_token::mint = ingredient_mint, associated_token::authority = builder)]
-    #[account(mut)]
+    #[account(mut, constraint = ingredient_source.mint.eq(&ingredient_mint.key()))]
     pub ingredient_source: Box<Account<'info, token::TokenAccount>>,
 
     #[account(init_if_needed, payer = payer, associated_token::mint = ingredient_mint, associated_token::authority = build)]

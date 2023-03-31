@@ -17,7 +17,7 @@ extendBorsh();
 
 export const decodeItemClass = (buffer: Buffer): ItemClass => {
   const metadata = deserializeUnchecked(
-    ITEM_recipe,
+    ITEM_SCHEMA,
     ItemClass,
     buffer
   ) as ItemClass;
@@ -318,7 +318,7 @@ export enum BasicItemEffectType {
   DecrementPercentFromBase,
 }
 
-export const ITEM_recipe = new Map<any, any>([
+export const ITEM_SCHEMA = new Map<any, any>([
   [
     ItemClass,
     {

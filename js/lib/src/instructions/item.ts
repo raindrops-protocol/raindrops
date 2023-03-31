@@ -1040,14 +1040,7 @@ export class Instruction extends SolKitInstruction {
 
     const itemClass = Utils.PDA.getItemClassV1(items.publicKey);
 
-    const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("recipe"),
-        new BN(0).toArrayLike(Buffer, "le", 8),
-        itemClass.toBuffer(),
-      ],
-      this.program.id
-    );
+    const recipe = Utils.PDA.getRecipe(itemClass, new BN(0));
 
     const ingredients: any[] = [];
     for (let ingredientArg of args.recipeArgs.ingredientArgs) {
@@ -1138,14 +1131,7 @@ export class Instruction extends SolKitInstruction {
     accounts: StartBuildAccounts,
     args: StartBuildArgs
   ): Promise<web3.TransactionInstruction> {
-    const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("recipe"),
-        args.recipeIndex.toArrayLike(Buffer, "le", 8),
-        accounts.itemClass.toBuffer(),
-      ],
-      this.program.id
-    );
+    const recipe = Utils.PDA.getRecipe(accounts.itemClass, args.recipeIndex);
 
     const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
 
@@ -1898,16 +1884,7 @@ export class Instruction extends SolKitInstruction {
     );
 
     // get new recipe pda based off item class recipe index
-    const [newRecipe, _bumpNewRecipe] = web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("recipe"),
-        (itemClassData.recipeIndex as BN)
-          .add(new BN(1))
-          .toArrayLike(Buffer, "le", 8),
-        accounts.itemClass.toBuffer(),
-      ],
-      this.program.id
-    );
+    const newRecipe = Utils.PDA.getRecipe(accounts.itemClass, (itemClassData.recipeIndex as BN).add(new BN(1)));
 
     const ix = await this.program.client.methods
       .createRecipe(ixArgs)

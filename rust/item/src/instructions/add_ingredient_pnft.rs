@@ -30,8 +30,7 @@ pub struct AddIngredientPNft<'info> {
     /// CHECK: Done by token metadata
     pub auth_rules: UncheckedAccount<'info>,
 
-    //#[account(mut, associated_token::mint = ingredient_mint, associated_token::authority = builder)]
-    #[account(mut)]
+    #[account(mut, constraint = ingredient_source.mint.eq(&ingredient_mint.key()))]
     pub ingredient_source: Box<Account<'info, token::TokenAccount>>,
 
     /// CHECK: Done by token metadata
