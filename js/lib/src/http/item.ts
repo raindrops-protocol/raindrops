@@ -21,7 +21,7 @@ export class Client {
       }
       case "devnet": {
         this.baseUrl = "https://2tbu4lwr5b.execute-api.us-east-1.amazonaws.com";
-        this.wsUrl = "wss://localhost:3001"; 
+        this.wsUrl = "wss://493dq7ya5a.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "localnet": {
@@ -95,13 +95,12 @@ export class Client {
 
     // on connection open, send the signed start build tx
     socket.onopen = (_event) => {
-      const buildRequestStr = JSON.stringify({ buildRequest: buildRequest });
-      console.log("sending build request: %s", buildRequestStr);
+      console.log("sending build request");
       socket.send(JSON.stringify({ buildRequest: buildRequest }));
     };
 
     // wait for a response from the websocket api
-    const itemMintStr = await new Promise((resolve, reject) => {
+    const itemMint = await new Promise((resolve, reject) => {
       socket.onmessage = (event) => {
         try {
           socket.close();
@@ -112,7 +111,7 @@ export class Client {
       };
     });
 
-    return new anchor.web3.PublicKey(itemMintStr)
+    return new anchor.web3.PublicKey(itemMint)
   }
 
   async continueBuild(
