@@ -20,7 +20,7 @@ describe.only("itemv1", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it.only("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
+  it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
