@@ -85,7 +85,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],
         ),
-        20,
+        16,
         64,
     )
 }

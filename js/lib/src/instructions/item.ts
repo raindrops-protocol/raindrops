@@ -1016,7 +1016,7 @@ export class Instruction extends SolKitInstruction {
   ): Promise<[web3.PublicKey, web3.Keypair, web3.TransactionInstruction[]]> {
     const items = web3.Keypair.generate();
 
-    const maxDepth = 20;
+    const maxDepth = 16;
     const maxBufferSize = 64;
 
     const treeSpace = cmp.getConcurrentMerkleTreeAccountSize(

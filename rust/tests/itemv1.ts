@@ -952,7 +952,7 @@ async function createItemClass(
   );
   console.log("createItemClassTxSig: %s", createItemClassResult.txid);
 
-  const tree = initTree({ maxDepth: 20, maxBufferSize: 64 });
+  const tree = initTree({ maxDepth: 16, maxBufferSize: 64 });
   console.log("tree created: %s", itemClass.toString());
 
   // collection nft for ingredient
