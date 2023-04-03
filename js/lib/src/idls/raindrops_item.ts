@@ -1629,7 +1629,7 @@ export type RaindropsItem = {
       "accounts": [
         {
           "name": "item",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -6058,7 +6058,7 @@ export const IDL: RaindropsItem = {
       "accounts": [
         {
           "name": "item",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {

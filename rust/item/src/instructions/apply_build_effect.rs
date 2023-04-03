@@ -31,7 +31,7 @@ pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {
         ErrorCode::InvalidBuildStatus
     );
 
-    // apply build effect defined in the build pda (derived from the schema)
+    // apply build effect defined in the build pda (derived from the recipe)
     let mut applied = false;
     for build_ingredient_data in ctx.accounts.build.ingredients.iter_mut() {
         // find the specific item within the build ingredient that is referenced in this instruction

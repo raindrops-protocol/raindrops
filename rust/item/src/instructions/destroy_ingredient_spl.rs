@@ -9,7 +9,7 @@ use crate::state::{
 
 #[derive(Accounts)]
 pub struct DestroyIngredientSpl<'info> {
-    #[account(
+    #[account(mut,
         has_one = item_mint,
         seeds = [ItemV1::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
