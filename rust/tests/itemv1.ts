@@ -14,7 +14,7 @@ import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
 import { encode } from "@msgpack/msgpack";
 
-describe.only("itemv1", () => {
+describe("itemv1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -166,7 +166,7 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgram, build);
   });
 
-  it.only("build pNFT 1 pNFT which goes on cooldown, try to use again and get error", async () => {
+  it("build pNFT 1 pNFT which goes on cooldown, try to use again and get error", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
