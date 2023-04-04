@@ -410,7 +410,7 @@ export class ItemProgram extends Program.Program {
 
     const recipes: Recipe[] = [];
     for (let i = 0; i <= recipeIndex.toNumber(); i++) {
-      const recipeAddr = Utils.PDA.getRecipe(itemClass, recipeIndex);
+      const recipeAddr = Utils.PDA.getRecipe(itemClass, new BN(i));
 
       const recipeData = await this.client.account.recipe.fetch(recipeAddr);
 
