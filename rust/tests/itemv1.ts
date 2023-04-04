@@ -166,6 +166,174 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgram, build);
   });
 
+  it.only("build pNFT 1 pNFT which goes on cooldown, try to use again and get error", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // ingredient 1, pNFT
+    const pNftItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 2, true, {
+      buildEnabled: true,
+      payment: {
+        treasury: payer.publicKey,
+        amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+      },
+      ingredientArgs: [
+        {
+          itemClass: pNftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: null,
+            cooldown: { seconds: new BN(60) },
+          },
+        }
+      ],
+    });
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    await assertFreshBuild(
+      itemProgram,
+      build,
+      payer.publicKey,
+      outputItemClass.itemClass
+    );
+
+    // add pNFT to build
+    await addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // add payment to build
+    const addPaymentAccounts: Instructions.Item.AddPaymentAccounts = {
+      build: build,
+      builder: payer.publicKey,
+      treasury: payer.publicKey,
+    };
+
+    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
+    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+
+    // complete build and receive the item
+    await completeBuildAndReceiveItem(
+      itemProgram,
+      outputItemClass.tree,
+      0,
+      build,
+      outputItemClass.mints
+    );
+
+    // assert builder received their item
+    const builderItemAta = splToken.getAssociatedTokenAddressSync(
+      outputItemClass.mints[0],
+      payer.publicKey
+    );
+    const tokenBalanceResponse =
+      await itemProgram.client.provider.connection.getTokenAccountBalance(
+        builderItemAta
+      );
+    assert.isTrue(
+      new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
+    );
+
+    await cleanBuild(itemProgram, build);
+
+    // check item is on cooldown
+    const item = Utils.PDA.getItemV1(pNftItemClass.mints[0]);
+    const itemData = await itemProgram.getItemV1(item)
+    assert.isTrue(itemData.itemState.cooldown.gt(new BN(0)));
+    
+    // start the build process again
+    const startBuild2Accounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuild2Args: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuild2Result = await itemProgram.startBuild(
+      startBuild2Accounts,
+      startBuild2Args
+    );
+    console.log("startBuildTxSig: %s", startBuild2Result.txid);
+
+    const [build2, _build2Bump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    await assertFreshBuild(
+      itemProgram,
+      build2,
+      payer.publicKey,
+      outputItemClass.itemClass
+    );
+
+    // add pNFT to build
+    assertRejects(addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    ));
+  });
+
   it("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
     const payer = await newPayer(connection);
 
@@ -1622,5 +1790,18 @@ async function assertFreshBuild(
   for (let ingredient of buildData.ingredients) {
     assert.isTrue(ingredient.currentAmount.eq(new anchor.BN(0)));
     assert.equal(ingredient.mints.length, 0);
+  }
+}
+
+async function assertRejects(fn: Promise<any | void>) {
+  let err: Error;
+  try {
+    await fn;
+  } catch (e) {
+    err = e;
+  } finally {
+    if (!err) {
+      assert.fail("should have failed");
+    }
   }
 }

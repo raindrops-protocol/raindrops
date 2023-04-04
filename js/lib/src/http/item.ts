@@ -66,10 +66,18 @@ export class Client {
     // check ingredients and find a valid recipe for the item class we want to build
     const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs);
     if (buildableRecipes.length <= 0) {
-      throw new Error(`No Recipes Found`);
+      console.error('no buildable recipes found');
+      throw new Error(`no buildable recipes found`)
+      return null
     }
 
     const recipe = buildableRecipes[0];
+    if (recipe === undefined) {
+      console.error('no buildable recipes found');
+      throw new Error(`no buildable recipes found`)
+      return null 
+    }
+
     console.log(
       "building item class: %s from recipe: %s",
       itemClass.toString(),
