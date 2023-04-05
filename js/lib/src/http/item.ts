@@ -90,13 +90,7 @@ export class Client {
     const signedTx = await this.provider.wallet.signTransaction(tx);
 
     // open websocket connection
-    // browser check
-    let socket: any;
-    if (typeof window === undefined) {
-      socket = new Websocket.WebSocket(this.wsUrl);
-    } else {
-      socket = new Websocket(this.wsUrl)
-    }
+    const socket = new Websocket.WebSocket(this.wsUrl);
 
     const buildRequest = {
       requestType: "build",
