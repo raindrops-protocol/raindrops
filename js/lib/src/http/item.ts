@@ -3,7 +3,7 @@ import * as errors from "./errors";
 import { Build, BuildStatus, ItemClassV1, ItemV1 } from "../state/item";
 import { fetch } from "cross-fetch";
 import { getBuild } from "../utils/pda";
-import Websocket from "isomorphic-ws";
+import IsoWebsocket from "isomorphic-ws";
 
 export class Client {
   readonly baseUrl: string;
@@ -89,8 +89,16 @@ export class Client {
     const tx = anchor.web3.Transaction.from(Buffer.from(serializedTx, "base64"));
     const signedTx = await this.provider.wallet.signTransaction(tx);
 
-    // open websocket connection
-    const socket = new Websocket.WebSocket(this.wsUrl);
+    // browser check
+    let socket: any;
+    console.log('IsoWebsocket', IsoWebsocket)
+    if (typeof window === undefined) {
+      console.log('Node env')
+      socket = new IsoWebsocket(this.wsUrl);
+    } else {
+      console.log('Client side env')
+      socket = new WebSocket(this.wsUrl)
+    }
 
     const buildRequest = {
       requestType: "build",
