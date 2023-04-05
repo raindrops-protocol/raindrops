@@ -1846,7 +1846,7 @@ export class Instruction extends SolKitInstruction {
       let degradationBuildEffect;
       if (ingredientArg.buildEffect.degradation) {
         degradationBuildEffect = {
-          on: { amount: ingredientArg.buildEffect.degradation.rate },
+          on: { rate: ingredientArg.buildEffect.degradation.rate },
         };
       } else {
         degradationBuildEffect = { off: {} };
