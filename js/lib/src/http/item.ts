@@ -15,8 +15,8 @@ export class Client {
 
     switch (cluster) {
       case "mainnet-beta": {
-        this.baseUrl = "https://94ncremh0d.execute-api.us-east-1.amazonaws.com";
-        this.wsUrl = "wss://7mbqz4vp5e.execute-api.us-east-1.amazonaws.com/main"; 
+        this.baseUrl = "https://api.items.itsboots.xyz";
+        this.wsUrl = "wss://ws.items.itsboots.xyz";
         break;
       }
       case "devnet": {
@@ -90,7 +90,13 @@ export class Client {
     const signedTx = await this.provider.wallet.signTransaction(tx);
 
     // open websocket connection
-    const socket = new Websocket.WebSocket(this.wsUrl);
+    // browser check
+    let socket: any;
+    if (typeof window === undefined) {
+      socket = new Websocket.WebSocket(this.wsUrl);
+    } else {
+      socket = new Websocket(this.wsUrl)
+    }
 
     const buildRequest = {
       requestType: "build",
