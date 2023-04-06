@@ -24,7 +24,7 @@ import {
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 import { Utils } from "../main";
-import { Payment } from "../instructions/item";
+import { Payment, PaymentState } from "../instructions/item";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
@@ -488,20 +488,25 @@ export class ItemProgram extends Program.Program {
       itemMint = new web3.PublicKey(buildDataRaw.itemMint);
     }
 
-    const payment = buildDataRaw.payment as any;
+    // detect payment
+    let paymentData: PaymentState | null = null;
+    const payment = buildDataRaw.payment;
+    if (payment !== null) {
+      paymentData = {
+        paid: payment.paid as boolean,
+        paymentDetails: {
+          treasury: new web3.PublicKey(payment.paymentDetails.treasury),
+          amount: new BN(payment.paymentDetails.amount as string),
+        }
+      }
+    }
 
     const buildData: Build = {
       recipeIndex: new BN(buildDataRaw.recipeIndex as string),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
       itemMint: itemMint,
-      payment: {
-        paid: payment.paid as boolean,
-        paymentDetails: {
-          treasury: new web3.PublicKey(payment.paymentDetails.treasury),
-          amount: new BN(payment.paymentDetails.amount as string),
-        },
-      },
+      payment: paymentData,
       ingredients: buildIngredientData,
       status: convertToBuildStatus(buildDataRaw.status),
     };

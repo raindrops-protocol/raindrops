@@ -576,7 +576,7 @@ export interface Build {
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
   itemMint: web3.PublicKey | null;
-  payment: PaymentState;
+  payment: PaymentState | null;
   ingredients: BuildIngredientData[];
   status: BuildStatus;
 }

@@ -68,14 +68,12 @@ export class Client {
     if (buildableRecipes.length <= 0) {
       console.error('no buildable recipes found');
       throw new Error(`no buildable recipes found`)
-      return null
     }
 
     const recipe = buildableRecipes[0];
     if (recipe === undefined) {
       console.error('no buildable recipes found');
       throw new Error(`no buildable recipes found`)
-      return null 
     }
 
     console.log(
@@ -89,14 +87,15 @@ export class Client {
     const tx = anchor.web3.Transaction.from(Buffer.from(serializedTx, "base64"));
     const signedTx = await this.provider.wallet.signTransaction(tx);
 
+    // open websocket connection
     // browser check
+    const isNode = typeof process !== 'undefined' && process?.versions?.node != null;
     let socket: any;
-    console.log('IsoWebsocket', IsoWebsocket)
-    if (typeof window === undefined) {
-      console.log('Node env')
+    if (isNode) {
+      console.log('Node env found')
       socket = new IsoWebsocket(this.wsUrl);
     } else {
-      console.log('Client side env')
+      console.log('Client side env found')
       socket = new WebSocket(this.wsUrl)
     }
 
@@ -132,11 +131,12 @@ export class Client {
 
   async continueBuild(
     itemClass: anchor.web3.PublicKey,
-    ingredientArgs: IngredientArg[]
+    ingredientArgs: IngredientArg[],
+    builder?: anchor.web3.PublicKey,
   ) {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
-      builder: this.provider.publicKey.toString(),
+      builder: builder.toString(),
     });
 
     // return the current build data
@@ -178,9 +178,11 @@ export class Client {
       }
 
       // if payment is not paid do that now
-      if (!buildData.payment.paid) {
-        console.log(build.toString());
-        await this.addPayment(build);
+      if (buildData.payment !== null) {
+        if (!buildData.payment.paid) {
+          console.log(build.toString());
+          await this.addPayment(build);
+        }
       }
 
       itemMint = await this.driveBuild(build);
@@ -191,10 +193,10 @@ export class Client {
     return itemMint;
   }
 
-  async cancelBuild(itemClass: anchor.web3.PublicKey) {
+  async cancelBuild(itemClass: anchor.web3.PublicKey, builder: anchor.web3.PublicKey) {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
-      builder: this.provider.publicKey.toString(),
+      builder: builder.toString(),
     });
 
     // fetch the current build data
@@ -464,6 +466,17 @@ export class Client {
       console.log("returnOrDestroyIngredientsTxSig: %s", body.txSig);
       done = body.done;
     }
+  }
+
+  async endBuild(build: anchor.web3.PublicKey): Promise<void> {
+    // apply build effects to the ingredients used
+    await this.applyBuildEffects(build);
+
+    // return or destroy the build ingredients in accordance with the effects
+    await this.returnOrDestroyIngredients(build);
+
+    // clean up
+    await this.cleanBuild(build);
   }
 
   // drive build to completion, these are all permissionless steps
