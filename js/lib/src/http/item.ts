@@ -112,7 +112,7 @@ export class Client {
 
     // on connection open, send the signed start build tx
     socket.onopen = (event) => {
-      console.log('websocket event received: %s', event);
+      console.log('websocket event received: %s', JSON.stringify(event));
       console.log("sending build request");
       socket.send(JSON.stringify({ buildRequest: buildRequest }));
     };
@@ -121,7 +121,7 @@ export class Client {
     const itemMint = await new Promise((resolve, reject) => {
       socket.onmessage = (event) => {
         try {
-          console.log('received event: %s', event);
+          console.log('received event: %s', JSON.stringify(event));
           socket.close();
           resolve(event.data.toString());
         } catch (e) {
