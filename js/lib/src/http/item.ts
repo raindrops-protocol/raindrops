@@ -18,7 +18,7 @@ export class Client {
         //this.baseUrl = "https://api.items.itsboots.xyz";
         //this.wsUrl = "wss://ws.items.itsboots.xyz";
         this.baseUrl = "https://94ncremh0d.execute-api.us-east-1.amazonaws.com";
-        this.baseUrl = "wss://7mbqz4vp5e.execute-api.us-east-1.amazonaws.com/main";
+        this.wsUrl = "wss://7mbqz4vp5e.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "devnet": {
