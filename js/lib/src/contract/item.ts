@@ -420,6 +420,7 @@ export class ItemProgram extends Program.Program {
         const ingredient: Ingredient = {
           itemClass: new web3.PublicKey(recipeIngredient.itemClass),
           requiredAmount: new BN(recipeIngredient.requiredAmount as string),
+          buildEffect: recipeIngredient.buildEffect,
         };
 
         ingredients.push(ingredient);
@@ -562,6 +563,7 @@ export class ItemProgram extends Program.Program {
       ingredients.push({
         itemClass: new web3.PublicKey(ingredient.itemClass),
         requiredAmount: new BN(ingredient.requiredAmount),
+        buildEffect: ingredient.buildEffect,
       })
     }
 

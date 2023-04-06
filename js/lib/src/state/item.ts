@@ -558,6 +558,7 @@ export interface Recipe {
 export interface Ingredient {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
+  buildEffect: any;
 }
 
 export interface ItemV1 {
