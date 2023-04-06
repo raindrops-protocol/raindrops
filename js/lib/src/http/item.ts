@@ -62,7 +62,7 @@ export class Client {
     return recipes;
   }
 
-  async build(itemClass: anchor.web3.PublicKey, ingredientArgs: IngredientArg[]): Promise<anchor.web3.PublicKey> {
+  async build(itemClass: anchor.web3.PublicKey, ingredientArgs: IngredientArg[]): Promise<any> {
     // check ingredients and find a valid recipe for the item class we want to build
     const buildableRecipes = await this.checkIngredients(itemClass, ingredientArgs);
     if (buildableRecipes.length <= 0) {
@@ -126,7 +126,7 @@ export class Client {
       };
     });
 
-    return new anchor.web3.PublicKey(itemMint)
+    return itemMint
   }
 
   async continueBuild(
