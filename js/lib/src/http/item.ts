@@ -122,7 +122,6 @@ export class Client {
       socket.onmessage = (event) => {
         try {
           console.log('received event: %s', JSON.stringify(event));
-          socket.close();
           resolve(event.data.toString());
         } catch (e) {
           reject(e);
