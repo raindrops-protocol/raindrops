@@ -112,10 +112,21 @@ export class Client {
 
     // on connection open, send the signed start build tx
     socket.onopen = (event) => {
+      console.log("socket status:", JSON.stringify(socket));
       console.log('websocket event received: %s', JSON.stringify(event));
       console.log("sending build request");
       socket.send(JSON.stringify({ buildRequest: buildRequest }));
     };
+
+    socket.onclose = (event) => {
+      console.log("socket status:", JSON.stringify(socket));
+      console.log("close:", JSON.stringify(event));
+    }
+
+    socket.onerror = (event) => {
+      console.log("socket status:", JSON.stringify(socket));
+      console.log("websocket error:", JSON.stringify(event));
+    }
 
     // wait for a response from the websocket api
     const itemMint = await new Promise((resolve, reject) => {
