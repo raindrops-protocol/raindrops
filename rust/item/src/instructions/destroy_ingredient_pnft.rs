@@ -27,6 +27,10 @@ pub struct DestroyIngredientPNft<'info> {
 
     /// CHECK: Done by token metadata
     #[account(mut)]
+    pub collection_metadata: UncheckedAccount<'info>,
+
+    /// CHECK: Done by token metadata
+    #[account(mut)]
     pub item_edition: UncheckedAccount<'info>,
 
     #[account(mut, associated_token::mint = item_mint, associated_token::authority = build)]
@@ -87,7 +91,7 @@ pub fn handler(ctx: Context<DestroyIngredientPNft>) -> Result<()> {
 
     let burn_ix = Burn {
         authority: ctx.accounts.build.key(),
-        collection_metadata: None,
+        collection_metadata: Some(ctx.accounts.collection_metadata.key()),
         metadata: ctx.accounts.item_metadata.key(),
         edition: Some(ctx.accounts.item_edition.key()),
         mint: ctx.accounts.item_mint.key(),
@@ -105,6 +109,7 @@ pub fn handler(ctx: Context<DestroyIngredientPNft>) -> Result<()> {
 
     let burn_accounts = [
         ctx.accounts.build.to_account_info(),
+        ctx.accounts.collection_metadata.to_account_info(),
         ctx.accounts.item_metadata.to_account_info(),
         ctx.accounts.item_edition.to_account_info(),
         ctx.accounts.item_mint.to_account_info(),

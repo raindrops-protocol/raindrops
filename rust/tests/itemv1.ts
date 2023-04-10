@@ -20,7 +20,7 @@ describe.only("itemv1", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it.only("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
+  it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -164,21 +164,22 @@ describe.only("itemv1", () => {
     );
 
     // verify test ingredient
-    const verifyIngredientTestAccounts: Instructions.Item.VerifyIngredientTestAccounts = {
-      ingredientMint: pNftItemClass.mints[0],
-      ingredientItemClass: pNftItemClass.itemClass,
-      payer: itemProgram.client.provider.publicKey,
-    };
-  
+    const verifyIngredientTestAccounts: Instructions.Item.VerifyIngredientTestAccounts =
+      {
+        ingredientMint: pNftItemClass.mints[0],
+        ingredientItemClass: pNftItemClass.itemClass,
+        payer: itemProgram.client.provider.publicKey,
+      };
+
     // get proof for mint
     const proof = pNftItemClass.tree.getProof(0);
-  
+
     const verifyIngredientArgs: Instructions.Item.VerifyIngredientArgs = {
       root: proof.root,
       leafIndex: proof.leafIndex,
       proof: proof.proof,
     };
-  
+
     const verifyIngredientResult = await itemProgram.verifyIngredientTest(
       verifyIngredientTestAccounts,
       verifyIngredientArgs
@@ -223,7 +224,7 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: { seconds: new BN(60) },
           },
-        }
+        },
       ],
     });
 
@@ -310,9 +311,9 @@ describe.only("itemv1", () => {
 
     // check item is on cooldown
     const item = Utils.PDA.getItemV1(pNftItemClass.mints[0]);
-    const itemData = await itemProgram.getItemV1(item)
+    const itemData = await itemProgram.getItemV1(item);
     assert.isTrue(itemData.itemState.cooldown.gt(new BN(0)));
-    
+
     // start the build process again
     const startBuild2Accounts: Instructions.Item.StartBuildAccounts = {
       itemClass: outputItemClass.itemClass,
@@ -346,14 +347,16 @@ describe.only("itemv1", () => {
     );
 
     // add pNFT to build
-    assertRejects(addIngredient(
-      itemProgram,
-      pNftItemClass.tree,
-      outputItemClass.itemClass,
-      pNftItemClass.mints[0],
-      pNftItemClass.itemClass,
-      new anchor.BN(1)
-    ));
+    assertRejects(
+      addIngredient(
+        itemProgram,
+        pNftItemClass.tree,
+        outputItemClass.itemClass,
+        pNftItemClass.mints[0],
+        pNftItemClass.itemClass,
+        new anchor.BN(1)
+      )
+    );
   });
 
   it("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
@@ -1146,7 +1149,6 @@ async function createItemClass(
   console.log("tree created: %s", itemClass.toString());
 
   // collection nft for ingredient
-  const ingredientCollectionNft = await createCollectionNft(payer, connection);
 
   const mints: anchor.web3.PublicKey[] = [];
   for (let i = 0; i < ingredientCount; i++) {
@@ -1156,6 +1158,8 @@ async function createItemClass(
 
     let ingredientMintOutput: metaplex.CreateNftOutput;
     if (isPNft) {
+      const ingredientCollectionNft = await createCollectionPNft(payer, connection);
+
       const ruleSetPda = await createRuleSet(payer, connection);
 
       // TODO: test with a verified collection, for some reason this func fails
@@ -1166,14 +1170,72 @@ async function createItemClass(
         sellerFeeBasisPoints: 500,
         symbol: "PN",
         ruleSet: ruleSetPda,
-        //collection: ingredientCollectionNft,
-        //collectionAuthority: payer,
+        collection: ingredientCollectionNft,
       });
       console.log(
         "createPNftTxSig: %s",
         ingredientMintOutput.response.signature
       );
+
+      const ata = splToken.getAssociatedTokenAddressSync(
+        ingredientCollectionNft,
+        payer.publicKey
+      );
+
+      const [collectionMetadata, _collectionMetadataBump] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("metadata"),
+            mpl.PROGRAM_ID.toBuffer(),
+            ingredientCollectionNft.toBuffer(),
+          ],
+          mpl.PROGRAM_ID
+        );
+
+      const [tokenRecord, _tokenRecordBump] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("metadata"),
+            mpl.PROGRAM_ID.toBuffer(),
+            ingredientCollectionNft.toBuffer(),
+            Buffer.from("token_record"),
+            ata.toBuffer(),
+          ],
+          mpl.PROGRAM_ID
+        );
+
+      const [collectionME, _collectionMEBump] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("metadata"),
+            mpl.PROGRAM_ID.toBuffer(),
+            ingredientCollectionNft.toBuffer(),
+            Buffer.from("edition"),
+          ],
+          mpl.PROGRAM_ID
+        );
+
+      const verifyIx = mpl.createVerifyInstruction({
+        authority: payer.publicKey,
+        delegateRecord: tokenRecord,
+        metadata: ingredientMintOutput.metadataAddress,
+        collectionMint: ingredientCollectionNft,
+        collectionMetadata: collectionMetadata,
+        collectionMasterEdition: collectionME,
+        sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+      }, {
+        verificationArgs: mpl.VerificationArgs.CollectionV1,
+      });
+      const verifyTxSig = await connection.sendTransaction(
+        new anchor.web3.Transaction().add(verifyIx),
+        [payer],
+        {skipPreflight: false}
+      );
+      console.log("verifyTxSig: %s", verifyTxSig);
+      await connection.confirmTransaction(verifyTxSig);
     } else {
+      const ingredientCollectionNft = await createCollectionNft(payer, connection);
+
       ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.NonFungible,
         uri: "https://foo.com/bar.json",
@@ -1342,6 +1404,26 @@ async function createCollectionNft(
 
   const result = await client.nfts().create({
     tokenStandard: mpl.TokenStandard.NonFungible,
+    uri: "https://foo.com/bar.json",
+    name: "collectionNft",
+    sellerFeeBasisPoints: 0,
+    symbol: "CN",
+    isCollection: true,
+  });
+
+  return result.mintAddress;
+}
+
+async function createCollectionPNft(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection
+): Promise<anchor.web3.PublicKey> {
+  const client = new metaplex.Metaplex(connection, {}).use(
+    metaplex.keypairIdentity(payer)
+  );
+
+  const result = await client.nfts().create({
+    tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
     uri: "https://foo.com/bar.json",
     name: "collectionNft",
     sellerFeeBasisPoints: 0,
@@ -1827,3 +1909,5 @@ async function assertRejects(fn: Promise<any | void>) {
     }
   }
 }
+
+async function createPNft() {}

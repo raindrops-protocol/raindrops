@@ -346,7 +346,7 @@ export class ItemProgram extends Program.Program {
     args: ItemInstruction.VerifyIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.verifyIngredientTest(accounts, args);
+    const ix = await this.instruction.verifyIngredientTest(accounts, args)
     return await this.sendWithRetry([ix], [], options);
   }
 

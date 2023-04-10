@@ -1,8 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import {
-  StakingProgram,
-  Idls,
-} from "@raindrops-protocol/raindrops";
+import { StakingProgram, Idls } from "@raindrops-protocol/raindrops";
 
 describe("staking", () => {
   // Configure the client to use the local cluster.

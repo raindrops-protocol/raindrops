@@ -1727,6 +1727,11 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "collectionMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "itemEdition",
           "isMut": true,
           "isSigner": false
@@ -6216,6 +6221,11 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
           "isMut": true,
           "isSigner": false
         },

@@ -1390,7 +1390,7 @@ export class Instruction extends SolKitInstruction {
     }
 
     const ixArgs = {
-      root: args.root,
+      root: Buffer.from(args.root.toString()),
       leafIndex: args.leafIndex,
     };
 
@@ -1837,6 +1837,18 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
+    
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(this.program.client.provider.connection, itemMetadata);
+
+    const [collectionMetadata, _collectionMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          itemMetadataData.collection.key.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      ); 
 
     const ix = await this.program.client.methods
       .destroyIngredientPnft()
@@ -1844,6 +1856,7 @@ export class Instruction extends SolKitInstruction {
         item: item,
         itemMint: accounts.ingredientMint,
         itemMetadata: itemMetadata,
+        collectionMetadata: collectionMetadata,
         itemEdition: itemME,
         itemAta: itemAta,
         itemTokenRecord: itemTokenRecord,
