@@ -14,6 +14,7 @@ pub mod return_ingredient_pnft;
 pub mod return_ingredient_spl;
 pub mod start_build;
 pub mod verify_ingredient;
+pub mod verify_ingredient_test;
 
 pub use add_ingredient_pnft::*;
 pub use add_ingredient_spl::*;
@@ -31,3 +32,4 @@ pub use return_ingredient_pnft::*;
 pub use return_ingredient_spl::*;
 pub use start_build::*;
 pub use verify_ingredient::*;
+pub use verify_ingredient_test::*;

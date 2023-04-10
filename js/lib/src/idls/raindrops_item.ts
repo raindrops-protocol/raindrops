@@ -1288,6 +1288,49 @@ export type RaindropsItem = {
       ]
     },
     {
+      "name": "verifyIngredientTest",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VerifyIngredientTestArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "receiveItem",
       "accounts": [
         {
@@ -2249,6 +2292,27 @@ export type RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyIngredientTestArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
           }
         ]
       }
@@ -5717,6 +5781,49 @@ export const IDL: RaindropsItem = {
       ]
     },
     {
+      "name": "verifyIngredientTest",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VerifyIngredientTestArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "receiveItem",
       "accounts": [
         {
@@ -6678,6 +6785,27 @@ export const IDL: RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyIngredientTestArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
           }
         ]
       }

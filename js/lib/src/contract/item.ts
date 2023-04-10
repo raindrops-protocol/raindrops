@@ -341,6 +341,15 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async verifyIngredientTest(
+    accounts: ItemInstruction.VerifyIngredientTestAccounts,
+    args: ItemInstruction.VerifyIngredientArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.verifyIngredientTest(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
   async completeBuild(
     accounts: ItemInstruction.CompleteBuildAccounts,
     args: ItemInstruction.CompleteBuildArgs,

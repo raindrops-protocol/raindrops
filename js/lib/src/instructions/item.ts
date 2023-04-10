@@ -1367,6 +1367,49 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
+  async verifyIngredientTest(
+    accounts: VerifyIngredientTestAccounts,
+    args: VerifyIngredientArgs
+  ): Promise<web3.TransactionInstruction> {
+    const ingredientItemClassData =
+      await this.program.client.account.itemClassV1.fetch(
+        accounts.ingredientItemClass
+      );
+    const ingredientItemClassItems = new web3.PublicKey(
+      ingredientItemClassData.items
+    );
+
+    const proofAsRemainingAccounts = [];
+    for (const node of args.proof) {
+      const nodeAccount = {
+        pubkey: new web3.PublicKey(node),
+        isSigner: false,
+        isWritable: false,
+      };
+      proofAsRemainingAccounts.push(nodeAccount);
+    }
+
+    const ixArgs = {
+      root: args.root,
+      leafIndex: args.leafIndex,
+    };
+
+    const ix = await this.program.client.methods
+      .verifyIngredientTest(ixArgs)
+      .accounts({
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientItemClassItems: ingredientItemClassItems,
+        payer: accounts.payer,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+      })
+      .remainingAccounts(proofAsRemainingAccounts)
+      .instruction();
+
+    return ix;
+  }
+
   async completeBuild(
     accounts: CompleteBuildAccounts,
     args: CompleteBuildArgs
@@ -2320,6 +2363,12 @@ export interface VerifyIngredientArgs {
   root: Buffer;
   leafIndex: number;
   proof: Buffer[];
+}
+
+export interface VerifyIngredientTestAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
+  payer: web3.PublicKey;
 }
 
 export interface CompleteBuildAccounts {

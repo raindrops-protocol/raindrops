@@ -2000,6 +2000,13 @@ pub mod raindrops_item {
         verify_ingredient::handler(ctx, args)
     }
 
+    pub fn verify_ingredient_test<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, VerifyIngredientTest<'info>>,
+        args: VerifyIngredientTestArgs,
+    ) -> Result<()> {
+        verify_ingredient_test::handler(ctx, args)
+    }
+
     pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
         receive_item::handler(ctx)
     }

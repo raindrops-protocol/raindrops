@@ -14,13 +14,13 @@ import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
 import { encode } from "@msgpack/msgpack";
 
-describe("itemv1", () => {
+describe.only("itemv1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const connection = anchor.getProvider().connection;
 
-  it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
+  it.only("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -162,6 +162,28 @@ describe("itemv1", () => {
     assert.isTrue(
       new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
     );
+
+    // verify test ingredient
+    const verifyIngredientTestAccounts: Instructions.Item.VerifyIngredientTestAccounts = {
+      ingredientMint: pNftItemClass.mints[0],
+      ingredientItemClass: pNftItemClass.itemClass,
+      payer: itemProgram.client.provider.publicKey,
+    };
+  
+    // get proof for mint
+    const proof = pNftItemClass.tree.getProof(0);
+  
+    const verifyIngredientArgs: Instructions.Item.VerifyIngredientArgs = {
+      root: proof.root,
+      leafIndex: proof.leafIndex,
+      proof: proof.proof,
+    };
+  
+    const verifyIngredientResult = await itemProgram.verifyIngredientTest(
+      verifyIngredientTestAccounts,
+      verifyIngredientArgs
+    );
+    console.log("verifyIngredientTestTxSig: %s", verifyIngredientResult.txid);
 
     await cleanBuild(itemProgram, build);
   });
