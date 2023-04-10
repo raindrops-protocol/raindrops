@@ -162,7 +162,10 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
 
     // if the item pda is holding no state we destroy it to save on rent
     if ctx.accounts.item.item_state.no_state() {
-        ctx.accounts.item.close(ctx.accounts.payer.to_account_info()).unwrap();
+        ctx.accounts
+            .item
+            .close(ctx.accounts.payer.to_account_info())
+            .unwrap();
     };
 
     Ok(())

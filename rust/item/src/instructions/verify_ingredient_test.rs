@@ -7,10 +7,7 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{
-    accounts::{ItemClassV1},
-    NoopProgram,
-};
+use crate::state::{accounts::ItemClassV1, NoopProgram};
 
 #[derive(Accounts)]
 pub struct VerifyIngredientTest<'info> {

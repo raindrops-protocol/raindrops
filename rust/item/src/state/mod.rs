@@ -216,11 +216,14 @@ impl ItemState {
     pub fn no_state(&self) -> bool {
         match self {
             Self::Fungible => true,
-            Self::NonFungible { durability, cooldown } => {
+            Self::NonFungible {
+                durability,
+                cooldown,
+            } => {
                 if *durability == Degradation::BRAND_NEW && cooldown.is_none() {
-                    return true
+                    return true;
                 }
-                return false
+                return false;
             }
         }
     }

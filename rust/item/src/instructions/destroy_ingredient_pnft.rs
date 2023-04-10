@@ -133,5 +133,7 @@ pub fn handler(ctx: Context<DestroyIngredientPNft>) -> Result<()> {
     )?;
 
     // close item pda
-    ctx.accounts.item.close(ctx.accounts.payer.to_account_info())
+    ctx.accounts
+        .item
+        .close(ctx.accounts.payer.to_account_info())
 }
