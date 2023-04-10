@@ -1,6 +1,6 @@
 {
   "name": "@raindrops-protocol/raindrops",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "module": "./build/main.js",
   "main": "./build/main.js",
   "types": "./build/main.d.ts",
