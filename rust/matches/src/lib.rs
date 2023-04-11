@@ -446,7 +446,7 @@ pub mod raindrops_matches {
                     verify(&total_proof, &root.root, total_node.0),
                     ErrorCode::InvalidProof
                 );
-                if match_instance.current_token_transfer_index == (total - 1) as u64 {
+                if match_instance.current_token_transfer_index == (total - 1) {
                     match_instance.state = MatchState::PaidOut;
                 }
                 token_delta
@@ -697,7 +697,7 @@ pub mod raindrops_matches {
         for ns in namespaces {
             if ns.namespace == ctx.accounts.namespace.key() && !left {
                 // if the artifact is still cached, error
-                if ns.index != None {
+                if ns.index.is_some() {
                     return Err(error!(ErrorCode::FailedToLeaveNamespace));
                 };
                 left = true;

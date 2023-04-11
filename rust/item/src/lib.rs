@@ -1734,7 +1734,7 @@ pub mod raindrops_item {
 
                 if pc.states_proven >= pc.states_required {
                     item.data.usage_state_root = Some(Root {
-                        inherited: usage_state_root.inherited.clone(),
+                        inherited: usage_state_root.inherited,
                         root: pc.new_state_root,
                     });
 

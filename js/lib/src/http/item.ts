@@ -194,7 +194,7 @@ export class Client {
       );
 
       // add the remaining ingredients
-      for (let ingredient of missingIngredients) {
+      for (const ingredient of missingIngredients) {
         await this.verifyIngredient(
           this.provider.publicKey,
           itemClass,
@@ -583,7 +583,7 @@ function getMissingIngredients(
   buildData: Build
 ): Ingredient[] {
   const missingIngredients: Ingredient[] = [];
-  for (let currentIngredient of buildData.ingredients) {
+  for (const currentIngredient of buildData.ingredients) {
     console.log(currentIngredient);
 
     // if this build ingredient already has escrowed the required amount, we dont need it
@@ -596,7 +596,7 @@ function getMissingIngredients(
     }
 
     // find the recipe ingredient which matches the build ingredient required item class
-    for (let recipeIngredient of recipeIngredients) {
+    for (const recipeIngredient of recipeIngredients) {
       if (recipeIngredient.itemClass.equals(currentIngredient.itemClass)) {
         missingIngredients.push(recipeIngredient);
       }

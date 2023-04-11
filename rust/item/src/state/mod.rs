@@ -107,12 +107,12 @@ impl Degradation {
 
     pub fn apply(&self, item_state: &mut ItemState) {
         match item_state {
-            ItemState::Fungible => return,
+            ItemState::Fungible => (),
             ItemState::NonFungible {
                 durability,
                 cooldown: _,
             } => match self {
-                Degradation::Off => return,
+                Degradation::Off => (),
                 Degradation::On { rate } => {
                     if rate >= durability {
                         *durability = 0;
@@ -121,7 +121,7 @@ impl Degradation {
                     }
                 }
             },
-        };
+        }
     }
 }
 
@@ -136,18 +136,18 @@ impl Cooldown {
 
     pub fn apply(&self, item_state: &mut ItemState) {
         match item_state {
-            ItemState::Fungible => return,
+            ItemState::Fungible => (),
             ItemState::NonFungible {
                 durability: _,
                 cooldown,
             } => match self {
-                Cooldown::Off => return,
+                Cooldown::Off => (),
                 Cooldown::On { seconds } => {
                     let current_unix_timestamp = Clock::get().unwrap().unix_timestamp;
                     *cooldown = Some(current_unix_timestamp + seconds);
                 }
             },
-        };
+        }
     }
 }
 
@@ -223,7 +223,7 @@ impl ItemState {
                 if *durability == Degradation::BRAND_NEW && cooldown.is_none() {
                     return true;
                 }
-                return false;
+                false
             }
         }
     }

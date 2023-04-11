@@ -509,7 +509,7 @@ pub mod raindrops_namespace {
             let mut new_namespaces: Vec<NamespaceAndIndex> = vec![];
             for ns in artifact_ns.namespaces.clone().unwrap() {
                 if ns.namespace == namespace.key() && !left {
-                    if ns.index != None {
+                    if ns.index.is_some() {
                         return Err(error!(ErrorCode::CannotLeaveNamespace));
                     }
                     left = true;
@@ -647,9 +647,9 @@ pub mod raindrops_namespace {
         )?;
 
         // if payments is not configured, exit without error
-        if ctx.accounts.namespace.payment_mint == None
-            && ctx.accounts.namespace.payment_vault == None
-            && ctx.accounts.namespace.payment_amount == None
+        if ctx.accounts.namespace.payment_mint.is_none()
+            && ctx.accounts.namespace.payment_vault.is_none()
+            && ctx.accounts.namespace.payment_amount.is_none()
         {
             msg!("optional payment unset");
             return Ok(());

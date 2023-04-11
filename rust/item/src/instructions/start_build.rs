@@ -47,13 +47,10 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         ingredients.push(required_ingredient.into());
     }
 
-    let payment: Option<PaymentState> = match &ctx.accounts.recipe.payment {
-        Some(payment) => Some(PaymentState {
+    let payment: Option<PaymentState> = ctx.accounts.recipe.payment.as_ref().map(|payment| PaymentState {
             paid: false,
             payment_details: payment.clone(),
-        }),
-        None => None,
-    };
+        });
 
     // set build data
     ctx.accounts.build.set_inner(Build {
@@ -62,8 +59,8 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         item_class: ctx.accounts.item_class.key(),
         item_mint: None,
         status: BuildStatus::InProgress,
-        payment: payment,
-        ingredients: ingredients,
+        payment,
+        ingredients,
     });
 
     Ok(())

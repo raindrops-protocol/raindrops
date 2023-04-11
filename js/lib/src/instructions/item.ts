@@ -1043,7 +1043,7 @@ export class Instruction extends SolKitInstruction {
     const recipe = Utils.PDA.getRecipe(itemClass, new BN(0));
 
     const ingredients: any[] = [];
-    for (let ingredientArg of args.recipeArgs.ingredientArgs) {
+    for (const ingredientArg of args.recipeArgs.ingredientArgs) {
       let degradationBuildEffect;
       if (ingredientArg.buildEffect.degradation) {
         degradationBuildEffect = {
@@ -1062,7 +1062,7 @@ export class Instruction extends SolKitInstruction {
         cooldownBuildEffect = { off: {} };
       }
 
-      let ingredient = {
+      const ingredient = {
         itemClass: ingredientArg.itemClass,
         requiredAmount: ingredientArg.requiredAmount,
         buildEffect: {
@@ -1108,7 +1108,7 @@ export class Instruction extends SolKitInstruction {
     const itemClassItems = new web3.PublicKey(itemClassData.items);
 
     const ixns: web3.TransactionInstruction[] = [];
-    for (let itemMint of accounts.itemMints) {
+    for (const itemMint of accounts.itemMints) {
       const ix = await this.program.client.methods
         .addItemToItemClass()
         .accounts({

@@ -568,7 +568,7 @@ export class ItemProgram extends Program.Program {
     }
 
     const ingredients: Ingredient[] = [];
-    for (let ingredient of recipeDataRaw.ingredients) {
+    for (const ingredient of recipeDataRaw.ingredients) {
       ingredients.push({
         itemClass: new web3.PublicKey(ingredient.itemClass),
         requiredAmount: new BN(ingredient.requiredAmount),

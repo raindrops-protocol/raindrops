@@ -2101,7 +2101,7 @@ pub fn leave_namespace(
     for mut ns in current_namespaces {
         if ns.namespace == leave_namespace.key() && !left {
             // if the artifact is still cached, error
-            if ns.index != None {
+            if ns.index.is_some() {
                 return Err(error!(ErrorCode::FailedToLeaveNamespace));
             };
             ns.namespace = anchor_lang::solana_program::system_program::id();
