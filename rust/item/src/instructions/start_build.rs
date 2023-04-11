@@ -47,10 +47,15 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         ingredients.push(required_ingredient.into());
     }
 
-    let payment: Option<PaymentState> = ctx.accounts.recipe.payment.as_ref().map(|payment| PaymentState {
-            paid: false,
-            payment_details: payment.clone(),
-        });
+    let payment: Option<PaymentState> =
+        ctx.accounts
+            .recipe
+            .payment
+            .as_ref()
+            .map(|payment| PaymentState {
+                paid: false,
+                payment_details: payment.clone(),
+            });
 
     // set build data
     ctx.accounts.build.set_inner(Build {
