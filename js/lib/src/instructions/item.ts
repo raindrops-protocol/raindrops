@@ -1837,8 +1837,11 @@ export class Instruction extends SolKitInstruction {
         ],
         mpl.PROGRAM_ID
       );
-    
-    const itemMetadataData = await mpl.Metadata.fromAccountAddress(this.program.client.provider.connection, itemMetadata);
+
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata
+    );
 
     const [collectionMetadata, _collectionMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
@@ -1848,7 +1851,7 @@ export class Instruction extends SolKitInstruction {
           itemMetadataData.collection.key.toBuffer(),
         ],
         mpl.PROGRAM_ID
-      ); 
+      );
 
     const ix = await this.program.client.methods
       .destroyIngredientPnft()
@@ -1940,7 +1943,10 @@ export class Instruction extends SolKitInstruction {
     );
 
     // get new recipe pda based off item class recipe index
-    const newRecipe = Utils.PDA.getRecipe(accounts.itemClass, (itemClassData.recipeIndex as BN).add(new BN(1)));
+    const newRecipe = Utils.PDA.getRecipe(
+      accounts.itemClass,
+      (itemClassData.recipeIndex as BN).add(new BN(1))
+    );
 
     const ix = await this.program.client.methods
       .createRecipe(ixArgs)

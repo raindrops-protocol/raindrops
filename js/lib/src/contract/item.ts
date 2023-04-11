@@ -346,7 +346,7 @@ export class ItemProgram extends Program.Program {
     args: ItemInstruction.VerifyIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.verifyIngredientTest(accounts, args)
+    const ix = await this.instruction.verifyIngredientTest(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -469,8 +469,8 @@ export class ItemProgram extends Program.Program {
     let buildDataRaw;
     try {
       buildDataRaw = await this.client.account.build.fetch(build);
-    } catch(_e) {
-      return null
+    } catch (_e) {
+      return null;
     }
 
     const buildIngredientData: BuildIngredientData[] = [];
@@ -507,8 +507,8 @@ export class ItemProgram extends Program.Program {
         paymentDetails: {
           treasury: new web3.PublicKey(payment.paymentDetails.treasury),
           amount: new BN(payment.paymentDetails.amount as string),
-        }
-      }
+        },
+      };
     }
 
     const buildData: Build = {
@@ -529,7 +529,7 @@ export class ItemProgram extends Program.Program {
     try {
       itemDataRaw = await this.client.account.itemV1.fetch(item);
     } catch (_e) {
-      return null
+      return null;
     }
 
     let cooldown: BN | null = null;
@@ -556,15 +556,15 @@ export class ItemProgram extends Program.Program {
     try {
       recipeDataRaw = await this.client.account.recipe.fetch(recipe);
     } catch (_e) {
-      return null
+      return null;
     }
 
     let payment: Payment | null = null;
     if (recipeDataRaw.payment) {
       payment = {
-        treasury: new web3.PublicKey(recipeDataRaw.payment.treasury), 
+        treasury: new web3.PublicKey(recipeDataRaw.payment.treasury),
         amount: new BN(recipeDataRaw.payment.amount),
-      }
+      };
     }
 
     const ingredients: Ingredient[] = [];
@@ -573,16 +573,16 @@ export class ItemProgram extends Program.Program {
         itemClass: new web3.PublicKey(ingredient.itemClass),
         requiredAmount: new BN(ingredient.requiredAmount),
         buildEffect: ingredient.buildEffect,
-      })
+      });
     }
 
     const recipeData: Recipe = {
       recipeIndex: new BN(recipeDataRaw.recipeIndex),
       itemClass: new web3.PublicKey(recipeDataRaw.itemClass),
       buildEnabled: recipeDataRaw.buildEnabled as boolean,
-      payment: payment, 
+      payment: payment,
       ingredients: ingredients,
-    }
+    };
 
     return recipeData;
   }
