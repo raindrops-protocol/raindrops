@@ -195,7 +195,7 @@ impl ItemState {
             Self::NonFungible {
                 durability,
                 cooldown: _,
-            } => *durability <= 0,
+            } => *durability == 0,
         }
     }
 
