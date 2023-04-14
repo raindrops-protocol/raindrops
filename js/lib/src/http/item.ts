@@ -9,9 +9,13 @@ export class Client {
   readonly baseUrl: string;
   readonly wsUrl: string;
   readonly provider: anchor.AnchorProvider;
+  readonly rpcUrl: string;
+  private apiKey: string;
 
-  constructor(provider: anchor.AnchorProvider, cluster: string) {
+  constructor(provider: anchor.AnchorProvider, cluster: string, rpcUrl: string, apiKey: string) {
     this.provider = provider;
+    this.rpcUrl = rpcUrl;
+    this.apiKey = apiKey;
 
     switch (cluster) {
       case "mainnet-beta": {
@@ -21,7 +25,7 @@ export class Client {
         break;
       }
       case "devnet": {
-        this.baseUrl = "https://2tbu4lwr5b.execute-api.us-east-1.amazonaws.com";
+        this.baseUrl = "https://hwheczmzx7.execute-api.us-east-1.amazonaws.com/prod/";
         this.wsUrl =
           "wss://493dq7ya5a.execute-api.us-east-1.amazonaws.com/main";
         break;
@@ -53,7 +57,9 @@ export class Client {
       params.append("ingredientAmounts", ingredient.amount.toString());
     }
 
-    const response = await fetch(`${this.baseUrl}/checkIngredients?` + params);
+    const response = await fetch(`${this.baseUrl}/checkIngredients?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     if (response.status === 404) {
       return [];
@@ -168,7 +174,9 @@ export class Client {
     });
 
     // return the current build data
-    const response = await fetch(`${this.baseUrl}/build?` + params);
+    const response = await fetch(`${this.baseUrl}/build?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     const body = await errors.handleResponse(response);
 
@@ -235,7 +243,9 @@ export class Client {
     });
 
     // fetch the current build data
-    const response = await fetch(`${this.baseUrl}/build?` + params);
+    const response = await fetch(`${this.baseUrl}/build?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     const body = await errors.handleResponse(response);
 
@@ -264,7 +274,9 @@ export class Client {
     });
 
     // return the current build data
-    const response = await fetch(`${this.baseUrl}/build?` + params);
+    const response = await fetch(`${this.baseUrl}/build?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     if (response.status === 400) {
       return [null, null];
@@ -286,7 +298,9 @@ export class Client {
     });
 
     // return the current item data
-    const response = await fetch(`${this.baseUrl}/item?` + params);
+    const response = await fetch(`${this.baseUrl}/item?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     if (response.status === 400) {
       return [null, null];
@@ -306,7 +320,9 @@ export class Client {
     });
 
     // return the current build data
-    const response = await fetch(`${this.baseUrl}/itemClass?` + params);
+    const response = await fetch(`${this.baseUrl}/itemClass?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     if (response.status === 400) {
       return null;
@@ -325,7 +341,9 @@ export class Client {
     });
 
     // return the current build data
-    const response = await fetch(`${this.baseUrl}/recipe?` + params);
+    const response = await fetch(`${this.baseUrl}/recipe?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     if (response.status === 400) {
       return null;
@@ -345,7 +363,7 @@ export class Client {
   ): Promise<string> {
     const startBuildTxResponse = await fetch(`${this.baseUrl}/startBuild`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: createHeaders(this.rpcUrl, this.apiKey),
       body: JSON.stringify({
         itemClass: itemClass.toString(),
         builder: this.provider.wallet.publicKey.toString(),
@@ -374,7 +392,9 @@ export class Client {
       amount: ingredient.amount.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/addIngredient?` + params);
+    const response = await fetch(`${this.baseUrl}/addIngredient?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
     const body = await errors.handleResponse(response);
 
     // send ingredient to build
@@ -391,7 +411,9 @@ export class Client {
     });
 
     try {
-      const response = await fetch(`${this.baseUrl}/addPayment?` + params);
+      const response = await fetch(`${this.baseUrl}/addPayment?` + params, {
+        headers: createHeaders(this.rpcUrl, this.apiKey)
+      });
 
       const body = await errors.handleResponse(response);
 
@@ -408,7 +430,9 @@ export class Client {
       build: build.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/completeBuild?` + params);
+    const response = await fetch(`${this.baseUrl}/completeBuild?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     const body = await errors.handleResponse(response);
 
@@ -423,7 +447,9 @@ export class Client {
       build: build.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/receiveItem?` + params);
+    const response = await fetch(`${this.baseUrl}/receiveItem?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     const body = await errors.handleResponse(response);
     console.log("receiveItemTxSig: %s", body.txSig);
@@ -437,7 +463,9 @@ export class Client {
       build: build.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/cleanBuild?` + params);
+    const response = await fetch(`${this.baseUrl}/cleanBuild?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     const body = await errors.handleResponse(response);
     console.log("cleanBuildTxSig: %s", body.txSig);
@@ -452,7 +480,9 @@ export class Client {
       build: build.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/applyBuildEffect?` + params);
+    const response = await fetch(`${this.baseUrl}/applyBuildEffect?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     const body = await errors.handleResponse(response);
     console.log("applyBuildEffectTxSig: %s", body.txSig);
@@ -472,7 +502,9 @@ export class Client {
       payer: this.provider.publicKey.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/verifyIngredient?` + params);
+    const response = await fetch(`${this.baseUrl}/verifyIngredient?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey)
+    });
 
     const body = await errors.handleResponse(response);
 
@@ -490,7 +522,9 @@ export class Client {
     let done = false;
     while (!done) {
       const response = await fetch(
-        `${this.baseUrl}/returnOrDestroyIngredients?` + params
+        `${this.baseUrl}/returnOrDestroyIngredients?` + params, {
+          headers: createHeaders(this.rpcUrl, this.apiKey)
+        }
       );
 
       const body = await errors.handleResponse(response);
@@ -545,7 +579,7 @@ export class Client {
 
     const response = await fetch(`${this.baseUrl}/send`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: createHeaders(this.rpcUrl, this.apiKey),
       body: JSON.stringify({ tx: signedTx.serialize().toString("base64") }),
     });
 
@@ -604,4 +638,14 @@ function getMissingIngredients(
   }
 
   return missingIngredients;
+}
+
+function createHeaders(rpcUrl: string, apiKey: string) {
+  const headers = {
+    "content-type": "application/json",
+    "x-api-key": apiKey,
+    "x-rpc-url": rpcUrl,
+  };
+
+  return headers 
 }
