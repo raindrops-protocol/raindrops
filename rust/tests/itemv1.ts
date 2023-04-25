@@ -14,7 +14,7 @@ import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
 import { encode } from "@msgpack/msgpack";
 
-describe.only("itemv1", () => {
+describe("itemv1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
