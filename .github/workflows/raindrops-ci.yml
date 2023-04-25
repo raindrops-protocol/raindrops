@@ -34,7 +34,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Install Solana
-        run: curl -sSfL https://release.solana.com/1.14.15/install | sh
+        run: curl -sSfL https://release.solana.com/v1.14.15/install | sh
 
       - name: Install Anchor Dependencies
         run: sudo apt-mark hold grub-efi-amd64-signed && sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
