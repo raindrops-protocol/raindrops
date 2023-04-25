@@ -383,3 +383,49 @@ export const getEdition = async (
     )
   )[0];
 };
+
+export function getItemClassV1(items: web3.PublicKey): web3.PublicKey {
+  const [itemClass, _itemClassBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("item_class_v1"), items.toBuffer()],
+    ITEM_ID
+  );
+
+  return itemClass;
+}
+
+export function getItemV1(itemMint: web3.PublicKey): web3.PublicKey {
+  const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("item_v1"), itemMint.toBuffer()],
+    ITEM_ID
+  );
+
+  return item;
+}
+
+export function getBuild(
+  itemClass: web3.PublicKey,
+  builder: web3.PublicKey
+): web3.PublicKey {
+  const [build, _buildBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("build"), itemClass.toBuffer(), builder.toBuffer()],
+    ITEM_ID
+  );
+
+  return build;
+}
+
+export function getRecipe(
+  itemClass: web3.PublicKey,
+  recipeIndex: BN
+): web3.PublicKey {
+  const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("recipe"),
+      recipeIndex.toArrayLike(Buffer, "le", 8),
+      itemClass.toBuffer(),
+    ],
+    ITEM_ID
+  );
+
+  return recipe;
+}

@@ -23,6 +23,11 @@ use anchor_lang::{
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use arrayref::array_ref;
 use std::str::FromStr;
+
+pub mod instructions;
+pub mod state;
+pub use instructions::*;
+
 anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
 
 pub const PREFIX: &str = "item";
@@ -684,7 +689,7 @@ pub mod raindrops_item {
                     let mut borrowed_data = ed.data.borrow_mut();
                     let data: &mut [u8] = *borrowed_data;
                     require!(
-                        data[0] == metaplex_token_metadata::state::Key::EditionV1 as u8,
+                        data[0] == mpl_token_metadata::state::Key::EditionV1 as u8,
                         ErrorCode::MustBeChild
                     );
                     let parent = array_ref![data, 1, 32];
@@ -1729,7 +1734,7 @@ pub mod raindrops_item {
 
                 if pc.states_proven >= pc.states_required {
                     item.data.usage_state_root = Some(Root {
-                        inherited: usage_state_root.inherited.clone(),
+                        inherited: usage_state_root.inherited,
                         root: pc.new_state_root,
                     });
 
@@ -1956,6 +1961,89 @@ pub mod raindrops_item {
         }
 
         Ok(())
+    }
+
+    pub fn create_item_class_v1(
+        ctx: Context<CreateItemClassV1>,
+        args: CreateItemClassV1Args,
+    ) -> Result<()> {
+        create_item_class_v1::handler(ctx, args)
+    }
+
+    pub fn create_recipe(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()> {
+        create_recipe::handler(ctx, args)
+    }
+
+    pub fn add_item_to_item_class(ctx: Context<AddItemToItemClass>) -> Result<()> {
+        add_item_to_item_class::handler(ctx)
+    }
+
+    pub fn start_build(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
+        start_build::handler(ctx, args)
+    }
+
+    pub fn add_ingredient_pnft(ctx: Context<AddIngredientPNft>) -> Result<()> {
+        add_ingredient_pnft::handler(ctx)
+    }
+
+    pub fn add_ingredient_spl(
+        ctx: Context<AddIngredientSpl>,
+        args: AddIngredientSplArgs,
+    ) -> Result<()> {
+        add_ingredient_spl::handler(ctx, args)
+    }
+
+    pub fn verify_ingredient<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, VerifyIngredient<'info>>,
+        args: VerifyIngredientArgs,
+    ) -> Result<()> {
+        verify_ingredient::handler(ctx, args)
+    }
+
+    pub fn verify_ingredient_test<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, VerifyIngredientTest<'info>>,
+        args: VerifyIngredientTestArgs,
+    ) -> Result<()> {
+        verify_ingredient_test::handler(ctx, args)
+    }
+
+    pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
+        receive_item::handler(ctx)
+    }
+
+    pub fn complete_build<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CompleteBuild<'info>>,
+        args: CompleteBuildArgs,
+    ) -> Result<()> {
+        complete_build::handler(ctx, args)
+    }
+
+    pub fn apply_build_effect(ctx: Context<ApplyBuildEffect>) -> Result<()> {
+        apply_build_effect::handler(ctx)
+    }
+
+    pub fn return_ingredient_pnft(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
+        return_ingredient_pnft::handler(ctx)
+    }
+
+    pub fn return_ingredient_spl(ctx: Context<ReturnIngredientSpl>) -> Result<()> {
+        return_ingredient_spl::handler(ctx)
+    }
+
+    pub fn destroy_ingredient_spl(ctx: Context<DestroyIngredientSpl>) -> Result<()> {
+        destroy_ingredient_spl::handler(ctx)
+    }
+
+    pub fn destroy_ingredient_pnft(ctx: Context<DestroyIngredientPNft>) -> Result<()> {
+        destroy_ingredient_pnft::handler(ctx)
+    }
+
+    pub fn close_build(ctx: Context<CloseBuild>) -> Result<()> {
+        close_build::handler(ctx)
+    }
+
+    pub fn add_payment(ctx: Context<AddPayment>) -> Result<()> {
+        add_payment::handler(ctx)
     }
 }
 

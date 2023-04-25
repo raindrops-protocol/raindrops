@@ -9,9 +9,22 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 
 import { ITEM_ID } from "../constants/programIds";
 import * as ItemInstruction from "../instructions/item";
-import { decodeItemClass, ItemClass } from "../state/item";
+import {
+  Build,
+  BuildIngredientData,
+  IngredientMint,
+  convertToBuildStatus,
+  decodeItemClass,
+  ItemClass,
+  ItemClassV1,
+  ItemV1,
+  Ingredient,
+  Recipe,
+} from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
+import { Utils } from "../main";
+import { Payment, PaymentState } from "../instructions/item";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
@@ -267,6 +280,311 @@ export class ItemProgram extends Program.Program {
       additionalArgs
     );
     return this.sendWithRetry(instruction, [], options);
+  }
+
+  //
+  // v1
+  //
+
+  async createItemClassV1(
+    args: ItemInstruction.CreateItemClassV1Args,
+    options?: SendOptions
+  ): Promise<[web3.PublicKey, Transaction.SendTransactionResult]> {
+    const [itemClass, itemsKp, instructions] =
+      await this.instruction.createItemClassV1(args);
+    const result = await this.sendWithRetry(instructions, [itemsKp], options);
+    return [itemClass, result];
+  }
+
+  // TODO: chunk the returned instructions
+  async addItemsToItemClass(
+    accounts: ItemInstruction.AddItemsToItemClass,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.addItemsToItemClass(accounts);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async createRecipe(
+    accounts: ItemInstruction.CreateRecipeAccounts,
+    args: ItemInstruction.CreateRecipeArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.createRecipe(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async startBuild(
+    accounts: ItemInstruction.StartBuildAccounts,
+    args: ItemInstruction.StartBuildArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.startBuild(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async addIngredient(
+    accounts: ItemInstruction.AddIngredientAccounts,
+    args: ItemInstruction.AddIngredientArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.addIngredient(accounts, args);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async verifyIngredient(
+    accounts: ItemInstruction.VerifyIngredientAccounts,
+    args: ItemInstruction.VerifyIngredientArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.verifyIngredient(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async verifyIngredientTest(
+    accounts: ItemInstruction.VerifyIngredientTestAccounts,
+    args: ItemInstruction.VerifyIngredientArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.verifyIngredientTest(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async completeBuild(
+    accounts: ItemInstruction.CompleteBuildAccounts,
+    args: ItemInstruction.CompleteBuildArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.completeBuild(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async receiveItem(
+    accounts: ItemInstruction.ReceiveItemAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.receiveItem(accounts);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async applyBuildEffect(
+    accounts: ItemInstruction.ApplyBuildEffectAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.applyBuildEffect(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async returnIngredient(
+    accounts: ItemInstruction.ReturnIngredientAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.returnIngredient(accounts);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async destroyIngredient(
+    accounts: ItemInstruction.DestroyIngredientAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.destroyIngredient(accounts);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
+  async closeBuild(
+    accounts: ItemInstruction.CloseBuildAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.closeBuild(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async addPayment(
+    accounts: ItemInstruction.AddPaymentAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.addPayment(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
+    const itemClassData = await this.client.account.itemClassV1.fetch(
+      itemClass
+    );
+    if (!itemClassData) {
+      return null;
+    }
+
+    const recipeIndex = new BN(itemClassData.recipeIndex as string);
+
+    const recipes: Recipe[] = [];
+    for (let i = 0; i <= recipeIndex.toNumber(); i++) {
+      const recipeAddr = Utils.PDA.getRecipe(itemClass, new BN(i));
+
+      const recipeData = await this.client.account.recipe.fetch(recipeAddr);
+
+      // get recipe ingredients
+      const ingredients: Ingredient[] = [];
+      for (const recipeIngredient of recipeData.ingredients as any[]) {
+        const ingredient: Ingredient = {
+          itemClass: new web3.PublicKey(recipeIngredient.itemClass),
+          requiredAmount: new BN(recipeIngredient.requiredAmount as string),
+          buildEffect: recipeIngredient.buildEffect,
+        };
+
+        ingredients.push(ingredient);
+      }
+
+      // get payment data
+      let payment: ItemInstruction.Payment | null = null;
+      if (recipeData.payment) {
+        payment = {
+          amount: new BN((recipeData.payment as any).amount as string),
+          treasury: new web3.PublicKey((recipeData.payment as any).treasury),
+        };
+      }
+
+      const recipe: Recipe = {
+        itemClass: itemClass,
+        recipeIndex: new BN(i),
+        payment: payment,
+        buildEnabled: recipeData.buildEnabled as boolean,
+        ingredients: ingredients,
+      };
+
+      recipes.push(recipe);
+    }
+
+    const itemClassV1: ItemClassV1 = {
+      authority: new web3.PublicKey(itemClassData.authority),
+      items: new web3.PublicKey(itemClassData.items),
+      recipeIndex: recipeIndex,
+      recipes: recipes,
+    };
+
+    return itemClassV1;
+  }
+
+  async getBuild(build: web3.PublicKey): Promise<Build | null> {
+    let buildDataRaw;
+    try {
+      buildDataRaw = await this.client.account.build.fetch(build);
+    } catch (_e) {
+      return null;
+    }
+
+    const buildIngredientData: BuildIngredientData[] = [];
+
+    for (const rawIngredient of buildDataRaw.ingredients as any[]) {
+      const mints: IngredientMint[] = [];
+      for (const rawIngredientMint of rawIngredient.mints as any[]) {
+        mints.push({
+          mint: new web3.PublicKey(rawIngredientMint.mint),
+          buildEffectApplied: rawIngredientMint.buildEffectApplied,
+        });
+      }
+
+      buildIngredientData.push({
+        itemClass: new web3.PublicKey(rawIngredient.itemClass),
+        currentAmount: new BN(rawIngredient.currentAmount),
+        requiredAmount: new BN(rawIngredient.requiredAmount),
+        buildEffect: rawIngredient.buildEffect,
+        mints: mints,
+      });
+    }
+
+    let itemMint: web3.PublicKey | null = null;
+    if (buildDataRaw.itemMint !== null) {
+      itemMint = new web3.PublicKey(buildDataRaw.itemMint);
+    }
+
+    // detect payment
+    let paymentData: PaymentState | null = null;
+    const payment = buildDataRaw.payment;
+    if (payment !== null) {
+      paymentData = {
+        paid: payment.paid as boolean,
+        paymentDetails: {
+          treasury: new web3.PublicKey(payment.paymentDetails.treasury),
+          amount: new BN(payment.paymentDetails.amount as string),
+        },
+      };
+    }
+
+    const buildData: Build = {
+      recipeIndex: new BN(buildDataRaw.recipeIndex as string),
+      builder: new web3.PublicKey(buildDataRaw.builder),
+      itemClass: new web3.PublicKey(buildDataRaw.itemClass),
+      itemMint: itemMint,
+      payment: paymentData,
+      ingredients: buildIngredientData,
+      status: convertToBuildStatus(buildDataRaw.status),
+    };
+
+    return buildData;
+  }
+
+  async getItemV1(item: web3.PublicKey): Promise<ItemV1 | null> {
+    let itemDataRaw;
+    try {
+      itemDataRaw = await this.client.account.itemV1.fetch(item);
+    } catch (_e) {
+      return null;
+    }
+
+    let cooldown: BN | null = null;
+    if ((itemDataRaw.itemState as any).nonFungible.cooldown !== null) {
+      cooldown = new BN((itemDataRaw.itemState as any).nonFungible.cooldown);
+    }
+
+    const itemData: ItemV1 = {
+      initialized: itemDataRaw.initialized as boolean,
+      itemMint: new web3.PublicKey(itemDataRaw.itemMint),
+      itemState: {
+        cooldown: cooldown,
+        durability: new BN(
+          (itemDataRaw.itemState as any).nonFungible.durability
+        ),
+      },
+    };
+
+    return itemData;
+  }
+
+  async getRecipe(recipe: web3.PublicKey): Promise<Recipe | null> {
+    let recipeDataRaw;
+    try {
+      recipeDataRaw = await this.client.account.recipe.fetch(recipe);
+    } catch (_e) {
+      return null;
+    }
+
+    let payment: Payment | null = null;
+    if (recipeDataRaw.payment) {
+      payment = {
+        treasury: new web3.PublicKey(recipeDataRaw.payment.treasury),
+        amount: new BN(recipeDataRaw.payment.amount),
+      };
+    }
+
+    const ingredients: Ingredient[] = [];
+    for (const ingredient of recipeDataRaw.ingredients) {
+      ingredients.push({
+        itemClass: new web3.PublicKey(ingredient.itemClass),
+        requiredAmount: new BN(ingredient.requiredAmount),
+        buildEffect: ingredient.buildEffect,
+      });
+    }
+
+    const recipeData: Recipe = {
+      recipeIndex: new BN(recipeDataRaw.recipeIndex),
+      itemClass: new web3.PublicKey(recipeDataRaw.itemClass),
+      buildEnabled: recipeDataRaw.buildEnabled as boolean,
+      payment: payment,
+      ingredients: ingredients,
+    };
+
+    return recipeData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

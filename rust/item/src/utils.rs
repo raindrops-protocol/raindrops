@@ -835,7 +835,7 @@ pub fn add_to_new_array_from_parent<T: Inherited>(
 ) {
     for item in parent_items {
         let mut new_copy = item.clone();
-        new_copy.set_inherited(inheritance.clone());
+        new_copy.set_inherited(inheritance);
         new_items.push(new_copy);
     }
 }
@@ -1146,7 +1146,7 @@ pub fn get_player_token_pda(item: &Pubkey, player: &Pubkey) -> Result<Pubkey> {
         &["player".as_bytes(), item.as_ref(), player.as_ref()],
         &Pubkey::from_str(PLAYER_ID).unwrap(),
     );
-    return Ok(key);
+    Ok(key)
 }
 
 pub fn assert_is_player_pda(
@@ -1189,11 +1189,11 @@ pub fn assert_metadata_valid(
     mint: &Pubkey,
 ) -> Result<()> {
     assert_derivation(
-        &metaplex_token_metadata::id(),
+        &mpl_token_metadata::id(),
         metadata,
         &[
-            metaplex_token_metadata::state::PREFIX.as_bytes(),
-            metaplex_token_metadata::id().as_ref(),
+            mpl_token_metadata::state::PREFIX.as_bytes(),
+            mpl_token_metadata::id().as_ref(),
             mint.as_ref(),
         ],
     )?;
@@ -1203,13 +1203,13 @@ pub fn assert_metadata_valid(
 
     if let Some(ed) = edition {
         assert_derivation(
-            &metaplex_token_metadata::id(),
+            &mpl_token_metadata::id(),
             ed,
             &[
-                metaplex_token_metadata::state::PREFIX.as_bytes(),
-                metaplex_token_metadata::id().as_ref(),
+                mpl_token_metadata::state::PREFIX.as_bytes(),
+                mpl_token_metadata::id().as_ref(),
                 mint.as_ref(),
-                metaplex_token_metadata::state::EDITION.as_bytes(),
+                mpl_token_metadata::state::EDITION.as_bytes(),
             ],
         )?;
         if ed.data_is_empty() {
@@ -1464,7 +1464,7 @@ pub fn verify_cooldown(args: VerifyCooldownArgs) -> Result<()> {
 }
 
 pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
-    let preimage = format!("{}:{}", namespace, name);
+    let preimage = format!("{namespace}:{name}");
 
     let mut sighash = [0u8; 8];
     sighash.copy_from_slice(&hash::hash(preimage.as_bytes()).to_bytes()[..8]);
@@ -1838,7 +1838,7 @@ pub fn verify_and_affect_item_state_update(
         return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
     };
 
-    Ok(item_usage.clone())
+    Ok(item_usage)
 }
 
 pub struct GetItemUsageArgs<'a, 'info> {
@@ -1907,7 +1907,7 @@ pub fn is_namespace_program_caller(ixns: &AccountInfo) -> bool {
         return false;
     };
 
-    return true;
+    true
 }
 
 pub struct GetItemUsageAndItemUsageStateArgs<'a, 'info> {
@@ -1997,7 +1997,7 @@ pub fn get_item_usage_and_item_usage_state(
         return Err(error!(ErrorCode::CannotUseItemWithoutUsageOrMerkle));
     };
 
-    Ok((item_usage.clone(), usage_state.clone()))
+    Ok((item_usage, usage_state.clone()))
 }
 
 pub fn join_to_namespace(
@@ -2035,7 +2035,7 @@ pub fn leave_namespace(
     for mut ns in current_namespaces {
         if ns.namespace == leave_namespace.key() && !left {
             // if the artifact is still cached, error
-            if ns.index != None {
+            if ns.index.is_some() {
                 return Err(error!(ErrorCode::FailedToLeaveNamespace));
             };
             ns.namespace = anchor_lang::solana_program::system_program::id();

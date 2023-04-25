@@ -889,9 +889,1081 @@ export type RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "createItemClassV1",
+      "accounts": [
+        {
+          "name": "items",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateItemClassV1Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createRecipe",
+      "accounts": [
+        {
+          "name": "recipe",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateRecipeArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addItemToItemClass",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "items",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "startBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "StartBuildArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addIngredientPnft",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addIngredientSpl",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddIngredientSplArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "verifyIngredient",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VerifyIngredientArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "verifyIngredientTest",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VerifyIngredientTestArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "receiveItem",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "completeBuild",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CompleteBuildArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "applyBuildEffect",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "returnIngredientPnft",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "returnIngredientSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "destroyIngredientSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "destroyIngredientPnft",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addPayment",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "itemClassV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "items",
+            "type": "publicKey"
+          },
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "itemV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemState",
+            "type": {
+              "defined": "ItemState"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "recipe",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "RecipeIngredientData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "build",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemMint",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "BuildIngredientData"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "itemClass",
       "type": {
@@ -1114,6 +2186,289 @@ export type RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "AddIngredientSplArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompleteBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateItemClassV1Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeArgs",
+            "type": {
+              "defined": "RecipeArgs"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RecipeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "RecipeIngredientData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateRecipeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "RecipeIngredientData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StartBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyIngredientTestArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyIngredientArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildIngredientData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "currentAmount",
+            "type": "u64"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          },
+          {
+            "name": "mints",
+            "type": {
+              "vec": {
+                "defined": "IngredientMint"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "IngredientMint",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "buildEffectApplied",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RecipeIngredientData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildEffect",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "degradation",
+            "type": {
+              "defined": "Degradation"
+            }
+          },
+          {
+            "name": "cooldown",
+            "type": {
+              "defined": "Cooldown"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Payment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paid",
+            "type": "bool"
+          },
+          {
+            "name": "paymentDetails",
+            "type": {
+              "defined": "Payment"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "CreateItemClassArgs",
       "type": {
@@ -2793,6 +4148,89 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "BuildStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InProgress"
+          },
+          {
+            "name": "Complete"
+          },
+          {
+            "name": "ItemReceived"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Degradation",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "rate",
+                "type": "u64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Cooldown",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "seconds",
+                "type": "i64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Fungible"
+          },
+          {
+            "name": "NonFungible",
+            "fields": [
+              {
+                "name": "durability",
+                "type": "u64"
+              },
+              {
+                "name": "cooldown",
+                "type": {
+                  "option": "i64"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -2997,348 +4435,63 @@ export type RaindropsItem = {
   "errors": [
     {
       "code": 6000,
-      "name": "IncorrectOwner",
-      "msg": "Account does not have correct owner!"
+      "name": "BuildNotEmpty",
+      "msg": "Build still owns tokens"
     },
     {
       "code": 6001,
-      "name": "Uninitialized",
-      "msg": "Account is not initialized!"
+      "name": "BuildDisabled",
+      "msg": "Building is disabled for this Item Class"
     },
     {
       "code": 6002,
-      "name": "MintMismatch",
-      "msg": "Mint Mismatch!"
+      "name": "MissingIngredient",
+      "msg": "Cannot Complete Build, Missing at least one build material"
     },
     {
       "code": 6003,
-      "name": "TokenTransferFailed",
-      "msg": "Token transfer failed"
+      "name": "IncorrectIngredient",
+      "msg": "Incorrect material for build"
     },
     {
       "code": 6004,
-      "name": "NumericalOverflowError",
-      "msg": "Numerical overflow error"
+      "name": "InvalidBuildStatus",
+      "msg": "Build Status is incompatible with this instruction"
     },
     {
       "code": 6005,
-      "name": "TokenMintToFailed",
-      "msg": "Token mint to failed"
+      "name": "ItemNotReturnable",
+      "msg": "Item cannot be returned"
     },
     {
       "code": 6006,
-      "name": "TokenBurnFailed",
-      "msg": "TokenBurnFailed"
+      "name": "ItemIneligibleForDestruction",
+      "msg": "Item cannot be destroyed"
     },
     {
       "code": 6007,
-      "name": "DerivedKeyInvalid",
-      "msg": "Derived key is invalid"
+      "name": "BuildEffectAlreadyApplied",
+      "msg": "Build Effect Already Applied"
     },
     {
       "code": 6008,
-      "name": "MustSpecifyPermissivenessType",
-      "msg": "Must specify permissiveness type"
+      "name": "BuildEffectNotApplied",
+      "msg": "Build Effect Not Applied"
     },
     {
       "code": 6009,
-      "name": "PermissivenessNotFound",
-      "msg": "Permissiveness not found in array"
+      "name": "ItemOnCooldown",
+      "msg": "Item is on Cooldown"
     },
     {
       "code": 6010,
-      "name": "PublicKeyMismatch",
-      "msg": "Public key mismatch"
+      "name": "InvalidPaymentTreasury",
+      "msg": "Invalid Payment Treasury Account"
     },
     {
       "code": 6011,
-      "name": "InsufficientBalance",
-      "msg": "Insufficient Balance"
-    },
-    {
-      "code": 6012,
-      "name": "MetadataDoesntExist",
-      "msg": "Metadata doesn't exist"
-    },
-    {
-      "code": 6013,
-      "name": "EditionDoesntExist",
-      "msg": "Edition doesn't exist"
-    },
-    {
-      "code": 6014,
-      "name": "NoParentPresent",
-      "msg": "No parent present"
-    },
-    {
-      "code": 6015,
-      "name": "ExpectedParent",
-      "msg": "Expected parent"
-    },
-    {
-      "code": 6016,
-      "name": "InvalidMintAuthority",
-      "msg": "Invalid mint authority"
-    },
-    {
-      "code": 6017,
-      "name": "NotMintAuthority",
-      "msg": "Not mint authority"
-    },
-    {
-      "code": 6018,
-      "name": "CannotMakeZero",
-      "msg": "Cannot make zero of an item"
-    },
-    {
-      "code": 6019,
-      "name": "MustBeHolderToBuild",
-      "msg": "Must be token holder to build against it"
-    },
-    {
-      "code": 6020,
-      "name": "InvalidConfigForFungibleMints",
-      "msg": "This config is invalid for fungible mints"
-    },
-    {
-      "code": 6021,
-      "name": "MissingMerkleInfo",
-      "msg": "Missing the merkle fields"
-    },
-    {
-      "code": 6022,
-      "name": "InvalidProof",
-      "msg": "Invalid proof"
-    },
-    {
-      "code": 6023,
-      "name": "ItemReadyForCompletion",
-      "msg": "Item ready for completion"
-    },
-    {
-      "code": 6024,
-      "name": "MustUseMerkleOrComponentList",
-      "msg": "In order for crafting to work there must be either a component list or a component merkle root"
-    },
-    {
-      "code": 6025,
-      "name": "MustUseMerkleOrUsageState",
-      "msg": "In order for crafting to work there must be either a usage state list on the craft component or a usage merkle root"
-    },
-    {
-      "code": 6026,
-      "name": "UnableToFindValidCooldownState",
-      "msg": "Unable to find a valid cooldown state"
-    },
-    {
-      "code": 6027,
-      "name": "BalanceNeedsToBeZero",
-      "msg": "Balance needs to be zero"
-    },
-    {
-      "code": 6028,
-      "name": "NotPartOfComponentScope",
-      "msg": "This component is not part of this escrow's component scope"
-    },
-    {
-      "code": 6029,
-      "name": "TimeToBuildMismatch",
-      "msg": "The time to build on two disparate components in the same scope is different. Either unset one or make them both the same."
-    },
-    {
-      "code": 6030,
-      "name": "StakingMintNotWhitelisted",
-      "msg": "This staking mint has not been whitelisted in this namespace"
-    },
-    {
-      "code": 6031,
-      "name": "BuildPhaseNotStarted",
-      "msg": "Build phase not started"
-    },
-    {
-      "code": 6032,
-      "name": "BuildPhaseNotFinished",
-      "msg": "Build phase not finished"
-    },
-    {
-      "code": 6033,
-      "name": "DeactivatedItemEscrow",
-      "msg": "Item escrow has been deactivated"
-    },
-    {
-      "code": 6034,
-      "name": "BuildPhaseAlreadyStarted",
-      "msg": "Build phase already started"
-    },
-    {
-      "code": 6035,
-      "name": "StillMissingComponents",
-      "msg": "You havent added all components to the escrow"
-    },
-    {
-      "code": 6036,
-      "name": "ChildrenStillExist",
-      "msg": "You cannot delete this class until all children are deleted"
-    },
-    {
-      "code": 6037,
-      "name": "UnstakeTokensFirst",
-      "msg": "An item cannot be destroyed until all its staked tokens are unstaked"
-    },
-    {
-      "code": 6038,
-      "name": "AlreadyDeactivated",
-      "msg": "Already deactivated"
-    },
-    {
-      "code": 6039,
-      "name": "NotDeactivated",
-      "msg": "Escrow not deactivated"
-    },
-    {
-      "code": 6040,
-      "name": "NotEmptied",
-      "msg": "Item escrow not emptied"
-    },
-    {
-      "code": 6041,
-      "name": "GivingTooMuch",
-      "msg": "You do not need to provide this many of this component to make your recipe"
-    },
-    {
-      "code": 6042,
-      "name": "MustProvideUsageIndex",
-      "msg": "Must provide usage index"
-    },
-    {
-      "code": 6043,
-      "name": "CannotUseItemWithoutUsageOrMerkle",
-      "msg": "An item and item class must either use usage roots or merkles, if neither are present, item is unusable"
-    },
-    {
-      "code": 6044,
-      "name": "MaxUsesReached",
-      "msg": "Max uses reached"
-    },
-    {
-      "code": 6045,
-      "name": "CooldownNotOver",
-      "msg": "Cooldown not finished"
-    },
-    {
-      "code": 6046,
-      "name": "CannotUseWearable",
-      "msg": "Cannot use wearable"
-    },
-    {
-      "code": 6047,
-      "name": "UsageIndexMismatch",
-      "msg": "Usage index mismatch"
-    },
-    {
-      "code": 6048,
-      "name": "ProvingNewStateNotRequired",
-      "msg": "Proving new state not required"
-    },
-    {
-      "code": 6049,
-      "name": "MustSubmitStatesInOrder",
-      "msg": "You must submit proofs in order to revalidate the new state."
-    },
-    {
-      "code": 6050,
-      "name": "ItemActivationNotValidYet",
-      "msg": "Item activation marker not valid yet"
-    },
-    {
-      "code": 6051,
-      "name": "WarmupNotFinished",
-      "msg": "Warmup not finished"
-    },
-    {
-      "code": 6052,
-      "name": "MustBeChild",
-      "msg": "Must be a child edition"
-    },
-    {
-      "code": 6053,
-      "name": "MustUseRealScope",
-      "msg": "Must use real scope to build"
-    },
-    {
-      "code": 6054,
-      "name": "CraftClassIndexMismatch",
-      "msg": "The class index passed up does not match that on the component"
-    },
-    {
-      "code": 6055,
-      "name": "MustBeGreaterThanZero",
-      "msg": "Must use at least one of this item"
-    },
-    {
-      "code": 6056,
-      "name": "AtaShouldNotHaveDelegate",
-      "msg": "To use an ata in this contract, please remove its delegate first"
-    },
-    {
-      "code": 6057,
-      "name": "ReinitializationDetected",
-      "msg": "Reinitialization hack detected"
-    },
-    {
-      "code": 6058,
-      "name": "FailedToJoinNamespace",
-      "msg": "Failed to join namespace"
-    },
-    {
-      "code": 6059,
-      "name": "FailedToLeaveNamespace",
-      "msg": "Failed to leave namespace"
-    },
-    {
-      "code": 6060,
-      "name": "FailedToCache",
-      "msg": "Failed to cache"
-    },
-    {
-      "code": 6061,
-      "name": "FailedToUncache",
-      "msg": "Failed to uncache"
-    },
-    {
-      "code": 6062,
-      "name": "AlreadyCached",
-      "msg": "Already cached"
-    },
-    {
-      "code": 6063,
-      "name": "NotCached",
-      "msg": "Not cached"
-    },
-    {
-      "code": 6064,
-      "name": "UnauthorizedCaller",
-      "msg": "Unauthorized Caller"
-    },
-    {
-      "code": 6065,
-      "name": "MustBeCalledByStakingProgram",
-      "msg": "Must be called by staking program"
-    },
-    {
-      "code": 6066,
-      "name": "ExpectedDelegateToMatchProvided",
-      "msg": "Expected delegate to match provided"
-    },
-    {
-      "code": 6067,
-      "name": "CannotEffectTheSameStatTwice",
-      "msg": "Cannot affect the same stat twice"
-    },
-    {
-      "code": 6068,
-      "name": "MintAuthorityRequiredForSFTs",
-      "msg": "Cannot mint an SFT without mint auth"
+      "name": "BuildNotPaid",
+      "msg": "Must make build payment"
     }
   ]
 };
@@ -4234,9 +5387,1081 @@ export const IDL: RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "createItemClassV1",
+      "accounts": [
+        {
+          "name": "items",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateItemClassV1Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createRecipe",
+      "accounts": [
+        {
+          "name": "recipe",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateRecipeArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addItemToItemClass",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "items",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "startBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "StartBuildArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addIngredientPnft",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addIngredientSpl",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddIngredientSplArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "verifyIngredient",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VerifyIngredientArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "verifyIngredientTest",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "ingredientItemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VerifyIngredientTestArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "receiveItem",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "completeBuild",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassItems",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "logWrapper",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CompleteBuildArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "applyBuildEffect",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "returnIngredientPnft",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "returnIngredientSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "destroyIngredientSpl",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "destroyIngredientPnft",
+      "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collectionMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeBuild",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addPayment",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "itemClassV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "items",
+            "type": "publicKey"
+          },
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "itemV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "itemMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemState",
+            "type": {
+              "defined": "ItemState"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "recipe",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "RecipeIngredientData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "build",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemMint",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "BuildIngredientData"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "itemClass",
       "type": {
@@ -4459,6 +6684,289 @@ export const IDL: RaindropsItem = {
     }
   ],
   "types": [
+    {
+      "name": "AddIngredientSplArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompleteBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateItemClassV1Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeArgs",
+            "type": {
+              "defined": "RecipeArgs"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RecipeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "RecipeIngredientData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateRecipeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buildEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "Payment"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "RecipeIngredientData"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StartBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyIngredientTestArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyIngredientArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leafIndex",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildIngredientData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "currentAmount",
+            "type": "u64"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          },
+          {
+            "name": "mints",
+            "type": {
+              "vec": {
+                "defined": "IngredientMint"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "IngredientMint",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "buildEffectApplied",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RecipeIngredientData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          },
+          {
+            "name": "buildEffect",
+            "type": {
+              "defined": "BuildEffect"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildEffect",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "degradation",
+            "type": {
+              "defined": "Degradation"
+            }
+          },
+          {
+            "name": "cooldown",
+            "type": {
+              "defined": "Cooldown"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Payment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paid",
+            "type": "bool"
+          },
+          {
+            "name": "paymentDetails",
+            "type": {
+              "defined": "Payment"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "CreateItemClassArgs",
       "type": {
@@ -6138,6 +8646,89 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "BuildStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InProgress"
+          },
+          {
+            "name": "Complete"
+          },
+          {
+            "name": "ItemReceived"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Degradation",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "rate",
+                "type": "u64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Cooldown",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Off"
+          },
+          {
+            "name": "On",
+            "fields": [
+              {
+                "name": "seconds",
+                "type": "i64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Fungible"
+          },
+          {
+            "name": "NonFungible",
+            "fields": [
+              {
+                "name": "durability",
+                "type": "u64"
+              },
+              {
+                "name": "cooldown",
+                "type": {
+                  "option": "i64"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassType",
       "type": {
         "kind": "enum",
@@ -6342,348 +8933,63 @@ export const IDL: RaindropsItem = {
   "errors": [
     {
       "code": 6000,
-      "name": "IncorrectOwner",
-      "msg": "Account does not have correct owner!"
+      "name": "BuildNotEmpty",
+      "msg": "Build still owns tokens"
     },
     {
       "code": 6001,
-      "name": "Uninitialized",
-      "msg": "Account is not initialized!"
+      "name": "BuildDisabled",
+      "msg": "Building is disabled for this Item Class"
     },
     {
       "code": 6002,
-      "name": "MintMismatch",
-      "msg": "Mint Mismatch!"
+      "name": "MissingIngredient",
+      "msg": "Cannot Complete Build, Missing at least one build material"
     },
     {
       "code": 6003,
-      "name": "TokenTransferFailed",
-      "msg": "Token transfer failed"
+      "name": "IncorrectIngredient",
+      "msg": "Incorrect material for build"
     },
     {
       "code": 6004,
-      "name": "NumericalOverflowError",
-      "msg": "Numerical overflow error"
+      "name": "InvalidBuildStatus",
+      "msg": "Build Status is incompatible with this instruction"
     },
     {
       "code": 6005,
-      "name": "TokenMintToFailed",
-      "msg": "Token mint to failed"
+      "name": "ItemNotReturnable",
+      "msg": "Item cannot be returned"
     },
     {
       "code": 6006,
-      "name": "TokenBurnFailed",
-      "msg": "TokenBurnFailed"
+      "name": "ItemIneligibleForDestruction",
+      "msg": "Item cannot be destroyed"
     },
     {
       "code": 6007,
-      "name": "DerivedKeyInvalid",
-      "msg": "Derived key is invalid"
+      "name": "BuildEffectAlreadyApplied",
+      "msg": "Build Effect Already Applied"
     },
     {
       "code": 6008,
-      "name": "MustSpecifyPermissivenessType",
-      "msg": "Must specify permissiveness type"
+      "name": "BuildEffectNotApplied",
+      "msg": "Build Effect Not Applied"
     },
     {
       "code": 6009,
-      "name": "PermissivenessNotFound",
-      "msg": "Permissiveness not found in array"
+      "name": "ItemOnCooldown",
+      "msg": "Item is on Cooldown"
     },
     {
       "code": 6010,
-      "name": "PublicKeyMismatch",
-      "msg": "Public key mismatch"
+      "name": "InvalidPaymentTreasury",
+      "msg": "Invalid Payment Treasury Account"
     },
     {
       "code": 6011,
-      "name": "InsufficientBalance",
-      "msg": "Insufficient Balance"
-    },
-    {
-      "code": 6012,
-      "name": "MetadataDoesntExist",
-      "msg": "Metadata doesn't exist"
-    },
-    {
-      "code": 6013,
-      "name": "EditionDoesntExist",
-      "msg": "Edition doesn't exist"
-    },
-    {
-      "code": 6014,
-      "name": "NoParentPresent",
-      "msg": "No parent present"
-    },
-    {
-      "code": 6015,
-      "name": "ExpectedParent",
-      "msg": "Expected parent"
-    },
-    {
-      "code": 6016,
-      "name": "InvalidMintAuthority",
-      "msg": "Invalid mint authority"
-    },
-    {
-      "code": 6017,
-      "name": "NotMintAuthority",
-      "msg": "Not mint authority"
-    },
-    {
-      "code": 6018,
-      "name": "CannotMakeZero",
-      "msg": "Cannot make zero of an item"
-    },
-    {
-      "code": 6019,
-      "name": "MustBeHolderToBuild",
-      "msg": "Must be token holder to build against it"
-    },
-    {
-      "code": 6020,
-      "name": "InvalidConfigForFungibleMints",
-      "msg": "This config is invalid for fungible mints"
-    },
-    {
-      "code": 6021,
-      "name": "MissingMerkleInfo",
-      "msg": "Missing the merkle fields"
-    },
-    {
-      "code": 6022,
-      "name": "InvalidProof",
-      "msg": "Invalid proof"
-    },
-    {
-      "code": 6023,
-      "name": "ItemReadyForCompletion",
-      "msg": "Item ready for completion"
-    },
-    {
-      "code": 6024,
-      "name": "MustUseMerkleOrComponentList",
-      "msg": "In order for crafting to work there must be either a component list or a component merkle root"
-    },
-    {
-      "code": 6025,
-      "name": "MustUseMerkleOrUsageState",
-      "msg": "In order for crafting to work there must be either a usage state list on the craft component or a usage merkle root"
-    },
-    {
-      "code": 6026,
-      "name": "UnableToFindValidCooldownState",
-      "msg": "Unable to find a valid cooldown state"
-    },
-    {
-      "code": 6027,
-      "name": "BalanceNeedsToBeZero",
-      "msg": "Balance needs to be zero"
-    },
-    {
-      "code": 6028,
-      "name": "NotPartOfComponentScope",
-      "msg": "This component is not part of this escrow's component scope"
-    },
-    {
-      "code": 6029,
-      "name": "TimeToBuildMismatch",
-      "msg": "The time to build on two disparate components in the same scope is different. Either unset one or make them both the same."
-    },
-    {
-      "code": 6030,
-      "name": "StakingMintNotWhitelisted",
-      "msg": "This staking mint has not been whitelisted in this namespace"
-    },
-    {
-      "code": 6031,
-      "name": "BuildPhaseNotStarted",
-      "msg": "Build phase not started"
-    },
-    {
-      "code": 6032,
-      "name": "BuildPhaseNotFinished",
-      "msg": "Build phase not finished"
-    },
-    {
-      "code": 6033,
-      "name": "DeactivatedItemEscrow",
-      "msg": "Item escrow has been deactivated"
-    },
-    {
-      "code": 6034,
-      "name": "BuildPhaseAlreadyStarted",
-      "msg": "Build phase already started"
-    },
-    {
-      "code": 6035,
-      "name": "StillMissingComponents",
-      "msg": "You havent added all components to the escrow"
-    },
-    {
-      "code": 6036,
-      "name": "ChildrenStillExist",
-      "msg": "You cannot delete this class until all children are deleted"
-    },
-    {
-      "code": 6037,
-      "name": "UnstakeTokensFirst",
-      "msg": "An item cannot be destroyed until all its staked tokens are unstaked"
-    },
-    {
-      "code": 6038,
-      "name": "AlreadyDeactivated",
-      "msg": "Already deactivated"
-    },
-    {
-      "code": 6039,
-      "name": "NotDeactivated",
-      "msg": "Escrow not deactivated"
-    },
-    {
-      "code": 6040,
-      "name": "NotEmptied",
-      "msg": "Item escrow not emptied"
-    },
-    {
-      "code": 6041,
-      "name": "GivingTooMuch",
-      "msg": "You do not need to provide this many of this component to make your recipe"
-    },
-    {
-      "code": 6042,
-      "name": "MustProvideUsageIndex",
-      "msg": "Must provide usage index"
-    },
-    {
-      "code": 6043,
-      "name": "CannotUseItemWithoutUsageOrMerkle",
-      "msg": "An item and item class must either use usage roots or merkles, if neither are present, item is unusable"
-    },
-    {
-      "code": 6044,
-      "name": "MaxUsesReached",
-      "msg": "Max uses reached"
-    },
-    {
-      "code": 6045,
-      "name": "CooldownNotOver",
-      "msg": "Cooldown not finished"
-    },
-    {
-      "code": 6046,
-      "name": "CannotUseWearable",
-      "msg": "Cannot use wearable"
-    },
-    {
-      "code": 6047,
-      "name": "UsageIndexMismatch",
-      "msg": "Usage index mismatch"
-    },
-    {
-      "code": 6048,
-      "name": "ProvingNewStateNotRequired",
-      "msg": "Proving new state not required"
-    },
-    {
-      "code": 6049,
-      "name": "MustSubmitStatesInOrder",
-      "msg": "You must submit proofs in order to revalidate the new state."
-    },
-    {
-      "code": 6050,
-      "name": "ItemActivationNotValidYet",
-      "msg": "Item activation marker not valid yet"
-    },
-    {
-      "code": 6051,
-      "name": "WarmupNotFinished",
-      "msg": "Warmup not finished"
-    },
-    {
-      "code": 6052,
-      "name": "MustBeChild",
-      "msg": "Must be a child edition"
-    },
-    {
-      "code": 6053,
-      "name": "MustUseRealScope",
-      "msg": "Must use real scope to build"
-    },
-    {
-      "code": 6054,
-      "name": "CraftClassIndexMismatch",
-      "msg": "The class index passed up does not match that on the component"
-    },
-    {
-      "code": 6055,
-      "name": "MustBeGreaterThanZero",
-      "msg": "Must use at least one of this item"
-    },
-    {
-      "code": 6056,
-      "name": "AtaShouldNotHaveDelegate",
-      "msg": "To use an ata in this contract, please remove its delegate first"
-    },
-    {
-      "code": 6057,
-      "name": "ReinitializationDetected",
-      "msg": "Reinitialization hack detected"
-    },
-    {
-      "code": 6058,
-      "name": "FailedToJoinNamespace",
-      "msg": "Failed to join namespace"
-    },
-    {
-      "code": 6059,
-      "name": "FailedToLeaveNamespace",
-      "msg": "Failed to leave namespace"
-    },
-    {
-      "code": 6060,
-      "name": "FailedToCache",
-      "msg": "Failed to cache"
-    },
-    {
-      "code": 6061,
-      "name": "FailedToUncache",
-      "msg": "Failed to uncache"
-    },
-    {
-      "code": 6062,
-      "name": "AlreadyCached",
-      "msg": "Already cached"
-    },
-    {
-      "code": 6063,
-      "name": "NotCached",
-      "msg": "Not cached"
-    },
-    {
-      "code": 6064,
-      "name": "UnauthorizedCaller",
-      "msg": "Unauthorized Caller"
-    },
-    {
-      "code": 6065,
-      "name": "MustBeCalledByStakingProgram",
-      "msg": "Must be called by staking program"
-    },
-    {
-      "code": 6066,
-      "name": "ExpectedDelegateToMatchProvided",
-      "msg": "Expected delegate to match provided"
-    },
-    {
-      "code": 6067,
-      "name": "CannotEffectTheSameStatTwice",
-      "msg": "Cannot affect the same stat twice"
-    },
-    {
-      "code": 6068,
-      "name": "MintAuthorityRequiredForSFTs",
-      "msg": "Cannot mint an SFT without mint auth"
+      "name": "BuildNotPaid",
+      "msg": "Must make build payment"
     }
   ]
 };

@@ -70,7 +70,7 @@ export type AccountAndPubkey = {
 
 export async function getProgramAccounts(
   connection: web3.Connection,
-  programId: String,
+  programId: string,
   configOrCommitment?: any
 ): Promise<Array<AccountAndPubkey>> {
   const extra: any = {};

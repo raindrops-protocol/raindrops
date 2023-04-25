@@ -803,9 +803,9 @@ impl From<raindrops_item::PermissivenessType> for PermissivenessType {
     }
 }
 
-impl Into<ItemPermissivenessType> for PermissivenessType {
-    fn into(self) -> ItemPermissivenessType {
-        match self {
+impl From<PermissivenessType> for ItemPermissivenessType {
+    fn from(val: PermissivenessType) -> Self {
+        match val {
             PermissivenessType::TokenHolder => ItemPermissivenessType::TokenHolder,
             PermissivenessType::ParentTokenHolder => ItemPermissivenessType::ParentTokenHolder,
             PermissivenessType::UpdateAuthority => ItemPermissivenessType::UpdateAuthority,

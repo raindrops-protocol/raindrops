@@ -5,7 +5,8 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { Token } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
+import * as splToken from "spl-token-latest";
 import {
   Program,
   Instruction as SolKitInstruction,
@@ -21,10 +22,17 @@ import {
   getItemPDA,
   getMetadata,
 } from "../utils/pda";
-import { TOKEN_PROGRAM_ID } from "../constants/programIds";
+import {
+  MPL_AUTH_RULES_PROGRAM_ID,
+  TOKEN_METADATA_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "../constants/programIds";
 import { AnchorPermissivenessType } from "../../src/state/common";
 import { ContractCommon } from "../contract/common";
 import { ItemClassWrapper } from "../contract/item";
+import * as cmp from "@solana/spl-account-compression";
+import * as mpl from "@metaplex-foundation/mpl-token-metadata";
+import { Constants, Utils } from "../main";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -998,6 +1006,996 @@ export class Instruction extends SolKitInstruction {
         .instruction(),
     ];
   }
+
+  //
+  // V1
+  //
+
+  async createItemClassV1(
+    args: CreateItemClassV1Args
+  ): Promise<[web3.PublicKey, web3.Keypair, web3.TransactionInstruction[]]> {
+    const items = web3.Keypair.generate();
+
+    const maxDepth = 16;
+    const maxBufferSize = 64;
+
+    const treeSpace = cmp.getConcurrentMerkleTreeAccountSize(
+      maxDepth,
+      maxBufferSize
+      //maxDepth // store max depth of tree in the canopy
+    );
+
+    const treeLamports =
+      await this.program.client.provider.connection.getMinimumBalanceForRentExemption(
+        treeSpace
+      );
+
+    const createMembersAccountIx = await web3.SystemProgram.createAccount({
+      fromPubkey: this.program.client.provider.publicKey!,
+      newAccountPubkey: items.publicKey,
+      lamports: treeLamports,
+      space: treeSpace,
+      programId: cmp.PROGRAM_ID,
+    });
+
+    const itemClass = Utils.PDA.getItemClassV1(items.publicKey);
+
+    const recipe = Utils.PDA.getRecipe(itemClass, new BN(0));
+
+    const ingredients: any[] = [];
+    for (const ingredientArg of args.recipeArgs.ingredientArgs) {
+      let degradationBuildEffect;
+      if (ingredientArg.buildEffect.degradation) {
+        degradationBuildEffect = {
+          on: { rate: ingredientArg.buildEffect.degradation.rate },
+        };
+      } else {
+        degradationBuildEffect = { off: {} };
+      }
+
+      let cooldownBuildEffect;
+      if (ingredientArg.buildEffect.cooldown) {
+        cooldownBuildEffect = {
+          on: { seconds: ingredientArg.buildEffect.cooldown.seconds },
+        };
+      } else {
+        cooldownBuildEffect = { off: {} };
+      }
+
+      const ingredient = {
+        itemClass: ingredientArg.itemClass,
+        requiredAmount: ingredientArg.requiredAmount,
+        buildEffect: {
+          degradation: degradationBuildEffect,
+          cooldown: cooldownBuildEffect,
+        },
+      };
+
+      ingredients.push(ingredient);
+    }
+
+    const ixArgs = {
+      recipeArgs: {
+        buildEnabled: args.recipeArgs.buildEnabled,
+        payment: args.recipeArgs.payment,
+        ingredients: ingredients,
+      },
+    };
+
+    const ix = await this.program.client.methods
+      .createItemClassV1(ixArgs)
+      .accounts({
+        items: items.publicKey,
+        itemClass: itemClass,
+        recipe: recipe,
+        authority: this.program.client.provider.publicKey!,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        accountCompression: cmp.PROGRAM_ID,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return [itemClass, items, [createMembersAccountIx, ix]];
+  }
+
+  async addItemsToItemClass(
+    accounts: AddItemsToItemClass
+  ): Promise<web3.TransactionInstruction[]> {
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+    const itemClassItems = new web3.PublicKey(itemClassData.items);
+
+    const ixns: web3.TransactionInstruction[] = [];
+    for (const itemMint of accounts.itemMints) {
+      const ix = await this.program.client.methods
+        .addItemToItemClass()
+        .accounts({
+          itemMint: itemMint,
+          itemClass: accounts.itemClass,
+          items: itemClassItems,
+          authority: this.program.client.provider.publicKey!,
+          logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+          accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        })
+        .instruction();
+
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
+  async startBuild(
+    accounts: StartBuildAccounts,
+    args: StartBuildArgs
+  ): Promise<web3.TransactionInstruction> {
+    const recipe = Utils.PDA.getRecipe(accounts.itemClass, args.recipeIndex);
+
+    const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
+
+    const ix = await this.program.client.methods
+      .startBuild(args)
+      .accounts({
+        build: build,
+        recipe: recipe,
+        itemClass: accounts.itemClass,
+        builder: accounts.builder,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  async addIngredient(
+    accounts: AddIngredientAccounts,
+    args: AddIngredientArgs
+  ): Promise<web3.TransactionInstruction[]> {
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
+    const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
+
+    // detect what type of token we are adding
+    const tokenStandard = await Utils.Item.getTokenStandard(
+      this.program.client.provider.connection,
+      accounts.ingredientMint
+    );
+
+    const ixns: web3.TransactionInstruction[] = [];
+    if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      const pNftIxns = await this.addIngredientPnft(accounts, build, item);
+      ixns.push(...pNftIxns);
+    } else {
+      const ix = await this.addIngredientSpl(accounts, build, item, args);
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
+  private async addIngredientSpl(
+    accounts: AddIngredientAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey,
+    args: AddIngredientArgs
+  ): Promise<web3.TransactionInstruction> {
+    const ingredientSource = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
+      accounts.builder
+    );
+    const ingredientDestination = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
+      build,
+      true
+    );
+
+    const ix = await this.program.client.methods
+      .addIngredientSpl(args)
+      .accounts({
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientSource: ingredientSource,
+        ingredientDestination: ingredientDestination,
+        build: build,
+        item: item,
+        builder: accounts.builder,
+        payer: accounts.payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  private async addIngredientPnft(
+    accounts: AddIngredientAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey
+  ): Promise<web3.TransactionInstruction[]> {
+    const [ingredientMetadata, _ingredientMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const ingredientMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      ingredientMetadata,
+      "confirmed"
+    );
+
+    const [ingredientME, _ingredientMEBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+          Buffer.from("edition"),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const ingredientSource = splToken.getAssociatedTokenAddressSync(
+      accounts.ingredientMint,
+      accounts.builder
+    );
+
+    const ingredientDestination = splToken.getAssociatedTokenAddressSync(
+      accounts.ingredientMint,
+      build,
+      true
+    );
+
+    const [ingredientSourceTokenRecord, _ingredientSourceTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+          Buffer.from("token_record"),
+          ingredientSource.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [
+      ingredientDestinationTokenRecord,
+      _ingredientDestinationTokenRecordBump,
+    ] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
+        Buffer.from("token_record"),
+        ingredientDestination.toBuffer(),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    // double CU and fee
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
+    const ix = await this.program.client.methods
+      .addIngredientPnft()
+      .accounts({
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientMetadata: ingredientMetadata,
+        ingredientEdition: ingredientME,
+        authRules: ingredientMetadataData.programmableConfig.ruleSet,
+        ingredientSource: ingredientSource,
+        ingredientSourceTokenRecord: ingredientSourceTokenRecord,
+        ingredientDestination: ingredientDestination,
+        ingredientDestinationTokenRecord: ingredientDestinationTokenRecord,
+        build: build,
+        item: item,
+        payer: accounts.payer,
+        builder: accounts.builder,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        authRulesProgram: Constants.ProgramIds.MPL_AUTH_RULES_PROGRAM_ID,
+      })
+      .instruction();
+
+    return [increaseCUIx, addPriorityFeeIx, ix];
+  }
+
+  async verifyIngredient(
+    accounts: VerifyIngredientAccounts,
+    args: VerifyIngredientArgs
+  ): Promise<web3.TransactionInstruction> {
+    const ingredientItemClassData =
+      await this.program.client.account.itemClassV1.fetch(
+        accounts.ingredientItemClass
+      );
+    const ingredientItemClassItems = new web3.PublicKey(
+      ingredientItemClassData.items
+    );
+
+    const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
+
+    const proofAsRemainingAccounts = [];
+    for (const node of args.proof) {
+      const nodeAccount = {
+        pubkey: new web3.PublicKey(node),
+        isSigner: false,
+        isWritable: false,
+      };
+      proofAsRemainingAccounts.push(nodeAccount);
+    }
+
+    const ixArgs = {
+      root: args.root,
+      leafIndex: args.leafIndex,
+    };
+
+    const ix = await this.program.client.methods
+      .verifyIngredient(ixArgs)
+      .accounts({
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientItemClassItems: ingredientItemClassItems,
+        build: build,
+        payer: accounts.payer,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+      })
+      .remainingAccounts(proofAsRemainingAccounts)
+      .instruction();
+
+    return ix;
+  }
+
+  async verifyIngredientTest(
+    accounts: VerifyIngredientTestAccounts,
+    args: VerifyIngredientArgs
+  ): Promise<web3.TransactionInstruction> {
+    const ingredientItemClassData =
+      await this.program.client.account.itemClassV1.fetch(
+        accounts.ingredientItemClass
+      );
+    const ingredientItemClassItems = new web3.PublicKey(
+      ingredientItemClassData.items
+    );
+
+    const proofAsRemainingAccounts = [];
+    for (const node of args.proof) {
+      const nodeAccount = {
+        pubkey: new web3.PublicKey(node),
+        isSigner: false,
+        isWritable: false,
+      };
+      proofAsRemainingAccounts.push(nodeAccount);
+    }
+
+    const ixArgs = {
+      root: Buffer.from(args.root.toString()),
+      leafIndex: args.leafIndex,
+    };
+
+    const ix = await this.program.client.methods
+      .verifyIngredientTest(ixArgs)
+      .accounts({
+        ingredientMint: accounts.ingredientMint,
+        ingredientItemClass: accounts.ingredientItemClass,
+        ingredientItemClassItems: ingredientItemClassItems,
+        payer: accounts.payer,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+      })
+      .remainingAccounts(proofAsRemainingAccounts)
+      .instruction();
+
+    return ix;
+  }
+
+  async completeBuild(
+    accounts: CompleteBuildAccounts,
+    args: CompleteBuildArgs
+  ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
+
+    const itemClass = new web3.PublicKey(buildData.itemClass);
+
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      itemClass
+    );
+    const itemClassItems = new web3.PublicKey(itemClassData.items);
+
+    const proofAsRemainingAccounts = [];
+    for (const node of args.proof) {
+      const nodeAccount = {
+        pubkey: new web3.PublicKey(node),
+        isSigner: false,
+        isWritable: false,
+      };
+      proofAsRemainingAccounts.push(nodeAccount);
+    }
+
+    const ixArgs = {
+      root: args.root,
+      leafIndex: args.leafIndex,
+    };
+
+    const ix = await this.program.client.methods
+      .completeBuild(ixArgs)
+      .accounts({
+        itemMint: accounts.itemMint,
+        itemClass: itemClass,
+        itemClassItems: itemClassItems,
+        build: accounts.build,
+        payer: accounts.payer,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+      })
+      .remainingAccounts(proofAsRemainingAccounts)
+      .instruction();
+
+    return ix;
+  }
+
+  async receiveItem(
+    accounts: ReceiveItemAccounts
+  ): Promise<web3.TransactionInstruction[]> {
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
+
+    const itemClass = new web3.PublicKey(buildData.itemClass);
+    const itemMint = new web3.PublicKey(buildData.itemMint);
+    const builder = new web3.PublicKey(buildData.builder);
+
+    const [itemMetadata, _itemMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          itemMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata,
+      "confirmed"
+    );
+
+    const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        itemMint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const itemSource = splToken.getAssociatedTokenAddressSync(
+      itemMint,
+      itemClass,
+      true
+    );
+    const itemDestination = await splToken.getAssociatedTokenAddress(
+      itemMint,
+      builder
+    );
+
+    const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          itemMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemSource.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemDestinationTokenRecord, _itemDestinationTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          itemMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemDestination.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    // double CU and fee
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
+    const ix = await this.program.client.methods
+      .receiveItem()
+      .accounts({
+        itemMint: itemMint,
+        itemMetadata: itemMetadata,
+        itemEdition: itemME,
+        authRules: itemMetadataData.programmableConfig.ruleSet,
+        itemSource: itemSource,
+        itemSourceTokenRecord: itemSourceTokenRecord,
+        itemDestination: itemDestination,
+        itemDestinationTokenRecord: itemDestinationTokenRecord,
+        itemClass: itemClass,
+        build: accounts.build,
+        builder: builder,
+        payer: accounts.payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        authRulesProgram: MPL_AUTH_RULES_PROGRAM_ID,
+      })
+      .instruction();
+
+    return [increaseCUIx, addPriorityFeeIx, ix];
+  }
+
+  async applyBuildEffect(
+    accounts: ApplyBuildEffectAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
+
+    const ix = await this.program.client.methods
+      .applyBuildEffect()
+      .accounts({
+        item: item,
+        itemMint: accounts.ingredientMint,
+        build: accounts.build,
+        payer: accounts.payer,
+      })
+      .instruction();
+    return ix;
+  }
+
+  async returnIngredient(
+    accounts: ReturnIngredientAccounts
+  ): Promise<web3.TransactionInstruction[]> {
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
+
+    // detect what type of token we are adding
+    const tokenStandard = await Utils.Item.getTokenStandard(
+      this.program.client.provider.connection,
+      accounts.ingredientMint
+    );
+
+    const ixns: web3.TransactionInstruction[] = [];
+    if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      const pNftIxns = await this.returnIngredientPNft(
+        accounts,
+        accounts.build,
+        item
+      );
+      ixns.push(...pNftIxns);
+    } else {
+      const ix = await this.returnIngredientSpl(accounts, accounts.build, item);
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
+  private async returnIngredientPNft(
+    accounts: ReturnIngredientAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey
+  ): Promise<web3.TransactionInstruction[]> {
+    const [itemMetadata, _itemMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata,
+      "confirmed"
+    );
+
+    const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const buildData = await this.program.client.account.build.fetch(build);
+    const builder = new web3.PublicKey(buildData.builder);
+
+    const itemSource = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
+      build,
+      true
+    );
+    const itemDestination = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
+      builder
+    );
+
+    const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemSource.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemDestinationTokenRecord, _itemDestinationTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemDestination.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    // double CU and fee
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
+    const ix = await this.program.client.methods
+      .returnIngredientPnft()
+      .accounts({
+        item: item,
+        itemMint: accounts.ingredientMint,
+        itemMetadata: itemMetadata,
+        itemEdition: itemME,
+        authRules: itemMetadataData.programmableConfig.ruleSet,
+        itemSource: itemSource,
+        itemSourceTokenRecord: itemSourceTokenRecord,
+        itemDestination: itemDestination,
+        itemDestinationTokenRecord: itemDestinationTokenRecord,
+        build: build,
+        builder: builder,
+        payer: accounts.payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+        authRulesProgram: Constants.ProgramIds.MPL_AUTH_RULES_PROGRAM_ID,
+      })
+      .instruction();
+
+    return [increaseCUIx, addPriorityFeeIx, ix];
+  }
+
+  private async returnIngredientSpl(
+    accounts: ReturnIngredientAccounts,
+    build: web3.PublicKey,
+    item: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(build);
+    const builder = new web3.PublicKey(buildData.builder);
+
+    const itemSource = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
+      build,
+      true
+    );
+    const itemDestination = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
+      builder
+    );
+
+    const ix = await this.program.client.methods
+      .returnIngredientSpl()
+      .accounts({
+        item: item,
+        itemMint: accounts.ingredientMint,
+        itemSource: itemSource,
+        itemDestination: itemDestination,
+        build: build,
+        builder: builder,
+        payer: accounts.payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+    return ix;
+  }
+
+  async destroyIngredient(
+    accounts: DestroyIngredientAccounts
+  ): Promise<web3.TransactionInstruction[]> {
+    const item = Utils.PDA.getItemV1(accounts.ingredientMint);
+
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
+    const builder = new web3.PublicKey(buildData.builder);
+    const outputItemClass = new web3.PublicKey(buildData.itemClass);
+
+    const outputItemClassData =
+      await this.program.client.account.itemClassV1.fetch(outputItemClass);
+    const outputItemClassAuthority = new web3.PublicKey(
+      outputItemClassData.authority
+    );
+
+    const tokenStandard = await Utils.Item.getTokenStandard(
+      this.program.client.provider.connection,
+      accounts.ingredientMint
+    );
+
+    const itemSource = await splToken.getAssociatedTokenAddress(
+      accounts.ingredientMint,
+      accounts.build,
+      true
+    );
+
+    const ixns: web3.TransactionInstruction[] = [];
+    if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      const pNftIx = await this.destroyIngredientPnft(
+        accounts,
+        item,
+        itemSource
+      );
+      ixns.push(pNftIx);
+    } else {
+      const ix = await this.destroyIngredientSpl(
+        accounts,
+        item,
+        builder,
+        itemSource
+      );
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
+  private async destroyIngredientPnft(
+    accounts: DestroyIngredientAccounts,
+    item: web3.PublicKey,
+    itemAta: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
+    const [itemMetadata, _itemMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.ingredientMint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const [itemTokenRecord, _itemTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.ingredientMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemAta.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata
+    );
+
+    const [collectionMetadata, _collectionMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          itemMetadataData.collection.key.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const ix = await this.program.client.methods
+      .destroyIngredientPnft()
+      .accounts({
+        item: item,
+        itemMint: accounts.ingredientMint,
+        itemMetadata: itemMetadata,
+        collectionMetadata: collectionMetadata,
+        itemEdition: itemME,
+        itemAta: itemAta,
+        itemTokenRecord: itemTokenRecord,
+        build: accounts.build,
+        payer: accounts.payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        tokenMetadata: TOKEN_METADATA_PROGRAM_ID,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  private async destroyIngredientSpl(
+    accounts: DestroyIngredientAccounts,
+    item: web3.PublicKey,
+    builder: web3.PublicKey,
+    itemSource: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
+    const ix = await this.program.client.methods
+      .destroyIngredientSpl()
+      .accounts({
+        item: item,
+        itemMint: accounts.ingredientMint,
+        itemSource: itemSource,
+        build: accounts.build,
+        builder: builder,
+        payer: accounts.payer,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  async createRecipe(
+    accounts: CreateRecipeAccounts,
+    args: CreateRecipeArgs
+  ): Promise<web3.TransactionInstruction> {
+    const ingredients: any[] = [];
+    for (const ingredientArg of args.args.ingredientArgs) {
+      let degradationBuildEffect;
+      if (ingredientArg.buildEffect.degradation) {
+        degradationBuildEffect = {
+          on: { rate: ingredientArg.buildEffect.degradation.rate },
+        };
+      } else {
+        degradationBuildEffect = { off: {} };
+      }
+
+      let cooldownBuildEffect;
+      if (ingredientArg.buildEffect.cooldown) {
+        cooldownBuildEffect = {
+          on: { seconds: ingredientArg.buildEffect.cooldown.seconds },
+        };
+      } else {
+        cooldownBuildEffect = { off: {} };
+      }
+
+      const ingredient = {
+        itemClass: ingredientArg.itemClass,
+        requiredAmount: ingredientArg.requiredAmount,
+        buildEffect: {
+          degradation: degradationBuildEffect,
+          cooldown: cooldownBuildEffect,
+        },
+      };
+
+      ingredients.push(ingredient);
+    }
+
+    const ixArgs = {
+      buildEnabled: args.args.buildEnabled,
+      ingredients: ingredients,
+      payment: args.args.payment,
+    };
+
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+
+    // get new recipe pda based off item class recipe index
+    const newRecipe = Utils.PDA.getRecipe(
+      accounts.itemClass,
+      (itemClassData.recipeIndex as BN).add(new BN(1))
+    );
+
+    const ix = await this.program.client.methods
+      .createRecipe(ixArgs)
+      .accounts({
+        recipe: newRecipe,
+        itemClass: accounts.itemClass,
+        authority: accounts.authority,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+    return ix;
+  }
+
+  async closeBuild(
+    accounts: CloseBuildAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
+    const builder = new web3.PublicKey(buildData.builder);
+
+    const ix = await this.program.client.methods
+      .closeBuild()
+      .accounts({
+        build: accounts.build,
+        builder: builder,
+        payer: accounts.payer,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  async addPayment(
+    accounts: AddPaymentAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const ix = await this.program.client.methods
+      .addPayment()
+      .accounts({
+        build: accounts.build,
+        builder: accounts.builder,
+        treasury: accounts.treasury,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+    return ix;
+  }
 }
 
 export interface CreateItemClassArgs {
@@ -1307,3 +2305,150 @@ export interface UpdateItemArgs {
 export interface UpdateItemAccounts {}
 
 export interface UpdateItemAdditionalArgs {}
+
+//
+// V1
+//
+
+export interface CreateItemClassV1Args {
+  recipeArgs: RecipeArgs;
+}
+
+export interface RecipeArgs {
+  buildEnabled: boolean;
+  payment: Payment | null;
+  ingredientArgs: RecipeIngredientDataArgs[];
+}
+
+export interface PaymentState {
+  paid: boolean;
+  paymentDetails: Payment;
+}
+
+export interface Payment {
+  treasury: web3.PublicKey;
+  amount: BN;
+}
+
+export interface RecipeIngredientDataArgs {
+  itemClass: web3.PublicKey;
+  requiredAmount: BN;
+  buildEffect: BuildEffect;
+}
+
+export interface BuildEffect {
+  degradation: Degradation | null;
+  cooldown: Cooldown | null;
+}
+
+export interface Degradation {
+  rate: BN;
+}
+
+export interface Cooldown {
+  seconds: BN;
+}
+
+export interface StartBuildAccounts {
+  itemClass: web3.PublicKey;
+  builder: web3.PublicKey;
+}
+
+export interface StartBuildArgs {
+  recipeIndex: BN;
+}
+
+export interface AddIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
+  itemClass: web3.PublicKey;
+  payer: web3.PublicKey;
+  builder: web3.PublicKey;
+}
+
+export interface AddIngredientArgs {
+  amount: BN;
+}
+
+export interface VerifyIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
+  itemClass: web3.PublicKey;
+  payer: web3.PublicKey;
+  builder: web3.PublicKey;
+}
+
+export interface VerifyIngredientArgs {
+  root: Buffer;
+  leafIndex: number;
+  proof: Buffer[];
+}
+
+export interface VerifyIngredientTestAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
+  payer: web3.PublicKey;
+}
+
+export interface CompleteBuildAccounts {
+  itemMint: web3.PublicKey;
+  payer: web3.PublicKey;
+  build: web3.PublicKey;
+}
+
+export interface CompleteBuildArgs {
+  root: Buffer;
+  leafIndex: number;
+  proof: Buffer[];
+}
+
+export interface ReceiveItemAccounts {
+  build: web3.PublicKey;
+  payer: web3.PublicKey;
+}
+
+export interface AddItemsToItemClass {
+  itemClass: web3.PublicKey;
+  itemMints: web3.PublicKey[];
+}
+
+export interface ApplyBuildEffectAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
+  build: web3.PublicKey;
+  payer: web3.PublicKey;
+}
+
+export interface ReturnIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
+  build: web3.PublicKey;
+  payer: web3.PublicKey;
+}
+
+export interface CreateRecipeAccounts {
+  itemClass: web3.PublicKey;
+  authority: web3.PublicKey;
+}
+
+export interface CreateRecipeArgs {
+  args: RecipeArgs;
+}
+
+export interface DestroyIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  ingredientItemClass: web3.PublicKey;
+  payer: web3.PublicKey;
+  build: web3.PublicKey;
+}
+
+export interface CloseBuildAccounts {
+  build: web3.PublicKey;
+  payer: web3.PublicKey;
+}
+
+export interface AddPaymentAccounts {
+  build: web3.PublicKey;
+  builder: web3.PublicKey;
+  treasury: web3.PublicKey;
+}

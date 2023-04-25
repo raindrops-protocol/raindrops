@@ -33,12 +33,27 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 members = ["item", "player", "namespace", "matches", "staking"]
 types = "../js/lib/src/idls/"
 
+[test]
+startup_wait = 10000
+
 [test.validator]
-url = "https://rpc.ankr.com/solana"
+url = "https://api.mainnet-beta.solana.com"
 
 # metaplex
 [[test.validator.clone]]
 address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+
+# spl-account-compression 
+[[test.validator.clone]]
+address = "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+
+# spl-noop
+[[test.validator.clone]]
+address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
+
+# mpl-auth-rules
+[[test.validator.clone]]
+address = "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg"
 
 # mock $RAIN Mint with our own Mint Authority
 [[test.validator.account]]

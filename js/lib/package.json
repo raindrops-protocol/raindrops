@@ -1,6 +1,6 @@
 {
   "name": "@raindrops-protocol/raindrops",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "module": "./build/main.js",
   "main": "./build/main.js",
   "types": "./build/main.d.ts",
@@ -44,18 +44,23 @@
     "@metaplex-foundation/mpl-token-metadata": "^2.8.3",
     "@project-serum/anchor": "^0.26.0",
     "@raindrop-studios/sol-kit": "0.1.81",
+    "@solana/spl-account-compression": "^0.1.6",
     "@solana/spl-token": "^0.1.8",
     "axios": "1.1.2",
     "borsh": "^0.4.0",
     "form-data": "^4.0.0",
+    "isomorphic-ws": "^5.0.0",
     "jsonschema": "^1.4.0",
-    "node-fetch": "^2.6.1"
+    "node-fetch": "^2.6.1",
+    "spl-token-latest": "npm:@solana/spl-token@0.3.7",
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.15.6",
     "@babel/preset-typescript": "^7.15.0",
     "@types/jest": "^28.1.5",
     "@types/node": "^18.0.3",
+    "@types/ws": "^8.5.4",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "eslint": "latest",

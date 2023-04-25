@@ -895,7 +895,7 @@ pub mod raindrops_player {
             } else {
                 &player_class.data.settings.add_item_permissiveness
             },
-            index: index,
+            index,
             class_index: Some(player.class_index),
             account_mint: Some(&player_mint),
         })?;
@@ -1626,7 +1626,7 @@ pub struct SubtractItemEffect<'info> {
             player_item_activation_marker.item.as_ref(),
             player.key().as_ref(),
             &(player_item_activation_marker.usage_index as u64).to_le_bytes(),
-            &(player_item_activation_marker.amount as u64).to_le_bytes(),
+            &player_item_activation_marker.amount.to_le_bytes(),
             raindrops_item::MARKER.as_bytes()
         ],
         bump=player_item_activation_marker.bump

@@ -34,7 +34,7 @@ pub fn assert_is_proper_class<'info>(
     let discriminator = u64::from_le_bytes(*array_ref![data, 0, 8]);
     let mut expected_discriminator = [0; 8];
     expected_discriminator
-        .copy_from_slice(&hash::hash(format!("account:{}", class_name).as_bytes()).to_bytes()[..8]);
+        .copy_from_slice(&hash::hash(format!("account:{class_name}").as_bytes()).to_bytes()[..8]);
     let expected_discriminator_as_u64 = u64::from_le_bytes(expected_discriminator);
 
     require!(
@@ -119,7 +119,7 @@ pub fn assert_is_proper_instance<'info>(
     let discriminator = u64::from_le_bytes(*array_ref![data, 0, 8]);
     let mut expected_discriminator = [0; 8];
     expected_discriminator.copy_from_slice(
-        &hash::hash(format!("account:{}", instance_name).as_bytes()).to_bytes()[..8],
+        &hash::hash(format!("account:{instance_name}").as_bytes()).to_bytes()[..8],
     );
     let expected_discriminator_as_u64 = u64::from_le_bytes(expected_discriminator);
 
