@@ -24,8 +24,9 @@ export class Client {
 
     switch (cluster) {
       case "mainnet-beta": {
-        this.baseUrl = "https://api.items.itsboots.xyz";
-        this.wsUrl = "wss://ws.items.itsboots.xyz";
+        //this.baseUrl = "https://api.items.itsboots.xyz";
+        this.baseUrl = "https://w2badi4dgl.execute-api.us-east-1.amazonaws.com/prod";
+        this.wsUrl = "wss://7mbqz4vp5e.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "devnet": {
