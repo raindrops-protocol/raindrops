@@ -24,7 +24,7 @@ export class Client {
 
     switch (cluster) {
       case "mainnet-beta": {
-        //this.baseUrl = "https://api.items.itsboots.xyz"; this points to the old api gateway still, we will update in a subsequent operation
+        //this.baseUrl = "https://api.items.itsboots.xyz"; this points to the old api gateway still in the CDK and cert itself, we will update in a subsequent operation
         this.baseUrl =
           "https://w2badi4dgl.execute-api.us-east-1.amazonaws.com/prod";
         this.wsUrl =
@@ -32,8 +32,10 @@ export class Client {
         break;
       }
       case "devnet": {
-        this.baseUrl = "https://dev.api.items.itsboots.xyz";
-        this.wsUrl = "wss://dev.ws.items.itsboots.xyz";
+        //this.baseUrl = "https://dev.api.items.itsboots.xyz"; this points to the old api gateway still in the CDK (cert is migrated), we will update in a subsequent operation
+        this.baseUrl = "https://hwheczmzx7.execute-api.us-east-1.amazonaws.com/prod";
+        //this.wsUrl = "wss://dev.ws.items.itsboots.xyz"; this cert is broken
+        this.wsUrl = "wss://493dq7ya5a.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "localnet": {
