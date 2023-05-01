@@ -659,7 +659,7 @@ function createHeaders(rpcUrl: string, apiKey: string) {
 
   // if rpcUrl is provided add it to the header map
   if (rpcUrl !== "") {
-    headers["x-rpc-url"] = rpcUrl
+    headers["x-rpc-url"] = rpcUrl;
   }
 
   return headers;
