@@ -650,7 +650,7 @@ function getMissingIngredients(
 }
 
 function createHeaders(rpcUrl: string, apiKey: string) {
-  let headers = {
+  const headers = {
     "content-type": "application/json",
     "x-api-key": apiKey,
   };
