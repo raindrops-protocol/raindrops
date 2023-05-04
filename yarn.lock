@@ -2452,6 +2452,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@metaplex-foundation/mpl-token-metadata@npm:2.11.0":
+  version: 2.11.0
+  resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.11.0"
+  dependencies:
+    "@metaplex-foundation/beet": ^0.7.1
+    "@metaplex-foundation/beet-solana": ^0.4.0
+    "@metaplex-foundation/cusper": ^0.0.2
+    "@solana/spl-token": ^0.3.6
+    "@solana/web3.js": ^1.66.2
+    bn.js: ^5.2.0
+    debug: ^4.3.4
+  checksum: 68487e4b7f58a1539f73be8e66e4d799c55cec9cde70df3a82061c4650c539c0391b80454ab7aabe3baf968b4a198f4fb32346780e6d83a3bf0b657959426968
+  languageName: node
+  linkType: hard
+
 "@metaplex-foundation/mpl-token-metadata@npm:^2.7.0, @metaplex-foundation/mpl-token-metadata@npm:^2.8.3":
   version: 2.8.3
   resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.8.3"
@@ -2464,21 +2479,6 @@ __metadata:
     bn.js: ^5.2.0
     debug: ^4.3.4
   checksum: c926ec1cbd4f909a8010fcc149f35577cac6e69114138a295e51a9804b8383a4aa6186f786b36c52d62e6f73dc92981b3797bfe7aa326358ffe2b64638e7f08c
-  languageName: node
-  linkType: hard
-
-"@metaplex-foundation/mpl-token-metadata@npm:^2.9.1":
-  version: 2.9.1
-  resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.9.1"
-  dependencies:
-    "@metaplex-foundation/beet": ^0.7.1
-    "@metaplex-foundation/beet-solana": ^0.4.0
-    "@metaplex-foundation/cusper": ^0.0.2
-    "@solana/spl-token": ^0.3.6
-    "@solana/web3.js": ^1.66.2
-    bn.js: ^5.2.0
-    debug: ^4.3.4
-  checksum: 70573878ad010b5e0b9dc5c46241ee977e42b140cd279de58d7a4a51c597aa9f8c724dac2f9fb63ed0d3ee563840cad701edbac467358f2c882fa84cbd6f6d62
   languageName: node
   linkType: hard
 
@@ -2754,7 +2754,7 @@ __metadata:
   dependencies:
     "@metaplex-foundation/js": ^0.18.1
     "@metaplex-foundation/mpl-token-auth-rules": 1.1.0
-    "@metaplex-foundation/mpl-token-metadata": ^2.9.1
+    "@metaplex-foundation/mpl-token-metadata": 2.11.0
     "@msgpack/msgpack": ^2.8.0
     "@project-serum/anchor": ^0.26.0
     "@project-serum/common": ^0.0.1-beta.3
