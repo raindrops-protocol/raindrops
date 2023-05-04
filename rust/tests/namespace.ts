@@ -76,6 +76,7 @@ describe("namespace", () => {
         connection,
         payer
       );
+    console.log("mints")
 
     const permissivenessSettings: State.Namespace.PermissivenessSettings = {
       namespacePermissiveness: State.Namespace.Permissiveness.Whitelist,
@@ -2501,14 +2502,15 @@ async function createMintMetadataAndMasterEditionAccounts(
     collection: null,
     uses: null,
   };
-  const mdArgs: mpl.CreateMetadataAccountArgsV2 = {
+  const mdArgs: mpl.CreateMetadataAccountArgsV3 = {
     data: mdData,
     isMutable: true,
+    collectionDetails: null,
   };
-  const ixArgs: mpl.CreateMetadataAccountV2InstructionArgs = {
-    createMetadataAccountArgsV2: mdArgs,
+  const ixArgs: mpl.CreateMetadataAccountV3InstructionArgs = {
+    createMetadataAccountArgsV3: mdArgs,
   };
-  const metadataIx = mpl.createCreateMetadataAccountV2Instruction(
+  const metadataIx = mpl.createCreateMetadataAccountV3Instruction(
     mdAccounts,
     ixArgs
   );
