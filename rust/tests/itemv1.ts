@@ -1162,7 +1162,6 @@ async function createItemClass(
 
       const ruleSetPda = await createRuleSet(payer, connection);
 
-      // TODO: test with a verified collection, for some reason this func fails
       ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
         uri: "https://foo.com/bar.json",
