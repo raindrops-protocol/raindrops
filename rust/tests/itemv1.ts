@@ -13,6 +13,11 @@ import * as cmp from "@solana/spl-account-compression";
 import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
 import { encode } from "@msgpack/msgpack";
+import fs from "fs";
+import path from "path";
+
+// use a local file or set the env var of TEST_SIGNER
+const TEST_SIGNER_FILE_PATH = "./tests/files/test-signer.json";
 
 describe("itemv1", () => {
   // Configure the client to use the local cluster.
@@ -143,7 +148,7 @@ describe("itemv1", () => {
 
     // complete build and receive the item
     await completeBuildAndReceiveItem(
-      itemProgram,
+      connection,
       outputItemClass.tree,
       0,
       build,
@@ -287,7 +292,7 @@ describe("itemv1", () => {
 
     // complete build and receive the item
     await completeBuildAndReceiveItem(
-      itemProgram,
+      connection,
       outputItemClass.tree,
       0,
       build,
@@ -482,7 +487,7 @@ describe("itemv1", () => {
 
     // complete build and receive the item
     await completeBuildAndReceiveItem(
-      itemProgram,
+      connection,
       outputItemClass.tree,
       0,
       build,
@@ -637,7 +642,7 @@ describe("itemv1", () => {
 
       // complete build and receive the item
       await completeBuildAndReceiveItem(
-        itemProgram,
+        connection,
         outputItemClass.tree,
         i,
         build,
@@ -803,7 +808,7 @@ describe("itemv1", () => {
 
     // complete build and receive the item
     await completeBuildAndReceiveItem(
-      crankItemProgram,
+      connection,
       outputItemClass.tree,
       0,
       build,
@@ -1077,7 +1082,7 @@ describe("itemv1", () => {
 
     // complete build and receive the item
     await completeBuildAndReceiveItem(
-      itemProgramPayer,
+      connection,
       outputItemClass.tree,
       0,
       build,
@@ -1655,12 +1660,24 @@ async function addIngredientPermissionless(
 }
 
 async function completeBuildAndReceiveItem(
-  itemProgram: ItemProgram,
+  connection: anchor.web3.Connection,
   tree: cmp.MerkleTree,
   leafIndex: number,
   build: anchor.web3.PublicKey,
   outputItemMints: anchor.web3.PublicKey[]
 ) {
+  const signer = await initSigner(TEST_SIGNER_FILE_PATH, connection);
+
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(
+      connection,
+      new anchor.Wallet(signer),
+      { commitment: "confirmed" }
+    ),
+    idl: Idls.ItemIDL,
+  });
+
   // complete the build process
   const completeBuildAccounts: Instructions.Item.CompleteBuildAccounts = {
     itemMint: outputItemMints[leafIndex],
@@ -1909,4 +1926,30 @@ async function assertRejects(fn: Promise<any | void>) {
   }
 }
 
-async function createPNft() {}
+// either read from file or env var
+async function initSigner(filePath: string, connection: anchor.web3.Connection): Promise<anchor.web3.Keypair> {
+  let kpSecret;
+  try {
+    kpSecret = fs.readFileSync(filePath.startsWith("/")
+    ? filePath
+    : path.join(process.cwd(), filePath), "utf8");
+  } catch(_e) {
+    try {
+      kpSecret = Buffer.from(process.env.TEST_SIGNER, "utf8");
+    } catch(_e) {
+      throw new Error(`It's required to have a signer for testing raindrops_item, refer to the static variable 'TEST_SIGNER' in the program code`)
+    }
+  }
+
+  const keypairSecret = new Uint8Array(
+      JSON.parse(kpSecret)
+  );
+  
+  const signer = anchor.web3.Keypair.fromSecretKey(keypairSecret);
+
+  // get this signer some lamports
+  const airdropTxSig = await connection.requestAirdrop(signer.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
+  await connection.confirmTransaction(airdropTxSig, "confirmed");
+
+  return signer
+}

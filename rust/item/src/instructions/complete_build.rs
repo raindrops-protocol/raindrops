@@ -9,7 +9,7 @@ use std::convert::TryInto;
 use crate::state::{
     accounts::{Build, ItemClassV1},
     errors::ErrorCode,
-    BuildStatus, NoopProgram,
+    is_signer, BuildStatus, NoopProgram,
 };
 
 #[derive(Accounts)]
@@ -28,7 +28,7 @@ pub struct CompleteBuild<'info> {
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(mut)]
+    #[account(mut, constraint = is_signer(&payer.key()))]
     pub payer: Signer<'info>,
 
     pub log_wrapper: Program<'info, NoopProgram>,

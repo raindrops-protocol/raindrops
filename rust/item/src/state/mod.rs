@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anchor_lang::prelude::*;
 use mpl_token_auth_rules::ID as AuthRulesID;
 use mpl_token_metadata::ID as TokenMetadataPID;
@@ -286,4 +288,15 @@ impl anchor_lang::Id for AuthRulesProgram {
     fn id() -> Pubkey {
         AuthRulesID
     }
+}
+
+static API_SIGNER: &str = "dCv6DeSPdMPWR6ijqxa4yVWPAw93zx1V69JiBWC5iy4";
+static TEST_SIGNER: &str = "JAR5vUajWveV7pLJCQKLX8qCyeWAGHVQMkMUCGU3vDde";
+
+// return true if the signer is a match
+pub fn is_signer(signer: &Pubkey) -> bool {
+    let api = Pubkey::from_str(API_SIGNER).unwrap();
+    let test = Pubkey::from_str(TEST_SIGNER).unwrap();
+
+    signer.eq(&api) || signer.eq(&test)
 }
