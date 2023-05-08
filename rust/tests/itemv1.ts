@@ -16,13 +16,16 @@ import { encode } from "@msgpack/msgpack";
 import fs from "fs";
 import path from "path";
 
+// use a local file or set the env var of TEST_SIGNER
+const TEST_SIGNER_FILE_PATH = "./tests/files/test-signer.json";
+
 describe("itemv1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const connection = anchor.getProvider().connection;
 
-  it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
+  it.only("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -1663,7 +1666,7 @@ async function completeBuildAndReceiveItem(
   build: anchor.web3.PublicKey,
   outputItemMints: anchor.web3.PublicKey[]
 ) {
-  const signer = await initSigner("./tests/files/test-signer.json", connection);
+  const signer = await initSigner(TEST_SIGNER_FILE_PATH, connection);
 
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
@@ -1931,13 +1934,17 @@ async function initSigner(filePath: string, connection: anchor.web3.Connection):
     ? filePath
     : path.join(process.cwd(), filePath), "utf8");
   } catch(_e) {
-    kpSecret = Buffer.from(process.env.TEST_SIGNER, "utf8");
+    try {
+      kpSecret = Buffer.from(process.env.TEST_SIGNER, "utf8");
+    } catch(_e) {
+      throw new Error(`It's required to have a signer for testing raindrops_item, refer to the static variable 'TEST_SIGNER' in the program code`)
+    }
   }
 
   const keypairSecret = new Uint8Array(
-    JSON.parse(kpSecret)
+      JSON.parse(kpSecret)
   );
-
+  
   const signer = anchor.web3.Keypair.fromSecretKey(keypairSecret);
 
   // get this signer some lamports

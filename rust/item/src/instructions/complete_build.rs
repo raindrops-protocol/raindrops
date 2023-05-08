@@ -4,12 +4,12 @@ use spl_account_compression::{
     cpi::{accounts::VerifyLeaf, verify_leaf},
     program::SplAccountCompression,
 };
-use std::{convert::TryInto};
+use std::convert::TryInto;
 
 use crate::state::{
     accounts::{Build, ItemClassV1},
     errors::ErrorCode,
-    BuildStatus, NoopProgram, is_signer,
+    is_signer, BuildStatus, NoopProgram,
 };
 
 #[derive(Accounts)]

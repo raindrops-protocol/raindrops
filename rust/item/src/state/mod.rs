@@ -296,7 +296,7 @@ static TEST_SIGNER: &str = "JAR5vUajWveV7pLJCQKLX8qCyeWAGHVQMkMUCGU3vDde";
 // return true if the signer is a match
 pub fn is_signer(signer: &Pubkey) -> bool {
     let api = Pubkey::from_str(API_SIGNER).unwrap();
-    let test = Pubkey::from_str(TEST_SIGNER).unwrap(); 
+    let test = Pubkey::from_str(TEST_SIGNER).unwrap();
 
     signer.eq(&api) || signer.eq(&test)
 }
