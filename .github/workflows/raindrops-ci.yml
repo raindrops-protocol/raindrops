@@ -72,3 +72,5 @@ jobs:
 
       - name: Test
         run: yarn run test
+        env:
+          TEST_SIGNER: ${{ secrets.ITEMSTESTSIGNER }}
