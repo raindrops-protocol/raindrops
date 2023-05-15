@@ -113,20 +113,20 @@ pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -
     };
 
     // create the starting state for the update_state account
-    let current_payment_details = match &required_payment_details {
-        Some(required_payment_details) => Some(PaymentDetails {
-            payment_method: required_payment_details.payment_method,
-            amount: 0,
-        }),
-        None => None,
-    };
+    let current_payment_details =
+        required_payment_details
+            .as_ref()
+            .map(|required_payment_details| PaymentDetails {
+                payment_method: required_payment_details.payment_method,
+                amount: 0,
+            });
 
     // set the update state fields
     ctx.accounts.update_state.set_inner(UpdateState {
         initialized: true,
         avatar: ctx.accounts.avatar.key(),
-        current_payment_details: current_payment_details,
-        required_payment_details: required_payment_details,
+        current_payment_details,
+        required_payment_details,
         target: args.update_target,
     });
 
