@@ -11,6 +11,7 @@ import express from "express";
 import * as fs from "fs";
 import { assert } from "chai";
 import { describe } from "mocha";
+import * as cmp from "@solana/spl-account-compression";
 
 describe("avatar", () => {
   // Configure the client to use the local cluster.
@@ -1069,7 +1070,7 @@ describe("avatar", () => {
       )
     );
   });
-  it.skip("update trait variant with nft payment transfer", async () => {
+  it("update trait variant with nft payment transfer", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
@@ -1165,7 +1166,7 @@ describe("avatar", () => {
 
     const treasury = anchor.web3.Keypair.generate().publicKey;
 
-    const [paymentNfts, paymentMethod] = await createNonFungiblePaymentMethod(
+    const [paymentNfts, paymentMethod, merkleTree] = await createNonFungiblePaymentMethod(
       connection,
       nftHolder,
       avatarClassAuthorityClient,
@@ -1259,8 +1260,7 @@ describe("avatar", () => {
     );
     console.log("beginUpdateTxSig: %s", beginUpdateTxSig);
 
-    const merkleClient = getMerkleClient();
-    const proof = await merkleClient.getProof(paymentMethod, paymentNfts[0]);
+    const proof = await merkleTree.getProof(0);
 
     const payForUpdateAccounts: AvatarRpc.PayForUpdateAccounts = {
       avatar: avatar,
@@ -1325,7 +1325,7 @@ describe("avatar", () => {
       new anchor.BN(treasuryBalanceResult.value.amount).eq(new anchor.BN(1))
     );
   });
-  it.skip("update trait variant with nft payment burn", async () => {
+  it("update trait variant with nft payment burn", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
@@ -1419,7 +1419,7 @@ describe("avatar", () => {
       await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
     console.log("createAvatarTxSig: %s", createAvatarTxSig);
 
-    const [paymentNft, paymentMethod] = await createNonFungiblePaymentMethod(
+    const [paymentNft, paymentMethod, merkleTree] = await createNonFungiblePaymentMethod(
       connection,
       nftHolder,
       avatarClassAuthorityClient,
@@ -1506,8 +1506,7 @@ describe("avatar", () => {
     );
     console.log("beginUpdateTxSig: %s", beginUpdateTxSig);
 
-    const merkleClient = getMerkleClient();
-    const proof = await merkleClient.getProof(paymentMethod, paymentNft[0]);
+    const proof = await merkleTree.getProof(0);
 
     const payForUpdateAccounts: AvatarRpc.PayForUpdateAccounts = {
       avatar: avatar,
@@ -2556,7 +2555,7 @@ describe("avatar", () => {
     assert.isTrue(avatarData.traits.length === 1);
     assert.isTrue(avatarData.traits[0].traitAddress.equals(traitAccount));
   });
-  it.skip("equip a trait that requires an nft payment", async () => {
+  it("equip a trait that requires an nft payment", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
@@ -2622,7 +2621,7 @@ describe("avatar", () => {
     console.log("createAvatarTxSig: %s", createAvatarTxSig);
 
     // create nft payment method that gets burned
-    const [paymentNftMint, paymentMethodAddr] =
+    const [paymentNftMint, paymentMethodAddr, merkleTree] =
       await createNonFungiblePaymentMethod(
         connection,
         nftHolder,
@@ -2672,11 +2671,7 @@ describe("avatar", () => {
 
     // pay for the update
 
-    const merkleClient = getMerkleClient();
-    const proof = await merkleClient.getProof(
-      paymentMethodAddr,
-      paymentNftMint[0]
-    );
+    const proof = await merkleTree.getProof(0);
 
     const payForEquipTraitAccounts: AvatarRpc.PayForUpdateAccounts = {
       avatar: avatar,
@@ -2961,7 +2956,7 @@ describe("avatar", () => {
     const avatarDataAfterRemove = await nftHolderClient.getAvatar(avatar);
     assert.isTrue(avatarDataAfterRemove.traits.length === 0);
   });
-  it.skip("equip and remove trait that requires an nft payment", async () => {
+  it("equip and remove trait that requires an nft payment", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
@@ -3027,7 +3022,7 @@ describe("avatar", () => {
     console.log("createAvatarTxSig: %s", createAvatarTxSig);
 
     // create nft payment method that gets burned
-    const [paymentNftMints, paymentMethodAddr] =
+    const [paymentNftMints, paymentMethodAddr, merkleTree] =
       await createNonFungiblePaymentMethod(
         connection,
         nftHolder,
@@ -3077,11 +3072,7 @@ describe("avatar", () => {
 
     // pay for the update
 
-    const merkleClient = getMerkleClient();
-    const proof1 = await merkleClient.getProof(
-      paymentMethodAddr,
-      paymentNftMints[0]
-    );
+    const proof1 = await merkleTree.getProof(0);
 
     const payForEquipTraitAccounts: AvatarRpc.PayForUpdateAccounts = {
       avatar: avatar,
@@ -3148,10 +3139,7 @@ describe("avatar", () => {
 
     // pay for the update
 
-    const proof2 = await merkleClient.getProof(
-      paymentMethodAddr,
-      paymentNftMints[1]
-    );
+    const proof2 = await merkleTree.getProof(1);
 
     const payForRemoveTraitAccounts: AvatarRpc.PayForUpdateAccounts = {
       avatar: avatar,
@@ -4474,7 +4462,7 @@ async function createNonFungiblePaymentMethod(
   avatarClass: anchor.web3.PublicKey,
   amount: number,
   treasury?: anchor.web3.PublicKey
-): Promise<[anchor.web3.PublicKey[], anchor.web3.PublicKey]> {
+): Promise<[anchor.web3.PublicKey[], anchor.web3.PublicKey, cmp.MerkleTree]> {
   const mints = anchor.web3.Keypair.generate();
 
   const createPaymentMethodAccounts: AvatarRpc.CreatePaymentMethodAccounts = {
@@ -4537,11 +4525,15 @@ async function createNonFungiblePaymentMethod(
     );
   }
 
-  const merkleClient = getMerkleClient();
+  // create tree containing the payment mints
+  const leaves: Buffer[] = [];
+  for (let mint of paymentMints) {
+    leaves.push(mint.toBuffer());
+  }
 
-  await merkleClient.createTree(paymentMethodAddr, paymentMints);
+  const tree = new cmp.MerkleTree(leaves)
 
-  return [paymentMints, paymentMethodAddr];
+  return [paymentMints, paymentMethodAddr, tree];
 }
 
 // serves json files from a directory, put all off chain things in dir
