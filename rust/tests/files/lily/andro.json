@@ -1,0 +1,25 @@
+{
+  "name": "Andro",
+  "isAvatarSubject": true,
+  "components": [
+    {
+      "stage": 3,
+      "z_index": 6,
+      "blendMode": "over",
+      "variants": [
+        {
+          "forVariant": ["skintone::skinton1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/origin/b_andro-dark.png"
+        },
+        {
+          "forVariant": ["skintone::skinton2"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/origin/b_andro-tan.png"
+        },
+        {
+          "forVariant": ["skintone::skinton3"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/origin/b_andro-light.png"
+        }
+      ]
+    }
+  ]
+}

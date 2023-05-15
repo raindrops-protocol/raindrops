@@ -1,0 +1,43 @@
+{
+  "name": "Cloak",
+  "isAvatarSubject": true,
+  "utilizesVariant": 1,
+  "components": [
+    {
+      "blendMode": "over",
+      "stage": 3,
+      "z_index": 17,
+      "variants": [
+        {
+          "forVariant": ["gender12::gendero0"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/clothing/male/cloak.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/clothing/female/cloak.png"
+        }
+      ]
+    },
+    {
+      "blendMode": "over",
+      "stage": 3,
+      "z_index": 3,
+      "variants": [
+        {
+          "forVariant": ["gender12::gendero0"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/clothing/male/cloak_support.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/clothing/female/cloak_support.png"
+        }
+      ]
+    },
+    {
+      "stage": 3,
+      "z_index": 16,
+      "layerUri": "https://lily-traits.s3.amazonaws.com/clipmasks/hoodie-zone-white.png",
+      "blendMode": "dest-out"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "stages": [
+    {
+      "stageBlendMode": "over",
+      "order": 1,
+      "layers": []
+    },
+    {
+      "stageBlendMode": "over",
+      "order": 2,
+      "layers": []
+    },
+    {
+      "stageBlendMode": "over",
+      "order": 3,
+      "layers": []
+    },
+    {
+      "stageBlendMode": "colour-burn",
+      "order": 4,
+      "layers": [
+        {
+          "layerUri": "https://lily-traits.s3.amazonaws.com/clipmasks/overlay.png",
+          "blendMode": "in"
+        }
+      ],
+      "usingStages": [2],
+      "premultiplied": true
+    }
+  ],
+  "adjustmentOperations": [
+    {
+      "type": "linear",
+      "value": [25, 235]
+    }
+  ]
+}

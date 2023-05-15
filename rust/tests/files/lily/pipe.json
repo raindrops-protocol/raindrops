@@ -1,0 +1,47 @@
+{
+  "item": "CY3AV2qxrwkoh3rzLEjmWxgvTwyotMtE2qZ31cZVGkTS",
+  "name": "Pipe",
+  "isAvatarSubject": true,
+  "components": [
+    {
+      "stage": 3,
+      "z_index": 9,
+      "blendMode": "over",
+      "variants": [
+        {
+          "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/male/pipe-blond.png",
+          "forVariant": [
+            "gender12::gendero0",
+            "haircolo::haircol1"
+          ]
+        },
+        {
+          "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/male/pipe-blue.png",
+          "forVariant": [
+            "gender12::gendero0",
+            "haircolo::haircol2"
+          ]
+        },
+        {
+          "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/male/pipe-brown.png",
+          "forVariant": [
+            "gender12::gendero0",
+            "haircolo::haircol3"
+          ]
+        },
+        {
+          "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/pipe.png",
+          "forVariant": [
+            "gender12::gendero1"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": 3,
+      "z_index": 19,
+      "blendMode": "over",
+      "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/pipe_support.png"
+    }
+  ]
+}

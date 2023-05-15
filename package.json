@@ -26,6 +26,7 @@
     "turbo": "^1.4.3"
   },
   "dependencies": {
-    "@solana/spl-token": "npm:@solana/spl-token@0.3.7"
+    "@solana/spl-token": "npm:@solana/spl-token@0.3.7",
+    "class-transformer": "^0.5.1"
   }
 }

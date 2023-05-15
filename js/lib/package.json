@@ -43,6 +43,7 @@
   "dependencies": {
     "@metaplex-foundation/mpl-token-metadata": "^2.8.3",
     "@project-serum/anchor": "^0.26.0",
+    "@project-serum/anchor-0.26.0": "npm:@project-serum/anchor@0.26.0",
     "@raindrop-studios/sol-kit": "0.1.81",
     "@solana/spl-account-compression": "^0.1.6",
     "@solana/spl-token": "^0.1.8",

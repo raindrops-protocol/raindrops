@@ -1,0 +1,19 @@
+{
+  "name": "Backwards Hat",
+  "isAvatarSubject": true,
+  "utilizesVariant": null,
+  "components": [
+    {
+      "layerUri": "https://lily-traits.s3.amazonaws.com/headgear/backwards-hat.png",
+      "blendMode": "over",
+      "stage": 3,
+      "z_index": 15
+    },
+    {
+      "stage": 3,
+      "z_index": 14,
+      "layerUri": "https://lily-traits.s3.amazonaws.com/clipmasks/hat-zone-white.png",
+      "blendMode": "dest-out"
+    }
+  ]
+}

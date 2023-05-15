@@ -8,7 +8,7 @@ import {
   ItemProgram,
   State,
 } from "@raindrops-protocol/raindrops";
-import * as splToken from "../node_modules/@solana/spl-token";
+import * as splToken from "@solana/spl-token";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 
 describe("player", () => {

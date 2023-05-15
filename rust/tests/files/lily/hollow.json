@@ -1,0 +1,19 @@
+{
+  "name": "Hollow",
+  "isAvatarSubject": false,
+  "utilizesVariant": null,
+  "components": [
+    {
+      "stage": 2,
+      "z_index": 0,
+      "blendMode": "over",
+      "layerUri": "https://lily-traits.s3.amazonaws.com/aura/hollow_support.png"
+    },
+    {
+      "stage": 3,
+      "z_index": 20,
+      "blendMode": "over",
+      "layerUri": "https://lily-traits.s3.amazonaws.com/aura/hollow.png"
+    }
+  ]
+}

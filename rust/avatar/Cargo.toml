@@ -1,0 +1,22 @@
+[package]
+name = "raindrops-avatar"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "raindrops_avatar"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { version = "0.26.0", features = ["init-if-needed"] }
+anchor-spl = "0.26.0"
+spl-account-compression = { version  = "0.1.8", features = ["cpi", "no-entrypoint"] }
+spl-noop = { version = "0.1.3", features = ["cpi", "no-entrypoint"] }

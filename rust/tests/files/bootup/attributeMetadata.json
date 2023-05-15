@@ -1,0 +1,6 @@
+[
+    { "name": "Type", "id": 0, "mutable": false },
+    { "name": "Background", "id": 1, "mutable": false },
+    { "name": "Headgear", "id": 2, "mutable": false },
+    { "name": "Aura", "id": 3, "mutable": false }
+]
