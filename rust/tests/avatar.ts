@@ -46,10 +46,10 @@ describe("avatar", () => {
   );
 
   // expose files at http://localhost:3000/{file}.json
-  const fsApp = fileServer("./tests/files/lily");
+  const fsServer = fileServer("./tests/files/lily");
   
   // shutdown express server after testing
-  after(() => fsApp.close());
+  after(() => fsServer.close());
 
   it("lily avatar smoke test", async () => {
     const [
@@ -4545,7 +4545,7 @@ async function createNonFungiblePaymentMethod(
 }
 
 // serves json files from a directory, put all off chain things in dir
-function fileServer(dir: string): express.Express {
+function fileServer(dir: string) {
   const app = express();
   app.use(express.json());
 
@@ -4557,9 +4557,9 @@ function fileServer(dir: string): express.Express {
     });
   });
 
-  app.listen(3000);
+  const server = app.listen(3000);
   
-  return app
+  return server
 }
 
 async function assertRejects(fn: Promise<any | void>) {
