@@ -221,7 +221,7 @@ export class AvatarClient {
     const beginUpdateRestResponse: BeginUpdateRestResponse[] = JSON.parse(
       body.response
     );
-    for (let res of beginUpdateRestResponse) {
+    for (const res of beginUpdateRestResponse) {
       // sign the tx
       const tx = anchor.web3.Transaction.from(Buffer.from(res.tx, "base64"));
       const signedTx = await this.provider.wallet.signTransaction(tx);
@@ -333,7 +333,7 @@ export class AvatarClient {
 
     const body = await handleResponse(response);
 
-    let traitDataObj: AvatarRpc.Trait = JSON.parse(body.trait);
+    const traitDataObj: AvatarRpc.Trait = JSON.parse(body.trait);
 
     // convert the underlying payment methods into the class instance
     if (traitDataObj.equipPaymentDetails !== null) {
@@ -465,7 +465,7 @@ export class AvatarClient {
     variantOverrides: Variant[]
   ): Promise<any> {
     const traitOverridesStr: string[] = [];
-    for (let traitOverride of traitMintOverrides) {
+    for (const traitOverride of traitMintOverrides) {
       traitOverridesStr.push(traitOverride.toString());
     }
 

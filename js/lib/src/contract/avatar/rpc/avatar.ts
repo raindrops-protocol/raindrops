@@ -63,7 +63,6 @@ import {
   PaymentDetails,
   PayForUpdateAccounts,
   FungiblePaymentAssetClass,
-  PaymentAssetClass,
   BurnPaymentAction,
   BurnPaymentAccounts,
   PayForUpdateArgs,
@@ -219,7 +218,7 @@ export class AvatarClient {
     const trait = traitPDA(avatarData.avatarClass, accounts.traitMint);
 
     // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
-    let beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
+    const beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
     const traitData = await this.getTrait(trait);
     if (traitData.equipPaymentDetails === null) {
       const beginTraitUpdateAccounts: BeginUpdateAccounts = {
@@ -299,16 +298,16 @@ export class AvatarClient {
 
     const equipTraitIxs: anchor.web3.TransactionInstruction[] = [];
     const removeTraitIxs: anchor.web3.TransactionInstruction[] = [];
-    for (let traitMint of accounts.traitMints) {
+    for (const traitMint of accounts.traitMints) {
       const trait = traitPDA(avatarData.avatarClass, traitMint);
 
       const traitData = await this.getTrait(trait);
 
       // check required attributes for each trait we want to equip
-      for (let requiredAttributes of traitData.attributeIds) {
+      for (const requiredAttributes of traitData.attributeIds) {
         // if an trait already occupies this attribute we need to remove it
-        for (let traitData of avatarData.traits) {
-          for (let attributeId of traitData.attributeIds) {
+        for (const traitData of avatarData.traits) {
+          for (const attributeId of traitData.attributeIds) {
             if (attributeId === requiredAttributes) {
               const equippedTraitData = await this.getTrait(
                 traitData.traitAddress
@@ -381,7 +380,7 @@ export class AvatarClient {
 
     const equipTraitIxs: anchor.web3.TransactionInstruction[] = [];
     const removeTraitIxs: anchor.web3.TransactionInstruction[] = [];
-    for (let traitMint of accounts.traitMints) {
+    for (const traitMint of accounts.traitMints) {
       const trait = traitPDA(accounts.avatarClass, traitMint);
 
       // create the equip trait ix
@@ -437,7 +436,7 @@ export class AvatarClient {
 
     const trait = traitPDA(avatarData.avatarClass, accounts.traitMint);
     // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
-    let beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
+    const beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
     const traitData = await this.getTrait(trait);
     if (traitData.removePaymentDetails === null) {
       const beginTraitUpdateAccounts: BeginUpdateAccounts = {
@@ -522,7 +521,7 @@ export class AvatarClient {
 
     const tx = new anchor.web3.Transaction();
 
-    for (let traitMint of accounts.traitMints) {
+    for (const traitMint of accounts.traitMints) {
       const trait = traitPDA(avatarData.avatarClass, traitMint);
 
       const avatarTraitAta = splToken.getAssociatedTokenAddressSync(
@@ -669,7 +668,7 @@ export class AvatarClient {
     let logWrapper: anchor.web3.PublicKey | null = null;
 
     // if non fungible create all the tree stuff
-    let createPaymentMintsTreeIx: anchor.web3.TransactionInstruction[] = [];
+    const createPaymentMintsTreeIx: anchor.web3.TransactionInstruction[] = [];
     if (args.assetClass instanceof NonFungiblePaymentAssetClass) {
       paymentMints = (args.assetClass as NonFungiblePaymentAssetClass).mints;
       accountCompression = cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID;
@@ -705,7 +704,7 @@ export class AvatarClient {
       action: args.action.format(),
     };
 
-    let signers: anchor.web3.Keypair[] = [];
+    const signers: anchor.web3.Keypair[] = [];
     if (accounts.mints) {
       signers.push(accounts.mints);
     }
@@ -895,7 +894,7 @@ export class AvatarClient {
     let paymentMethodData: PaymentMethod;
     let paymentMethodAddress: anchor.web3.PublicKey;
     switch (updateStateData.target.constructor) {
-      case UpdateTargetClassVariant:
+      case UpdateTargetClassVariant: {
         const updateTargetClassVariant =
           updateStateData.target as UpdateTargetClassVariant;
         const classVariantMetadata = avatarClassData.variantMetadata.find(
@@ -921,7 +920,8 @@ export class AvatarClient {
         );
         paymentMethodAddress = classPaymentDetails.paymentMethod;
         break;
-      case UpdateTargetTraitVariant:
+      }
+      case UpdateTargetTraitVariant: {
         const updateTargetTraitVariant =
           updateStateData.target as UpdateTargetTraitVariant;
         const traitDataVariantUpdate = await this.getTrait(
@@ -951,7 +951,8 @@ export class AvatarClient {
         );
         paymentMethodAddress = traitPaymentDetails.paymentMethod;
         break;
-      case UpdateTargetEquipTrait:
+      }
+      case UpdateTargetEquipTrait: {
         const updateTargetEquipTrait =
           updateStateData.target as UpdateTargetEquipTrait;
         const traitDataEquipTrait = await this.getTrait(
@@ -968,7 +969,8 @@ export class AvatarClient {
         paymentMethodAddress =
           traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress;
         break;
-      case UpdateTargetRemoveTrait:
+      }
+      case UpdateTargetRemoveTrait: {
         const updateTargetRemoveTrait =
           updateStateData.target as UpdateTargetRemoveTrait;
         const traitDataRemoveTrait = await this.getTrait(
@@ -986,6 +988,7 @@ export class AvatarClient {
         paymentMethodAddress =
           traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress;
         break;
+      }
       default:
         throw new Error(`update target unsupported: ${updateStateData.target}`);
     }
@@ -1091,7 +1094,7 @@ export class AvatarClient {
     }
 
     // set same payer for all transactions
-    for (let tx of txns) {
+    for (const tx of txns) {
       await this.setPayer(tx, accounts.authority);
     }
 
@@ -1360,7 +1363,7 @@ export class AvatarClient {
       accounts.authority
     );
 
-    let tx = new anchor.web3.Transaction();
+    const tx = new anchor.web3.Transaction();
     for (let i = 0; i < args.variantIds.length; i++) {
       // if variant is already selected on the avatar, just skip over it
       const alreadySelected = avatarData.variants.some((variant) => {
@@ -1521,9 +1524,9 @@ export class AvatarClient {
     const avatarDataRaw = await this.program.account.avatar.fetch(avatar);
 
     const traits: TraitData[] = [];
-    for (let td of avatarDataRaw.traits) {
-      let vs: VariantOption[] = [];
-      for (let vsRaw of td.variantSelection) {
+    for (const td of avatarDataRaw.traits) {
+      const vs: VariantOption[] = [];
+      for (const vsRaw of td.variantSelection) {
         let tg = null;
         if (vsRaw.traitGate) {
           tg = {
@@ -1547,7 +1550,7 @@ export class AvatarClient {
     }
 
     const variants: VariantOption[] = [];
-    for (let variant of avatarDataRaw.variants) {
+    for (const variant of avatarDataRaw.variants) {
       let tg = null;
       if (variant.traitGate) {
         tg = {
@@ -1587,10 +1590,10 @@ export class AvatarClient {
       avatarClassAddress
     );
 
-    let variantMetadata: VariantMetadata[] = [];
-    for (let vmRaw of avatarClassData.variantMetadata) {
-      let options: VariantOption[] = [];
-      for (let optRaw of vmRaw.options) {
+    const variantMetadata: VariantMetadata[] = [];
+    for (const vmRaw of avatarClassData.variantMetadata) {
+      const options: VariantOption[] = [];
+      for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
           tg = {
@@ -1606,7 +1609,7 @@ export class AvatarClient {
           traitGate: tg,
         });
       }
-      let vm: VariantMetadata = {
+      const vm: VariantMetadata = {
         name: vmRaw.name,
         id: vmRaw.id,
         status: vmRaw.status,
@@ -1630,10 +1633,10 @@ export class AvatarClient {
   async getTrait(trait: anchor.web3.PublicKey): Promise<Trait> {
     const traitData = await this.program.account.trait.fetch(trait);
 
-    let variantMetadata: VariantMetadata[] = [];
-    for (let vmRaw of traitData.variantMetadata) {
-      let options: VariantOption[] = [];
-      for (let optRaw of vmRaw.options) {
+    const variantMetadata: VariantMetadata[] = [];
+    for (const vmRaw of traitData.variantMetadata) {
+      const options: VariantOption[] = [];
+      for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
           tg = {
@@ -1649,7 +1652,7 @@ export class AvatarClient {
           traitGate: tg,
         });
       }
-      let vm: VariantMetadata = {
+      const vm: VariantMetadata = {
         name: vmRaw.name,
         id: vmRaw.id,
         status: vmRaw.status,
@@ -1798,8 +1801,8 @@ export class AvatarClient {
     );
 
     // set global variant overrides
-    for (let variantOverride of variantOverrides) {
-      for (let primaryVariant of avatarData.variants) {
+    for (const variantOverride of variantOverrides) {
+      for (const primaryVariant of avatarData.variants) {
         // find the matching variant for the override and update its value
         if (variantOverride.variantId === primaryVariant.variantId) {
           primaryVariant.optionId = variantOverride.optionId;
@@ -1809,7 +1812,7 @@ export class AvatarClient {
 
     // only send the variant id and option id to the render code
     const shortVariantData: Variant[] = [];
-    for (let v of avatarData.variants) {
+    for (const v of avatarData.variants) {
       shortVariantData.push({ variantId: v.variantId, optionId: v.optionId });
     }
 
@@ -1818,7 +1821,7 @@ export class AvatarClient {
       attributeIds: number[];
       trait: anchor.web3.PublicKey;
     }[] = [];
-    for (let traitMintOverride of traitMintOverrides) {
+    for (const traitMintOverride of traitMintOverrides) {
       const traitOverride = traitPDA(avatarData.avatarClass, traitMintOverride);
       const traitData = await this.program.account.trait.fetch(traitOverride);
 
@@ -1831,11 +1834,11 @@ export class AvatarClient {
     // get equipped traits
     let equippedTraits: TraitRenderConfig[] = [];
     const traitVariants: Variant[] = [];
-    for (let traitData of avatarData.traits) {
+    for (const traitData of avatarData.traits) {
       // check if there's an override for this trait
       let overridden = false;
-      for (let override of traitOverrideData) {
-        for (let attributeId of traitData.attributeIds) {
+      for (const override of traitOverrideData) {
+        for (const attributeId of traitData.attributeIds) {
           if (override.attributeIds.includes(attributeId)) {
             const traitRenderConfig = await this.getTraitRenderConfig(
               override.trait
@@ -1878,8 +1881,8 @@ export class AvatarClient {
     equippedTraits = [...new Set(equippedTraits)];
 
     // set local variant overrides
-    for (let variantOverride of variantOverrides) {
-      for (let traitVariant of traitVariants) {
+    for (const variantOverride of variantOverrides) {
+      for (const traitVariant of traitVariants) {
         if (variantOverride.variantId === traitVariant.variantId) {
           traitVariant.optionId = variantOverride.optionId;
         }

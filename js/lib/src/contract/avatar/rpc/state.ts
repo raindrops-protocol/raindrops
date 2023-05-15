@@ -426,8 +426,8 @@ export class Avatar {
 
   // true if the provided attribute ids are not currently occupied
   isAttributeSlotAvailable(attributeIds: number[]): boolean {
-    for (let trait of this.traits) {
-      for (let attributeId of trait.attributeIds) {
+    for (const trait of this.traits) {
+      for (const attributeId of trait.attributeIds) {
         if (attributeIds.includes(attributeId)) {
           return false;
         }
@@ -440,8 +440,8 @@ export class Avatar {
   // return traits which occupy the given attributeIds, will return empty array if no match
   getTraitsByAttributeId(attributeIds: number[]): anchor.web3.PublicKey[] {
     const traits: anchor.web3.PublicKey[] = [];
-    for (let trait of this.traits) {
-      for (let attributeId of trait.attributeIds) {
+    for (const trait of this.traits) {
+      for (const attributeId of trait.attributeIds) {
         if (attributeIds.includes(attributeId)) {
           traits.push(trait.traitAddress);
         }
@@ -457,7 +457,7 @@ export class Avatar {
     const updateStates: UpdateState[] = [];
 
     // check class variant updates
-    for (let variant of this.variants) {
+    for (const variant of this.variants) {
       const target = new UpdateTargetClassVariant(
         variant.variantId,
         variant.optionId
@@ -471,8 +471,8 @@ export class Avatar {
     }
 
     // check trait variant updates
-    for (let trait of this.traits) {
-      for (let variant of trait.variantSelection) {
+    for (const trait of this.traits) {
+      for (const variant of trait.variantSelection) {
         const target = new UpdateTargetTraitVariant(
           variant.variantId,
           variant.optionId,
