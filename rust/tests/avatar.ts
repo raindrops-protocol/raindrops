@@ -10,6 +10,7 @@ import {
 import express from "express";
 import * as fs from "fs";
 import { assert } from "chai";
+import { describe } from "mocha";
 
 describe("avatar", () => {
   // Configure the client to use the local cluster.
@@ -45,7 +46,10 @@ describe("avatar", () => {
   );
 
   // expose files at http://localhost:3000/{file}.json
-  fileServer("./tests/files/lily");
+  const fsApp = fileServer("./tests/files/lily");
+  
+  // shutdown express server after testing
+  after(() => fsApp.close());
 
   it("lily avatar smoke test", async () => {
     const [
@@ -4541,7 +4545,7 @@ async function createNonFungiblePaymentMethod(
 }
 
 // serves json files from a directory, put all off chain things in dir
-function fileServer(dir: string) {
+function fileServer(dir: string): express.Express {
   const app = express();
   app.use(express.json());
 
@@ -4554,6 +4558,8 @@ function fileServer(dir: string) {
   });
 
   app.listen(3000);
+  
+  return app
 }
 
 async function assertRejects(fn: Promise<any | void>) {
