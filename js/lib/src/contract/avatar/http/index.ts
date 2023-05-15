@@ -3,7 +3,7 @@ import fetch from "cross-fetch";
 import { AvatarRpc } from "../";
 import { Variant, VariantMetadata } from "../rpc";
 import IsoWebsocket from "isomorphic-ws";
-import { plainToClass } from 'class-transformer';
+import { plainToClass } from "class-transformer";
 
 const TIMEOUT_MS = 300000; // 5min
 
@@ -294,8 +294,13 @@ export class AvatarClient {
 
     const body = await handleResponse(response);
 
-    const avatarClassDataObj: AvatarRpc.AvatarClass = JSON.parse(body.avatarClass);
-    const avatarClassData = plainToClass(AvatarRpc.AvatarClass, avatarClassDataObj)
+    const avatarClassDataObj: AvatarRpc.AvatarClass = JSON.parse(
+      body.avatarClass
+    );
+    const avatarClassData = plainToClass(
+      AvatarRpc.AvatarClass,
+      avatarClassDataObj
+    );
 
     return avatarClassData;
   }
@@ -332,12 +337,18 @@ export class AvatarClient {
 
     // convert the underlying payment methods into the class instance
     if (traitDataObj.equipPaymentDetails !== null) {
-      const paymentMethodData = plainToClass(AvatarRpc.PaymentMethod, traitDataObj.equipPaymentDetails.paymentMethodData);
+      const paymentMethodData = plainToClass(
+        AvatarRpc.PaymentMethod,
+        traitDataObj.equipPaymentDetails.paymentMethodData
+      );
       traitDataObj.equipPaymentDetails.paymentMethodData = paymentMethodData;
     }
 
     if (traitDataObj.removePaymentDetails !== null) {
-      const paymentMethodData = plainToClass(AvatarRpc.PaymentMethod, traitDataObj.removePaymentDetails.paymentMethodData);
+      const paymentMethodData = plainToClass(
+        AvatarRpc.PaymentMethod,
+        traitDataObj.removePaymentDetails.paymentMethodData
+      );
       traitDataObj.removePaymentDetails.paymentMethodData = paymentMethodData;
     }
 
@@ -359,8 +370,13 @@ export class AvatarClient {
 
     const body = await handleResponse(response);
 
-    const updateStateDataObj: AvatarRpc.UpdateState = JSON.parse(body.updateState);
-    const updateStateData = plainToClass(AvatarRpc.UpdateState, updateStateDataObj)
+    const updateStateDataObj: AvatarRpc.UpdateState = JSON.parse(
+      body.updateState
+    );
+    const updateStateData = plainToClass(
+      AvatarRpc.UpdateState,
+      updateStateDataObj
+    );
 
     return updateStateData;
   }
@@ -378,8 +394,13 @@ export class AvatarClient {
 
     const body = await handleResponse(response);
 
-    const paymentMethodDataObj: AvatarRpc.PaymentMethod = JSON.parse(body.paymentMethod);
-    const paymentMethodData = plainToClass(AvatarRpc.PaymentMethod, paymentMethodDataObj)
+    const paymentMethodDataObj: AvatarRpc.PaymentMethod = JSON.parse(
+      body.paymentMethod
+    );
+    const paymentMethodData = plainToClass(
+      AvatarRpc.PaymentMethod,
+      paymentMethodDataObj
+    );
 
     return paymentMethodData;
   }

@@ -310,7 +310,9 @@ export class AvatarClient {
         for (let traitData of avatarData.traits) {
           for (let attributeId of traitData.attributeIds) {
             if (attributeId === requiredAttributes) {
-              const equippedTraitData = await this.getTrait(traitData.traitAddress);
+              const equippedTraitData = await this.getTrait(
+                traitData.traitAddress
+              );
               const removeTraitAccounts: RemoveTraitsAuthorityAccounts = {
                 avatar: accounts.avatar,
                 authority: accounts.authority,
@@ -961,8 +963,10 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethodData = traitDataEquipTrait.equipPaymentDetails.paymentMethodData
-        paymentMethodAddress = traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress;
+        paymentMethodData =
+          traitDataEquipTrait.equipPaymentDetails.paymentMethodData;
+        paymentMethodAddress =
+          traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress;
         break;
       case UpdateTargetRemoveTrait:
         const updateTargetRemoveTrait =
@@ -977,8 +981,10 @@ export class AvatarClient {
           return txns;
         }
 
-        paymentMethodData = traitDataRemoveTrait.removePaymentDetails.paymentMethodData
-        paymentMethodAddress = traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress;
+        paymentMethodData =
+          traitDataRemoveTrait.removePaymentDetails.paymentMethodData;
+        paymentMethodAddress =
+          traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress;
         break;
       default:
         throw new Error(`update target unsupported: ${updateStateData.target}`);
@@ -1655,23 +1661,31 @@ export class AvatarClient {
     // get expanded payment details
     let equipPaymentDetailsExpanded: PaymentDetailsExpanded | null = null;
     if (traitData.equipPaymentDetails !== null) {
-      const equipPaymentMethodAddr = new anchor.web3.PublicKey(traitData.equipPaymentDetails.paymentMethod);
-      const equipPaymentMethodData = await this.getPaymentMethod(equipPaymentMethodAddr);
+      const equipPaymentMethodAddr = new anchor.web3.PublicKey(
+        traitData.equipPaymentDetails.paymentMethod
+      );
+      const equipPaymentMethodData = await this.getPaymentMethod(
+        equipPaymentMethodAddr
+      );
       equipPaymentDetailsExpanded = {
         paymentMethodAddress: equipPaymentMethodAddr,
         paymentMethodData: equipPaymentMethodData,
         amount: traitData.equipPaymentDetails.amount,
-      }
+      };
     }
     let removePaymentDetailsExpanded: PaymentDetailsExpanded | null = null;
     if (traitData.removePaymentDetails !== null) {
-      const removePaymentMethodAddr = new anchor.web3.PublicKey(traitData.removePaymentDetails.paymentMethod);
-      const removePaymentMethodData = await this.getPaymentMethod(removePaymentMethodAddr);
+      const removePaymentMethodAddr = new anchor.web3.PublicKey(
+        traitData.removePaymentDetails.paymentMethod
+      );
+      const removePaymentMethodData = await this.getPaymentMethod(
+        removePaymentMethodAddr
+      );
       removePaymentDetailsExpanded = {
         paymentMethodAddress: removePaymentMethodAddr,
         paymentMethodData: removePaymentMethodData,
         amount: traitData.removePaymentDetails.amount,
-      }
+      };
     }
 
     return new Trait(
@@ -1683,7 +1697,7 @@ export class AvatarClient {
       traitData.status,
       variantMetadata,
       equipPaymentDetailsExpanded,
-      removePaymentDetailsExpanded,
+      removePaymentDetailsExpanded
     );
   }
 
@@ -1735,7 +1749,7 @@ export class AvatarClient {
       new anchor.BN(paymentMethodRaw.index),
       paymentMethodRaw.avatarClass,
       parsePaymentAssetClass(paymentMethodRaw.assetClass),
-      parsePaymentAction(paymentMethodRaw.action),
+      parsePaymentAction(paymentMethodRaw.action)
     );
   }
 

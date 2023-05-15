@@ -3,7 +3,7 @@ use anchor_spl::token;
 
 use crate::state::{
     accounts::{AvatarClass, Trait},
-    data::{AttributeMetadata, TraitStatus, VariantMetadata, PaymentDetails},
+    data::{AttributeMetadata, PaymentDetails, TraitStatus, VariantMetadata},
     errors::ErrorCode,
 };
 

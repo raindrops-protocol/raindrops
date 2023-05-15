@@ -543,12 +543,17 @@ export class PaymentMethod {
   readonly assetClass: PaymentAssetClass;
   readonly action: PaymentAction;
 
-  constructor(index: anchor.BN, avatarClass: anchor.web3.PublicKey, assetClass: PaymentAssetClass, action: PaymentAction) {
+  constructor(
+    index: anchor.BN,
+    avatarClass: anchor.web3.PublicKey,
+    assetClass: PaymentAssetClass,
+    action: PaymentAction
+  ) {
     this.index = index;
     this.avatarClass = avatarClass;
     this.assetClass = assetClass;
     this.action = action;
-  } 
+  }
 }
 
 export class UpdateState {
@@ -741,7 +746,9 @@ export class UpdateTargetRemoveTrait {
   ) {
     this.kind = "removeTrait";
     this.traitAccount = new anchor.web3.PublicKey(traitAccount);
-    this.traitDestinationAuthority = new anchor.web3.PublicKey(traitDestinationAuthority);
+    this.traitDestinationAuthority = new anchor.web3.PublicKey(
+      traitDestinationAuthority
+    );
   }
 
   format(): any {

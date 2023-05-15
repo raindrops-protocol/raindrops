@@ -91,7 +91,7 @@ pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
         ctx.accounts.payer.clone(),
         ctx.accounts.system_program.clone(),
     );
-    
+
     // verify update state
     match &ctx.accounts.trait_account.equip_payment_details {
         Some(payment_details) => {
