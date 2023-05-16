@@ -136,6 +136,13 @@ pub mod raindrops_avatar {
         instructions::add_payment_mint_to_payment_method::handler(ctx)
     }
 
+    pub fn add_trait_conflicts(
+        ctx: Context<AddTraitConflicts>,
+        args: AddTraitConflictsArgs,
+    ) -> Result<()> {
+        instructions::add_trait_conflicts::handler(ctx, args)
+    }
+
     pub fn verify_payment_mint<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, VerifyPaymentMint<'info>>,
         args: VerifyPaymentMintArgs,

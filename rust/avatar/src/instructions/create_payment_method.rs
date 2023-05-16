@@ -48,6 +48,7 @@ pub struct CreatePaymentMethodArgs {
 
 pub fn handler(ctx: Context<CreatePaymentMethod>, args: CreatePaymentMethodArgs) -> Result<()> {
     ctx.accounts.payment_method.set_inner(PaymentMethod {
+        uri: "".to_string(),
         index: ctx.accounts.avatar_class.payment_index,
         avatar_class: ctx.accounts.avatar_class.key(),
         asset_class: args.asset_class.clone(),

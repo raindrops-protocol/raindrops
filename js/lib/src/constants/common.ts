@@ -12,3 +12,11 @@ export const RAIN_TOKEN_MINT_DEV = new web3.PublicKey(
 export const RAIN_TOKEN_VAULT_AUTHORITY = new web3.PublicKey(
   "D1ZCwPPkGNJabsP8GPshmaVTNHxYwQ9bp1fcE22gftLN"
 );
+
+export const AVATAR_RAIN_VAULT_MAINNET = new web3.PublicKey(
+  "DLHSKqRuAferYFTKqLAMRKM2hgze5vtYQPot97LXUnVB"
+);
+
+export const AVATAR_RAIN_VAULT_DEVNET = new web3.PublicKey(
+  "66NekdBHVwqdvGtWkjAaJsjJPX5nZPbXrYUbZihFoDzr"
+);

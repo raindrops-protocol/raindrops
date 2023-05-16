@@ -1,10 +1,12 @@
+use std::collections::HashSet;
+
 use anchor_lang::prelude::*;
 
 use crate::utils::reallocate;
 
 use super::data::{
     exists_in_trait_gate, AttributeMetadata, PaymentAction, PaymentAssetClass, PaymentDetails,
-    TraitData, TraitStatus, UpdateTarget, VariantMetadata, VariantOption,
+    TraitData, TraitGate, TraitStatus, UpdateTarget, VariantMetadata, VariantOption,
 };
 
 // seeds = [b'avatar_class', mint.key().as_ref()]
@@ -161,6 +163,7 @@ impl Avatar {
     pub fn add_trait<'info>(
         &mut self,
         trait_address: Pubkey,
+        trait_id: u16,
         attribute_ids: Vec<u16>,
         variant_metadata: &[VariantMetadata],
         avatar: &AccountInfo<'info>,
@@ -169,7 +172,7 @@ impl Avatar {
     ) {
         let old_space = self.current_space();
 
-        self.add_trait_data(trait_address, attribute_ids, variant_metadata);
+        self.add_trait_data(trait_address, trait_id, attribute_ids, variant_metadata);
 
         let new_space = self.current_space();
 
@@ -201,6 +204,23 @@ impl Avatar {
         self.traits
             .iter()
             .map(|trait_data| trait_data.trait_address)
+            .collect()
+    }
+
+    // return a vector of equipped trait ids
+    pub fn get_trait_ids(&self) -> Vec<u16> {
+        self.traits
+            .iter()
+            .map(|trait_data| trait_data.trait_id)
+            .collect()
+    }
+
+    // return a vector of equipped trait ids
+    pub fn get_attribute_ids(&self) -> Vec<u16> {
+        self.traits
+            .iter()
+            .flat_map(|trait_data| &trait_data.attribute_ids)
+            .cloned()
             .collect()
     }
 
@@ -259,11 +279,13 @@ impl Avatar {
     fn add_trait_data(
         &mut self,
         trait_address: Pubkey,
+        trait_id: u16,
         attribute_ids: Vec<u16>,
         variant_metadata: &[VariantMetadata],
     ) {
         self.traits.push(TraitData::new(
             attribute_ids,
+            trait_id,
             trait_address,
             variant_metadata,
         ))
@@ -282,7 +304,7 @@ fn variants_space(variants: Vec<VariantOption>) -> usize {
 // seeds = [b'trait', avatar_class.key().as_ref(), trait_mint.key().as_ref()]
 #[account]
 pub struct Trait {
-    pub index: u16,
+    pub id: u16,
     pub avatar_class: Pubkey,
     pub trait_mint: Pubkey,
     pub attribute_ids: Vec<u16>,
@@ -291,6 +313,7 @@ pub struct Trait {
     pub variant_metadata: Vec<VariantMetadata>,
     pub equip_payment_details: Option<PaymentDetails>,
     pub remove_payment_details: Option<PaymentDetails>,
+    pub trait_gate: Option<TraitGate>,
 }
 
 impl Trait {
@@ -298,7 +321,7 @@ impl Trait {
 
     pub fn current_space(&self) -> usize {
         8 + // anchor
-        2 + // index
+        2 + // id
         32 + // avatar class
         32 + // trait mint
         (4 + (self.attribute_ids.len() * 2)) + // attribute ids
@@ -306,7 +329,8 @@ impl Trait {
         TraitStatus::SPACE + // trait status
         Self::variant_metadata_space(&self.variant_metadata) + // variant metadata
         (1 + PaymentDetails::SPACE) + // optional equip payment details
-        (1 + PaymentDetails::SPACE) // optional remove payment method
+        (1 + PaymentDetails::SPACE) + // optional remove payment method
+        (1 + TraitGate::INIT_SPACE) // optional trait gate space
     }
 
     pub fn space(
@@ -377,6 +401,7 @@ impl Trait {
 // seeds = ['payment_method', avatar_class, payment_index]
 #[account]
 pub struct PaymentMethod {
+    pub uri: String,
     pub index: u64,
     pub avatar_class: Pubkey,
     pub asset_class: PaymentAssetClass,
@@ -386,6 +411,7 @@ pub struct PaymentMethod {
 impl PaymentMethod {
     pub const PREFIX: &'static str = "payment_method";
     pub const SPACE: usize = 8 + // anchor
+    4 + // uri, empty for now
     8 + // index
     32 + // avatar_class
     PaymentAssetClass::SPACE + // asset class
@@ -424,6 +450,122 @@ pub struct VerifiedPaymentMint {
 impl VerifiedPaymentMint {
     pub const PREFIX: &'static str = "verified_payment_mint";
     pub const SPACE: usize = 8 + 32 + 32;
+}
+
+// seeds = ['trait_conflicts', avatar_class, trait_account]
+#[account]
+pub struct TraitConflicts {
+    pub avatar_class: Pubkey,
+
+    pub trait_account: Pubkey,
+
+    pub attribute_conflicts: Vec<u16>,
+
+    pub trait_conflicts: Vec<u16>,
+}
+
+impl TraitConflicts {
+    pub const PREFIX: &'static str = "trait_conflicts";
+    pub const INIT_SPACE: usize = 8 + // anchor bytes
+    32 + // avatar_class
+    32 + // trait_account
+    4 + // empty attribute conflicts vector
+    4; // empty trait conflicts vector
+
+    // returns true if there's a conflict with this trait and what is equipped on an avatar
+    pub fn has_conflicts(
+        &self,
+        equipped_trait_ids: &[u16],
+        equipped_attribute_ids: &[u16],
+    ) -> bool {
+        if self.has_attribute_conflicts(equipped_attribute_ids) {
+            return true;
+        }
+
+        if self.has_trait_conflicts(equipped_trait_ids) {
+            return true;
+        }
+
+        false
+    }
+
+    pub fn add_conflicts<'info>(
+        &mut self,
+        new_attribute_conflict_ids: &[u16],
+        new_trait_conflict_ids: &[u16],
+        conflicts_account: &AccountInfo<'info>,
+        payer: Signer<'info>,
+        system_program: Program<'info, System>,
+    ) {
+        let old_space = self.current_space();
+
+        // add attribute ids
+        for id in new_attribute_conflict_ids {
+            self.add_attribute_conflict(*id);
+        }
+
+        // add trait ids
+        for id in new_trait_conflict_ids {
+            self.add_trait_conflict(*id);
+        }
+
+        let new_space = self.current_space();
+
+        let diff: i64 = new_space as i64 - old_space as i64;
+
+        reallocate(diff, conflicts_account, payer, system_program).unwrap();
+    }
+
+    fn add_trait_conflict(&mut self, new_conflict_id: u16) {
+        // dont add duplicate ids
+        if !self.trait_conflicts.contains(&new_conflict_id) {
+            self.trait_conflicts.push(new_conflict_id);
+        }
+    }
+
+    fn add_attribute_conflict(&mut self, new_conflict_id: u16) {
+        // dont add duplicate ids
+        if !self.attribute_conflicts.contains(&new_conflict_id) {
+            self.attribute_conflicts.push(new_conflict_id);
+        }
+    }
+
+    fn has_attribute_conflicts(&self, equipped_attribute_ids: &[u16]) -> bool {
+        // convert to HashSet as this is more efficient than using a nested loop
+        let attribute_conflicts_set: HashSet<u16> =
+            self.attribute_conflicts.iter().cloned().collect();
+
+        // return true for the first conflict
+        for id in equipped_attribute_ids {
+            if attribute_conflicts_set.contains(id) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn has_trait_conflicts(&self, equipped_trait_ids: &[u16]) -> bool {
+        // convert to HashSet as this is more efficient than using a nested loop
+        let trait_conflicts_set: HashSet<u16> = self.trait_conflicts.iter().cloned().collect();
+
+        // return true for the first conflict
+        for id in equipped_trait_ids {
+            if trait_conflicts_set.contains(id) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn current_space(&self) -> usize {
+        8 + // anchor bytes
+        32 + // avatar_class
+        32 + // trait_account
+        4 + (self.trait_conflicts.len() * 2) + // trait conflicts
+        4 + (self.attribute_conflicts.len() * 2) // attribute conflicts
+    }
 }
 
 // anchor wrapper for Noop Program required for spl-account-compression
@@ -513,6 +655,7 @@ mod tests {
         let trait1 = Pubkey::new_unique();
         traits.push(TraitData {
             attribute_ids: vec![],
+            trait_id: 0,
             trait_address: trait1,
             variant_selection: vec![],
         });
@@ -520,6 +663,7 @@ mod tests {
         let trait2 = Pubkey::new_unique();
         traits.push(TraitData {
             attribute_ids: vec![],
+            trait_id: 0,
             trait_address: trait2,
             variant_selection: vec![],
         });
@@ -548,6 +692,7 @@ mod tests {
         let trait2 = Pubkey::new_unique();
         traits.push(TraitData {
             attribute_ids: vec![],
+            trait_id: 0,
             trait_address: trait1,
             variant_selection: vec![VariantOption {
                 variant_id: "lqowgh78".to_string(),
@@ -563,6 +708,7 @@ mod tests {
         let trait3 = Pubkey::new_unique();
         traits.push(TraitData {
             attribute_ids: vec![],
+            trait_id: 0,
             trait_address: trait3,
             variant_selection: vec![],
         });

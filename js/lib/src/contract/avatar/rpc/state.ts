@@ -5,17 +5,10 @@ import { AvatarClient, updateStatePDA } from "./avatar";
 export const AVATAR_CLASS_PREFIX = "avatar_class";
 export const AVATAR_PREFIX = "avatar";
 export const TRAIT_PREFIX = "trait";
+export const TRAIT_CONFLICTS_PREFIX = "trait_conflicts";
 export const PAYMENT_METHOD_PREFIX = "payment_method";
 export const UPDATE_STATE_PREFIX = "update_state";
 export const VERIFIED_PAYMENT_MINT_PREFIX = "verified_payment_mint";
-
-export const AVATAR_ID = new anchor.web3.PublicKey(
-  "AvAtARWmYZLbUFfoQc3RzT7zR5zLRs92VSMm8CsCadYN"
-);
-
-export const AVATAR_FEE_VAULT = new anchor.web3.PublicKey(
-  "Fequ3NnuSMUda7WXBARqEAav6ehuysAnLx2dM7s5wwan"
-);
 
 export interface CreateAvatarClassAccounts {
   avatarClassMint: anchor.web3.PublicKey;

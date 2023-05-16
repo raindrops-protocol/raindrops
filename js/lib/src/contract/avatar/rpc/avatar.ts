@@ -19,12 +19,10 @@ import {
   Trait,
   TraitRenderConfig,
   StageRenderConfig,
-  AVATAR_ID,
   Variant,
   VariantMetadata,
   VariantOption,
   TraitData,
-  AVATAR_FEE_VAULT,
   UpdateTraitVariantMetadataAccounts,
   UpdateTraitVariantMetadataArgs,
   UpdateClassVariantMetadataAccounts,
@@ -80,22 +78,30 @@ import {
   RemoveTraitsAuthorityAccounts,
   RemoveTraitAccounts,
   PaymentDetailsExpanded,
+  TRAIT_CONFLICTS_PREFIX,
 } from "./state";
 import {
+  AVATAR_RAIN_VAULT_DEVNET,
+  AVATAR_RAIN_VAULT_MAINNET,
   RAIN_TOKEN_MINT,
   RAIN_TOKEN_MINT_DEV,
 } from "../../../constants/common";
 import * as cmp from "@solana/spl-account-compression";
+import { Constants, Idls } from "../../../main";
 
 export class AvatarClient {
   private program: anchor.Program<RaindropsAvatar>;
   readonly provider: anchor.AnchorProvider;
   readonly programId: anchor.web3.PublicKey;
 
-  constructor(program: anchor.Program<RaindropsAvatar>) {
-    this.program = program;
-    this.provider = program.provider as anchor.AnchorProvider;
-    this.programId = AVATAR_ID;
+  constructor(provider: anchor.AnchorProvider) {
+    this.program = new anchor.Program(
+      Idls.AvatarIDL,
+      Constants.ProgramIds.AVATAR_ID,
+      provider
+    );
+    this.provider = provider;
+    this.programId = Constants.ProgramIds.AVATAR_ID;
   }
 
   async createAvatarClass(
@@ -139,6 +145,7 @@ export class AvatarClient {
       accounts.authority
     );
 
+    let rainVault: anchor.web3.PublicKey;
     let rainMint: anchor.web3.PublicKey;
     try {
       // if the mint account exists on chain then we are either on mainnet or running locally
@@ -147,8 +154,10 @@ export class AvatarClient {
         RAIN_TOKEN_MINT,
         "confirmed"
       );
+      rainVault = AVATAR_RAIN_VAULT_MAINNET;
       rainMint = RAIN_TOKEN_MINT;
     } catch (_e) {
+      rainVault = AVATAR_RAIN_VAULT_DEVNET;
       rainMint = RAIN_TOKEN_MINT_DEV;
     }
 
@@ -164,10 +173,10 @@ export class AvatarClient {
         avatarClassMintAta: avatarClassMintAta,
         avatar: avatar,
         avatarMint: accounts.avatarMint,
-        rainMint: rainMint,
         authorityRainAta: authorityRainAta,
         authority: accounts.authority,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        rainVault: rainVault,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -192,6 +201,27 @@ export class AvatarClient {
 
     const trait = traitPDA(accounts.avatarClass, accounts.traitMint);
 
+    let rainVault: anchor.web3.PublicKey;
+    let rainMint: anchor.web3.PublicKey;
+    try {
+      // if the mint account exists on chain then we are either on mainnet or running locally
+      await splToken.getMint(
+        this.provider.connection,
+        RAIN_TOKEN_MINT,
+        "confirmed"
+      );
+      rainVault = AVATAR_RAIN_VAULT_MAINNET;
+      rainMint = RAIN_TOKEN_MINT;
+    } catch (_e) {
+      rainVault = AVATAR_RAIN_VAULT_DEVNET;
+      rainMint = RAIN_TOKEN_MINT_DEV;
+    }
+
+    const authorityRainAta = await splToken.getAssociatedTokenAddress(
+      rainMint,
+      accounts.authority
+    );
+
     const tx = await this.program.methods
       .createTrait(args)
       .accounts({
@@ -200,6 +230,8 @@ export class AvatarClient {
         traitAccount: trait,
         traitMint: accounts.traitMint,
         authority: accounts.authority,
+        authorityRainAta: authorityRainAta,
+        rainVault: rainVault,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -264,13 +296,11 @@ export class AvatarClient {
       .accounts({
         avatarClass: avatarData.avatarClass,
         traitAccount: trait,
-        traitMint: accounts.traitMint,
         traitSource: traitSource,
         avatar: accounts.avatar,
         avatarTraitAta: avatarTraitAta,
         payer: accounts.payer,
         updateState: updateState,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -338,20 +368,28 @@ export class AvatarClient {
           true
         );
 
+        const createAtaIx =
+          splToken.createAssociatedTokenAccountIdempotentInstruction(
+            accounts.authority,
+            avatarTraitAta,
+            accounts.avatar,
+            traitMint,
+            splToken.TOKEN_PROGRAM_ID,
+            splToken.ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
         const equipTraitIx = await this.program.methods
           .equipTraitAuthority()
+          .preInstructions([createAtaIx])
           .accounts({
             avatarClass: avatarData.avatarClass,
             avatar: accounts.avatar,
             traitAccount: trait,
-            traitMint: traitMint,
             traitSource: traitSource,
             avatarTraitAta: avatarTraitAta,
             avatarClassMintAta: avatarClassMintAta,
             authority: accounts.authority,
-            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             tokenProgram: splToken.TOKEN_PROGRAM_ID,
-            associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: anchor.web3.SystemProgram.programId,
           })
           .instruction();
@@ -395,20 +433,28 @@ export class AvatarClient {
         true
       );
 
+      const createAtaIx =
+        splToken.createAssociatedTokenAccountIdempotentInstruction(
+          accounts.authority,
+          avatarTraitAta,
+          accounts.avatar,
+          traitMint,
+          splToken.TOKEN_PROGRAM_ID,
+          splToken.ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
       const equipTraitIx = await this.program.methods
         .equipTraitAuthority()
+        .preInstructions([createAtaIx])
         .accounts({
           avatarClass: accounts.avatarClass,
           avatar: accounts.avatar,
           traitAccount: trait,
-          traitMint: traitMint,
           traitSource: traitSource,
           avatarTraitAta: avatarTraitAta,
           avatarClassMintAta: avatarClassMintAta,
           authority: accounts.authority,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           tokenProgram: splToken.TOKEN_PROGRAM_ID,
-          associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .instruction();
@@ -490,9 +536,7 @@ export class AvatarClient {
         updateState: updateState,
         traitAccount: trait,
         traitDestination: traitDestination,
-        traitMint: accounts.traitMint,
         payer: accounts.payer,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -801,7 +845,6 @@ export class AvatarClient {
           traitMint: traitData.traitMint,
           avatarTraitAta: avatarTraitAta,
           avatarMintAta: avatarAuthorityAta,
-          raindropsFeeVault: AVATAR_FEE_VAULT,
           authority: avatarAuthority,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
@@ -821,7 +864,6 @@ export class AvatarClient {
           traitAccount: traitAccount,
           avatar: accounts.avatar,
           avatarMintAta: avatarAuthorityAta,
-          raindropsFeeVault: AVATAR_FEE_VAULT,
           authority: avatarAuthority,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
@@ -1968,7 +2010,7 @@ export function avatarClassPDA(
 ): anchor.web3.PublicKey {
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(AVATAR_CLASS_PREFIX), avatarClassMint.toBuffer()],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -1978,7 +2020,7 @@ export function avatarPDA(
 ): anchor.web3.PublicKey {
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(AVATAR_PREFIX), avatarClass.toBuffer(), avatarMint.toBuffer()],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -1988,7 +2030,7 @@ export function traitPDA(
 ): anchor.web3.PublicKey {
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(TRAIT_PREFIX), avatarClass.toBuffer(), traitMint.toBuffer()],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -2002,7 +2044,7 @@ export function paymentMethodPDA(
       avatarClass.toBuffer(),
       paymentIndex.toArrayLike(Buffer, "le", 8),
     ],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -2013,7 +2055,7 @@ export function updateStatePDA(
   const hash = hashUpdateTarget(updateTarget);
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(UPDATE_STATE_PREFIX), avatar.toBuffer(), hash],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -2027,6 +2069,20 @@ export function verifiedPaymentMintPDA(
       paymentMethod.toBuffer(),
       paymentMint.toBuffer(),
     ],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
+  )[0];
+}
+
+export function traitConflictsPDA(
+  avatarClass: anchor.web3.PublicKey,
+  traitAccount: anchor.web3.PublicKey
+): anchor.web3.PublicKey {
+  return anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(TRAIT_CONFLICTS_PREFIX),
+      avatarClass.toBuffer(),
+      traitAccount.toBuffer(),
+    ],
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
