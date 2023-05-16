@@ -1,0 +1,12 @@
+{
+  "name": "Hollow",
+  "isAvatarSubject": true,
+  "components": [
+    {
+      "stage": 3,
+      "z_index": 6,
+      "blendMode": "over",
+      "layerUri": "https://skyspit.s3.amazonaws.com/lily-traits/origin-hollow.png"
+    }
+  ]
+}

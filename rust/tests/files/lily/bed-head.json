@@ -1,0 +1,87 @@
+{
+  "name": "Bed Head",
+  "isAvatarSubject": true,
+  "components": [
+    {
+      "stage": 3,
+      "z_index": 2,
+      "blendMode": "over",
+      "variants": [
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair-support-1-blond.png"
+        },
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol2"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair-support-1-blue.png"
+        },
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol3"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair-support-1-brown.png"
+        }
+      ]
+    },
+    {
+      "stage": 3,
+      "z_index": 8,
+      "blendMode": "over",
+      "variants": [
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair-support-2-blond.png"
+        },
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol2"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair-support-2-blue.png"
+        },
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol3"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair-support-2-brown.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1, haircolo::haircol1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/female/bedhair-support-blond.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1, haircolo::haircol2"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/female/bedhair-support-blue.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1, haircolo::haircol3"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/female/bedhair-support-brown.png"
+        }
+      ]
+    },
+    {
+      "stage": 3,
+      "z_index": 13,
+      "blendMode": "over",
+      "variants": [
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair_fg-blond.png"
+        },
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol2"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair_fg-blue.png"
+        },
+        {
+          "forVariant": ["gender12::gendero0, haircolo::haircol3"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/male/bedhair_fg-brown.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1, haircolo::haircol1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/female/bedhair-fg-blond.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1, haircolo::haircol2"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/female/bedhair-fg-blue.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1, haircolo::haircol3"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hair/female/bedhair-fg-brown.png"
+        }
+      ]
+    }
+  ]
+}

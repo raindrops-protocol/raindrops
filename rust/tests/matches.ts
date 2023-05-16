@@ -1,7 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { BN } from "@project-serum/anchor";
-import * as splToken from "../node_modules/@solana/spl-token";
-import * as mpl from "@metaplex-foundation/mpl-token-metadata";
+import * as splToken from "@solana/spl-token";
 import {
   Utils,
   State,

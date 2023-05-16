@@ -1,0 +1,31 @@
+{
+  "name": "Angry",
+  "isAvatarSubject": true,
+  "components": [
+    {
+      "stage": 3,
+      "z_index": 7,
+      "blendMode": "over",
+      "variants": [
+        {
+          "forVariant": ["gender12::gendero0"],
+          "layerUri": "https://skyspit.s3.amazonaws.com/lily-traits/m_angry.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1"],
+          "layerUri": "https://skyspit.s3.amazonaws.com/lily-traits/f_angry.png"
+        },
+        {
+          "forVariant": ["gender12::gendero0"],
+          "withToken": ["02d732ff-7093-4aab-939c-4acd71e427d3"],
+          "layerUri": "https://skyspit.s3.amazonaws.com/lily-traits/final-1679006631.png"
+        },
+        {
+          "forVariant": ["gender12::gendero1"],
+          "withToken": ["02d732ff-7093-4aab-939c-4acd71e427d3"],
+          "layerUri": "https://skyspit.s3.amazonaws.com/lily-traits/final-1679006624.png"
+        }
+      ]
+    }
+  ]
+}

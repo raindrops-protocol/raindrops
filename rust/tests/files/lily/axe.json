@@ -1,0 +1,25 @@
+{
+  "name": "Axe",
+  "isAvatarSubject": true,
+  "components": [
+    {
+      "stage": 2,
+      "z_index": 1,
+      "blendMode": "over",
+      "variants": [
+        {
+          "forVariant": ["skintone::skinton1"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hands/axe-dark.png"
+        },
+        {
+          "forVariant": ["skintone::skinton2"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hands/axe-tan.png"
+        },
+        {
+          "forVariant": ["skintone::skinton3"],
+          "layerUri": "https://lily-traits.s3.amazonaws.com/hands/axe-light.png"
+        }
+      ]
+    }
+  ]
+}
