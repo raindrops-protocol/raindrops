@@ -1507,7 +1507,7 @@ export class AvatarClient {
 
     // optionally grab the ids from the trait pda
     if (args.traitAccounts?.length > 0) {
-      for (let traitAccount of args.traitAccounts) {
+      for (const traitAccount of args.traitAccounts) {
         const traitData = await this.getTrait(traitAccount);
         traitIds.push(traitData.id);
       }
