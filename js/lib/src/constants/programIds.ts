@@ -25,6 +25,10 @@ export const STAKING_ID = new web3.PublicKey(
   "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 );
 
+export const AVATAR_ID = new web3.PublicKey(
+  "AvAtARWmYZLbUFfoQc3RzT7zR5zLRs92VSMm8CsCadYN"
+);
+
 export const WRAPPED_SOL_MINT = new web3.PublicKey(
   "So11111111111111111111111111111111111111112"
 );

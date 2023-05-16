@@ -2815,6 +2815,7 @@ __metadata:
     "@typescript-eslint/parser": latest
     axios: 1.1.2
     borsh: ^0.4.0
+    class-transformer: ^0.5.1
     eslint: latest
     form-data: ^4.0.0
     isomorphic-ws: ^5.0.0
