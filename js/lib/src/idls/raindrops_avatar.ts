@@ -1164,11 +1164,6 @@ export type RaindropsAvatar = {
           "isSigner": true
         },
         {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -3423,11 +3418,6 @@ export const IDL: RaindropsAvatar = {
           "name": "authority",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "systemProgram",

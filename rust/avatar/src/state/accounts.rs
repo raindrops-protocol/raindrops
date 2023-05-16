@@ -347,7 +347,8 @@ impl Trait {
         TraitStatus::SPACE + // trait status
         Self::variant_metadata_space(&variant_metadata) + // variant metadata
         (1 + PaymentDetails::SPACE) + // optional equip payment details
-        (1 + PaymentDetails::SPACE) // optional remove payment method
+        (1 + PaymentDetails::SPACE) + // optional remove payment method
+        (1 + TraitGate::INIT_SPACE) // optional trait gate space
     }
 
     // return the matching variant
@@ -580,6 +581,8 @@ impl anchor_lang::Id for NoopProgram {
 
 #[cfg(test)]
 mod tests {
+    use std::{assert_eq, vec};
+
     use crate::state::data::{AttributeStatus, Operator::And, TraitGate, VariantStatus};
 
     use super::*;
@@ -681,6 +684,78 @@ mod tests {
 
         avatar.remove_trait_data(trait2);
         assert_eq!(avatar.traits.len(), 0);
+    }
+
+    #[test]
+    fn test_has_attribute_conflicts() {
+        let trait_conflicts = TraitConflicts {
+            avatar_class: Pubkey::new_unique(),
+            trait_account: Pubkey::new_unique(),
+            attribute_conflicts: vec![0],
+            trait_conflicts: vec![],
+        };
+        let has_conflicts = trait_conflicts.has_conflicts(&[], &[0]);
+        assert!(has_conflicts);
+    }
+
+    #[test]
+    fn test_has_no_attribute_conflicts() {
+        let trait_conflicts = TraitConflicts {
+            avatar_class: Pubkey::new_unique(),
+            trait_account: Pubkey::new_unique(),
+            attribute_conflicts: vec![1],
+            trait_conflicts: vec![],
+        };
+        let has_conflicts = trait_conflicts.has_conflicts(&[], &[0]);
+        assert!(!has_conflicts);
+    }
+
+    #[test]
+    fn test_has_trait_conflicts() {
+        let trait_conflicts = TraitConflicts {
+            avatar_class: Pubkey::new_unique(),
+            trait_account: Pubkey::new_unique(),
+            attribute_conflicts: vec![],
+            trait_conflicts: vec![0],
+        };
+        let has_conflicts = trait_conflicts.has_conflicts(&[0], &[]);
+        assert!(has_conflicts);
+    }
+
+    #[test]
+    fn test_has_no_trait_conflicts() {
+        let trait_conflicts = TraitConflicts {
+            avatar_class: Pubkey::new_unique(),
+            trait_account: Pubkey::new_unique(),
+            attribute_conflicts: vec![],
+            trait_conflicts: vec![1],
+        };
+        let has_conflicts = trait_conflicts.has_conflicts(&[0], &[]);
+        assert!(!has_conflicts);
+    }
+
+    #[test]
+    fn test_has_trait_and_attribute_conflicts() {
+        let trait_conflicts = TraitConflicts {
+            avatar_class: Pubkey::new_unique(),
+            trait_account: Pubkey::new_unique(),
+            attribute_conflicts: vec![1],
+            trait_conflicts: vec![1],
+        };
+        let has_conflicts = trait_conflicts.has_conflicts(&[1], &[1]);
+        assert!(has_conflicts);
+    }
+
+    #[test]
+    fn test_no_conflicts() {
+        let trait_conflicts = TraitConflicts {
+            avatar_class: Pubkey::new_unique(),
+            trait_account: Pubkey::new_unique(),
+            attribute_conflicts: vec![],
+            trait_conflicts: vec![],
+        };
+        let has_conflicts = trait_conflicts.has_conflicts(&[], &[]);
+        assert!(!has_conflicts);
     }
 
     #[test]

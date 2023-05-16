@@ -22,8 +22,6 @@ pub struct AddTraitConflicts<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    pub rent: Sysvar<'info, Rent>,
-
     pub system_program: Program<'info, System>,
 }
 

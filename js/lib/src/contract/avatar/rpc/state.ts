@@ -258,6 +258,18 @@ export interface VerifyPaymentMintTestAccounts {
   payer: anchor.web3.PublicKey;
 }
 
+export interface AddTraitConflictsAccounts {
+  avatarClass: anchor.web3.PublicKey;
+  traitAccount: anchor.web3.PublicKey;
+  authority: anchor.web3.PublicKey;
+}
+
+export interface AddTraitConflictsArgs {
+  traitAccounts?: anchor.web3.PublicKey[];
+  traitIds?: number[];
+  attributeIds?: number[];
+}
+
 export interface Attribute {
   id: number;
   trait: anchor.web3.PublicKey | null;
@@ -486,6 +498,7 @@ export class Avatar {
 }
 
 export class Trait {
+  readonly id: number;
   readonly traitAddress: anchor.web3.PublicKey;
   readonly avatarClass: anchor.web3.PublicKey;
   readonly traitMint: anchor.web3.PublicKey;
@@ -497,6 +510,7 @@ export class Trait {
   readonly removePaymentDetails: PaymentDetailsExpanded | null;
 
   constructor(
+    id: number,
     traitAddress: anchor.web3.PublicKey,
     avatarClass: anchor.web3.PublicKey,
     traitMint: anchor.web3.PublicKey,
@@ -507,6 +521,7 @@ export class Trait {
     equipPaymentDetails: PaymentDetailsExpanded | null,
     removePaymentDetails: PaymentDetailsExpanded | null
   ) {
+    this.id = id;
     this.traitAddress = traitAddress;
     this.avatarClass = avatarClass;
     this.traitMint = traitMint;
@@ -824,4 +839,11 @@ export class TransferPaymentAction {
   format(): any {
     return { transfer: { treasury: this.treasury } };
   }
+}
+
+export interface TraitConflicts {
+  avatarClass: anchor.web3.PublicKey;
+  traitAccount: anchor.web3.PublicKey;
+  attributeConflicts: number[];
+  traitConflicts: number[];
 }
