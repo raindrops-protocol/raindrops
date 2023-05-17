@@ -453,7 +453,6 @@ export class AvatarClient {
 
       const equipTraitIx = await this.program.methods
         .equipTraitAuthority()
-        .preInstructions([createAtaIx])
         .accounts({
           avatarClass: accounts.avatarClass,
           avatar: accounts.avatar,
@@ -467,7 +466,7 @@ export class AvatarClient {
         })
         .instruction();
 
-      equipTraitIxs.push(equipTraitIx);
+      equipTraitIxs.push(createAtaIx, equipTraitIx);
     }
 
     // create transaction, remove trait instructions go first
@@ -1043,6 +1042,9 @@ export class AvatarClient {
         throw new Error(`update target unsupported: ${updateStateData.target}`);
     }
 
+    console.log("paymentMethodData: %s", JSON.stringify(paymentMethodData));
+    console.log("paymentMethodAddr: %s", paymentMethodAddress.toString());
+
     // if fungible
     if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
       if (paymentMethodData.action instanceof BurnPaymentAction) {
@@ -1082,17 +1084,17 @@ export class AvatarClient {
         );
       }
 
-      if (!args.verifyPaymentMintArgs) {
-        throw new Error(
-          `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
-        );
-      }
-
       // skip creating this tx if its already verified
       const verified = await this.getVerifiedPaymentMint(
         verifiedPaymentMintPDA(paymentMethodAddress, accounts.paymentMint!)
       );
       if (!verified) {
+        if (!args.verifyPaymentMintArgs) {
+          throw new Error(
+            `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
+          );
+        }
+
         // create the verify mint transaction, must be ran before actionTree transactions
         const verifyPaymentMintAccounts: VerifyPaymentMintAccounts = {
           payer: accounts.authority,

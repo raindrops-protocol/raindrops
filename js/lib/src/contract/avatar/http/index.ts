@@ -567,7 +567,3 @@ export interface BeginUpdateRestResponse {
   paymentData: [anchor.web3.PublicKey, anchor.BN][];
   updateTarget: AvatarRpc.UpdateTarget;
 }
-
-export const AVATAR_FEE_VAULT = new anchor.web3.PublicKey(
-  "Fequ3NnuSMUda7WXBARqEAav6ehuysAnLx2dM7s5wwan"
-);
