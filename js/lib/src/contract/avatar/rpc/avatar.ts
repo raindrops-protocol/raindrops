@@ -19,12 +19,10 @@ import {
   Trait,
   TraitRenderConfig,
   StageRenderConfig,
-  AVATAR_ID,
   Variant,
   VariantMetadata,
   VariantOption,
   TraitData,
-  AVATAR_FEE_VAULT,
   UpdateTraitVariantMetadataAccounts,
   UpdateTraitVariantMetadataArgs,
   UpdateClassVariantMetadataAccounts,
@@ -80,22 +78,33 @@ import {
   RemoveTraitsAuthorityAccounts,
   RemoveTraitAccounts,
   PaymentDetailsExpanded,
+  TRAIT_CONFLICTS_PREFIX,
+  AddTraitConflictsAccounts,
+  AddTraitConflictsArgs,
+  TraitConflicts,
 } from "./state";
 import {
+  AVATAR_RAIN_VAULT_DEVNET,
+  AVATAR_RAIN_VAULT_MAINNET,
   RAIN_TOKEN_MINT,
   RAIN_TOKEN_MINT_DEV,
 } from "../../../constants/common";
 import * as cmp from "@solana/spl-account-compression";
+import { Constants, Idls } from "../../../main";
 
 export class AvatarClient {
   private program: anchor.Program<RaindropsAvatar>;
   readonly provider: anchor.AnchorProvider;
   readonly programId: anchor.web3.PublicKey;
 
-  constructor(program: anchor.Program<RaindropsAvatar>) {
-    this.program = program;
-    this.provider = program.provider as anchor.AnchorProvider;
-    this.programId = AVATAR_ID;
+  constructor(provider: anchor.AnchorProvider) {
+    this.program = new anchor.Program(
+      Idls.AvatarIDL,
+      Constants.ProgramIds.AVATAR_ID,
+      provider
+    );
+    this.provider = provider;
+    this.programId = Constants.ProgramIds.AVATAR_ID;
   }
 
   async createAvatarClass(
@@ -139,6 +148,7 @@ export class AvatarClient {
       accounts.authority
     );
 
+    let rainVault: anchor.web3.PublicKey;
     let rainMint: anchor.web3.PublicKey;
     try {
       // if the mint account exists on chain then we are either on mainnet or running locally
@@ -147,8 +157,10 @@ export class AvatarClient {
         RAIN_TOKEN_MINT,
         "confirmed"
       );
+      rainVault = AVATAR_RAIN_VAULT_MAINNET;
       rainMint = RAIN_TOKEN_MINT;
     } catch (_e) {
+      rainVault = AVATAR_RAIN_VAULT_DEVNET;
       rainMint = RAIN_TOKEN_MINT_DEV;
     }
 
@@ -164,10 +176,10 @@ export class AvatarClient {
         avatarClassMintAta: avatarClassMintAta,
         avatar: avatar,
         avatarMint: accounts.avatarMint,
-        rainMint: rainMint,
         authorityRainAta: authorityRainAta,
         authority: accounts.authority,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        rainVault: rainVault,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -192,6 +204,29 @@ export class AvatarClient {
 
     const trait = traitPDA(accounts.avatarClass, accounts.traitMint);
 
+    const traitConflicts = traitConflictsPDA(accounts.avatarClass, trait);
+
+    let rainVault: anchor.web3.PublicKey;
+    let rainMint: anchor.web3.PublicKey;
+    try {
+      // if the mint account exists on chain then we are either on mainnet or running locally
+      await splToken.getMint(
+        this.provider.connection,
+        RAIN_TOKEN_MINT,
+        "confirmed"
+      );
+      rainVault = AVATAR_RAIN_VAULT_MAINNET;
+      rainMint = RAIN_TOKEN_MINT;
+    } catch (_e) {
+      rainVault = AVATAR_RAIN_VAULT_DEVNET;
+      rainMint = RAIN_TOKEN_MINT_DEV;
+    }
+
+    const authorityRainAta = await splToken.getAssociatedTokenAddress(
+      rainMint,
+      accounts.authority
+    );
+
     const tx = await this.program.methods
       .createTrait(args)
       .accounts({
@@ -199,7 +234,10 @@ export class AvatarClient {
         avatarClassMintAta: avatarClassMintAta,
         traitAccount: trait,
         traitMint: accounts.traitMint,
+        traitConflicts: traitConflicts,
         authority: accounts.authority,
+        authorityRainAta: authorityRainAta,
+        rainVault: rainVault,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -216,6 +254,8 @@ export class AvatarClient {
     const avatarData = await this.getAvatar(accounts.avatar);
 
     const trait = traitPDA(avatarData.avatarClass, accounts.traitMint);
+
+    const traitConflicts = traitConflictsPDA(avatarData.avatarClass, trait);
 
     // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
     const beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
@@ -264,13 +304,12 @@ export class AvatarClient {
       .accounts({
         avatarClass: avatarData.avatarClass,
         traitAccount: trait,
-        traitMint: accounts.traitMint,
         traitSource: traitSource,
         avatar: accounts.avatar,
         avatarTraitAta: avatarTraitAta,
+        traitConflicts: traitConflicts,
         payer: accounts.payer,
         updateState: updateState,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -338,25 +377,32 @@ export class AvatarClient {
           true
         );
 
+        const createAtaIx =
+          splToken.createAssociatedTokenAccountIdempotentInstruction(
+            accounts.authority,
+            avatarTraitAta,
+            accounts.avatar,
+            traitMint,
+            splToken.TOKEN_PROGRAM_ID,
+            splToken.ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
         const equipTraitIx = await this.program.methods
           .equipTraitAuthority()
           .accounts({
             avatarClass: avatarData.avatarClass,
             avatar: accounts.avatar,
             traitAccount: trait,
-            traitMint: traitMint,
             traitSource: traitSource,
             avatarTraitAta: avatarTraitAta,
             avatarClassMintAta: avatarClassMintAta,
             authority: accounts.authority,
-            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             tokenProgram: splToken.TOKEN_PROGRAM_ID,
-            associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: anchor.web3.SystemProgram.programId,
           })
           .instruction();
 
-        equipTraitIxs.push(equipTraitIx);
+        equipTraitIxs.push(createAtaIx, equipTraitIx);
       }
     }
 
@@ -395,25 +441,32 @@ export class AvatarClient {
         true
       );
 
+      const createAtaIx =
+        splToken.createAssociatedTokenAccountIdempotentInstruction(
+          accounts.authority,
+          avatarTraitAta,
+          accounts.avatar,
+          traitMint,
+          splToken.TOKEN_PROGRAM_ID,
+          splToken.ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
       const equipTraitIx = await this.program.methods
         .equipTraitAuthority()
         .accounts({
           avatarClass: accounts.avatarClass,
           avatar: accounts.avatar,
           traitAccount: trait,
-          traitMint: traitMint,
           traitSource: traitSource,
           avatarTraitAta: avatarTraitAta,
           avatarClassMintAta: avatarClassMintAta,
           authority: accounts.authority,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           tokenProgram: splToken.TOKEN_PROGRAM_ID,
-          associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .instruction();
 
-      equipTraitIxs.push(equipTraitIx);
+      equipTraitIxs.push(createAtaIx, equipTraitIx);
     }
 
     // create transaction, remove trait instructions go first
@@ -490,9 +543,7 @@ export class AvatarClient {
         updateState: updateState,
         traitAccount: trait,
         traitDestination: traitDestination,
-        traitMint: accounts.traitMint,
         payer: accounts.payer,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -801,7 +852,6 @@ export class AvatarClient {
           traitMint: traitData.traitMint,
           avatarTraitAta: avatarTraitAta,
           avatarMintAta: avatarAuthorityAta,
-          raindropsFeeVault: AVATAR_FEE_VAULT,
           authority: avatarAuthority,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
@@ -821,7 +871,6 @@ export class AvatarClient {
           traitAccount: traitAccount,
           avatar: accounts.avatar,
           avatarMintAta: avatarAuthorityAta,
-          raindropsFeeVault: AVATAR_FEE_VAULT,
           authority: avatarAuthority,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
@@ -993,6 +1042,9 @@ export class AvatarClient {
         throw new Error(`update target unsupported: ${updateStateData.target}`);
     }
 
+    console.log("paymentMethodData: %s", JSON.stringify(paymentMethodData));
+    console.log("paymentMethodAddr: %s", paymentMethodAddress.toString());
+
     // if fungible
     if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
       if (paymentMethodData.action instanceof BurnPaymentAction) {
@@ -1032,17 +1084,17 @@ export class AvatarClient {
         );
       }
 
-      if (!args.verifyPaymentMintArgs) {
-        throw new Error(
-          `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
-        );
-      }
-
       // skip creating this tx if its already verified
       const verified = await this.getVerifiedPaymentMint(
         verifiedPaymentMintPDA(paymentMethodAddress, accounts.paymentMint!)
       );
       if (!verified) {
+        if (!args.verifyPaymentMintArgs) {
+          throw new Error(
+            `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
+          );
+        }
+
         // create the verify mint transaction, must be ran before actionTree transactions
         const verifyPaymentMintAccounts: VerifyPaymentMintAccounts = {
           payer: accounts.authority,
@@ -1428,6 +1480,68 @@ export class AvatarClient {
     return tx;
   }
 
+  async addTraitConflicts(
+    accounts: AddTraitConflictsAccounts,
+    args: AddTraitConflictsArgs
+  ): Promise<anchor.web3.Transaction> {
+    const traitConflicts = traitConflictsPDA(
+      accounts.avatarClass,
+      accounts.traitAccount
+    );
+
+    const avatarClassData = await this.getAvatarClass(accounts.avatarClass);
+
+    const avatarClassMintAta = await splToken.getAssociatedTokenAddress(
+      avatarClassData.mint,
+      accounts.authority
+    );
+
+    let traitIds: number[] = [];
+    let attributeIds: number[] = [];
+
+    if (args.attributeIds?.length > 0) {
+      attributeIds = args.attributeIds;
+    }
+
+    if (args.traitIds?.length > 0) {
+      traitIds = args.traitIds;
+    }
+
+    // optionally grab the ids from the trait pda
+    if (args.traitAccounts?.length > 0) {
+      for (const traitAccount of args.traitAccounts) {
+        const traitData = await this.getTrait(traitAccount);
+        traitIds.push(traitData.id);
+      }
+    }
+
+    if (attributeIds.length === 0 && traitIds.length === 0) {
+      throw new Error(
+        `TraitId and AttributeId arguments must be set to call addTraitConflicts`
+      );
+    }
+
+    const ixArgs = {
+      traitIds,
+      attributeIds,
+    };
+
+    const tx = await this.program.methods
+      .addTraitConflicts(ixArgs)
+      .accounts({
+        avatarClass: accounts.avatarClass,
+        avatarClassMintAta: avatarClassMintAta,
+        traitConflicts: traitConflicts,
+        authority: accounts.authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .transaction();
+
+    await this.setPayer(tx, accounts.authority);
+
+    return tx;
+  }
+
   async verifyPaymentMint(
     accounts: VerifyPaymentMintAccounts,
     args: VerifyPaymentMintArgs
@@ -1692,6 +1806,7 @@ export class AvatarClient {
     }
 
     return new Trait(
+      traitData.id,
       new anchor.web3.PublicKey(trait),
       traitData.avatarClass,
       traitData.traitMint,
@@ -1771,6 +1886,21 @@ export class AvatarClient {
     } catch (_e) {
       return null;
     }
+  }
+
+  async getTraitConflicts(
+    traitConflicts: anchor.web3.PublicKey
+  ): Promise<TraitConflicts> {
+    const traitConflictsRaw = await this.program.account.traitConflicts.fetch(
+      traitConflicts
+    );
+
+    return {
+      avatarClass: new anchor.web3.PublicKey(traitConflictsRaw.avatarClass),
+      traitAccount: new anchor.web3.PublicKey(traitConflictsRaw.traitAccount),
+      attributeConflicts: traitConflictsRaw.attributeConflicts,
+      traitConflicts: traitConflictsRaw.traitConflicts,
+    };
   }
 
   async getNftHolder(
@@ -1968,7 +2098,7 @@ export function avatarClassPDA(
 ): anchor.web3.PublicKey {
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(AVATAR_CLASS_PREFIX), avatarClassMint.toBuffer()],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -1978,7 +2108,7 @@ export function avatarPDA(
 ): anchor.web3.PublicKey {
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(AVATAR_PREFIX), avatarClass.toBuffer(), avatarMint.toBuffer()],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -1988,7 +2118,7 @@ export function traitPDA(
 ): anchor.web3.PublicKey {
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(TRAIT_PREFIX), avatarClass.toBuffer(), traitMint.toBuffer()],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -2002,7 +2132,7 @@ export function paymentMethodPDA(
       avatarClass.toBuffer(),
       paymentIndex.toArrayLike(Buffer, "le", 8),
     ],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -2013,7 +2143,7 @@ export function updateStatePDA(
   const hash = hashUpdateTarget(updateTarget);
   return anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(UPDATE_STATE_PREFIX), avatar.toBuffer(), hash],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }
 
@@ -2027,6 +2157,20 @@ export function verifiedPaymentMintPDA(
       paymentMethod.toBuffer(),
       paymentMint.toBuffer(),
     ],
-    AVATAR_ID
+    Constants.ProgramIds.AVATAR_ID
+  )[0];
+}
+
+export function traitConflictsPDA(
+  avatarClass: anchor.web3.PublicKey,
+  traitAccount: anchor.web3.PublicKey
+): anchor.web3.PublicKey {
+  return anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(TRAIT_CONFLICTS_PREFIX),
+      avatarClass.toBuffer(),
+      traitAccount.toBuffer(),
+    ],
+    Constants.ProgramIds.AVATAR_ID
   )[0];
 }

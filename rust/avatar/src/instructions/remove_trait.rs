@@ -22,25 +22,20 @@ pub struct RemoveTrait<'info> {
     pub update_state: Account<'info, UpdateState>,
 
     #[account(
-        has_one = trait_mint,
         has_one = avatar_class,
-        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_mint.key().as_ref()], bump)]
+        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_account.trait_mint.key().as_ref()], bump)]
     pub trait_account: Account<'info, Trait>,
 
-    pub trait_mint: Box<Account<'info, token::Mint>>,
-
-    #[account(mut, address = update_state.target.get_remove_trait_destination(&trait_mint.key()).unwrap())]
+    #[account(mut, address = update_state.target.get_remove_trait_destination(&trait_account.trait_mint.key()).unwrap())]
     pub trait_destination: Account<'info, token::TokenAccount>,
 
     #[account(mut,
-        associated_token::mint = trait_mint,
+        associated_token::mint = trait_account.trait_mint,
         associated_token::authority = avatar)]
     pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
-
-    pub rent: Sysvar<'info, Rent>,
 
     pub token_program: Program<'info, token::Token>,
 

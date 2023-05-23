@@ -93,7 +93,7 @@ impl VariantOption {
     fn trait_gate_space(trait_gate: &Option<TraitGate>) -> usize {
         match trait_gate {
             Some(trait_gate) => trait_gate.space(),
-            None => TraitGate::DEFAULT_SPACE,
+            None => TraitGate::INIT_SPACE,
         }
     }
 }
@@ -158,7 +158,7 @@ pub struct TraitGate {
 }
 
 impl TraitGate {
-    pub const DEFAULT_SPACE: usize = Operator::SPACE + 4;
+    pub const INIT_SPACE: usize = Operator::SPACE + 4;
     pub fn space(&self) -> usize {
         Operator::SPACE + // operator
         4 + (32 * self.traits.len()) // tokens
@@ -193,6 +193,7 @@ impl Operator {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct TraitData {
     pub attribute_ids: Vec<u16>,
+    pub trait_id: u16,
     pub trait_address: Pubkey,
     pub variant_selection: Vec<VariantOption>,
 }
@@ -200,6 +201,7 @@ pub struct TraitData {
 impl TraitData {
     pub fn new(
         attribute_ids: Vec<u16>,
+        trait_id: u16,
         trait_address: Pubkey,
         variant_metadata: &[VariantMetadata],
     ) -> Self {
@@ -209,6 +211,7 @@ impl TraitData {
             .collect();
         TraitData {
             attribute_ids,
+            trait_id,
             trait_address,
             variant_selection,
         }
@@ -216,6 +219,7 @@ impl TraitData {
 
     pub fn current_space(&self) -> usize {
         let mut total_bytes = (4 + (self.attribute_ids.len() * 2)) + // attribute ids
+        2 + // trait_id
         32 + // trait address
         4; // variant selection vector bytes
 
@@ -488,6 +492,7 @@ mod tests {
     fn test_update_variant_selection() {
         let mut trait_data = TraitData {
             attribute_ids: vec![1, 2],
+            trait_id: 0,
             trait_address: create_pubkeys(1)[0],
             variant_selection: vec![VariantOption {
                 variant_id: "lskdyso1".to_string(),
@@ -535,6 +540,7 @@ mod tests {
     fn test_update_variant_selection_new_variant() {
         let mut trait_data = TraitData {
             attribute_ids: vec![1, 2],
+            trait_id: 0,
             trait_address: create_pubkeys(1)[0],
             variant_selection: vec![VariantOption {
                 variant_id: "jfh67odq".to_string(),

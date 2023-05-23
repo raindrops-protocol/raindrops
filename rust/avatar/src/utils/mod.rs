@@ -4,20 +4,41 @@ use anchor_lang::{
     prelude::*,
     system_program::{transfer, Transfer},
 };
+use anchor_spl::token;
 
 use crate::state::data::{AttributeMetadata, TraitData};
 
-static MAINNET_RAIN: &str = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL";
-static DEVNET_RAIN: &str = "97R2xnMcp4MQTitwy9hsMu6ybXcxJk368yyA9T9QiMMv";
-static RAINDROPS_FEE_VAULT: &str = "Fequ3NnuSMUda7WXBARqEAav6ehuysAnLx2dM7s5wwan";
-static RAINDROPS_FEE_AMOUNT: u64 = 1000000;
+// owner: BuwHRcmPwbVhnY6HBm5tTSdj9z8b59atBaaihRbntWR9
+static MAINNET_RAIN_VAULT: &str = "DLHSKqRuAferYFTKqLAMRKM2hgze5vtYQPot97LXUnVB";
+static DEVNET_RAIN_VAULT: &str = "66NekdBHVwqdvGtWkjAaJsjJPX5nZPbXrYUbZihFoDzr";
+static RAIN_FEE_AMOUNT: u64 = 100_000; // 1 $RAIN
 
 // return true if the mint address equals the $RAIN address
-pub fn is_rain(mint: Pubkey) -> bool {
-    let rain_mint = Pubkey::from_str(MAINNET_RAIN).unwrap();
-    let rain_mint_dev = Pubkey::from_str(DEVNET_RAIN).unwrap();
+pub fn is_rain_vault(token_account: Pubkey) -> bool {
+    let rain_vault = Pubkey::from_str(MAINNET_RAIN_VAULT).unwrap();
+    let rain_vault_dev = Pubkey::from_str(DEVNET_RAIN_VAULT).unwrap();
 
-    mint.eq(&rain_mint) || mint.eq(&rain_mint_dev)
+    token_account.eq(&rain_vault) || token_account.eq(&rain_vault_dev)
+}
+
+// transfer the $RAIN fee to the Raindrops Vault
+pub fn pay_rain_fee<'info>(
+    from_ata: AccountInfo<'info>,
+    to_ata: AccountInfo<'info>,
+    from_authority: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+) -> Result<()> {
+    // transfer 1 $RAIN
+    let transfer_accounts = token::Transfer {
+        from: from_ata,
+        to: to_ata,
+        authority: from_authority,
+    };
+
+    token::transfer(
+        CpiContext::new(token_program, transfer_accounts),
+        RAIN_FEE_AMOUNT,
+    )
 }
 
 pub fn reallocate<'info>(
@@ -64,28 +85,6 @@ pub fn reallocate<'info>(
     }
 }
 
-// return true if address matches our expected fee address
-pub fn is_raindrops_fee_vault(address: Pubkey) -> bool {
-    address.eq(&Pubkey::from_str(RAINDROPS_FEE_VAULT).unwrap())
-}
-
-// transfer lamports to the fee vault
-pub fn pay_raindrops_fee<'info>(
-    receiver: &AccountInfo<'info>,
-    payer: Signer<'info>,
-    system_program: Program<'info, System>,
-) -> Result<()> {
-    let transfer_accounts = Transfer {
-        from: payer.to_account_info(),
-        to: receiver.to_account_info(),
-    };
-
-    transfer(
-        CpiContext::new(system_program.to_account_info(), transfer_accounts),
-        RAINDROPS_FEE_AMOUNT,
-    )
-}
-
 pub fn validate_attribute_availability(
     required_attribute_ids: &Vec<u16>,
     equipped_avatar_traits: &[TraitData],
@@ -117,22 +116,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn is_mainnet_rain() {
-        let rain_mint = Pubkey::from_str(MAINNET_RAIN).unwrap();
-        assert!(is_rain(rain_mint));
-    }
-
-    #[test]
-    fn is_devnet_rain() {
-        let rain_mint_dev = Pubkey::from_str(DEVNET_RAIN).unwrap();
-        assert!(is_rain(rain_mint_dev));
-    }
-
-    #[test]
     fn test_is_available() {
         let required_attribute_ids = vec![0, 1];
         let equipped_avatar_traits: Vec<TraitData> = vec![TraitData {
             attribute_ids: vec![9],
+            trait_id: 0,
             trait_address: Pubkey::new_unique(),
             variant_selection: vec![],
         }];
@@ -163,11 +151,13 @@ mod tests {
         let equipped_avatar_traits: Vec<TraitData> = vec![
             TraitData {
                 attribute_ids: vec![0],
+                trait_id: 1,
                 trait_address: Pubkey::new_unique(),
                 variant_selection: vec![],
             },
             TraitData {
                 attribute_ids: vec![9],
+                trait_id: 0,
                 trait_address: Pubkey::new_unique(),
                 variant_selection: vec![],
             },
@@ -217,6 +207,7 @@ mod tests {
         let required_attribute_ids = vec![0, 1];
         let equipped_avatar_traits: Vec<TraitData> = vec![TraitData {
             attribute_ids: vec![9],
+            trait_id: 0,
             trait_address: Pubkey::new_unique(),
             variant_selection: vec![],
         }];

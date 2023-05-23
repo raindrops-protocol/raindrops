@@ -7,7 +7,7 @@ use crate::{
         data::{PaymentDetails, UpdateTarget},
         errors::ErrorCode,
     },
-    utils::{is_raindrops_fee_vault, pay_raindrops_fee, validate_attribute_availability},
+    utils::validate_attribute_availability,
 };
 
 #[derive(Accounts)]
@@ -40,17 +40,12 @@ pub struct BeginTraitUpdate<'info> {
 
     pub trait_mint: Box<Account<'info, token::Mint>>,
 
-    // we create this here because this ix must be signed by the user and the other steps are done by our API
-    // we want to push the bill off to them
+    // we create this here so the updater pays the rent
     #[account(init_if_needed,
         payer = authority,
         associated_token::mint = trait_mint,
         associated_token::authority = avatar)]
     pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
-
-    /// CHECK: checked by constraint
-    #[account(mut, constraint = is_raindrops_fee_vault(raindrops_fee_vault.key()))]
-    pub raindrops_fee_vault: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -154,10 +149,5 @@ pub fn handler(ctx: Context<BeginTraitUpdate>, args: BeginTraitUpdateArgs) -> Re
         target: args.update_target,
     });
 
-    // pay raindrops fee
-    pay_raindrops_fee(
-        &ctx.accounts.raindrops_fee_vault.to_account_info(),
-        ctx.accounts.authority.clone(),
-        ctx.accounts.system_program.clone(),
-    )
+    Ok(())
 }

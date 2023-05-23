@@ -19,7 +19,7 @@ describe("avatar", () => {
 
   const program = new anchor.Program<Idls.Avatar>(
     Idls.AvatarIDL,
-    AvatarRpc.AVATAR_ID,
+    Constants.ProgramIds.AVATAR_ID,
     anchor.getProvider()
   );
   const provider = program.provider as anchor.AnchorProvider;
@@ -40,15 +40,23 @@ describe("avatar", () => {
     mintAuthoritySecretKey
   );
 
-  // seed our raindrops fee vault account with some sol, not really necessary
-  connection.requestAirdrop(
-    AvatarRpc.AVATAR_FEE_VAULT,
-    100 * anchor.web3.LAMPORTS_PER_SOL
-  );
+  before("create rain token vault", async () => {
+    const [_rpc, _http, tokenVaultPayer] = await newPayer(
+      connection,
+      rainTokenMint,
+      rainTokenMintAuthority
+    );
+    await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
+      tokenVaultPayer,
+      rainTokenMint,
+      new anchor.web3.PublicKey("BuwHRcmPwbVhnY6HBm5tTSdj9z8b59atBaaihRbntWR9")
+    );
+  });
 
   // expose files at http://localhost:3000/{file}.json
   const fsServer = fileServer("./tests/files/lily");
-  
+
   // shutdown express server after testing
   after(() => fsServer.close());
 
@@ -1166,14 +1174,15 @@ describe("avatar", () => {
 
     const treasury = anchor.web3.Keypair.generate().publicKey;
 
-    const [paymentNfts, paymentMethod, merkleTree] = await createNonFungiblePaymentMethod(
-      connection,
-      nftHolder,
-      avatarClassAuthorityClient,
-      avatarClass,
-      1,
-      treasury
-    );
+    const [paymentNfts, paymentMethod, merkleTree] =
+      await createNonFungiblePaymentMethod(
+        connection,
+        nftHolder,
+        avatarClassAuthorityClient,
+        avatarClass,
+        1,
+        treasury
+      );
 
     const treasuryAta = await splToken.getOrCreateAssociatedTokenAccount(
       connection,
@@ -1419,13 +1428,14 @@ describe("avatar", () => {
       await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
     console.log("createAvatarTxSig: %s", createAvatarTxSig);
 
-    const [paymentNft, paymentMethod, merkleTree] = await createNonFungiblePaymentMethod(
-      connection,
-      nftHolder,
-      avatarClassAuthorityClient,
-      avatarClass,
-      1
-    );
+    const [paymentNft, paymentMethod, merkleTree] =
+      await createNonFungiblePaymentMethod(
+        connection,
+        nftHolder,
+        avatarClassAuthorityClient,
+        avatarClass,
+        1
+      );
 
     const traitMint = await createTraitSft(
       connection,
@@ -2150,10 +2160,9 @@ describe("avatar", () => {
       { id: 0, name: "accessories", status: { mutable: true } },
     ];
 
-    const paymentMint = await createPaymentMint(
-      avatarClassAuthorityClient,
-      [nftHolder.publicKey]
-    );
+    const paymentMint = await createPaymentMint(avatarClassAuthorityClient, [
+      nftHolder.publicKey,
+    ]);
 
     const treasury = anchor.web3.Keypair.generate().publicKey;
 
@@ -3907,6 +3916,350 @@ describe("avatar", () => {
       updateClassVariantMetadataTxSig
     );
   });
+  it("add trait conflicts to a trait", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata = [
+      { id: 0, name: "accessories", status: { mutable: true } },
+      { id: 1, name: "body", status: { mutable: true } },
+    ];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: [],
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    // create trait A, define a conflict with trait B
+
+    const traitAMint = await createTraitSft(
+      connection,
+      "accessories",
+      nftHolder,
+      [nftHolder.publicKey]
+    );
+
+    const traitAAccount = await createTrait(
+      "accessory1",
+      traitAMint,
+      [0],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      null,
+      null
+    );
+
+    // create trait B, define a conflict with trait A
+
+    const traitBMint = await createTraitSft(connection, "body", nftHolder, [
+      nftHolder.publicKey,
+    ]);
+
+    const traitBAccount = await createTrait(
+      "body1",
+      traitBMint,
+      [1],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      null,
+      null
+    );
+
+    const addTraitConflictsToAAccounts: AvatarRpc.AddTraitConflictsAccounts = {
+      avatarClass: avatarClass,
+      authority: avatarClassAuthority.publicKey,
+      traitAccount: traitAAccount,
+    };
+    const addTraitConflictsToAArgs: AvatarRpc.AddTraitConflictsArgs = {
+      traitIds: [1],
+    };
+
+    const addTraitConflictsToATx =
+      await avatarClassAuthorityClient.addTraitConflicts(
+        addTraitConflictsToAAccounts,
+        addTraitConflictsToAArgs
+      );
+    const addTraitConflictsToATxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        addTraitConflictsToATx
+      );
+    console.log("addTraitConflictsToATxSig: %s", addTraitConflictsToATxSig);
+
+    const addTraitConflictsToBAccounts: AvatarRpc.AddTraitConflictsAccounts = {
+      avatarClass: avatarClass,
+      authority: avatarClassAuthority.publicKey,
+      traitAccount: traitBAccount,
+    };
+    const addTraitConflictsToBArgs: AvatarRpc.AddTraitConflictsArgs = {
+      traitAccounts: [traitAAccount],
+    };
+
+    const addTraitConflictsToBTx =
+      await avatarClassAuthorityClient.addTraitConflicts(
+        addTraitConflictsToBAccounts,
+        addTraitConflictsToBArgs
+      );
+    const addTraitConflictsToBTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        addTraitConflictsToBTx
+      );
+    console.log("addTraitConflictsToBTxSig: %s", addTraitConflictsToBTxSig);
+
+    const traitAConflictsData =
+      await avatarClassAuthorityClient.getTraitConflicts(
+        AvatarRpc.traitConflictsPDA(avatarClass, traitAAccount)
+      );
+    assert.equal(traitAConflictsData.attributeConflicts.length, 0);
+    assert.equal(traitAConflictsData.traitConflicts.length, 1);
+    assert.equal(traitAConflictsData.traitConflicts[0], 1);
+
+    const traitBConflictsData =
+      await avatarClassAuthorityClient.getTraitConflicts(
+        AvatarRpc.traitConflictsPDA(avatarClass, traitBAccount)
+      );
+    assert.equal(traitBConflictsData.attributeConflicts.length, 0);
+    assert.equal(traitBConflictsData.traitConflicts.length, 1);
+    assert.equal(traitBConflictsData.traitConflicts[0], 0);
+
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      traitMint: traitAMint,
+      payer: nftHolderClient.provider.publicKey,
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    const equipTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipTraitTx
+    );
+    console.log("equipTraitTxSig: %s", equipTraitTxSig);
+
+    const equipTraitWithConflictAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      traitMint: traitBMint,
+      payer: nftHolderClient.provider.publicKey,
+    };
+
+    const equipTraitWithConflictTx = await nftHolderClient.equipTrait(
+      equipTraitWithConflictAccounts
+    );
+    assertRejects(
+      nftHolderClient.provider.sendAndConfirm(equipTraitWithConflictTx)
+    );
+  });
+  it("add attribute conflicts to a trait", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata = [
+      { id: 0, name: "accessories", status: { mutable: true } },
+      { id: 1, name: "body", status: { mutable: true } },
+    ];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: [],
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    // create trait A, define a conflict with trait B
+
+    const traitAMint = await createTraitSft(
+      connection,
+      "accessories",
+      nftHolder,
+      [nftHolder.publicKey]
+    );
+
+    const traitAAccount = await createTrait(
+      "accessory1",
+      traitAMint,
+      [0],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      null,
+      null
+    );
+
+    // create trait B, define a conflict with trait A
+
+    const traitBMint = await createTraitSft(connection, "body", nftHolder, [
+      nftHolder.publicKey,
+    ]);
+
+    await createTrait(
+      "body1",
+      traitBMint,
+      [1],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      null,
+      null
+    );
+
+    const addTraitConflictsToAAccounts: AvatarRpc.AddTraitConflictsAccounts = {
+      avatarClass: avatarClass,
+      authority: avatarClassAuthority.publicKey,
+      traitAccount: traitAAccount,
+    };
+    const addTraitConflictsToAArgs: AvatarRpc.AddTraitConflictsArgs = {
+      attributeIds: [1],
+    };
+
+    const addTraitConflictsToATx =
+      await avatarClassAuthorityClient.addTraitConflicts(
+        addTraitConflictsToAAccounts,
+        addTraitConflictsToAArgs
+      );
+    const addTraitConflictsToATxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        addTraitConflictsToATx
+      );
+    console.log("addTraitConflictsToATxSig: %s", addTraitConflictsToATxSig);
+
+    const traitAConflictsData =
+      await avatarClassAuthorityClient.getTraitConflicts(
+        AvatarRpc.traitConflictsPDA(avatarClass, traitAAccount)
+      );
+    assert.equal(traitAConflictsData.attributeConflicts.length, 1);
+    assert.equal(traitAConflictsData.traitConflicts.length, 0);
+    assert.equal(traitAConflictsData.attributeConflicts[0], 1);
+
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      traitMint: traitAMint,
+      payer: nftHolderClient.provider.publicKey,
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    const equipTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipTraitTx
+    );
+    console.log("equipTraitTxSig: %s", equipTraitTxSig);
+
+    const equipTraitWithConflictAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      traitMint: traitBMint,
+      payer: nftHolderClient.provider.publicKey,
+    };
+
+    const equipTraitWithConflictTx = await nftHolderClient.equipTrait(
+      equipTraitWithConflictAccounts
+    );
+    assertRejects(
+      nftHolderClient.provider.sendAndConfirm(equipTraitWithConflictTx)
+    );
+  });
 });
 
 async function createSftAvatarClass(
@@ -4387,14 +4740,8 @@ async function newPayer(
     { commitment: "confirmed" }
   );
 
-  const program = new anchor.Program<Idls.Avatar>(
-    Idls.AvatarIDL,
-    AvatarRpc.AVATAR_ID,
-    provider
-  );
-
   return [
-    new AvatarRpc.AvatarClient(program),
+    new AvatarRpc.AvatarClient(provider),
     new AvatarHttp.AvatarClient(provider, "localnet", "apikey1234"),
     payer,
   ];
@@ -4531,7 +4878,7 @@ async function createNonFungiblePaymentMethod(
     leaves.push(mint.toBuffer());
   }
 
-  const tree = new cmp.MerkleTree(leaves)
+  const tree = new cmp.MerkleTree(leaves);
 
   return [paymentMints, paymentMethodAddr, tree];
 }
@@ -4550,8 +4897,8 @@ function fileServer(dir: string) {
   });
 
   const server = app.listen(3000);
-  
-  return server
+
+  return server;
 }
 
 async function assertRejects(fn: Promise<any | void>) {

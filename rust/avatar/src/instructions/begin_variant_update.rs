@@ -1,13 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::{
-    state::{
-        accounts::{Avatar, AvatarClass, Trait, UpdateState},
-        data::{PaymentDetails, UpdateTarget},
-        errors::ErrorCode,
-    },
-    utils::{is_raindrops_fee_vault, pay_raindrops_fee},
+use crate::state::{
+    accounts::{Avatar, AvatarClass, Trait, UpdateState},
+    data::{PaymentDetails, UpdateTarget},
+    errors::ErrorCode,
 };
 
 #[derive(Accounts)]
@@ -33,10 +30,6 @@ pub struct BeginVariantUpdate<'info> {
         constraint = avatar_mint_ata.amount == 1,
         associated_token::mint = avatar.mint, associated_token::authority = authority)]
     pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
-
-    /// CHECK: checked by constraint
-    #[account(mut, constraint = is_raindrops_fee_vault(raindrops_fee_vault.key()))]
-    pub raindrops_fee_vault: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -130,10 +123,5 @@ pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -
         target: args.update_target,
     });
 
-    // pay raindrops fee
-    pay_raindrops_fee(
-        &ctx.accounts.raindrops_fee_vault.to_account_info(),
-        ctx.accounts.authority.clone(),
-        ctx.accounts.system_program.clone(),
-    )
+    Ok(())
 }

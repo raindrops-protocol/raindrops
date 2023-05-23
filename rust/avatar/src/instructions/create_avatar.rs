@@ -1,12 +1,13 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
-use crate::state::{
-    accounts::{Avatar, AvatarClass},
-    data::{VariantMetadata, VariantOption},
+use crate::{
+    state::{
+        accounts::{Avatar, AvatarClass},
+        data::{VariantMetadata, VariantOption},
+    },
+    utils::{is_rain_vault, pay_rain_fee},
 };
-
-use crate::utils::is_rain;
 
 #[derive(Accounts)]
 #[instruction(args: CreateAvatarArgs)]
@@ -27,10 +28,10 @@ pub struct CreateAvatar<'info> {
 
     pub avatar_mint: Account<'info, token::Mint>,
 
-    #[account(mut, constraint = is_rain(rain_mint.key()))]
-    pub rain_mint: Account<'info, token::Mint>,
+    #[account(mut, constraint = is_rain_vault(rain_vault.key()))]
+    pub rain_vault: Account<'info, token::TokenAccount>,
 
-    #[account(mut, associated_token::mint = rain_mint, associated_token::authority = authority)]
+    #[account(mut)]
     pub authority_rain_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut)]
@@ -57,16 +58,12 @@ pub struct VariantArg {
 }
 
 pub fn handler(ctx: Context<CreateAvatar>, args: CreateAvatarArgs) -> Result<()> {
-    // burn 1 $RAIN
-    let burn_accounts = token::Burn {
-        from: ctx.accounts.authority_rain_ata.to_account_info(),
-        mint: ctx.accounts.rain_mint.to_account_info(),
-        authority: ctx.accounts.authority.to_account_info(),
-    };
-
-    token::burn(
-        CpiContext::new(ctx.accounts.token_program.to_account_info(), burn_accounts),
-        100000, // $RAIN has 5 decimals so this burns 1 token
+    // pay $RAIN
+    pay_rain_fee(
+        ctx.accounts.authority_rain_ata.to_account_info(),
+        ctx.accounts.rain_vault.to_account_info(),
+        ctx.accounts.authority.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
     )?;
 
     // get the variant selection from the args

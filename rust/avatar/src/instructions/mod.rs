@@ -1,4 +1,5 @@
 pub mod add_payment_mint_to_payment_method;
+pub mod add_trait_conflicts;
 pub mod begin_trait_update;
 pub mod begin_variant_update;
 pub mod burn_payment;
@@ -23,6 +24,7 @@ pub mod verify_payment_mint;
 pub mod verify_payment_mint_test;
 
 pub use add_payment_mint_to_payment_method::*;
+pub use add_trait_conflicts::*;
 pub use begin_trait_update::*;
 pub use begin_variant_update::*;
 pub use burn_payment::*;

@@ -23,7 +23,8 @@ export class AvatarClient {
 
     switch (cluster) {
       case "mainnet-beta": {
-        this.baseUrl = "https://5h6dvuohng.execute-api.us-east-1.amazonaws.com";
+        this.baseUrl =
+          "https://kqgbsx2z0h.execute-api.us-east-1.amazonaws.com/prod";
         this.wsUrl =
           "wss://gxccwmjxba.execute-api.us-east-1.amazonaws.com/main";
         break;

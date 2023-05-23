@@ -69,7 +69,7 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "rainMint",
+          "name": "rainVault",
           "isMut": true,
           "isSigner": false
         },
@@ -137,6 +137,21 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "traitConflicts",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rainVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authorityRainAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -148,6 +163,11 @@ export type RaindropsAvatar = {
         },
         {
           "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -246,7 +266,7 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "traitMint",
+          "name": "traitConflicts",
           "isMut": false,
           "isSigner": false
         },
@@ -264,11 +284,6 @@ export type RaindropsAvatar = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -292,22 +307,17 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "avatar",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "avatarClassMintAta",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "traitAccount",
-          "isMut": false,
+          "name": "avatar",
+          "isMut": true,
           "isSigner": false
         },
         {
-          "name": "traitMint",
+          "name": "traitAccount",
           "isMut": false,
           "isSigner": false
         },
@@ -327,17 +337,7 @@ export type RaindropsAvatar = {
           "isSigner": true
         },
         {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -373,11 +373,6 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "traitMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "traitDestination",
           "isMut": true,
           "isSigner": false
@@ -391,11 +386,6 @@ export type RaindropsAvatar = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -695,11 +685,6 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "raindropsFeeVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -759,11 +744,6 @@ export type RaindropsAvatar = {
         },
         {
           "name": "avatarTraitAta",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "raindropsFeeVault",
           "isMut": true,
           "isSigner": false
         },
@@ -1161,6 +1141,44 @@ export type RaindropsAvatar = {
       "args": []
     },
     {
+      "name": "addTraitConflicts",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarClassMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "traitConflicts",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddTraitConflictsArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "verifyPaymentMint",
       "accounts": [
         {
@@ -1330,7 +1348,7 @@ export type RaindropsAvatar = {
         "kind": "struct",
         "fields": [
           {
-            "name": "index",
+            "name": "id",
             "type": "u16"
           },
           {
@@ -1380,6 +1398,14 @@ export type RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
+              }
+            }
           }
         ]
       }
@@ -1389,6 +1415,10 @@ export type RaindropsAvatar = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "uri",
+            "type": "string"
+          },
           {
             "name": "index",
             "type": "u64"
@@ -1465,9 +1495,57 @@ export type RaindropsAvatar = {
           }
         ]
       }
+    },
+    {
+      "name": "traitConflicts",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "avatarClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "traitAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "attributeConflicts",
+            "type": {
+              "vec": "u16"
+            }
+          },
+          {
+            "name": "traitConflicts",
+            "type": {
+              "vec": "u16"
+            }
+          }
+        ]
+      }
     }
   ],
   "types": [
+    {
+      "name": "AddTraitConflictsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "traitIds",
+            "type": {
+              "vec": "u16"
+            }
+          },
+          {
+            "name": "attributeIds",
+            "type": {
+              "vec": "u16"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "BeginTraitUpdateArgs",
       "type": {
@@ -1918,6 +1996,10 @@ export type RaindropsAvatar = {
             "type": {
               "vec": "u16"
             }
+          },
+          {
+            "name": "traitId",
+            "type": "u16"
           },
           {
             "name": "traitAddress",
@@ -2243,7 +2325,7 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "rainMint",
+          "name": "rainVault",
           "isMut": true,
           "isSigner": false
         },
@@ -2311,6 +2393,21 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "traitConflicts",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rainVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authorityRainAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -2322,6 +2419,11 @@ export const IDL: RaindropsAvatar = {
         },
         {
           "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -2420,7 +2522,7 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "traitMint",
+          "name": "traitConflicts",
           "isMut": false,
           "isSigner": false
         },
@@ -2438,11 +2540,6 @@ export const IDL: RaindropsAvatar = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -2466,22 +2563,17 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "avatar",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "avatarClassMintAta",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "traitAccount",
-          "isMut": false,
+          "name": "avatar",
+          "isMut": true,
           "isSigner": false
         },
         {
-          "name": "traitMint",
+          "name": "traitAccount",
           "isMut": false,
           "isSigner": false
         },
@@ -2501,17 +2593,7 @@ export const IDL: RaindropsAvatar = {
           "isSigner": true
         },
         {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
           "isMut": false,
           "isSigner": false
         },
@@ -2547,11 +2629,6 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "traitMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "traitDestination",
           "isMut": true,
           "isSigner": false
@@ -2565,11 +2642,6 @@ export const IDL: RaindropsAvatar = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -2869,11 +2941,6 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "raindropsFeeVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -2933,11 +3000,6 @@ export const IDL: RaindropsAvatar = {
         },
         {
           "name": "avatarTraitAta",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "raindropsFeeVault",
           "isMut": true,
           "isSigner": false
         },
@@ -3335,6 +3397,44 @@ export const IDL: RaindropsAvatar = {
       "args": []
     },
     {
+      "name": "addTraitConflicts",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarClassMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "traitConflicts",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddTraitConflictsArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "verifyPaymentMint",
       "accounts": [
         {
@@ -3504,7 +3604,7 @@ export const IDL: RaindropsAvatar = {
         "kind": "struct",
         "fields": [
           {
-            "name": "index",
+            "name": "id",
             "type": "u16"
           },
           {
@@ -3554,6 +3654,14 @@ export const IDL: RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
+              }
+            }
           }
         ]
       }
@@ -3563,6 +3671,10 @@ export const IDL: RaindropsAvatar = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "uri",
+            "type": "string"
+          },
           {
             "name": "index",
             "type": "u64"
@@ -3639,9 +3751,57 @@ export const IDL: RaindropsAvatar = {
           }
         ]
       }
+    },
+    {
+      "name": "traitConflicts",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "avatarClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "traitAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "attributeConflicts",
+            "type": {
+              "vec": "u16"
+            }
+          },
+          {
+            "name": "traitConflicts",
+            "type": {
+              "vec": "u16"
+            }
+          }
+        ]
+      }
     }
   ],
   "types": [
+    {
+      "name": "AddTraitConflictsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "traitIds",
+            "type": {
+              "vec": "u16"
+            }
+          },
+          {
+            "name": "attributeIds",
+            "type": {
+              "vec": "u16"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "BeginTraitUpdateArgs",
       "type": {
@@ -4092,6 +4252,10 @@ export const IDL: RaindropsAvatar = {
             "type": {
               "vec": "u16"
             }
+          },
+          {
+            "name": "traitId",
+            "type": "u16"
           },
           {
             "name": "traitAddress",

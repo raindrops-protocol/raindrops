@@ -3,7 +3,7 @@ use anchor_spl::token;
 
 use crate::{
     state::{
-        accounts::{Avatar, AvatarClass, Trait, UpdateState},
+        accounts::{Avatar, AvatarClass, Trait, TraitConflicts, UpdateState},
         errors::ErrorCode,
     },
     utils::validate_attribute_availability,
@@ -25,23 +25,25 @@ pub struct EquipTrait<'info> {
     pub update_state: Account<'info, UpdateState>,
 
     #[account(
-        has_one = trait_mint,
         has_one = avatar_class,
-        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_mint.key().as_ref()], bump)]
-    pub trait_account: Account<'info, Trait>,
+        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_account.trait_mint.key().as_ref()], bump)]
+    pub trait_account: Box<Account<'info, Trait>>,
 
-    pub trait_mint: Box<Account<'info, token::Mint>>,
+    #[account(
+        has_one = avatar_class,
+        has_one = trait_account,
+        seeds = [TraitConflicts::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_account.key().as_ref()], bump
+    )]
+    pub trait_conflicts: Account<'info, TraitConflicts>,
 
-    #[account(mut, constraint = trait_source.mint.eq(&trait_mint.key()))]
+    #[account(mut, constraint = trait_source.mint.eq(&trait_account.trait_mint.key()))]
     pub trait_source: Box<Account<'info, token::TokenAccount>>,
 
-    #[account(mut, constraint = avatar_trait_ata.mint.eq(&trait_mint.key()))]
-    pub avatar_trait_ata: Account<'info, token::TokenAccount>,
+    #[account(mut, associated_token::mint = trait_account.trait_mint, associated_token::authority = avatar)]
+    pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
-
-    pub rent: Sysvar<'info, Rent>,
 
     pub token_program: Program<'info, token::Token>,
 
@@ -61,10 +63,18 @@ pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
     );
     require!(valid, ErrorCode::InvalidAttributeId);
 
+    // verify there are no trait or attribute conflicts
+    let has_conflicts = ctx.accounts.trait_conflicts.has_conflicts(
+        &ctx.accounts.avatar.get_trait_ids(),
+        &ctx.accounts.avatar.get_attribute_ids(),
+    );
+    require!(!has_conflicts, ErrorCode::TraitConflict);
+
     // create trait data for newly equipped trait
     let avatar_account_info = ctx.accounts.avatar.to_account_info();
     ctx.accounts.avatar.add_trait(
         ctx.accounts.trait_account.key(),
+        ctx.accounts.trait_account.id,
         ctx.accounts.trait_account.attribute_ids.clone(),
         &ctx.accounts.trait_account.variant_metadata,
         &avatar_account_info,

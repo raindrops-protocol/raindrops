@@ -5,17 +5,10 @@ import { AvatarClient, updateStatePDA } from "./avatar";
 export const AVATAR_CLASS_PREFIX = "avatar_class";
 export const AVATAR_PREFIX = "avatar";
 export const TRAIT_PREFIX = "trait";
+export const TRAIT_CONFLICTS_PREFIX = "trait_conflicts";
 export const PAYMENT_METHOD_PREFIX = "payment_method";
 export const UPDATE_STATE_PREFIX = "update_state";
 export const VERIFIED_PAYMENT_MINT_PREFIX = "verified_payment_mint";
-
-export const AVATAR_ID = new anchor.web3.PublicKey(
-  "AvAtARWmYZLbUFfoQc3RzT7zR5zLRs92VSMm8CsCadYN"
-);
-
-export const AVATAR_FEE_VAULT = new anchor.web3.PublicKey(
-  "Fequ3NnuSMUda7WXBARqEAav6ehuysAnLx2dM7s5wwan"
-);
 
 export interface CreateAvatarClassAccounts {
   avatarClassMint: anchor.web3.PublicKey;
@@ -265,6 +258,18 @@ export interface VerifyPaymentMintTestAccounts {
   payer: anchor.web3.PublicKey;
 }
 
+export interface AddTraitConflictsAccounts {
+  avatarClass: anchor.web3.PublicKey;
+  traitAccount: anchor.web3.PublicKey;
+  authority: anchor.web3.PublicKey;
+}
+
+export interface AddTraitConflictsArgs {
+  traitAccounts?: anchor.web3.PublicKey[];
+  traitIds?: number[];
+  attributeIds?: number[];
+}
+
 export interface Attribute {
   id: number;
   trait: anchor.web3.PublicKey | null;
@@ -493,6 +498,7 @@ export class Avatar {
 }
 
 export class Trait {
+  readonly id: number;
   readonly traitAddress: anchor.web3.PublicKey;
   readonly avatarClass: anchor.web3.PublicKey;
   readonly traitMint: anchor.web3.PublicKey;
@@ -504,6 +510,7 @@ export class Trait {
   readonly removePaymentDetails: PaymentDetailsExpanded | null;
 
   constructor(
+    id: number,
     traitAddress: anchor.web3.PublicKey,
     avatarClass: anchor.web3.PublicKey,
     traitMint: anchor.web3.PublicKey,
@@ -514,6 +521,7 @@ export class Trait {
     equipPaymentDetails: PaymentDetailsExpanded | null,
     removePaymentDetails: PaymentDetailsExpanded | null
   ) {
+    this.id = id;
     this.traitAddress = traitAddress;
     this.avatarClass = avatarClass;
     this.traitMint = traitMint;
@@ -831,4 +839,11 @@ export class TransferPaymentAction {
   format(): any {
     return { transfer: { treasury: this.treasury } };
   }
+}
+
+export interface TraitConflicts {
+  avatarClass: anchor.web3.PublicKey;
+  traitAccount: anchor.web3.PublicKey;
+  attributeConflicts: number[];
+  traitConflicts: number[];
 }
