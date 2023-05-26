@@ -83,7 +83,6 @@ pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
 
     // close token account if amount is 0
     if ctx.accounts.avatar_trait_ata.amount == 0 {
-
         let close_ata_accounts = token::CloseAccount {
             account: ctx.accounts.avatar_trait_ata.to_account_info(),
             destination: ctx.accounts.payer.to_account_info(),
