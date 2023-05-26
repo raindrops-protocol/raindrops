@@ -79,5 +79,28 @@ pub fn handler(ctx: Context<RemoveTraitAuthority>) -> Result<()> {
         ctx.accounts.system_program.clone(),
     );
 
+    // reload account data to check token account amount
+    ctx.accounts.avatar_trait_ata.reload()?;
+
+    // close token account if amount is 0
+    if ctx.accounts.avatar_trait_ata.amount == 0 {
+        let close_ata_accounts = token::CloseAccount {
+            account: ctx.accounts.avatar_trait_ata.to_account_info(),
+            destination: ctx.accounts.authority.to_account_info(),
+            authority: ctx.accounts.avatar.to_account_info(),
+        };
+
+        token::close_account(CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            close_ata_accounts,
+            &[&[
+                Avatar::PREFIX.as_bytes(),
+                ctx.accounts.avatar_class.key().as_ref(),
+                ctx.accounts.avatar.mint.key().as_ref(),
+                &[*ctx.bumps.get("avatar").unwrap()],
+            ]],
+        ))?;
+    }
+
     Ok(())
 }
