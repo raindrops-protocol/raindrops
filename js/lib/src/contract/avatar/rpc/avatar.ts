@@ -260,13 +260,19 @@ export class AvatarClient {
     // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
     const beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
     const traitData = await this.getTrait(trait);
-    if (traitData.equipPaymentDetails === null) {
+
+    // check if update state pda already exists
+    const target = new UpdateTargetEquipTrait(trait);
+    const updateState = updateStatePDA(accounts.avatar, target);
+    const updateStateData = await this.getUpdateState(updateState);
+
+    if (traitData.equipPaymentDetails === null && updateStateData === null) {
       const beginTraitUpdateAccounts: BeginUpdateAccounts = {
         avatar: accounts.avatar,
       };
 
       const beginTraitUpdateArgs: BeginUpdateArgs = {
-        updateTarget: new UpdateTargetEquipTrait(trait),
+        updateTarget: target,
       };
 
       const beginTraitUpdateTx = await this.beginUpdate(
@@ -290,11 +296,6 @@ export class AvatarClient {
     const traitSource = splToken.getAssociatedTokenAddressSync(
       accounts.traitMint,
       avatarAuthority
-    );
-
-    const updateState = updateStatePDA(
-      accounts.avatar,
-      new UpdateTargetEquipTrait(trait)
     );
 
     const tx = new anchor.web3.Transaction();
@@ -491,13 +492,19 @@ export class AvatarClient {
     // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
     const beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
     const traitData = await this.getTrait(trait);
-    if (traitData.removePaymentDetails === null) {
+
+    // check if update state pda already exists
+    const target = new UpdateTargetRemoveTrait(trait, avatarAuthority);
+    const updateState = updateStatePDA(accounts.avatar, target);
+    const updateStateData = await this.getUpdateState(updateState);
+
+    if (traitData.removePaymentDetails === null && updateStateData === null) {
       const beginTraitUpdateAccounts: BeginUpdateAccounts = {
         avatar: accounts.avatar,
       };
 
       const beginTraitUpdateArgs: BeginUpdateArgs = {
-        updateTarget: new UpdateTargetRemoveTrait(trait, avatarAuthority),
+        updateTarget: target,
       };
 
       const beginTraitUpdateTx = await this.beginUpdate(
@@ -511,11 +518,6 @@ export class AvatarClient {
       accounts.traitMint,
       accounts.avatar,
       true
-    );
-
-    const updateState = updateStatePDA(
-      accounts.avatar,
-      new UpdateTargetRemoveTrait(trait, avatarAuthority)
     );
 
     const traitDestination = splToken.getAssociatedTokenAddressSync(
