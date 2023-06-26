@@ -262,7 +262,7 @@ export class AvatarClient {
     const traitData = await this.getTrait(trait);
 
     // check if update state pda already exists
-    const target = new UpdateTargetEquipTrait(trait)
+    const target = new UpdateTargetEquipTrait(trait);
     const updateState = updateStatePDA(accounts.avatar, target);
     const updateStateData = await this.getUpdateState(updateState);
 
@@ -499,7 +499,6 @@ export class AvatarClient {
     const updateStateData = await this.getUpdateState(updateState);
 
     if (traitData.removePaymentDetails === null && updateStateData === null) {
-
       const beginTraitUpdateAccounts: BeginUpdateAccounts = {
         avatar: accounts.avatar,
       };
