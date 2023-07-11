@@ -7,10 +7,33 @@ use mpl_token_metadata::ID as TokenMetadataPID;
 pub mod accounts;
 pub mod errors;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ItemClassV1IngredientMode {
+    Tree,
+    Deterministic,
+}
+
+impl ItemClassV1IngredientMode {
+    pub const SPACE: usize = 1 + 1;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ItemClassV1OutputMode {
+    StaticTree { amount: u64 },
+    DeterministicIngredient,
+}
+
+impl ItemClassV1OutputMode {
+    pub const SPACE: usize = 1 + 8;
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
 pub struct BuildIngredientData {
     // each item used for this build ingredient must be a member of this item class
     pub item_class: Pubkey,
+
+    // defines what type of ingredient this is, either MintTree or Deterministic
+    pub item_class_ingredient_mode: ItemClassV1IngredientMode,
 
     // current amount of items escrowed
     pub current_amount: u64,
@@ -28,6 +51,7 @@ impl BuildIngredientData {
     pub fn space(required_amount: usize) -> usize {
         (1 + 32) + // verified_item_mint
         32 + // item_class
+        ItemClassV1IngredientMode::SPACE + // item class mode
         8 + // current amount
         8 + // required amount
         BuildEffect::SPACE + // build effect
@@ -55,6 +79,8 @@ pub struct RecipeIngredientData {
     // the item must be a member of this item class
     pub item_class: Pubkey,
 
+    pub item_class_ingredient_mode: ItemClassV1IngredientMode,
+
     // amount of items required for the build
     pub required_amount: u64,
 
@@ -64,6 +90,7 @@ pub struct RecipeIngredientData {
 
 impl RecipeIngredientData {
     pub const SPACE: usize = 32 + // item class
+    ItemClassV1IngredientMode::SPACE + // item class ingredient mode
     8 + // required amount
     BuildEffect::SPACE; // build effect
 }
@@ -72,6 +99,7 @@ impl From<RecipeIngredientData> for BuildIngredientData {
     fn from(value: RecipeIngredientData) -> Self {
         BuildIngredientData {
             item_class: value.item_class,
+            item_class_ingredient_mode: value.item_class_ingredient_mode,
             current_amount: 0,
             required_amount: value.required_amount,
             build_effect: value.build_effect,
@@ -258,6 +286,68 @@ impl From<Payment> for PaymentState {
 
 impl PaymentState {
     pub const SPACE: usize = 1 + Payment::SPACE;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DeterministicIngredientOutput {
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
+impl DeterministicIngredientOutput {
+    pub const SPACE: usize = 32 + 8;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BuildOutput {
+    pub state: Vec<BuildOutputState>,
+}
+
+impl BuildOutput {
+    pub fn new() -> Self {
+        BuildOutput { state: vec![] }
+    }
+
+    pub fn space(output_count: usize) -> usize {
+        4 + (BuildOutputState::SPACE * output_count)
+    }
+
+    pub fn add_output(&mut self, mint: Pubkey, amount: u64) {
+        self.state.push(BuildOutputState {
+            mint,
+            amount,
+            received: false,
+        })
+    }
+
+    pub fn is_eligible_output(&self, mint: &Pubkey, amount: u64) -> bool {
+        self.state.iter().any(|output| {
+            output.mint.eq(mint) && output.amount == amount && !output.received
+        })
+    }
+
+    pub fn set_output_as_received(&mut self, mint: &Pubkey) {
+        for output in self.state.iter_mut() {
+            if output.mint.eq(mint) {
+                output.received = true;
+            }
+        }    
+    }
+
+    pub fn are_all_outputs_dispensed(&self) -> bool {
+        self.state.iter().all(|output| output.received)
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BuildOutputState {
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub received: bool,
+}
+
+impl BuildOutputState {
+    pub const SPACE: usize = 32 + 8 + 1;
 }
 
 // anchor wrapper for Noop Program required for spl-account-compression

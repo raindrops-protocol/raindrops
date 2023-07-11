@@ -19,7 +19,7 @@ import path from "path";
 // use a local file or set the env var of TEST_SIGNER
 const TEST_SIGNER_FILE_PATH = "./tests/files/test-signer.json";
 
-describe("itemv1", () => {
+describe.only("itemv1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 

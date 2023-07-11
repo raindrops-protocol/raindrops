@@ -43,7 +43,6 @@ pub struct ReceiveItem<'info> {
     #[account(
         mut,
         has_one = builder,
-        constraint = item_mint.key().eq(&build.item_mint.unwrap()),
         seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
@@ -81,8 +80,18 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
         ErrorCode::InvalidBuildStatus
     );
 
-    // set build to final state
-    ctx.accounts.build.status = BuildStatus::ItemReceived;
+    // check item_mint is a valid output
+    // TODO: amount must be passed in as arg
+    let eligible_output = ctx.accounts.build.output.is_eligible_output(&ctx.accounts.item_mint.key(), 1);
+    require!(eligible_output, ErrorCode::InvalidBuildOutput);
+
+    // set build output to received
+    ctx.accounts.build.output.set_output_as_received(&ctx.accounts.item_mint.key());
+
+    // if all outputs have been dispensed, set build to final state
+    if ctx.accounts.build.output.are_all_outputs_dispensed() {
+        ctx.accounts.build.status = BuildStatus::ItemReceived;
+    } 
 
     // transfer the pNFT to the builder
     // transfer item_mint to destination

@@ -3,8 +3,9 @@ use std::convert::TryInto;
 use anchor_lang::prelude::*;
 
 use super::{
-    errors::ErrorCode, BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState,
-    RecipeIngredientData,
+    errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus,
+    DeterministicIngredientOutput, ItemClassV1IngredientMode, ItemClassV1OutputMode, ItemState,
+    Payment, PaymentState, RecipeIngredientData,
 };
 
 // seeds = ['item_class_v1', items.key().as_ref()]
@@ -17,6 +18,12 @@ pub struct ItemClassV1 {
     pub items: Pubkey,
 
     pub recipe_index: u64,
+
+    // defines behavior when used as an ingredient
+    pub ingredient_mode: ItemClassV1IngredientMode,
+
+    // defines behavior when used as an output
+    pub output_mode: ItemClassV1OutputMode,
 }
 
 impl ItemClassV1 {
@@ -24,7 +31,9 @@ impl ItemClassV1 {
     pub const SPACE: usize = 8 + // anchor
     32 + // authority
     32 + // items 
-    8; // recipe_index
+    8 + // recipe_index
+    ItemClassV1IngredientMode::SPACE + // ingredient mode
+    ItemClassV1OutputMode::SPACE; // output mode
 }
 
 // seeds = ['item_v1', item_mint.key().as_ref()]
@@ -93,7 +102,7 @@ pub struct Build {
     pub item_class: Pubkey,
 
     // mint of the token received at the end
-    pub item_mint: Option<Pubkey>,
+    pub output: BuildOutput,
 
     // payment state
     pub payment: Option<PaymentState>,
@@ -107,11 +116,12 @@ pub struct Build {
 
 impl Build {
     pub const PREFIX: &'static str = "build";
-    pub fn space(recipe_ingredient_data: &Vec<RecipeIngredientData>) -> usize {
+    pub fn space(recipe_ingredient_data: &Vec<RecipeIngredientData>, output_count: usize) -> usize {
         8 + // anchor
         8 + // recipe_index
         32 + // builder
         32 + // item class
+        BuildOutput::space(output_count) + // build output
         (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
@@ -202,5 +212,35 @@ impl Build {
         } else {
             Err(ErrorCode::IncorrectIngredient.into())
         }
+    }
+}
+
+// manages the lifecycle of the item class build process for a builder
+// seeds = ['deterministic_ingredient', item_class.key(), ingredient_mint.key().as_ref()]
+#[account]
+pub struct DeterministicIngredient {
+    pub item_class: Pubkey,
+
+    pub ingredient_mint: Pubkey,
+
+    pub output_mapping: Vec<DeterministicIngredientOutput>,
+}
+
+impl DeterministicIngredient {
+    pub const PREFIX: &'static str = "deterministic_ingredient";
+    pub fn space(output_mapping_count: usize) -> usize {
+        8 + // anchor
+        32 + // item_class
+        32 + // ingredient_mint
+        4 + (output_mapping_count * DeterministicIngredientOutput::SPACE) // output mapping
+    }
+
+    pub fn into_build_output(&self) -> BuildOutput {
+        let mut build_output = BuildOutput::new();
+        for output in &self.output_mapping {
+            build_output.add_output(output.mint, output.amount)
+        };
+
+        build_output
     }
 }

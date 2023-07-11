@@ -2011,11 +2011,11 @@ pub mod raindrops_item {
         receive_item::handler(ctx)
     }
 
-    pub fn complete_build<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, CompleteBuild<'info>>,
-        args: CompleteBuildArgs,
+    pub fn complete_build_tree<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CompleteBuildTree<'info>>,
+        args: CompleteBuildTreeArgs,
     ) -> Result<()> {
-        complete_build::handler(ctx, args)
+        complete_build_tree::handler(ctx, args)
     }
 
     pub fn apply_build_effect(ctx: Context<ApplyBuildEffect>) -> Result<()> {

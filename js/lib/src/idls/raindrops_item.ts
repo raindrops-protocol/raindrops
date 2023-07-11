@@ -1432,7 +1432,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "completeBuild",
+      "name": "completeBuildTree",
       "accounts": [
         {
           "name": "itemMint",
@@ -1474,7 +1474,7 @@ export type RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "CompleteBuildArgs"
+            "defined": "CompleteBuildTreeArgs"
           }
         }
       ]
@@ -1854,6 +1854,18 @@ export type RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
+          },
+          {
+            "name": "ingredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
+          },
+          {
+            "name": "outputMode",
+            "type": {
+              "defined": "ItemClassV1OutputMode"
+            }
           }
         ]
       }
@@ -1934,9 +1946,9 @@ export type RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "itemMint",
+            "name": "output",
             "type": {
-              "option": "publicKey"
+              "defined": "BuildOutput"
             }
           },
           {
@@ -1959,6 +1971,30 @@ export type RaindropsItem = {
             "name": "status",
             "type": {
               "defined": "BuildStatus"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "deterministicIngredient",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "ingredientMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "outputMapping",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
             }
           }
         ]
@@ -2199,7 +2235,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "CompleteBuildArgs",
+      "name": "CompleteBuildTreeArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2220,6 +2256,22 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "CreateDeterministicIngredientArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outputMapping",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -2228,6 +2280,18 @@ export type RaindropsItem = {
             "name": "recipeArgs",
             "type": {
               "defined": "RecipeArgs"
+            }
+          },
+          {
+            "name": "ingredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
+          },
+          {
+            "name": "outputMode",
+            "type": {
+              "defined": "ItemClassV1OutputMode"
             }
           }
         ]
@@ -2353,6 +2417,12 @@ export type RaindropsItem = {
             "type": "publicKey"
           },
           {
+            "name": "itemClassIngredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
+          },
+          {
             "name": "currentAmount",
             "type": "u64"
           },
@@ -2401,6 +2471,12 @@ export type RaindropsItem = {
           {
             "name": "itemClass",
             "type": "publicKey"
+          },
+          {
+            "name": "itemClassIngredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
           },
           {
             "name": "requiredAmount",
@@ -2465,6 +2541,58 @@ export type RaindropsItem = {
             "type": {
               "defined": "Payment"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DeterministicIngredientOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "state",
+            "type": {
+              "vec": {
+                "defined": "BuildOutputState"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildOutputState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "received",
+            "type": "bool"
           }
         ]
       }
@@ -4148,6 +4276,40 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "ItemClassV1IngredientMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Tree"
+          },
+          {
+            "name": "Deterministic"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemClassV1OutputMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "StaticTree",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "DeterministicIngredient"
+          }
+        ]
+      }
+    },
+    {
       "name": "BuildStatus",
       "type": {
         "kind": "enum",
@@ -4492,6 +4654,11 @@ export type RaindropsItem = {
       "code": 6011,
       "name": "BuildNotPaid",
       "msg": "Must make build payment"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidBuildOutput",
+      "msg": "Invalid Build Output"
     }
   ]
 };
@@ -5930,7 +6097,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "completeBuild",
+      "name": "completeBuildTree",
       "accounts": [
         {
           "name": "itemMint",
@@ -5972,7 +6139,7 @@ export const IDL: RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "CompleteBuildArgs"
+            "defined": "CompleteBuildTreeArgs"
           }
         }
       ]
@@ -6352,6 +6519,18 @@ export const IDL: RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
+          },
+          {
+            "name": "ingredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
+          },
+          {
+            "name": "outputMode",
+            "type": {
+              "defined": "ItemClassV1OutputMode"
+            }
           }
         ]
       }
@@ -6432,9 +6611,9 @@ export const IDL: RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "itemMint",
+            "name": "output",
             "type": {
-              "option": "publicKey"
+              "defined": "BuildOutput"
             }
           },
           {
@@ -6457,6 +6636,30 @@ export const IDL: RaindropsItem = {
             "name": "status",
             "type": {
               "defined": "BuildStatus"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "deterministicIngredient",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "ingredientMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "outputMapping",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
             }
           }
         ]
@@ -6697,7 +6900,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "CompleteBuildArgs",
+      "name": "CompleteBuildTreeArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -6718,6 +6921,22 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "CreateDeterministicIngredientArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outputMapping",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -6726,6 +6945,18 @@ export const IDL: RaindropsItem = {
             "name": "recipeArgs",
             "type": {
               "defined": "RecipeArgs"
+            }
+          },
+          {
+            "name": "ingredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
+          },
+          {
+            "name": "outputMode",
+            "type": {
+              "defined": "ItemClassV1OutputMode"
             }
           }
         ]
@@ -6851,6 +7082,12 @@ export const IDL: RaindropsItem = {
             "type": "publicKey"
           },
           {
+            "name": "itemClassIngredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
+          },
+          {
             "name": "currentAmount",
             "type": "u64"
           },
@@ -6899,6 +7136,12 @@ export const IDL: RaindropsItem = {
           {
             "name": "itemClass",
             "type": "publicKey"
+          },
+          {
+            "name": "itemClassIngredientMode",
+            "type": {
+              "defined": "ItemClassV1IngredientMode"
+            }
           },
           {
             "name": "requiredAmount",
@@ -6963,6 +7206,58 @@ export const IDL: RaindropsItem = {
             "type": {
               "defined": "Payment"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DeterministicIngredientOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "state",
+            "type": {
+              "vec": {
+                "defined": "BuildOutputState"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuildOutputState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "received",
+            "type": "bool"
           }
         ]
       }
@@ -8646,6 +8941,40 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "ItemClassV1IngredientMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Tree"
+          },
+          {
+            "name": "Deterministic"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemClassV1OutputMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "StaticTree",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "DeterministicIngredient"
+          }
+        ]
+      }
+    },
+    {
       "name": "BuildStatus",
       "type": {
         "kind": "enum",
@@ -8990,6 +9319,11 @@ export const IDL: RaindropsItem = {
       "code": 6011,
       "name": "BuildNotPaid",
       "msg": "Must make build payment"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidBuildOutput",
+      "msg": "Invalid Build Output"
     }
   ]
 };

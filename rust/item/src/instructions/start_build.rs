@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{Build, ItemClassV1, Recipe},
     errors::ErrorCode,
-    BuildIngredientData, BuildStatus, PaymentState,
+    BuildIngredientData, BuildOutput, BuildStatus, PaymentState,
 };
 
 #[derive(Accounts)]
@@ -13,7 +13,7 @@ use crate::state::{
 pub struct StartBuild<'info> {
     #[account(init,
         payer = builder,
-        space = Build::space(&recipe.ingredients),
+        space = Build::space(&recipe.ingredients, 10), // TODO: dont hardcode
         seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
@@ -62,8 +62,8 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         recipe_index: args.recipe_index,
         builder: ctx.accounts.builder.key(),
         item_class: ctx.accounts.item_class.key(),
-        item_mint: None,
         status: BuildStatus::InProgress,
+        output: BuildOutput::new(),
         payment,
         ingredients,
     });
