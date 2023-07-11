@@ -20,6 +20,7 @@ import {
   ItemV1,
   Ingredient,
   Recipe,
+  Pack,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
@@ -305,6 +306,16 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
+  async addPackToItemClass(
+    accounts: ItemInstruction.AddPackToItemClassAccounts,
+    args: ItemInstruction.AddPackToItemClassArgs,
+    options?: SendOptions
+  ): Promise<[Transaction.SendTransactionResult, web3.PublicKey]> {
+    const [ix, pack] = await this.instruction.addPackToItemClass(accounts, args);
+    const result = await this.sendWithRetry([ix], [], options);
+    return [result, pack]
+  }
+
   async createRecipe(
     accounts: ItemInstruction.CreateRecipeAccounts,
     args: ItemInstruction.CreateRecipeArgs,
@@ -350,12 +361,21 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async completeBuild(
-    accounts: ItemInstruction.CompleteBuildAccounts,
-    args: ItemInstruction.CompleteBuildArgs,
+  async completeBuildItem(
+    accounts: ItemInstruction.CompleteBuildItemAccounts,
+    args: ItemInstruction.CompleteBuildItemArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuild(accounts, args);
+    const ix = await this.instruction.completeBuildItem(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
+  async completeBuildPack(
+    accounts: ItemInstruction.CompleteBuildPackAccounts,
+    args: ItemInstruction.CompleteBuildPackArgs,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.completeBuildPack(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -493,9 +513,13 @@ export class ItemProgram extends Program.Program {
       });
     }
 
-    let itemMint: web3.PublicKey | null = null;
-    if (buildDataRaw.itemMint !== null) {
-      itemMint = new web3.PublicKey(buildDataRaw.itemMint);
+    const buildOutput: ItemInstruction.BuildOutput = { items: [] };
+    for (let output of buildDataRaw.output.items) {
+      buildOutput.items.push({
+        mint: new web3.PublicKey(output.mint),
+        amount: new BN(output.amount),
+        received: Boolean(output.received),
+      })
     }
 
     // detect payment
@@ -515,7 +539,7 @@ export class ItemProgram extends Program.Program {
       recipeIndex: new BN(buildDataRaw.recipeIndex as string),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
-      itemMint: itemMint,
+      output: buildOutput,
       payment: paymentData,
       ingredients: buildIngredientData,
       status: convertToBuildStatus(buildDataRaw.status),
@@ -585,6 +609,29 @@ export class ItemProgram extends Program.Program {
     };
 
     return recipeData;
+  }
+
+  async getPack(pack: web3.PublicKey): Promise<Pack | null> {
+    let packDataRaw;
+    try {
+      packDataRaw = await this.client.account.pack.fetch(pack);
+    } catch (_e) {
+      return null;
+    }
+    const contents: ItemInstruction.PackContents = {
+      entries: []
+    };
+    for (let entry of packDataRaw.contents.entries) {
+      contents.entries.push({mint: new web3.PublicKey(entry.mint), amount: new BN(entry.amount)})
+    }
+
+    const packData: Pack = {
+      itemClass: new web3.PublicKey(packDataRaw.itemClass),
+      id: new BN(packDataRaw.id),
+      contents: contents,
+    }
+
+    return packData
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

@@ -429,3 +429,16 @@ export function getRecipe(
 
   return recipe;
 }
+
+export function getPack(itemClass: web3.PublicKey, id: BN) {
+  const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("pack"),
+      itemClass.toBuffer(),
+      id.toArrayLike(Buffer, "le", 8)
+    ],
+    ITEM_ID
+  );
+
+  return recipe; 
+}

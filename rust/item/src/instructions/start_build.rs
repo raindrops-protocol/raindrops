@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{Build, ItemClassV1, Recipe},
     errors::ErrorCode,
-    BuildIngredientData, BuildStatus, PaymentState,
+    BuildIngredientData, BuildOutput, BuildStatus, PaymentState,
 };
 
 #[derive(Accounts)]
@@ -62,7 +62,7 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         recipe_index: args.recipe_index,
         builder: ctx.accounts.builder.key(),
         item_class: ctx.accounts.item_class.key(),
-        item_mint: None,
+        output: BuildOutput::new(),
         status: BuildStatus::InProgress,
         payment,
         ingredients,

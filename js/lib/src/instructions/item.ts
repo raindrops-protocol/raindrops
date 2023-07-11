@@ -21,6 +21,7 @@ import {
   getItemEscrow,
   getItemPDA,
   getMetadata,
+  getPack,
 } from "../utils/pda";
 import {
   MPL_AUTH_RULES_PROGRAM_ID,
@@ -1080,6 +1081,7 @@ export class Instruction extends SolKitInstruction {
         payment: args.recipeArgs.payment,
         ingredients: ingredients,
       },
+      outputMode: formatItemClassV1OutputMode(args.outputMode)
     };
 
     const ix = await this.program.client.methods
@@ -1125,6 +1127,34 @@ export class Instruction extends SolKitInstruction {
     }
 
     return ixns;
+  }
+
+  async addPackToItemClass(
+    accounts: AddPackToItemClassAccounts,
+    args: AddPackToItemClassArgs,
+  ): Promise<[web3.TransactionInstruction, web3.PublicKey]> {
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+    const itemClassItems = new web3.PublicKey(itemClassData.items);
+
+    const packIndex = new BN((itemClassData.outputMode as any).index);
+
+    const packAccount = getPack(accounts.itemClass, packIndex);
+
+    const ix = await this.program.client.methods
+      .addPackToItemClass(args)
+      .accounts({
+        pack: packAccount,
+        itemClass: accounts.itemClass,
+        items: itemClassItems,
+        authority: this.program.client.provider.publicKey!,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+      })
+      .instruction();
+
+    return [ix, packAccount];
   }
 
   async startBuild(
@@ -1410,9 +1440,9 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async completeBuild(
-    accounts: CompleteBuildAccounts,
-    args: CompleteBuildArgs
+  async completeBuildItem(
+    accounts: CompleteBuildItemAccounts,
+    args: CompleteBuildItemArgs
   ): Promise<web3.TransactionInstruction> {
     const buildData = await this.program.client.account.build.fetch(
       accounts.build
@@ -1441,9 +1471,56 @@ export class Instruction extends SolKitInstruction {
     };
 
     const ix = await this.program.client.methods
-      .completeBuild(ixArgs)
+      .completeBuildItem(ixArgs)
       .accounts({
         itemMint: accounts.itemMint,
+        itemClass: itemClass,
+        itemClassItems: itemClassItems,
+        build: accounts.build,
+        payer: accounts.payer,
+        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
+        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+      })
+      .remainingAccounts(proofAsRemainingAccounts)
+      .instruction();
+
+    return ix;
+  }
+
+  async completeBuildPack(
+    accounts: CompleteBuildPackAccounts,
+    args: CompleteBuildPackArgs
+  ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
+
+    const itemClass = new web3.PublicKey(buildData.itemClass);
+
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      itemClass
+    );
+    const itemClassItems = new web3.PublicKey(itemClassData.items);
+
+    const proofAsRemainingAccounts = [];
+    for (const node of args.proof) {
+      const nodeAccount = {
+        pubkey: new web3.PublicKey(node),
+        isSigner: false,
+        isWritable: false,
+      };
+      proofAsRemainingAccounts.push(nodeAccount);
+    }
+
+    const ixArgs = {
+      root: args.root,
+      leafIndex: args.leafIndex,
+    };
+
+    const ix = await this.program.client.methods
+      .completeBuildPack(ixArgs)
+      .accounts({
+        pack: accounts.pack,
         itemClass: itemClass,
         itemClassItems: itemClassItems,
         build: accounts.build,
@@ -1465,7 +1542,7 @@ export class Instruction extends SolKitInstruction {
     );
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
-    const itemMint = new web3.PublicKey(buildData.itemMint);
+    const itemMint = new web3.PublicKey((buildData.output as any).items[0].mint);
     const builder = new web3.PublicKey(buildData.builder);
 
     const [itemMetadata, _itemMetadataBump] =
@@ -1761,13 +1838,6 @@ export class Instruction extends SolKitInstruction {
       accounts.build
     );
     const builder = new web3.PublicKey(buildData.builder);
-    const outputItemClass = new web3.PublicKey(buildData.itemClass);
-
-    const outputItemClassData =
-      await this.program.client.account.itemClassV1.fetch(outputItemClass);
-    const outputItemClassAuthority = new web3.PublicKey(
-      outputItemClassData.authority
-    );
 
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
@@ -2312,12 +2382,24 @@ export interface UpdateItemAdditionalArgs {}
 
 export interface CreateItemClassV1Args {
   recipeArgs: RecipeArgs;
+  outputMode: ItemClassV1OutputMode;
 }
 
 export interface RecipeArgs {
   buildEnabled: boolean;
   payment: Payment | null;
   ingredientArgs: RecipeIngredientDataArgs[];
+}
+
+export type ItemClassV1OutputMode = { kind: 'Item' } | { kind: 'Pack', index: BN };
+
+export function formatItemClassV1OutputMode(mode: ItemClassV1OutputMode): any {
+  switch (mode.kind) {
+    case "Item":
+      return { item: {} }
+    case "Pack":
+      return { pack: { index: mode.index } }
+  }
 }
 
 export interface PaymentState {
@@ -2347,6 +2429,16 @@ export interface Degradation {
 
 export interface Cooldown {
   seconds: BN;
+}
+
+export interface BuildOutput {
+  items: BuildOutputItem[]
+}
+
+export interface BuildOutputItem {
+  mint: web3.PublicKey;
+  amount: BN;
+  received: boolean;
 }
 
 export interface StartBuildAccounts {
@@ -2390,13 +2482,25 @@ export interface VerifyIngredientTestAccounts {
   payer: web3.PublicKey;
 }
 
-export interface CompleteBuildAccounts {
+export interface CompleteBuildItemAccounts {
   itemMint: web3.PublicKey;
   payer: web3.PublicKey;
   build: web3.PublicKey;
 }
 
-export interface CompleteBuildArgs {
+export interface CompleteBuildItemArgs {
+  root: Buffer;
+  leafIndex: number;
+  proof: Buffer[];
+}
+
+export interface CompleteBuildPackAccounts {
+  pack: web3.PublicKey;
+  payer: web3.PublicKey;
+  build: web3.PublicKey;
+}
+
+export interface CompleteBuildPackArgs {
   root: Buffer;
   leafIndex: number;
   proof: Buffer[];
@@ -2410,6 +2514,23 @@ export interface ReceiveItemAccounts {
 export interface AddItemsToItemClass {
   itemClass: web3.PublicKey;
   itemMints: web3.PublicKey[];
+}
+
+export interface AddPackToItemClassAccounts {
+  itemClass: web3.PublicKey;
+}
+
+export interface AddPackToItemClassArgs {
+  contents: PackContents;
+}
+
+export interface PackContents {
+  entries: PackContentsEntry[];
+}
+
+export interface PackContentsEntry {
+  mint: web3.PublicKey;
+  amount: BN;
 }
 
 export interface ApplyBuildEffectAccounts {

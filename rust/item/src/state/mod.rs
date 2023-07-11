@@ -7,6 +7,45 @@ use mpl_token_metadata::ID as TokenMetadataPID;
 pub mod accounts;
 pub mod errors;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ItemClassV1OutputMode {
+    Item,
+    Pack { index: u64 },
+}
+
+impl ItemClassV1OutputMode {
+    pub const SPACE: usize = 1 + 8;
+
+    pub fn get_index(&self) -> Result<u64> {
+        match self {
+            ItemClassV1OutputMode::Item => {
+                Err(errors::ErrorCode::InvalidItemClassV1OutputMode.into())
+            }
+            ItemClassV1OutputMode::Pack { index } => Ok(*index),
+        }
+    }
+
+    pub fn increment_index(&mut self) -> Result<()> {
+        match self {
+            ItemClassV1OutputMode::Item => {
+                Err(errors::ErrorCode::InvalidItemClassV1OutputMode.into())
+            }
+            ItemClassV1OutputMode::Pack { index } => {
+                *index += 1;
+                Ok(())
+            }
+        }
+    }
+
+    pub fn is_pack(&self) -> bool {
+        matches!(self, ItemClassV1OutputMode::Pack { .. })
+    }
+
+    pub fn is_item(&self) -> bool {
+        matches!(self, ItemClassV1OutputMode::Item)
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
 pub struct BuildIngredientData {
     // each item used for this build ingredient must be a member of this item class
@@ -258,6 +297,79 @@ impl From<Payment> for PaymentState {
 
 impl PaymentState {
     pub const SPACE: usize = 1 + Payment::SPACE;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PackContents {
+    pub entries: Vec<PackContentsEntry>,
+}
+
+impl PackContents {
+    pub fn space(entry_count: usize) -> usize {
+        4 + (entry_count * PackContentsEntry::SPACE)
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PackContentsEntry {
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
+impl PackContentsEntry {
+    pub const SPACE: usize = 32 + 8;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BuildOutput {
+    pub items: Vec<BuildOutputItem>,
+}
+
+impl BuildOutput {
+    pub fn new() -> Self {
+        BuildOutput { items: vec![] }
+    }
+
+    pub fn space(output_count: usize) -> usize {
+        4 + (BuildOutputItem::SPACE * output_count)
+    }
+
+    pub fn add_output(&mut self, mint: Pubkey, amount: u64) {
+        self.items.push(BuildOutputItem {
+            mint,
+            amount,
+            received: false,
+        })
+    }
+
+    pub fn is_eligible_output(&self, mint: &Pubkey, amount: u64) -> bool {
+        self.items
+            .iter()
+            .any(|output| output.mint.eq(mint) && output.amount == amount && !output.received)
+    }
+
+    pub fn set_output_as_received(&mut self, mint: &Pubkey) {
+        for output in self.items.iter_mut() {
+            if output.mint.eq(mint) {
+                output.received = true;
+            }
+        }
+    }
+
+    pub fn all_outputs_sent(&self) -> bool {
+        self.items.iter().all(|output| output.received)
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BuildOutputItem {
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub received: bool,
+}
+
+impl BuildOutputItem {
+    pub const SPACE: usize = 32 + 8 + 1;
 }
 
 // anchor wrapper for Noop Program required for spl-account-compression

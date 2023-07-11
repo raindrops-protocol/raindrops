@@ -3,8 +3,8 @@ use std::convert::TryInto;
 use anchor_lang::prelude::*;
 
 use super::{
-    errors::ErrorCode, BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState,
-    RecipeIngredientData,
+    errors::ErrorCode, BuildIngredientData, BuildOutput, BuildOutputItem, BuildStatus,
+    ItemClassV1OutputMode, ItemState, PackContents, Payment, PaymentState, RecipeIngredientData,
 };
 
 // seeds = ['item_class_v1', items.key().as_ref()]
@@ -17,6 +17,9 @@ pub struct ItemClassV1 {
     pub items: Pubkey,
 
     pub recipe_index: u64,
+
+    // defines the behavior when the item class is the target of a build output
+    pub output_mode: ItemClassV1OutputMode,
 }
 
 impl ItemClassV1 {
@@ -24,7 +27,8 @@ impl ItemClassV1 {
     pub const SPACE: usize = 8 + // anchor
     32 + // authority
     32 + // items 
-    8; // recipe_index
+    8 + // recipe_index
+    ItemClassV1OutputMode::SPACE; // output mode
 }
 
 // seeds = ['item_v1', item_mint.key().as_ref()]
@@ -93,7 +97,7 @@ pub struct Build {
     pub item_class: Pubkey,
 
     // mint of the token received at the end
-    pub item_mint: Option<Pubkey>,
+    pub output: BuildOutput,
 
     // payment state
     pub payment: Option<PaymentState>,
@@ -112,6 +116,7 @@ impl Build {
         8 + // recipe_index
         32 + // builder
         32 + // item class
+        BuildOutput::space(10) + // option build output
         (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
@@ -202,5 +207,36 @@ impl Build {
         } else {
             Err(ErrorCode::IncorrectIngredient.into())
         }
+    }
+
+    pub fn add_output_item(&mut self, mint: Pubkey, amount: u64) {
+        self.output.items.push(BuildOutputItem {
+            mint,
+            amount,
+            received: false,
+        });
+    }
+}
+
+// seeds = ['pack', item_class.key().as_ref(), &id.to_le_bytes()]
+#[account]
+pub struct Pack {
+    // unique id
+    pub id: u64,
+
+    // item class which this pack belongs to
+    pub item_class: Pubkey,
+
+    pub contents: PackContents,
+}
+
+impl Pack {
+    pub const PREFIX: &'static str = "pack";
+
+    pub fn space(entry_count: usize) -> usize {
+        8 + // anchor
+        8 + // id
+        32 + // item_class
+        PackContents::space(entry_count) // pack contents
     }
 }

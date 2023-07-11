@@ -1978,6 +1978,13 @@ pub mod raindrops_item {
         add_item_to_item_class::handler(ctx)
     }
 
+    pub fn add_pack_to_item_class(
+        ctx: Context<AddPackToItemClass>,
+        args: AddPackToItemClassArgs,
+    ) -> Result<()> {
+        add_pack_to_item_class::handler(ctx, args)
+    }
+
     pub fn start_build(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         start_build::handler(ctx, args)
     }
@@ -2011,11 +2018,18 @@ pub mod raindrops_item {
         receive_item::handler(ctx)
     }
 
-    pub fn complete_build<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, CompleteBuild<'info>>,
-        args: CompleteBuildArgs,
+    pub fn complete_build_item<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CompleteBuildItem<'info>>,
+        args: CompleteBuildItemArgs,
     ) -> Result<()> {
-        complete_build::handler(ctx, args)
+        complete_build_item::handler(ctx, args)
+    }
+
+    pub fn complete_build_pack<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CompleteBuildPack<'info>>,
+        args: CompleteBuildPackArgs,
+    ) -> Result<()> {
+        complete_build_pack::handler(ctx, args)
     }
 
     pub fn apply_build_effect(ctx: Context<ApplyBuildEffect>) -> Result<()> {

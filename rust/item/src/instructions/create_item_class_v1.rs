@@ -6,7 +6,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Recipe},
-    NoopProgram, Payment, RecipeIngredientData,
+    ItemClassV1OutputMode, NoopProgram, Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
@@ -42,6 +42,7 @@ pub struct CreateItemClassV1<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassV1Args {
     pub recipe_args: RecipeArgs,
+    pub output_mode: ItemClassV1OutputMode,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -57,6 +58,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
         recipe_index: Recipe::INITIAL_INDEX,
+        output_mode: args.output_mode, // TODO: make sure index = 0 on Pack mode
     });
 
     // init recipe

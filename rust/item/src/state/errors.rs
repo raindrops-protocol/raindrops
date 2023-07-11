@@ -37,4 +37,13 @@ pub enum ErrorCode {
 
     #[msg("Must make build payment")]
     BuildNotPaid,
+
+    #[msg("Invalid ItemClassV1OutputMode")]
+    InvalidItemClassV1OutputMode,
+
+    #[msg("Invalid Build Output")]
+    InvalidBuildOutput,
+
+    #[msg("Invalid Pack Contents")]
+    InvalidPackContents,
 }

@@ -13,7 +13,7 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
-pub struct CompleteBuild<'info> {
+pub struct CompleteBuildItem<'info> {
     pub item_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
@@ -37,14 +37,14 @@ pub struct CompleteBuild<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct CompleteBuildArgs {
+pub struct CompleteBuildItemArgs {
     pub root: [u8; 32],
     pub leaf_index: u32,
 }
 
 pub fn handler<'a, 'b, 'c, 'info>(
-    ctx: Context<'a, 'b, 'c, 'info, CompleteBuild<'info>>,
-    args: CompleteBuildArgs,
+    ctx: Context<'a, 'b, 'c, 'info, CompleteBuildItem<'info>>,
+    args: CompleteBuildItemArgs,
 ) -> Result<()> {
     // check the build is in progress before running completion steps
     require!(
@@ -95,7 +95,7 @@ pub fn handler<'a, 'b, 'c, 'info>(
     // set the item mint in the build pda
     // this represents the token that will be transferred to the builder
     let build = &mut ctx.accounts.build;
-    build.item_mint = Some(ctx.accounts.item_mint.key());
+    build.add_output_item(ctx.accounts.item_mint.key(), 1);
 
     Ok(())
 }

@@ -19,7 +19,7 @@ import path from "path";
 // use a local file or set the env var of TEST_SIGNER
 const TEST_SIGNER_FILE_PATH = "./tests/files/test-signer.json";
 
-describe("itemv1", () => {
+describe.only("itemv1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -43,14 +43,14 @@ describe("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // output pNft
     const outputItemClass = await createItemClass(payer, connection, 1, true, {
@@ -77,7 +77,7 @@ describe("itemv1", () => {
           },
         },
       ],
-    });
+    }, { kind: "Item"});
 
     // transfer output mints to their item class
     for (let mint of outputItemClass.mints) {
@@ -147,7 +147,7 @@ describe("itemv1", () => {
     console.log("addPaymentTxSig: %s", addPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildAndReceiveItem(
+    await completeBuildItemAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -212,7 +212,7 @@ describe("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // output pNft
     const outputItemClass = await createItemClass(payer, connection, 2, true, {
@@ -231,7 +231,7 @@ describe("itemv1", () => {
           },
         },
       ],
-    });
+    }, { kind: "Item"});
 
     // transfer output mints to their item class
     for (let mint of outputItemClass.mints) {
@@ -291,7 +291,7 @@ describe("itemv1", () => {
     console.log("addPaymentTxSig: %s", addPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildAndReceiveItem(
+    await completeBuildItemAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -382,14 +382,14 @@ describe("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // output pNft
     const outputItemClass = await createItemClass(payer, connection, 1, true, {
@@ -416,7 +416,7 @@ describe("itemv1", () => {
           },
         },
       ],
-    });
+    }, { kind: "Item"});
 
     // transfer output mints to their item class
     for (let mint of outputItemClass.mints) {
@@ -486,7 +486,7 @@ describe("itemv1", () => {
     console.log("addPaymentTxSig: %s", addPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildAndReceiveItem(
+    await completeBuildItemAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -528,14 +528,14 @@ describe("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // output pNft
     const availableItemsToBuild = 2;
@@ -568,7 +568,7 @@ describe("itemv1", () => {
             },
           },
         ],
-      }
+      }, { kind: "Item"}
     );
 
     // transfer output mints to their item class
@@ -641,7 +641,7 @@ describe("itemv1", () => {
       console.log("addPaymentTxSig: %s", addPaymentResult.txid);
 
       // complete build and receive the item
-      await completeBuildAndReceiveItem(
+      await completeBuildItemAndReceiveItem(
         connection,
         outputItemClass.tree,
         i,
@@ -701,14 +701,14 @@ describe("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // ingredient 2, NFT
     const nftItemClass = await createItemClass(payer, connection, 1, false, {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // output pNft
     const outputItemClass = await createItemClass(payer, connection, 1, true, {
@@ -735,7 +735,7 @@ describe("itemv1", () => {
           },
         },
       ],
-    });
+    }, { kind: "Item"});
 
     // transfer output mints to their item class
     for (let mint of outputItemClass.mints) {
@@ -807,7 +807,7 @@ describe("itemv1", () => {
     console.log("addPaymentTxSig: %s", addPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildAndReceiveItem(
+    await completeBuildItemAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -850,6 +850,7 @@ describe("itemv1", () => {
         payment: null,
         ingredientArgs: [],
       },
+      outputMode: { kind: "Item" }
     };
 
     let [itemClass, createItemClassResult] =
@@ -924,7 +925,7 @@ describe("itemv1", () => {
         buildEnabled: false,
         payment: null,
         ingredientArgs: [],
-      }
+      }, { kind: "Item"}
     );
 
     // ingredient 2, NFT
@@ -932,14 +933,14 @@ describe("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // ingredient 3, pNFT
     const clayItemClass = await createItemClass(builder, connection, 1, true, {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
-    });
+    }, { kind: "Item"});
 
     // output pNft
     const outputItemClass = await createItemClass(
@@ -979,7 +980,8 @@ describe("itemv1", () => {
             },
           },
         ],
-      }
+      },
+      { kind: "Item"}
     );
 
     // transfer output mints to their item class
@@ -1081,7 +1083,7 @@ describe("itemv1", () => {
     );
 
     // complete build and receive the item
-    await completeBuildAndReceiveItem(
+    await completeBuildItemAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -1103,6 +1105,123 @@ describe("itemv1", () => {
     );
 
     await cleanBuild(itemProgramPayer, build);
+  });
+
+  it.only("open a pack of 3 pNFTs", async () => {
+    const builder = await newPayer(connection);
+    const payer = await newPayer(connection);
+
+    const builderItemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(builder),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // pack NFT
+    const packItemClass = await createItemClass(builder, connection, 1, false, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+    }, { kind: "Item"});
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: true,
+      payment: {
+        treasury: payer.publicKey,
+        amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+      },
+      ingredientArgs: [
+        {
+          itemClass: packItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: { rate: new anchor.BN(100000) }, // single use
+            cooldown: null,
+          },
+        },
+      ],
+    }, { kind: "Pack", index: new BN(0) });
+
+    // check pack data
+    const pack = Utils.PDA.getPack(outputItemClass.itemClass, new BN(0));
+    const packData = await builderItemProgram.getPack(pack);
+    assert.isTrue(packData.contents.entries.length > 0);
+    assert.isTrue(packData.itemClass.equals(outputItemClass.itemClass));
+    assert.isTrue(packData.id.eq(new BN(0)));
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: builderItemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuildResult = await builderItemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        builderItemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      builderItemProgram.id
+    );
+
+    await assertFreshBuild(
+      builderItemProgram,
+      build,
+      builder.publicKey,
+      outputItemClass.itemClass
+    );
+
+    // add pack to the build
+    await addIngredient(
+      builderItemProgram,
+      packItemClass.tree,
+      outputItemClass.itemClass,
+      packItemClass.mints[0],
+      packItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // add payment to build
+    const addPaymentAccounts: Instructions.Item.AddPaymentAccounts = {
+      build: build,
+      builder: builder.publicKey,
+      treasury: payer.publicKey,
+    };
+
+    const addPaymentResult = await builderItemProgram.addPayment(addPaymentAccounts);
+    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+
+    // complete build and receive the item
+    await completeBuildPackAndReceiveItems(
+      connection,
+      outputItemClass.tree,
+      0,
+      build,
+      pack,
+    );
+
+    // clean up
+    await cleanBuild(builderItemProgram, build);
   });
 });
 
@@ -1131,7 +1250,8 @@ async function createItemClass(
   connection: anchor.web3.Connection,
   ingredientCount: number,
   isPNft: boolean,
-  recipeArgs: Instructions.Item.RecipeArgs
+  recipeArgs: Instructions.Item.RecipeArgs,
+  outputMode: Instructions.Item.ItemClassV1OutputMode
 ): Promise<ItemClassContainer> {
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
@@ -1143,6 +1263,7 @@ async function createItemClass(
 
   let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
     recipeArgs: recipeArgs,
+    outputMode: outputMode,
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClassV1(
@@ -1255,27 +1376,59 @@ async function createItemClass(
       );
     }
 
-    // add mint to the items tree on chain
-    const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass = {
-      itemClass: itemClass,
-      itemMints: [ingredientMintOutput.mintAddress],
-    };
-
-    const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(
-      addItemsToItemClassAccounts
-    );
-    console.log("addItemsToItemClassTxSig: %s", addItemsToItemClassResult.txid);
-    console.log(
-      "itemClass: %s, item: %s",
-      itemClass.toString(),
-      ingredientMintOutput.mintAddress.toString()
-    );
-
-    // add mint to items tree off chain
-    tree.updateLeaf(i, ingredientMintOutput.mintAddress.toBuffer());
+    if (outputMode.kind === "Item") {
+      // add mint to the items tree on chain
+      const addItemsToItemClassAccounts: Instructions.Item.AddItemsToItemClass = {
+        itemClass: itemClass,
+        itemMints: [ingredientMintOutput.mintAddress],
+      };
+    
+      const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(
+        addItemsToItemClassAccounts
+      );
+      console.log("addItemsToItemClassTxSig: %s", addItemsToItemClassResult.txid);
+      console.log(
+        "itemClass: %s, item: %s",
+        itemClass.toString(),
+        ingredientMintOutput.mintAddress.toString()
+      );
+    
+      // add mint to items tree off chain
+      tree.updateLeaf(i, ingredientMintOutput.mintAddress.toBuffer()); 
+    } 
 
     mints.push(ingredientMintOutput.mintAddress);
   }
+
+  // for now put all mints in the same pack
+  if (outputMode.kind === "Pack") {
+    const addPackToItemClassAccounts: Instructions.Item.AddPackToItemClassAccounts = {
+      itemClass: itemClass,
+    };
+
+    const entries: Instructions.Item.PackContentsEntry[] = [];
+    for (let mint of mints) {
+      entries.push({mint: mint, amount: new BN(1)})
+    }
+
+    const addPackToItemClassArgs: Instructions.Item.AddPackToItemClassArgs = {
+      contents: {entries: entries}
+    };
+  
+    const [addPackToItemClassResult, pack] = await itemProgram.addPackToItemClass(
+      addPackToItemClassAccounts,
+      addPackToItemClassArgs
+    );
+    console.log("addPackToItemClassTxSig: %s", addPackToItemClassResult.txid);
+    console.log(
+      "itemClass: %s, pack: %s",
+      itemClass.toString(), pack.toString()
+    );
+  
+    // add mint to items tree off chain
+    // TODO: for now hardcode
+    tree.updateLeaf(0, pack.toBuffer());
+  } 
 
   return { itemClass: itemClass, mints: mints, tree: tree };
 }
@@ -1659,7 +1812,7 @@ async function addIngredientPermissionless(
   console.log("addIngredientPermissionlessTxSig: %s", addIngredientResult.txid);
 }
 
-async function completeBuildAndReceiveItem(
+async function completeBuildItemAndReceiveItem(
   connection: anchor.web3.Connection,
   tree: cmp.MerkleTree,
   leafIndex: number,
@@ -1679,7 +1832,7 @@ async function completeBuildAndReceiveItem(
   });
 
   // complete the build process
-  const completeBuildAccounts: Instructions.Item.CompleteBuildAccounts = {
+  const completeBuildItemAccounts: Instructions.Item.CompleteBuildItemAccounts = {
     itemMint: outputItemMints[leafIndex],
     payer: itemProgram.client.provider.publicKey,
     build: build,
@@ -1687,17 +1840,67 @@ async function completeBuildAndReceiveItem(
 
   const proof = tree.getProof(leafIndex);
 
-  const completeBuildArgs: Instructions.Item.CompleteBuildArgs = {
+  const completeBuildItemArgs: Instructions.Item.CompleteBuildItemArgs = {
     root: proof.root,
     leafIndex: proof.leafIndex,
     proof: proof.proof,
   };
 
-  const completeBuildResult = await itemProgram.completeBuild(
-    completeBuildAccounts,
-    completeBuildArgs
+  const completeBuildResult = await itemProgram.completeBuildItem(
+    completeBuildItemAccounts,
+    completeBuildItemArgs
   );
-  console.log("completeBuildTxSig: %s", completeBuildResult.txid);
+  console.log("completeBuildItemTxSig: %s", completeBuildResult.txid);
+
+  // send item to builder
+  const receiveItemAccounts: Instructions.Item.ReceiveItemAccounts = {
+    build: build,
+    payer: itemProgram.client.provider.publicKey,
+  };
+
+  const receiveItemResult = await itemProgram.receiveItem(receiveItemAccounts);
+  console.log("receiveItemTxSig: %s", receiveItemResult.txid);
+}
+
+async function completeBuildPackAndReceiveItems(
+  connection: anchor.web3.Connection,
+  tree: cmp.MerkleTree,
+  leafIndex: number,
+  build: anchor.web3.PublicKey,
+  pack: anchor.web3.PublicKey,
+) {
+  const signer = await initSigner(TEST_SIGNER_FILE_PATH, connection);
+
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(
+      connection,
+      new anchor.Wallet(signer),
+      { commitment: "confirmed" }
+    ),
+    idl: Idls.ItemIDL,
+  });
+
+  // complete the build process
+  const completeBuildPackAccounts: Instructions.Item.CompleteBuildPackAccounts = {
+    pack: pack,
+    payer: itemProgram.client.provider.publicKey,
+    build: build,
+  };
+
+  const proof = tree.getProof(leafIndex);
+
+  const completeBuildPackArgs: Instructions.Item.CompleteBuildPackArgs = {
+    root: proof.root,
+    leafIndex: proof.leafIndex,
+    proof: proof.proof,
+  };
+
+  const completeBuildResult = await itemProgram.completeBuildPack(
+    completeBuildPackAccounts,
+    completeBuildPackArgs
+  );
+  console.log("completeBuildPackTxSig: %s", completeBuildResult.txid);
 
   // send item to builder
   const receiveItemAccounts: Instructions.Item.ReceiveItemAccounts = {

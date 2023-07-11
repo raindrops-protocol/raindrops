@@ -11,7 +11,7 @@ import {
   PermissivenessType,
   Root,
 } from "./common";
-import { Payment, PaymentState } from "../instructions/item";
+import { BuildOutput, PackContents, Payment, PaymentState } from "../instructions/item";
 
 extendBorsh();
 
@@ -576,7 +576,7 @@ export interface Build {
   recipeIndex: BN;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
-  itemMint: web3.PublicKey | null;
+  output: BuildOutput;
   payment: PaymentState | null;
   ingredients: BuildIngredientData[];
   status: BuildStatus;
@@ -614,4 +614,10 @@ export function convertToBuildStatus(buildStatusRaw: any): BuildStatus {
     default:
       throw new Error(`Invalid Build Status: ${buildStatusRaw}`);
   }
+}
+
+export interface Pack {
+  itemClass: web3.PublicKey;
+  id: BN;
+  contents: PackContents;
 }
