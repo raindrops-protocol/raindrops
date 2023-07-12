@@ -3,8 +3,8 @@ use std::convert::TryInto;
 use anchor_lang::prelude::*;
 
 use super::{
-    errors::ErrorCode, BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState,
-    RecipeIngredientData,
+    errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus, ItemState,
+    OutputSelectionGroup, Payment, PaymentState, RecipeIngredientData, ItemClassV1OutputMode,
 };
 
 // seeds = ['item_class_v1', items.key().as_ref()]
@@ -17,6 +17,8 @@ pub struct ItemClassV1 {
     pub items: Pubkey,
 
     pub recipe_index: u64,
+
+    pub output_mode: ItemClassV1OutputMode,
 }
 
 impl ItemClassV1 {
@@ -24,7 +26,8 @@ impl ItemClassV1 {
     pub const SPACE: usize = 8 + // anchor
     32 + // authority
     32 + // items 
-    8; // recipe_index
+    8 + // recipe_index
+    ItemClassV1OutputMode::SPACE; // output mode
 }
 
 // seeds = ['item_v1', item_mint.key().as_ref()]
@@ -65,6 +68,9 @@ pub struct Recipe {
 
     // list of ingredients required to use this recipe to build the item class v1
     pub ingredients: Vec<RecipeIngredientData>,
+
+    // list of possible output choices that a builder can select when using this recipe
+    pub output_selection: Vec<OutputSelectionGroup>,
 }
 
 impl Recipe {
@@ -92,9 +98,6 @@ pub struct Build {
     // item class of the item that will be built
     pub item_class: Pubkey,
 
-    // mint of the token received at the end
-    pub item_mint: Option<Pubkey>,
-
     // payment state
     pub payment: Option<PaymentState>,
 
@@ -103,6 +106,9 @@ pub struct Build {
 
     // current status of the build
     pub status: BuildStatus,
+
+    // list of build outputs
+    pub outputs: Vec<BuildOutput>,
 }
 
 impl Build {
@@ -112,7 +118,6 @@ impl Build {
         8 + // recipe_index
         32 + // builder
         32 + // item class
-        (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
         4 + (Self::build_ingredient_data_space(recipe_ingredient_data)) // ingredients
@@ -202,5 +207,13 @@ impl Build {
         } else {
             Err(ErrorCode::IncorrectIngredient.into())
         }
+    }
+
+    pub fn add_build_output(&mut self, mint: Pubkey, amount: u64) {
+        self.outputs.push(BuildOutput {
+            mint,
+            amount,
+            received: false,
+        })
     }
 }

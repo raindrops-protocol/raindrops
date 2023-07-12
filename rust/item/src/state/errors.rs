@@ -37,4 +37,7 @@ pub enum ErrorCode {
 
     #[msg("Must make build payment")]
     BuildNotPaid,
+
+    #[msg("Invalid Output Selection")]
+    InvalidOutputSelection,
 }

@@ -6,7 +6,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Recipe},
-    NoopProgram, Payment, RecipeIngredientData,
+    NoopProgram, OutputSelectionGroup, Payment, RecipeIngredientData, ItemClassV1OutputMode,
 };
 
 #[derive(Accounts)]
@@ -42,6 +42,7 @@ pub struct CreateItemClassV1<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassV1Args {
     pub recipe_args: RecipeArgs,
+    pub output_mode: ItemClassV1OutputMode,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -49,6 +50,7 @@ pub struct RecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
     pub ingredients: Vec<RecipeIngredientData>,
+    pub output_selection: Vec<OutputSelectionGroup>,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
@@ -57,6 +59,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
         recipe_index: Recipe::INITIAL_INDEX,
+        output_mode: args.output_mode,
     });
 
     // init recipe
@@ -66,6 +69,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         build_enabled: args.recipe_args.build_enabled,
         ingredients: args.recipe_args.ingredients,
         payment: args.recipe_args.payment,
+        output_selection: args.recipe_args.output_selection,
     });
 
     // initialize merkle tree

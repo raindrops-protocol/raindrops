@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::state::{
     accounts::{ItemClassV1, Recipe},
-    Payment, RecipeIngredientData,
+    OutputSelectionGroup, Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
@@ -32,6 +32,7 @@ pub struct CreateRecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
     pub ingredients: Vec<RecipeIngredientData>,
+    pub output_selection: Vec<OutputSelectionGroup>,
 }
 
 pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()> {
@@ -46,6 +47,7 @@ pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()>
         build_enabled: args.build_enabled,
         ingredients: args.ingredients,
         payment: args.payment,
+        output_selection: args.output_selection,
     });
 
     Ok(())

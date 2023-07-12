@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{Build, ItemClassV1, Recipe},
     errors::ErrorCode,
-    BuildIngredientData, BuildStatus, PaymentState,
+    BuildIngredientData, BuildStatus, OutputSelectionArgs, OutputSelectionGroup, PaymentState,
 };
 
 #[derive(Accounts)]
@@ -34,6 +34,7 @@ pub struct StartBuild<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct StartBuildArgs {
     pub recipe_index: u64,
+    pub recipe_output_selection: Vec<OutputSelectionArgs>,
 }
 
 pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
@@ -57,16 +58,58 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
                 payment_details: payment.clone(),
             });
 
-    // set build data
+    // set initial build data
     ctx.accounts.build.set_inner(Build {
         recipe_index: args.recipe_index,
         builder: ctx.accounts.builder.key(),
         item_class: ctx.accounts.item_class.key(),
-        item_mint: None,
         status: BuildStatus::InProgress,
         payment,
         ingredients,
+        outputs: vec![],
     });
 
+    // add selectable outputs to the build data
+    let selected_outputs: Vec<(Pubkey, u64)> = parse_selected_outputs(
+        &args.recipe_output_selection,
+        &ctx.accounts.recipe.output_selection,
+    )?;
+    for selected_output in selected_outputs {
+        ctx.accounts
+            .build
+            .add_build_output(selected_output.0, selected_output.1);
+    }
+
     Ok(())
+}
+
+pub fn parse_selected_outputs(
+    args: &[OutputSelectionArgs],
+    groups: &[OutputSelectionGroup],
+) -> Result<Vec<(Pubkey, u64)>> {
+    let mut mints_and_amounts: Vec<(Pubkey, u64)> = Vec::new();
+
+    for arg in args {
+        let group = groups.iter().find(|g| g.group_id == arg.group_id);
+
+        match group {
+            Some(group) => {
+                let output = group.choices.iter().find(|o| o.output_id == arg.output_id);
+
+                match output {
+                    Some(output) => {
+                        mints_and_amounts.push((output.mint, output.amount));
+                    }
+                    None => {
+                        return Err(ErrorCode::InvalidOutputSelection.into());
+                    }
+                }
+            }
+            None => {
+                return Err(ErrorCode::InvalidOutputSelection.into());
+            }
+        }
+    }
+
+    Ok(mints_and_amounts)
 }
