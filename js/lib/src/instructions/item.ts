@@ -1539,15 +1539,54 @@ export class Instruction extends SolKitInstruction {
 
   async receiveItem(
     accounts: ReceiveItemAccounts
-  ): Promise<web3.TransactionInstruction[]> {
+  ): Promise<web3.TransactionInstruction[][]> {
     const buildData = await this.program.client.account.build.fetch(
       accounts.build
     );
 
+    const ixnGroups: web3.TransactionInstruction[][] = [];
+    for (let item of (buildData.output as any).items) {
+      // if received already, dont send again
+      if (item.received === true) {
+        continue;
+      }
+
+      const itemMint = new web3.PublicKey(item.mint);
+
+      // detect what type of token we are adding
+      const tokenStandard = await Utils.Item.getTokenStandard(
+        this.program.client.provider.connection,
+        new web3.PublicKey(item.mint)
+      );
+
+      if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+        const pNftIxns = await this.receiveItemPNft(
+          accounts.build,
+          accounts.payer,
+          itemMint
+        );
+        ixnGroups.push(pNftIxns);
+      } else {
+        const splIx = await this.receiveItemSpl(
+          accounts.build,
+          accounts.payer,
+          itemMint
+        );
+        ixnGroups.push([splIx]);
+      }
+    }
+
+    return ixnGroups;
+  }
+
+  private async receiveItemPNft(
+    build: web3.PublicKey,
+    payer: web3.PublicKey,
+    itemMint: web3.PublicKey
+  ): Promise<web3.TransactionInstruction[]> {
+    const buildData = await this.program.client.account.build.fetch(build);
+
     const itemClass = new web3.PublicKey(buildData.itemClass);
-    const itemMint = new web3.PublicKey(
-      (buildData.output as any).items[0].mint
-    );
     const builder = new web3.PublicKey(buildData.builder);
 
     const [itemMetadata, _itemMetadataBump] =
@@ -1620,7 +1659,7 @@ export class Instruction extends SolKitInstruction {
     });
 
     const ix = await this.program.client.methods
-      .receiveItem()
+      .receiveItemPnft()
       .accounts({
         itemMint: itemMint,
         itemMetadata: itemMetadata,
@@ -1631,9 +1670,9 @@ export class Instruction extends SolKitInstruction {
         itemDestination: itemDestination,
         itemDestinationTokenRecord: itemDestinationTokenRecord,
         itemClass: itemClass,
-        build: accounts.build,
+        build: build,
         builder: builder,
-        payer: accounts.payer,
+        payer: payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1645,6 +1684,44 @@ export class Instruction extends SolKitInstruction {
       .instruction();
 
     return [increaseCUIx, addPriorityFeeIx, ix];
+  }
+
+  private async receiveItemSpl(
+    build: web3.PublicKey,
+    payer: web3.PublicKey,
+    itemMint: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(build);
+
+    const itemClass = new web3.PublicKey(buildData.itemClass);
+    const builder = new web3.PublicKey(buildData.builder);
+
+    const itemSource = splToken.getAssociatedTokenAddressSync(
+      itemMint,
+      itemClass,
+      true
+    );
+    const itemDestination = await splToken.getAssociatedTokenAddress(
+      itemMint,
+      builder
+    );
+
+    return await this.program.client.methods
+      .receiveItemSpl()
+      .accounts({
+        itemMint: itemMint,
+        itemSource: itemSource,
+        itemDestination: itemDestination,
+        itemClass: itemClass,
+        build: build,
+        builder: builder,
+        payer: payer,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .instruction();
   }
 
   async applyBuildEffect(

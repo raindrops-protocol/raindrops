@@ -93,7 +93,6 @@ pub fn handler<'a, 'b, 'c, 'info>(
     )?;
 
     // set the item mint in the build pda
-    // this represents the token that will be transferred to the builder
     let build = &mut ctx.accounts.build;
     build.add_output_item(ctx.accounts.item_mint.key(), 1);
 

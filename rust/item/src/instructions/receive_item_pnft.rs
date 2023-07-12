@@ -12,7 +12,7 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
-pub struct ReceiveItem<'info> {
+pub struct ReceiveItemPNft<'info> {
     pub item_mint: Account<'info, token::Mint>,
 
     /// CHECK: Done by token metadata
@@ -73,21 +73,19 @@ pub struct ReceiveItem<'info> {
     pub auth_rules_program: Program<'info, AuthRulesProgram>,
 }
 
-pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
+pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
     // check that the build is complete
     require!(
         ctx.accounts.build.status.eq(&BuildStatus::Complete),
         ErrorCode::InvalidBuildStatus
     );
 
-    // check item_mint is a valid output
-    // TODO: amount must be passed in as arg
-    let eligible_output = ctx
+    // get output amount for item mint
+    let amount = ctx
         .accounts
         .build
         .output
-        .is_eligible_output(&ctx.accounts.item_mint.key(), 1);
-    require!(eligible_output, ErrorCode::InvalidBuildOutput);
+        .find_output_amount(&ctx.accounts.item_mint.key());
 
     // set build output to received
     ctx.accounts
@@ -103,7 +101,7 @@ pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
     // transfer the pNFT to the builder
     // transfer item_mint to destination
     let transfer_args = TransferArgs::V1 {
-        amount: 1,
+        amount: amount, // this should always be 1 for a pNFT
         authorization_data: None,
     };
 

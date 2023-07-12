@@ -230,7 +230,6 @@ impl ItemState {
 
     // returns true if the item has no more durability left
     pub fn broken(&self) -> bool {
-        msg!("{:?}", &self);
         match self {
             Self::Fungible => false,
             Self::NonFungible {
@@ -310,7 +309,6 @@ impl PackContents {
     }
 
     pub fn hash_pack_contents(&self, nonce: &[u8; 16]) -> [u8; 32] {
-        msg!("nonce: {:?}", nonce);
         let mut bytes = self
             .entries
             .iter()
@@ -364,10 +362,12 @@ impl BuildOutput {
         })
     }
 
-    pub fn is_eligible_output(&self, mint: &Pubkey, amount: u64) -> bool {
+    pub fn find_output_amount(&self, mint: &Pubkey) -> u64 {
         self.items
             .iter()
-            .any(|output| output.mint.eq(mint) && output.amount == amount && !output.received)
+            .find(|output| output.mint.eq(mint) && !output.received)
+            .unwrap()
+            .amount
     }
 
     pub fn set_output_as_received(&mut self, mint: &Pubkey) {
@@ -383,7 +383,7 @@ impl BuildOutput {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BuildOutputItem {
     pub mint: Pubkey,
     pub amount: u64,

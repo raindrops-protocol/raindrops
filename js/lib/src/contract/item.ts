@@ -385,9 +385,16 @@ export class ItemProgram extends Program.Program {
   async receiveItem(
     accounts: ItemInstruction.ReceiveItemAccounts,
     options?: SendOptions
-  ): Promise<Transaction.SendTransactionResult> {
-    const ixns = await this.instruction.receiveItem(accounts);
-    return await this.sendWithRetry(ixns, [], options);
+  ): Promise<Transaction.SendTransactionResult[]> {
+    const ixnGroups = await this.instruction.receiveItem(accounts);
+
+    const results: Transaction.SendTransactionResult[] = [];
+    for (let group of ixnGroups) {
+      const result = await this.sendWithRetry(group, [], options);
+      results.push(result);
+    }
+
+    return results;
   }
 
   async applyBuildEffect(

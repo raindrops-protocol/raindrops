@@ -2014,8 +2014,12 @@ pub mod raindrops_item {
         verify_ingredient_test::handler(ctx, args)
     }
 
-    pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
-        receive_item::handler(ctx)
+    pub fn receive_item_pnft(ctx: Context<ReceiveItemPNft>) -> Result<()> {
+        receive_item_pnft::handler(ctx)
+    }
+
+    pub fn receive_item_spl(ctx: Context<ReceiveItemSpl>) -> Result<()> {
+        receive_item_spl::handler(ctx)
     }
 
     pub fn complete_build_item<'a, 'b, 'c, 'info>(

@@ -1107,7 +1107,7 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgramPayer, build);
   });
 
-  it.only("open a pack of 3 pNFTs", async () => {
+  it("open a pack of 3 pNFTs", async () => {
     const builder = await newPayer(connection);
     const payer = await newPayer(connection);
 
@@ -1129,7 +1129,7 @@ describe.only("itemv1", () => {
     }, { kind: "Item"});
 
     // output pNft
-    const outputItemClass = await createItemClass(payer, connection, 1, true, {
+    const outputItemClass = await createItemClass(payer, connection, 3, true, {
       buildEnabled: true,
       payment: {
         treasury: payer.publicKey,
@@ -1852,7 +1852,7 @@ async function completeBuildItemAndReceiveItem(
 
   const completeBuildResult = await itemProgram.completeBuildItem(
     completeBuildItemAccounts,
-    completeBuildItemArgs
+    completeBuildItemArgs,
   );
   console.log("completeBuildItemTxSig: %s", completeBuildResult.txid);
 
@@ -1862,8 +1862,10 @@ async function completeBuildItemAndReceiveItem(
     payer: itemProgram.client.provider.publicKey,
   };
 
-  const receiveItemResult = await itemProgram.receiveItem(receiveItemAccounts);
-  console.log("receiveItemTxSig: %s", receiveItemResult.txid);
+  const receiveItemResults = await itemProgram.receiveItem(receiveItemAccounts);
+  for (let result of receiveItemResults) {
+    console.log("receiveItemTxSig: %s", result.txid);
+  }
 }
 
 async function completeBuildPackAndReceiveItems(
@@ -1915,8 +1917,10 @@ async function completeBuildPackAndReceiveItems(
     payer: itemProgram.client.provider.publicKey,
   };
 
-  const receiveItemResult = await itemProgram.receiveItem(receiveItemAccounts);
-  console.log("receiveItemTxSig: %s", receiveItemResult.txid);
+  const receiveItemResults = await itemProgram.receiveItem(receiveItemAccounts);
+  for (let result of receiveItemResults) {
+    console.log("receiveItemTxSig: %s", result.txid);
+  } 
 }
 
 async function cleanBuild(
