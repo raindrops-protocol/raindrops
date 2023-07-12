@@ -8,8 +8,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Pack},
-    errors::ErrorCode,
-    NoopProgram, PackContents,
+    NoopProgram,
 };
 
 #[derive(Accounts)]
@@ -17,7 +16,7 @@ use crate::state::{
 pub struct AddPackToItemClass<'info> {
     #[account(init,
         payer = authority,
-        space = Pack::space(args.contents.entries.len()),
+        space = Pack::SPACE,
         seeds = [Pack::PREFIX.as_bytes(), item_class.key().as_ref(), &item_class.output_mode.get_index().unwrap().to_le_bytes()], bump)]
     pub pack: Account<'info, Pack>,
 
@@ -46,16 +45,13 @@ pub struct AddPackToItemClass<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct AddPackToItemClassArgs {
-    pub contents: PackContents,
+    pub contents_hash: [u8; 32],
 }
 
 pub fn handler(ctx: Context<AddPackToItemClass>, args: AddPackToItemClassArgs) -> Result<()> {
-    // check that the pack is not empty 
-    require!(args.contents.entries.len() > 0, ErrorCode::InvalidPackContents);
-
     // set pack contents and metadata
     ctx.accounts.pack.set_inner(Pack {
-        contents: args.contents,
+        contents_hash: args.contents_hash,
         item_class: ctx.accounts.item_class.key(),
         id: ctx.accounts.item_class.output_mode.get_index().unwrap(),
     });

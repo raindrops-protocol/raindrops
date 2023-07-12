@@ -8,7 +8,7 @@ use std::convert::TryInto;
 use crate::state::{
     accounts::{Build, ItemClassV1, Pack},
     errors::ErrorCode,
-    is_signer, BuildStatus, NoopProgram,
+    is_signer, BuildStatus, NoopProgram, PackContents,
 };
 
 #[derive(Accounts)]
@@ -44,6 +44,8 @@ pub struct CompleteBuildPack<'info> {
 pub struct CompleteBuildPackArgs {
     pub root: [u8; 32],
     pub leaf_index: u32,
+    pub pack_contents: PackContents,
+    pub pack_contents_hash_nonce: [u8; 16],
 }
 
 pub fn handler<'a, 'b, 'c, 'info>(
@@ -93,9 +95,16 @@ pub fn handler<'a, 'b, 'c, 'info>(
         args.leaf_index,
     )?;
 
+    // check that the pack_contents hash matches the one stored in the pack pda
+    let args_hash = args
+        .pack_contents
+        .hash_pack_contents(&args.pack_contents_hash_nonce);
+    let pda_hash = &ctx.accounts.pack.contents_hash;
+    require!(args_hash.eq(pda_hash), ErrorCode::InvalidPackContents);
+
     // set the output data for this build based on the chosen pack
     let build = &mut ctx.accounts.build;
-    for entry in &ctx.accounts.pack.contents.entries {
+    for entry in &args.pack_contents.entries {
         build.add_output_item(entry.mint, entry.amount);
     }
 

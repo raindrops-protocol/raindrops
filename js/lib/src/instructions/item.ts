@@ -34,6 +34,7 @@ import { ItemClassWrapper } from "../contract/item";
 import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import { Constants, Utils } from "../main";
+import { sha256 } from "js-sha256";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1081,7 +1082,7 @@ export class Instruction extends SolKitInstruction {
         payment: args.recipeArgs.payment,
         ingredients: ingredients,
       },
-      outputMode: formatItemClassV1OutputMode(args.outputMode)
+      outputMode: formatItemClassV1OutputMode(args.outputMode),
     };
 
     const ix = await this.program.client.methods
@@ -1131,7 +1132,7 @@ export class Instruction extends SolKitInstruction {
 
   async addPackToItemClass(
     accounts: AddPackToItemClassAccounts,
-    args: AddPackToItemClassArgs,
+    args: AddPackToItemClassArgs
   ): Promise<[web3.TransactionInstruction, web3.PublicKey]> {
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
       accounts.itemClass
@@ -1515,6 +1516,8 @@ export class Instruction extends SolKitInstruction {
     const ixArgs = {
       root: args.root,
       leafIndex: args.leafIndex,
+      packContents: args.packContents,
+      packContentsHashNonce: args.packContentsHashNonce,
     };
 
     const ix = await this.program.client.methods
@@ -1542,7 +1545,9 @@ export class Instruction extends SolKitInstruction {
     );
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
-    const itemMint = new web3.PublicKey((buildData.output as any).items[0].mint);
+    const itemMint = new web3.PublicKey(
+      (buildData.output as any).items[0].mint
+    );
     const builder = new web3.PublicKey(buildData.builder);
 
     const [itemMetadata, _itemMetadataBump] =
@@ -2391,14 +2396,16 @@ export interface RecipeArgs {
   ingredientArgs: RecipeIngredientDataArgs[];
 }
 
-export type ItemClassV1OutputMode = { kind: 'Item' } | { kind: 'Pack', index: BN };
+export type ItemClassV1OutputMode =
+  | { kind: "Item" }
+  | { kind: "Pack"; index: BN };
 
 export function formatItemClassV1OutputMode(mode: ItemClassV1OutputMode): any {
   switch (mode.kind) {
     case "Item":
-      return { item: {} }
+      return { item: {} };
     case "Pack":
-      return { pack: { index: mode.index } }
+      return { pack: { index: mode.index } };
   }
 }
 
@@ -2432,7 +2439,7 @@ export interface Cooldown {
 }
 
 export interface BuildOutput {
-  items: BuildOutputItem[]
+  items: BuildOutputItem[];
 }
 
 export interface BuildOutputItem {
@@ -2504,6 +2511,8 @@ export interface CompleteBuildPackArgs {
   root: Buffer;
   leafIndex: number;
   proof: Buffer[];
+  packContents: PackContents;
+  packContentsHashNonce: Uint8Array;
 }
 
 export interface ReceiveItemAccounts {
@@ -2521,11 +2530,35 @@ export interface AddPackToItemClassAccounts {
 }
 
 export interface AddPackToItemClassArgs {
-  contents: PackContents;
+  contentsHash: Buffer;
 }
 
-export interface PackContents {
-  entries: PackContentsEntry[];
+export class PackContents {
+  readonly entries: PackContentsEntry[];
+
+  constructor(entries: PackContentsEntry[]) {
+    this.entries = entries;
+  }
+
+  hash(nonce: Uint8Array): Buffer {
+    // match this with the program code
+    if (nonce.length !== 16) {
+      throw new Error(`nonce must be 16 bytes`);
+    }
+    const contentBuffers = this.entries.map((entry) =>
+      Buffer.concat([
+        entry.mint.toBuffer(),
+        entry.amount.toArrayLike(Buffer, "le", 8),
+      ])
+    );
+
+    const digest = sha256.digest(
+      Buffer.concat([...contentBuffers, Buffer.from(nonce)])
+    );
+    const hash = Buffer.from(digest);
+
+    return hash;
+  }
 }
 
 export interface PackContentsEntry {

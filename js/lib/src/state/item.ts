@@ -619,5 +619,5 @@ export function convertToBuildStatus(buildStatusRaw: any): BuildStatus {
 export interface Pack {
   itemClass: web3.PublicKey;
   id: BN;
-  contents: PackContents;
+  contentsHash: Uint8Array;
 }

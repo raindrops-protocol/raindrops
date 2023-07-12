@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildOutputItem, BuildStatus,
-    ItemClassV1OutputMode, ItemState, PackContents, Payment, PaymentState, RecipeIngredientData,
+    ItemClassV1OutputMode, ItemState, Payment, PaymentState, RecipeIngredientData,
 };
 
 // seeds = ['item_class_v1', items.key().as_ref()]
@@ -227,16 +227,15 @@ pub struct Pack {
     // item class which this pack belongs to
     pub item_class: Pubkey,
 
-    pub contents: PackContents,
+    // a hash of the contents stored by this pack
+    pub contents_hash: [u8; 32],
 }
 
 impl Pack {
     pub const PREFIX: &'static str = "pack";
 
-    pub fn space(entry_count: usize) -> usize {
-        8 + // anchor
-        8 + // id
-        32 + // item_class
-        PackContents::space(entry_count) // pack contents
-    }
+    pub const SPACE: usize = 8 + // anchor
+    8 + // id
+    32 + // item class
+    32; // contents hash
 }

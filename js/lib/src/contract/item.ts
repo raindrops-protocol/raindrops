@@ -311,9 +311,12 @@ export class ItemProgram extends Program.Program {
     args: ItemInstruction.AddPackToItemClassArgs,
     options?: SendOptions
   ): Promise<[Transaction.SendTransactionResult, web3.PublicKey]> {
-    const [ix, pack] = await this.instruction.addPackToItemClass(accounts, args);
+    const [ix, pack] = await this.instruction.addPackToItemClass(
+      accounts,
+      args
+    );
     const result = await this.sendWithRetry([ix], [], options);
-    return [result, pack]
+    return [result, pack];
   }
 
   async createRecipe(
@@ -519,7 +522,7 @@ export class ItemProgram extends Program.Program {
         mint: new web3.PublicKey(output.mint),
         amount: new BN(output.amount),
         received: Boolean(output.received),
-      })
+      });
     }
 
     // detect payment
@@ -618,20 +621,14 @@ export class ItemProgram extends Program.Program {
     } catch (_e) {
       return null;
     }
-    const contents: ItemInstruction.PackContents = {
-      entries: []
-    };
-    for (let entry of packDataRaw.contents.entries) {
-      contents.entries.push({mint: new web3.PublicKey(entry.mint), amount: new BN(entry.amount)})
-    }
 
     const packData: Pack = {
       itemClass: new web3.PublicKey(packDataRaw.itemClass),
       id: new BN(packDataRaw.id),
-      contents: contents,
-    }
+      contentsHash: Uint8Array.from(packDataRaw.contentsHash),
+    };
 
-    return packData
+    return packData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

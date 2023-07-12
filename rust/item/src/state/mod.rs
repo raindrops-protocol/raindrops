@@ -1,6 +1,6 @@
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::hash::hash};
 use mpl_token_auth_rules::ID as AuthRulesID;
 use mpl_token_metadata::ID as TokenMetadataPID;
 
@@ -308,6 +308,22 @@ impl PackContents {
     pub fn space(entry_count: usize) -> usize {
         4 + (entry_count * PackContentsEntry::SPACE)
     }
+
+    pub fn hash_pack_contents(&self, nonce: &[u8; 16]) -> [u8; 32] {
+        msg!("nonce: {:?}", nonce);
+        let mut bytes = self
+            .entries
+            .iter()
+            .flat_map(|entry| {
+                let mut b = Vec::new();
+                b.extend_from_slice(entry.mint.as_ref());
+                b.extend_from_slice(&entry.amount.to_le_bytes());
+                b
+            })
+            .collect::<Vec<u8>>();
+        bytes.extend_from_slice(nonce);
+        hash(&bytes).to_bytes()
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -318,6 +334,12 @@ pub struct PackContentsEntry {
 
 impl PackContentsEntry {
     pub const SPACE: usize = 32 + 8;
+}
+
+impl fmt::Display for PackContentsEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.mint, self.amount)
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

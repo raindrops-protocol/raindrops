@@ -2085,9 +2085,12 @@ export type RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "contents",
+            "name": "contentsHash",
             "type": {
-              "defined": "PackContents"
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -2333,9 +2336,12 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "contents",
+            "name": "contentsHash",
             "type": {
-              "defined": "PackContents"
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -2379,6 +2385,21 @@ export type RaindropsItem = {
           {
             "name": "leafIndex",
             "type": "u32"
+          },
+          {
+            "name": "packContents",
+            "type": {
+              "defined": "PackContents"
+            }
+          },
+          {
+            "name": "packContentsHashNonce",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
           }
         ]
       }
@@ -6856,9 +6877,12 @@ export const IDL: RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "contents",
+            "name": "contentsHash",
             "type": {
-              "defined": "PackContents"
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -7104,9 +7128,12 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "contents",
+            "name": "contentsHash",
             "type": {
-              "defined": "PackContents"
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -7150,6 +7177,21 @@ export const IDL: RaindropsItem = {
           {
             "name": "leafIndex",
             "type": "u32"
+          },
+          {
+            "name": "packContents",
+            "type": {
+              "defined": "PackContents"
+            }
+          },
+          {
+            "name": "packContentsHashNonce",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
           }
         ]
       }

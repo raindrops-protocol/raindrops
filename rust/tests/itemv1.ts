@@ -1150,7 +1150,7 @@ describe.only("itemv1", () => {
     // check pack data
     const pack = Utils.PDA.getPack(outputItemClass.itemClass, new BN(0));
     const packData = await builderItemProgram.getPack(pack);
-    assert.isTrue(packData.contents.entries.length > 0);
+    assert.isTrue(packData.contentsHash.length === 32);
     assert.isTrue(packData.itemClass.equals(outputItemClass.itemClass));
     assert.isTrue(packData.id.eq(new BN(0)));
 
@@ -1218,6 +1218,7 @@ describe.only("itemv1", () => {
       0,
       build,
       pack,
+      outputItemClass.packContents
     );
 
     // clean up
@@ -1401,6 +1402,7 @@ async function createItemClass(
   }
 
   // for now put all mints in the same pack
+  let packContents: Instructions.Item.PackContents | undefined = undefined;
   if (outputMode.kind === "Pack") {
     const addPackToItemClassAccounts: Instructions.Item.AddPackToItemClassAccounts = {
       itemClass: itemClass,
@@ -1410,9 +1412,11 @@ async function createItemClass(
     for (let mint of mints) {
       entries.push({mint: mint, amount: new BN(1)})
     }
+    
+    packContents = new Instructions.Item.PackContents(entries);
 
     const addPackToItemClassArgs: Instructions.Item.AddPackToItemClassArgs = {
-      contents: {entries: entries}
+      contentsHash: packContents.hash(new Uint8Array(16))
     };
   
     const [addPackToItemClassResult, pack] = await itemProgram.addPackToItemClass(
@@ -1428,9 +1432,9 @@ async function createItemClass(
     // add mint to items tree off chain
     // TODO: for now hardcode
     tree.updateLeaf(0, pack.toBuffer());
-  } 
+  }
 
-  return { itemClass: itemClass, mints: mints, tree: tree };
+  return { itemClass, mints, tree, packContents };
 }
 
 async function transferPNft(
@@ -1868,6 +1872,7 @@ async function completeBuildPackAndReceiveItems(
   leafIndex: number,
   build: anchor.web3.PublicKey,
   pack: anchor.web3.PublicKey,
+  packContents: Instructions.Item.PackContents,
 ) {
   const signer = await initSigner(TEST_SIGNER_FILE_PATH, connection);
 
@@ -1894,6 +1899,8 @@ async function completeBuildPackAndReceiveItems(
     root: proof.root,
     leafIndex: proof.leafIndex,
     proof: proof.proof,
+    packContents: packContents,
+    packContentsHashNonce: new Uint8Array(16),
   };
 
   const completeBuildResult = await itemProgram.completeBuildPack(
@@ -2098,6 +2105,7 @@ interface ItemClassContainer {
   itemClass: anchor.web3.PublicKey;
   mints: anchor.web3.PublicKey[];
   tree: cmp.MerkleTree;
+  packContents?: Instructions.Item.PackContents;
 }
 
 async function assertFreshBuild(
