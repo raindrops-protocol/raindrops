@@ -253,6 +253,8 @@ impl Pack {
 }
 
 // seeds = ['build_permit', wallet, item_class]
+// we rely on the fact that each wallet can only do 1 concurrent build because of the build pda seed setup
+// if this changes we need to take into account multiple builds in parallel and make sure you can't game the build permit system
 #[account]
 pub struct BuildPermit {
     pub item_class: Pubkey,
