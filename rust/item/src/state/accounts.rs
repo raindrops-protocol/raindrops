@@ -4,7 +4,8 @@ use anchor_lang::prelude::*;
 
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildOutputItem, BuildStatus,
-    ItemClassV1OutputMode, ItemState, Payment, PaymentState, RecipeIngredientData,
+    DeterministicIngredientOutput, ItemClassV1OutputMode, ItemState, Payment, PaymentState,
+    RecipeIngredientData,
 };
 
 // seeds = ['item_class_v1', items.key().as_ref()]
@@ -157,11 +158,11 @@ impl Build {
         Err(ErrorCode::IncorrectIngredient.into())
     }
 
-    pub fn verify_build_mint(
+    pub fn find_build_ingredient(
         &self,
         ingredient_item_class: Pubkey,
         ingredient_mint: Pubkey,
-    ) -> bool {
+    ) -> Result<&BuildIngredientData> {
         // verify ingredient_mint
         for build_ingredient_data in &self.ingredients {
             // find the corresponding item class
@@ -171,10 +172,12 @@ impl Build {
                     .mints
                     .iter()
                     .any(|mint_data| mint_data.mint.eq(&ingredient_mint));
-                return verified;
+                if verified {
+                    return Ok(build_ingredient_data);
+                }
             }
         }
-        false
+        Err(ErrorCode::IncorrectIngredient.into())
     }
 
     pub fn increment_build_amount(&mut self, ingredient_mint: Pubkey, amount: u64) -> Result<()> {
@@ -269,4 +272,25 @@ impl BuildPermit {
     32 + // item class
     32 + // wallet
     2; // remaining_builds
+}
+
+// seeds = ['deterministic_ingredient', item_class.key(), ingredient_mint.key().as_ref()]
+#[account]
+pub struct DeterministicIngredient {
+    pub item_class: Pubkey,
+
+    pub ingredient_mint: Pubkey,
+
+    pub outputs: Vec<DeterministicIngredientOutput>,
+}
+
+impl DeterministicIngredient {
+    pub const PREFIX: &'static str = "deterministic_ingredient";
+
+    pub fn space(output_count: usize) -> usize {
+        8 + // anchor
+        32 + // item class
+        32 + // ingredient mint
+        4 + (output_count * DeterministicIngredientOutput::SPACE)
+    }
 }

@@ -6,7 +6,7 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, ItemV1},
+    accounts::{Build, DeterministicIngredient, ItemClassV1, ItemV1},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, ItemState, TokenMetadataProgram,
 };
@@ -17,7 +17,13 @@ pub struct AddIngredientPNft<'info> {
 
     #[account(
         seeds = [ItemClassV1::PREFIX.as_bytes(), ingredient_item_class.items.key().as_ref()], bump)]
-    pub ingredient_item_class: Account<'info, ItemClassV1>,
+    pub ingredient_item_class: Box<Account<'info, ItemClassV1>>,
+
+    #[account(
+        has_one = ingredient_mint,
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump
+    )]
+    pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
@@ -85,16 +91,17 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
         ErrorCode::InvalidBuildStatus
     );
 
-    // verify ingredient_mint
-    let verified = build.verify_build_mint(
-        ctx.accounts.ingredient_item_class.key(),
-        ctx.accounts.ingredient_mint.key(),
-    );
-    require!(verified, ErrorCode::IncorrectIngredient);
-
     // increment current_amount by transfer amount (1)
     build
         .increment_build_amount(ctx.accounts.ingredient_mint.key(), 1)
+        .unwrap();
+
+    // find matching build ingredient for the mint
+    let build_ingredient = build
+        .find_build_ingredient(
+            ctx.accounts.ingredient_item_class.key(),
+            ctx.accounts.ingredient_mint.key(),
+        )
         .unwrap();
 
     // set the initial data if item pda has not been initialized until this instruction
@@ -109,7 +116,20 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
         if ctx.accounts.item.item_state.on_cooldown() {
             return Err(ErrorCode::ItemOnCooldown.into());
         }
-    }
+    };
+
+    // add deterministic outputs to build outputs
+    if build_ingredient.is_deterministic {
+        match &ctx.accounts.deterministic_ingredient {
+            Some(deterministic_ingredient) => {
+                for output in &deterministic_ingredient.outputs {
+                    msg!("{:?}", output);
+                    build.output.add_output(output.mint, output.amount);
+                }
+            }
+            None => return Err(ErrorCode::IncorrectIngredient.into()),
+        }
+    };
 
     // transfer ingredient_mint to destination
     let transfer_args = TransferArgs::V1 {

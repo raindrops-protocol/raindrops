@@ -590,6 +590,7 @@ export interface BuildIngredientData {
   requiredAmount: BN;
   buildEffect: any;
   mints: IngredientMint[];
+  isDeterministic: boolean;
 }
 
 export interface IngredientMint {
@@ -629,4 +630,15 @@ export interface BuildPermit {
   itemClass: web3.PublicKey;
   wallet: web3.PublicKey;
   remainingBuilds: number;
+}
+
+export interface DeterministicIngredient {
+  itemClass: web3.PublicKey;
+  ingredientMint: web3.PublicKey;
+  outputs: DeterministicIngredientOutput[];
+}
+
+export interface DeterministicIngredientOutput {
+  mint: web3.PublicKey;
+  amount: BN;
 }

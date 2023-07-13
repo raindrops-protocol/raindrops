@@ -11,6 +11,7 @@ pub mod errors;
 pub enum ItemClassV1OutputMode {
     Item,
     Pack { index: u64 },
+    Deterministic,
 }
 
 impl ItemClassV1OutputMode {
@@ -18,10 +19,8 @@ impl ItemClassV1OutputMode {
 
     pub fn get_index(&self) -> Result<u64> {
         match self {
-            ItemClassV1OutputMode::Item => {
-                Err(errors::ErrorCode::InvalidItemClassV1OutputMode.into())
-            }
             ItemClassV1OutputMode::Pack { index } => Ok(*index),
+            _ => Err(errors::ErrorCode::InvalidItemClassV1OutputMode.into()),
         }
     }
 
@@ -41,6 +40,10 @@ impl ItemClassV1OutputMode {
     pub fn is_item(&self) -> bool {
         matches!(self, ItemClassV1OutputMode::Item)
     }
+
+    pub fn is_deterministic(&self) -> bool {
+        matches!(self, ItemClassV1OutputMode::Deterministic)
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
@@ -57,7 +60,11 @@ pub struct BuildIngredientData {
     // defines what happens to these items after being used in a build
     pub build_effect: BuildEffect,
 
+    // list of mints that make up this ingredient
     pub mints: Vec<IngredientMint>,
+
+    // if true, this is a deterministic ingredient and we expect a deterministic pda created
+    pub is_deterministic: bool,
 }
 
 impl BuildIngredientData {
@@ -96,11 +103,15 @@ pub struct RecipeIngredientData {
 
     // what happens to these items as a result of being used in this build
     pub build_effect: BuildEffect,
+
+    // if true, we expect a deterministic ingredient pda created for this mint
+    pub is_deterministic: bool,
 }
 
 impl RecipeIngredientData {
     pub const SPACE: usize = 32 + // item class
     8 + // required amount
+    1 + // is deterministic
     BuildEffect::SPACE; // build effect
 }
 
@@ -112,6 +123,7 @@ impl From<RecipeIngredientData> for BuildIngredientData {
             required_amount: value.required_amount,
             build_effect: value.build_effect,
             mints: vec![],
+            is_deterministic: value.is_deterministic,
         }
     }
 }
@@ -389,6 +401,16 @@ pub struct BuildOutputItem {
 
 impl BuildOutputItem {
     pub const SPACE: usize = 32 + 8 + 1;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct DeterministicIngredientOutput {
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
+impl DeterministicIngredientOutput {
+    pub const SPACE: usize = 32 + 8;
 }
 
 // anchor wrapper for Noop Program required for spl-account-compression

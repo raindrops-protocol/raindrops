@@ -1133,6 +1133,12 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "deterministicIngredient",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "ingredientMetadata",
           "isMut": true,
           "isSigner": false
@@ -1237,6 +1243,12 @@ export type RaindropsItem = {
           "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "deterministicIngredient",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "ingredientSource",
@@ -2053,6 +2065,49 @@ export type RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "createDeterministicIngredient",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "deterministicIngredient",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateDeterministicIngredientArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2241,6 +2296,30 @@ export type RaindropsItem = {
           {
             "name": "remainingBuilds",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "deterministicIngredient",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "ingredientMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "outputs",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
+            }
           }
         ]
       }
@@ -2570,6 +2649,22 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "CreateDeterministicIngredientArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outputs",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -2737,6 +2832,10 @@ export type RaindropsItem = {
                 "defined": "IngredientMint"
               }
             }
+          },
+          {
+            "name": "isDeterministic",
+            "type": "bool"
           }
         ]
       }
@@ -2775,6 +2874,10 @@ export type RaindropsItem = {
             "type": {
               "defined": "BuildEffect"
             }
+          },
+          {
+            "name": "isDeterministic",
+            "type": "bool"
           }
         ]
       }
@@ -2897,6 +3000,22 @@ export type RaindropsItem = {
           {
             "name": "received",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DeterministicIngredientOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
           }
         ]
       }
@@ -4595,6 +4714,9 @@ export type RaindropsItem = {
                 "type": "u64"
               }
             ]
+          },
+          {
+            "name": "Deterministic"
           }
         ]
       }
@@ -4974,6 +5096,11 @@ export type RaindropsItem = {
       "code": 6017,
       "name": "NoBuildsRemaining",
       "msg": "No Builds Remaining"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidRecipeConfig",
+      "msg": "Invalid Recipe Config"
     }
   ]
 };
@@ -6113,6 +6240,12 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "deterministicIngredient",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "ingredientMetadata",
           "isMut": true,
           "isSigner": false
@@ -6217,6 +6350,12 @@ export const IDL: RaindropsItem = {
           "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "deterministicIngredient",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "ingredientSource",
@@ -7033,6 +7172,49 @@ export const IDL: RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "createDeterministicIngredient",
+      "accounts": [
+        {
+          "name": "ingredientMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "deterministicIngredient",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateDeterministicIngredientArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -7221,6 +7403,30 @@ export const IDL: RaindropsItem = {
           {
             "name": "remainingBuilds",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "deterministicIngredient",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "ingredientMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "outputs",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
+            }
           }
         ]
       }
@@ -7550,6 +7756,22 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "CreateDeterministicIngredientArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outputs",
+            "type": {
+              "vec": {
+                "defined": "DeterministicIngredientOutput"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -7717,6 +7939,10 @@ export const IDL: RaindropsItem = {
                 "defined": "IngredientMint"
               }
             }
+          },
+          {
+            "name": "isDeterministic",
+            "type": "bool"
           }
         ]
       }
@@ -7755,6 +7981,10 @@ export const IDL: RaindropsItem = {
             "type": {
               "defined": "BuildEffect"
             }
+          },
+          {
+            "name": "isDeterministic",
+            "type": "bool"
           }
         ]
       }
@@ -7877,6 +8107,22 @@ export const IDL: RaindropsItem = {
           {
             "name": "received",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DeterministicIngredientOutput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
           }
         ]
       }
@@ -9575,6 +9821,9 @@ export const IDL: RaindropsItem = {
                 "type": "u64"
               }
             ]
+          },
+          {
+            "name": "Deterministic"
           }
         ]
       }
@@ -9954,6 +10203,11 @@ export const IDL: RaindropsItem = {
       "code": 6017,
       "name": "NoBuildsRemaining",
       "msg": "No Builds Remaining"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidRecipeConfig",
+      "msg": "Invalid Recipe Config"
     }
   ]
 };

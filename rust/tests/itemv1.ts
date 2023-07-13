@@ -7,6 +7,7 @@ import {
   Idls,
   ItemProgram,
   Utils,
+  State,
 } from "@raindrops-protocol/raindrops";
 import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";
@@ -69,6 +70,7 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: null,
           },
+          isDeterministic: false,
         },
         {
           itemClass: nftItemClass.itemClass,
@@ -77,6 +79,7 @@ describe.only("itemv1", () => {
             degradation: { rate: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
+          isDeterministic: false,
         },
       ],
       buildPermitRequired: false,
@@ -235,6 +238,7 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: { seconds: new BN(60) },
           },
+          isDeterministic: false,
         },
       ],
       buildPermitRequired: false,
@@ -417,6 +421,7 @@ describe.only("itemv1", () => {
             degradation: { rate: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
+          isDeterministic: false,
         },
         {
           itemClass: nftItemClass.itemClass,
@@ -425,6 +430,7 @@ describe.only("itemv1", () => {
             degradation: { rate: new anchor.BN(100000) }, // single use
             cooldown: null,
           },
+          isDeterministic: false,
         },
       ],
       buildPermitRequired: false,
@@ -574,6 +580,7 @@ describe.only("itemv1", () => {
               degradation: null,
               cooldown: null,
             },
+            isDeterministic: false,
           },
           {
             itemClass: nftItemClass.itemClass,
@@ -582,6 +589,7 @@ describe.only("itemv1", () => {
               degradation: null,
               cooldown: null,
             },
+            isDeterministic: false,
           },
         ],
         buildPermitRequired: false,
@@ -746,6 +754,7 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: null,
           },
+          isDeterministic: false,
         },
         {
           itemClass: nftItemClass.itemClass,
@@ -754,6 +763,7 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: null,
           },
+          isDeterministic: false,
         },
       ],
       buildPermitRequired: false,
@@ -991,6 +1001,7 @@ describe.only("itemv1", () => {
               degradation: null,
               cooldown: null,
             },
+            isDeterministic: false,
           },
           {
             itemClass: sardItemClass.itemClass,
@@ -999,6 +1010,7 @@ describe.only("itemv1", () => {
               degradation: { rate: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
+            isDeterministic: false,
           },
           {
             itemClass: clayItemClass.itemClass,
@@ -1007,6 +1019,7 @@ describe.only("itemv1", () => {
               degradation: { rate: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
+            isDeterministic: false,
           },
         ],
         buildPermitRequired: false,
@@ -1179,6 +1192,7 @@ describe.only("itemv1", () => {
               degradation: { rate: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
+            isDeterministic: false,
           },
         ],
         buildPermitRequired: false,
@@ -1311,6 +1325,7 @@ describe.only("itemv1", () => {
               degradation: { rate: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
+            isDeterministic: false,
           },
         ],
         buildPermitRequired: false,
@@ -1443,6 +1458,7 @@ describe.only("itemv1", () => {
               degradation: { rate: new anchor.BN(100000) }, // single use
               cooldown: null,
             },
+            isDeterministic: false,
           },
         ],
         buildPermitRequired: false,
@@ -1581,6 +1597,7 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: null,
           },
+          isDeterministic: false,
         },
       ],
       buildPermitRequired: true,
@@ -1733,6 +1750,7 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: null,
           },
+          isDeterministic: false, 
         },
       ],
       buildPermitRequired: true,
@@ -1882,6 +1900,126 @@ describe.only("itemv1", () => {
     );
     assert.isTrue(buildPermitDataPostBuild2.remainingBuilds === 0);
     assert.isTrue(buildPermitDataPostBuild2.wallet.equals(payer.publicKey));
+  });
+
+  it.only("build item using deterministic inputs", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // ingredient 1, pNFT
+    const pNftItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+      buildPermitRequired: false,
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: true,
+      payment: null,
+      ingredientArgs: [
+        {
+          itemClass: pNftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: null,
+            cooldown: null,
+          },
+          isDeterministic: true,
+        },
+      ],
+      buildPermitRequired: false,
+    });
+
+    // transfer the pNFT to the item class
+    await transferPNft(
+      payer,
+      connection,
+      outputItemClass.mints[0],
+      outputItemClass.itemClass,
+    );
+
+    // create deterministic pda
+    const deterministicOutputs = await createDeterministicIngredient(
+      itemProgram.client.provider.connection,
+      payer,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      1
+    );
+
+    // start the build process
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    // add pNFT to build
+    await addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      0,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // complete build and receive the item
+    await completeBuildItemAndReceiveItem(
+      connection,
+      outputItemClass.tree,
+      0,
+      build,
+      outputItemClass.mints
+    );
+
+    // assert builder received the output item and the deterministic item
+    const expectedMints: anchor.web3.PublicKey[] = [outputItemClass.mints[0], deterministicOutputs[0].mint];
+    for (let expected of expectedMints) {
+      const builderItemAta = splToken.getAssociatedTokenAddressSync(
+        expected,
+        new anchor.web3.PublicKey(payer.publicKey)
+      );
+      const tokenBalanceResponse =
+        await itemProgram.client.provider.connection.getTokenAccountBalance(
+          builderItemAta
+        );
+      assert.isTrue(
+        new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
+      );
+    }
+
+    await cleanBuild(itemProgram, build);
   });
 });
 
@@ -2975,6 +3113,101 @@ async function cleanBuild(
   // clean up build pda
   const closeBuildResult = await itemProgram.closeBuild(closeBuildAccounts);
   console.log("closeBuildTxSig: %s", closeBuildResult.txid);
+}
+
+async function createDeterministicIngredient(
+  connection: anchor.web3.Connection,
+  authority: anchor.web3.Keypair,
+  itemClass: anchor.web3.PublicKey,
+  ingredientMint: anchor.web3.PublicKey,
+  outputCount: number
+): Promise<State.Item.DeterministicIngredientOutput[]> {
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(
+      connection,
+      new anchor.Wallet(authority),
+      {
+        commitment: "confirmed",
+      }
+    ),
+    idl: Idls.ItemIDL,
+  });
+
+  const client = new metaplex.Metaplex(connection, {}).use(
+    metaplex.keypairIdentity(authority)
+  );
+
+  // create output mints and mint to item class
+  const deterministicIngredientOutputs: State.Item.DeterministicIngredientOutput[] =
+    [];
+  for (let i = 0; i < outputCount; i++) {
+    const ingredientCollectionNft = await createCollectionNft(
+      authority,
+      connection
+    );
+
+    const ingredientMintOutput = await client.nfts().create({
+      tokenStandard: mpl.TokenStandard.NonFungible,
+      uri: "https://foo.com/bar.json",
+      name: "NFT1",
+      sellerFeeBasisPoints: 500,
+      symbol: "N",
+      collection: ingredientCollectionNft,
+      collectionAuthority: authority,
+    });
+    console.log("createNftTxSig: %s", ingredientMintOutput.response.signature);
+
+    // transfer the nft to the item class
+    const ata = splToken.getAssociatedTokenAddressSync(
+      ingredientMintOutput.mintAddress,
+      itemClass,
+      true
+    );
+    const createAtaIx =
+      splToken.createAssociatedTokenAccountIdempotentInstruction(
+        authority.publicKey,
+        ata,
+        itemClass,
+        ingredientMintOutput.mintAddress
+      );
+    const transferIx = splToken.createTransferInstruction(
+      ingredientMintOutput.tokenAddress,
+      ata,
+      authority.publicKey,
+      1
+    );
+
+    const transferTx = new anchor.web3.Transaction().add(
+      createAtaIx,
+      transferIx
+    );
+
+    const transferNftTxSig = await itemProgram.client.provider.sendAndConfirm(
+      transferTx,
+      [],
+      {}
+    );
+    console.log("transferNftTxSig: %s", transferNftTxSig);
+    deterministicIngredientOutputs.push({
+      mint: ingredientMintOutput.mintAddress,
+      amount: new anchor.BN(1),
+    });
+  }
+
+  // create the deterministic ingredient pda for the pNft ingredient
+
+  const createDeterministicIngredientResult =
+    await itemProgram.createDeterministicIngredient(
+      { itemClass: itemClass, ingredientMint: ingredientMint },
+      { outputs: deterministicIngredientOutputs }
+    );
+  console.log(
+    "createDeterministicIngredientTxSig: %s",
+    createDeterministicIngredientResult.txid
+  );
+
+  return deterministicIngredientOutputs;
 }
 
 async function createDelegateAuthorityPNftIx(

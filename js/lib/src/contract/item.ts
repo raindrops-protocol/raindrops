@@ -22,6 +22,8 @@ import {
   Recipe,
   Pack,
   BuildPermit,
+  DeterministicIngredient,
+  DeterministicIngredientOutput,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
@@ -449,6 +451,18 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async createDeterministicIngredient(
+    accounts: ItemInstruction.CreateDeterministicIngredientAccounts,
+    args: ItemInstruction.CreateDeterministicIngredientArgs,
+    options?: SendOptions
+  ): Promise<SendTransactionResult> {
+    const ix = await this.instruction.createDeterministicIngredient(
+      accounts,
+      args
+    );
+    return await this.sendWithRetry([ix], [], options);
+  }
+
   async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
     const itemClassData = await this.client.account.itemClassV1.fetch(
       itemClass
@@ -533,6 +547,7 @@ export class ItemProgram extends Program.Program {
         requiredAmount: new BN(rawIngredient.requiredAmount),
         buildEffect: rawIngredient.buildEffect,
         mints: mints,
+        isDeterministic: Boolean(rawIngredient.isDeterministic),
       });
     }
 
@@ -673,6 +688,38 @@ export class ItemProgram extends Program.Program {
     };
 
     return buildPermitData;
+  }
+
+  async getDeterministicIngredient(
+    deterministicIngredient: web3.PublicKey
+  ): Promise<DeterministicIngredient | null> {
+    let deterministicIngredientDataRaw;
+    try {
+      deterministicIngredientDataRaw =
+        await this.client.account.deterministicIngredient.fetch(
+          deterministicIngredient
+        );
+    } catch (_e) {
+      return null;
+    }
+
+    const outputs: DeterministicIngredientOutput[] = [];
+    for (let output of deterministicIngredientDataRaw.outputs) {
+      outputs.push({
+        mint: new web3.PublicKey(output.mint),
+        amount: new BN(output.amount),
+      });
+    }
+
+    const deterministicIngredientData: DeterministicIngredient = {
+      itemClass: new web3.PublicKey(deterministicIngredientDataRaw.itemClass),
+      ingredientMint: new web3.PublicKey(
+        deterministicIngredientDataRaw.ingredientMint
+      ),
+      outputs: outputs,
+    };
+
+    return deterministicIngredientData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {
