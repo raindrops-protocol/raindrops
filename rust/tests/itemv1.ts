@@ -1902,7 +1902,7 @@ describe.only("itemv1", () => {
     assert.isTrue(buildPermitDataPostBuild2.wallet.equals(payer.publicKey));
   });
 
-  it.only("build item using deterministic inputs", async () => {
+  it("build item using deterministic inputs", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
