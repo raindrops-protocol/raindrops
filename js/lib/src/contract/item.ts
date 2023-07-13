@@ -388,11 +388,12 @@ export class ItemProgram extends Program.Program {
   ): Promise<Transaction.SendTransactionResult[]> {
     const ixnGroups = await this.instruction.receiveItem(accounts);
 
-    const results: Transaction.SendTransactionResult[] = [];
+    const resultPromises: Promise<Transaction.SendTransactionResult>[] = [];
     for (let group of ixnGroups) {
-      const result = await this.sendWithRetry(group, [], options);
-      results.push(result);
+      const resultPromise = this.sendWithRetry(group, [], options);
+      resultPromises.push(resultPromise);
     }
+    const results = await Promise.all(resultPromises);
 
     return results;
   }
@@ -630,6 +631,7 @@ export class ItemProgram extends Program.Program {
     }
 
     const packData: Pack = {
+      opened: Boolean(packDataRaw.opened),
       itemClass: new web3.PublicKey(packDataRaw.itemClass),
       id: new BN(packDataRaw.id),
       contentsHash: Uint8Array.from(packDataRaw.contentsHash),

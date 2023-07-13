@@ -13,7 +13,7 @@ use crate::state::{
 
 #[derive(Accounts)]
 pub struct CompleteBuildPack<'info> {
-    #[account(
+    #[account(mut,
         has_one = item_class,
         seeds = [Pack::PREFIX.as_bytes(), item_class.key().as_ref(), &pack.id.to_le_bytes()], bump
     )]
@@ -52,6 +52,10 @@ pub fn handler<'a, 'b, 'c, 'info>(
     ctx: Context<'a, 'b, 'c, 'info, CompleteBuildPack<'info>>,
     args: CompleteBuildPackArgs,
 ) -> Result<()> {
+    // check pack is unopened and set it to opened
+    require!(!ctx.accounts.pack.opened, ErrorCode::PackAlreadyOpened);
+    ctx.accounts.pack.opened = true;
+
     // check the build is in progress before running completion steps
     require!(
         ctx.accounts.build.status.eq(&BuildStatus::InProgress),

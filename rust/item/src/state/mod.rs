@@ -26,14 +26,11 @@ impl ItemClassV1OutputMode {
     }
 
     pub fn increment_index(&mut self) -> Result<()> {
-        match self {
-            ItemClassV1OutputMode::Item => {
-                Err(errors::ErrorCode::InvalidItemClassV1OutputMode.into())
-            }
-            ItemClassV1OutputMode::Pack { index } => {
-                *index += 1;
-                Ok(())
-            }
+        if let ItemClassV1OutputMode::Pack { index } = self {
+            *index += 1;
+            Ok(())
+        } else {
+            Err(errors::ErrorCode::InvalidItemClassV1OutputMode.into())
         }
     }
 

@@ -221,6 +221,8 @@ impl Build {
 // seeds = ['pack', item_class.key().as_ref(), &id.to_le_bytes()]
 #[account]
 pub struct Pack {
+    pub opened: bool,
+
     // unique id
     pub id: u64,
 
@@ -235,6 +237,7 @@ impl Pack {
     pub const PREFIX: &'static str = "pack";
 
     pub const SPACE: usize = 8 + // anchor
+    1 + // opened
     8 + // id
     32 + // item class
     32; // contents hash

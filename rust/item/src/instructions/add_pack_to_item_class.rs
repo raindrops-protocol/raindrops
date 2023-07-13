@@ -20,7 +20,7 @@ pub struct AddPackToItemClass<'info> {
         seeds = [Pack::PREFIX.as_bytes(), item_class.key().as_ref(), &item_class.output_mode.get_index().unwrap().to_le_bytes()], bump)]
     pub pack: Account<'info, Pack>,
 
-    #[account(
+    #[account(mut,
         has_one = authority,
         has_one = items,
         constraint = item_class.output_mode.is_pack(),
@@ -51,6 +51,7 @@ pub struct AddPackToItemClassArgs {
 pub fn handler(ctx: Context<AddPackToItemClass>, args: AddPackToItemClassArgs) -> Result<()> {
     // set pack contents and metadata
     ctx.accounts.pack.set_inner(Pack {
+        opened: false,
         contents_hash: args.contents_hash,
         item_class: ctx.accounts.item_class.key(),
         id: ctx.accounts.item_class.output_mode.get_index().unwrap(),

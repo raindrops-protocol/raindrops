@@ -46,4 +46,7 @@ pub enum ErrorCode {
 
     #[msg("Invalid Pack Contents")]
     InvalidPackContents,
+
+    #[msg("Pack Already Opened")]
+    PackAlreadyOpened,
 }

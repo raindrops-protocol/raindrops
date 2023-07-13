@@ -1027,7 +1027,7 @@ export type RaindropsItem = {
         },
         {
           "name": "itemClass",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1598,7 +1598,7 @@ export type RaindropsItem = {
       "accounts": [
         {
           "name": "pack",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2137,6 +2137,10 @@ export type RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "opened",
+            "type": "bool"
+          },
           {
             "name": "id",
             "type": "u64"
@@ -4847,6 +4851,11 @@ export type RaindropsItem = {
       "code": 6014,
       "name": "InvalidPackContents",
       "msg": "Invalid Pack Contents"
+    },
+    {
+      "code": 6015,
+      "name": "PackAlreadyOpened",
+      "msg": "Pack Already Opened"
     }
   ]
 };
@@ -5880,7 +5889,7 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "itemClass",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -6451,7 +6460,7 @@ export const IDL: RaindropsItem = {
       "accounts": [
         {
           "name": "pack",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -6990,6 +6999,10 @@ export const IDL: RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "opened",
+            "type": "bool"
+          },
           {
             "name": "id",
             "type": "u64"
@@ -9700,6 +9713,11 @@ export const IDL: RaindropsItem = {
       "code": 6014,
       "name": "InvalidPackContents",
       "msg": "Invalid Pack Contents"
+    },
+    {
+      "code": 6015,
+      "name": "PackAlreadyOpened",
+      "msg": "Pack Already Opened"
     }
   ]
 };

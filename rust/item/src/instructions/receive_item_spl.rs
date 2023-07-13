@@ -71,7 +71,7 @@ pub fn handler(ctx: Context<ReceiveItemSpl>) -> Result<()> {
     let transfer_accounts = token::Transfer {
         from: ctx.accounts.item_source.to_account_info(),
         to: ctx.accounts.item_destination.to_account_info(),
-        authority: ctx.accounts.build.to_account_info(),
+        authority: ctx.accounts.item_class.to_account_info(),
     };
 
     token::transfer(
@@ -79,10 +79,9 @@ pub fn handler(ctx: Context<ReceiveItemSpl>) -> Result<()> {
             ctx.accounts.token_program.to_account_info(),
             transfer_accounts,
             &[&[
-                Build::PREFIX.as_bytes(),
-                ctx.accounts.build.item_class.key().as_ref(),
-                ctx.accounts.builder.key().as_ref(),
-                &[*ctx.bumps.get("build").unwrap()],
+                ItemClassV1::PREFIX.as_bytes(),
+                ctx.accounts.item_class.items.as_ref(),
+                &[*ctx.bumps.get("item_class").unwrap()],
             ]],
         ),
         amount,

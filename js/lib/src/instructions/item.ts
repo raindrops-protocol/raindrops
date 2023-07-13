@@ -1139,7 +1139,7 @@ export class Instruction extends SolKitInstruction {
     );
     const itemClassItems = new web3.PublicKey(itemClassData.items);
 
-    const packIndex = new BN((itemClassData.outputMode as any).index);
+    const packIndex = new BN((itemClassData.outputMode as any).pack.index);
 
     const packAccount = getPack(accounts.itemClass, packIndex);
 
