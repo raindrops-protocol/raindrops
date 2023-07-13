@@ -7,7 +7,7 @@ use spl_account_compression::{
 use std::convert::TryInto;
 
 use crate::state::{
-    accounts::{Build, ItemClassV1},
+    accounts::{Build, BuildPermit, ItemClassV1},
     errors::ErrorCode,
     is_signer, BuildStatus, NoopProgram,
 };
@@ -23,6 +23,12 @@ pub struct CompleteBuildItem<'info> {
 
     /// CHECK: checked by spl-account-compression
     pub item_class_items: UncheckedAccount<'info>,
+
+    #[account(mut,
+        has_one = item_class,
+        constraint = build_permit.wallet.eq(&build.builder.key()),
+        seeds = [BuildPermit::PREFIX.as_bytes(), build.builder.key().as_ref(), item_class.key().as_ref()], bump)]
+    pub build_permit: Option<Account<'info, BuildPermit>>,
 
     #[account(mut,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.as_ref()], bump)]
@@ -95,6 +101,17 @@ pub fn handler<'a, 'b, 'c, 'info>(
     // set the item mint in the build pda
     let build = &mut ctx.accounts.build;
     build.add_output_item(ctx.accounts.item_mint.key(), 1);
+
+    // if build permit is in use we must decrement the remaining builds
+    if build.build_permit_in_use {
+        match &mut ctx.accounts.build_permit {
+            Some(build_permit) => {
+                // decrement the remaining builds this build permit is allowed
+                build_permit.remaining_builds -= 1;
+            }
+            None => return Err(ErrorCode::BuildPermitRequired.into()),
+        }
+    }
 
     Ok(())
 }

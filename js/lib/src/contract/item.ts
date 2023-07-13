@@ -21,11 +21,13 @@ import {
   Ingredient,
   Recipe,
   Pack,
+  BuildPermit,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 import { Utils } from "../main";
 import { Payment, PaymentState } from "../instructions/item";
+import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
@@ -438,6 +440,15 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async createBuildPermit(
+    accounts: ItemInstruction.CreateBuildPermitAccounts,
+    args: ItemInstruction.CreateBuildPermitArgs,
+    options?: SendOptions
+  ): Promise<SendTransactionResult> {
+    const ix = await this.instruction.createBuildPermit(accounts, args);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
   async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
     const itemClassData = await this.client.account.itemClassV1.fetch(
       itemClass
@@ -479,8 +490,9 @@ export class ItemProgram extends Program.Program {
         itemClass: itemClass,
         recipeIndex: new BN(i),
         payment: payment,
-        buildEnabled: recipeData.buildEnabled as boolean,
+        buildEnabled: Boolean(recipeData.buildEnabled),
         ingredients: ingredients,
+        buildPermitRequired: Boolean(recipeData.buildPermitRequired),
       };
 
       recipes.push(recipe);
@@ -554,6 +566,7 @@ export class ItemProgram extends Program.Program {
       payment: paymentData,
       ingredients: buildIngredientData,
       status: convertToBuildStatus(buildDataRaw.status),
+      buildPermitInUse: Boolean(buildDataRaw.buildPermitInUse),
     };
 
     return buildData;
@@ -614,9 +627,10 @@ export class ItemProgram extends Program.Program {
     const recipeData: Recipe = {
       recipeIndex: new BN(recipeDataRaw.recipeIndex),
       itemClass: new web3.PublicKey(recipeDataRaw.itemClass),
-      buildEnabled: recipeDataRaw.buildEnabled as boolean,
+      buildEnabled: Boolean(recipeDataRaw.buildEnabled),
       payment: payment,
       ingredients: ingredients,
+      buildPermitRequired: Boolean(recipeDataRaw.buildPermitRequired),
     };
 
     return recipeData;
@@ -638,6 +652,27 @@ export class ItemProgram extends Program.Program {
     };
 
     return packData;
+  }
+
+  async getBuildPermit(
+    buildPermit: web3.PublicKey
+  ): Promise<BuildPermit | null> {
+    let buildPermitDataRaw;
+    try {
+      buildPermitDataRaw = await this.client.account.buildPermit.fetch(
+        buildPermit
+      );
+    } catch (_e) {
+      return null;
+    }
+
+    const buildPermitData: BuildPermit = {
+      itemClass: new web3.PublicKey(buildPermitDataRaw.itemClass),
+      wallet: new web3.PublicKey(buildPermitDataRaw.wallet),
+      remainingBuilds: Number(buildPermitDataRaw.remainingBuilds),
+    };
+
+    return buildPermitData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

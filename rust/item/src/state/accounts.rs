@@ -67,6 +67,9 @@ pub struct Recipe {
     // if Some, SOL is required
     pub payment: Option<Payment>,
 
+    // if true, the builder must have a build permit to use this recipe
+    pub build_permit_required: bool,
+
     // list of ingredients required to use this recipe to build the item class v1
     pub ingredients: Vec<RecipeIngredientData>,
 }
@@ -80,6 +83,7 @@ impl Recipe {
         32 + // item_class
         1 + // enabled
         (1 + Payment::SPACE) + // payment
+        1 + // build permit required
         4 + (RecipeIngredientData::SPACE * ingredient_count) // ingredients
     }
 }
@@ -107,6 +111,9 @@ pub struct Build {
 
     // current status of the build
     pub status: BuildStatus,
+
+    // if true, a build permit is used for this build
+    pub build_permit_in_use: bool,
 }
 
 impl Build {
@@ -120,6 +127,7 @@ impl Build {
         (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
+        1 + // build permit in use
         4 + (Self::build_ingredient_data_space(recipe_ingredient_data)) // ingredients
     }
 
@@ -221,6 +229,7 @@ impl Build {
 // seeds = ['pack', item_class.key().as_ref(), &id.to_le_bytes()]
 #[account]
 pub struct Pack {
+    // if true, this pack has already been opened
     pub opened: bool,
 
     // unique id
@@ -241,4 +250,21 @@ impl Pack {
     8 + // id
     32 + // item class
     32; // contents hash
+}
+
+// seeds = ['build_permit', wallet, item_class]
+#[account]
+pub struct BuildPermit {
+    pub item_class: Pubkey,
+    pub wallet: Pubkey,
+    pub remaining_builds: u16,
+}
+
+impl BuildPermit {
+    pub const PREFIX: &'static str = "build_permit";
+
+    pub const SPACE: usize = 8 + // anchor
+    32 + // item class
+    32 + // wallet
+    2; // remaining_builds
 }

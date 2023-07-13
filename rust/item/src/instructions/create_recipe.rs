@@ -32,6 +32,7 @@ pub struct CreateRecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
     pub ingredients: Vec<RecipeIngredientData>,
+    pub build_permit_required: bool,
 }
 
 pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()> {
@@ -46,6 +47,7 @@ pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()>
         build_enabled: args.build_enabled,
         ingredients: args.ingredients,
         payment: args.payment,
+        build_permit_required: args.build_permit_required,
     });
 
     Ok(())

@@ -553,6 +553,7 @@ export interface Recipe {
   buildEnabled: boolean;
   payment: Payment | null;
   ingredients: Ingredient[];
+  buildPermitRequired: boolean;
 }
 
 export interface Ingredient {
@@ -580,6 +581,7 @@ export interface Build {
   payment: PaymentState | null;
   ingredients: BuildIngredientData[];
   status: BuildStatus;
+  buildPermitInUse: boolean;
 }
 
 export interface BuildIngredientData {
@@ -621,4 +623,10 @@ export interface Pack {
   itemClass: web3.PublicKey;
   id: BN;
   contentsHash: Uint8Array;
+}
+
+export interface BuildPermit {
+  itemClass: web3.PublicKey;
+  wallet: web3.PublicKey;
+  remainingBuilds: number;
 }

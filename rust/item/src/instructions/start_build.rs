@@ -3,7 +3,7 @@ use std::vec;
 use anchor_lang::prelude::*;
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, Recipe},
+    accounts::{Build, BuildPermit, ItemClassV1, Recipe},
     errors::ErrorCode,
     BuildIngredientData, BuildOutput, BuildStatus, PaymentState,
 };
@@ -23,6 +23,12 @@ pub struct StartBuild<'info> {
     #[account(mut, seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
 
+    #[account(mut,
+        has_one = item_class,
+        constraint = build_permit.wallet.eq(&builder.key()),
+        seeds = [BuildPermit::PREFIX.as_bytes(), builder.key().as_ref(), item_class.key().as_ref()], bump)]
+    pub build_permit: Option<Account<'info, BuildPermit>>,
+
     #[account(mut)]
     pub builder: Signer<'info>,
 
@@ -39,6 +45,21 @@ pub struct StartBuildArgs {
 pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
     // check this recipe is enabled for building
     require!(ctx.accounts.recipe.build_enabled, ErrorCode::BuildDisabled);
+
+    // check build permit if recipe requires one
+    let mut build_permit_in_use = false;
+    if ctx.accounts.recipe.build_permit_required {
+        match &mut ctx.accounts.build_permit {
+            Some(build_permit) => {
+                require!(
+                    build_permit.remaining_builds > 0,
+                    ErrorCode::NoBuildsRemaining
+                );
+                build_permit_in_use = true;
+            }
+            None => return Err(ErrorCode::BuildPermitRequired.into()),
+        }
+    };
 
     // set initial build ingredient state
     let mut ingredients: Vec<BuildIngredientData> =
@@ -66,6 +87,7 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         status: BuildStatus::InProgress,
         payment,
         ingredients,
+        build_permit_in_use,
     });
 
     Ok(())
