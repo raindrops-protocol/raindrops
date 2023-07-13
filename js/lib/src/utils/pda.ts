@@ -431,7 +431,7 @@ export function getRecipe(
 }
 
 export function getPack(itemClass: web3.PublicKey, id: BN) {
-  const [recipe, _recipeBump] = web3.PublicKey.findProgramAddressSync(
+  const [pack, _packBump] = web3.PublicKey.findProgramAddressSync(
     [
       Buffer.from("pack"),
       itemClass.toBuffer(),
@@ -440,5 +440,18 @@ export function getPack(itemClass: web3.PublicKey, id: BN) {
     ITEM_ID
   );
 
-  return recipe; 
+  return pack; 
+}
+
+export function getBuildPermit(itemClass: web3.PublicKey, wallet: web3.PublicKey) {
+  const [buildPermit, _buildPermitBump] = web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("build_permit"),
+      wallet.toBuffer(),
+      itemClass.toBuffer(),
+    ],
+    ITEM_ID
+  );
+
+  return buildPermit; 
 }

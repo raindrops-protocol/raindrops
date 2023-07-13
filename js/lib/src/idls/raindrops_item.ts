@@ -1089,6 +1089,12 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "builder",
           "isMut": true,
           "isSigner": true
@@ -1564,6 +1570,12 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -1610,6 +1622,12 @@ export type RaindropsItem = {
           "name": "itemClassItems",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "build",
@@ -1997,6 +2015,44 @@ export type RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "createBuildPermit",
+      "accounts": [
+        {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateBuildPermitArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2074,6 +2130,10 @@ export type RaindropsItem = {
             }
           },
           {
+            "name": "buildPermitRequired",
+            "type": "bool"
+          },
+          {
             "name": "ingredients",
             "type": {
               "vec": {
@@ -2128,6 +2188,10 @@ export type RaindropsItem = {
             "type": {
               "defined": "BuildStatus"
             }
+          },
+          {
+            "name": "buildPermitInUse",
+            "type": "bool"
           }
         ]
       }
@@ -2157,6 +2221,26 @@ export type RaindropsItem = {
                 32
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "buildPermit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "wallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "remainingBuilds",
+            "type": "u16"
           }
         ]
       }
@@ -2470,6 +2554,22 @@ export type RaindropsItem = {
       }
     },
     {
+      "name": "CreateBuildPermitArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "remainingBuilds",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -2513,6 +2613,10 @@ export type RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
+          },
+          {
+            "name": "buildPermitRequired",
+            "type": "bool"
           }
         ]
       }
@@ -2541,6 +2645,10 @@ export type RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
+          },
+          {
+            "name": "buildPermitRequired",
+            "type": "bool"
           }
         ]
       }
@@ -4856,6 +4964,16 @@ export type RaindropsItem = {
       "code": 6015,
       "name": "PackAlreadyOpened",
       "msg": "Pack Already Opened"
+    },
+    {
+      "code": 6016,
+      "name": "BuildPermitRequired",
+      "msg": "Build Permit Required"
+    },
+    {
+      "code": 6017,
+      "name": "NoBuildsRemaining",
+      "msg": "No Builds Remaining"
     }
   ]
 };
@@ -5951,6 +6069,12 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "builder",
           "isMut": true,
           "isSigner": true
@@ -6426,6 +6550,12 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -6472,6 +6602,12 @@ export const IDL: RaindropsItem = {
           "name": "itemClassItems",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "build",
@@ -6859,6 +6995,44 @@ export const IDL: RaindropsItem = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "createBuildPermit",
+      "accounts": [
+        {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateBuildPermitArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -6936,6 +7110,10 @@ export const IDL: RaindropsItem = {
             }
           },
           {
+            "name": "buildPermitRequired",
+            "type": "bool"
+          },
+          {
             "name": "ingredients",
             "type": {
               "vec": {
@@ -6990,6 +7168,10 @@ export const IDL: RaindropsItem = {
             "type": {
               "defined": "BuildStatus"
             }
+          },
+          {
+            "name": "buildPermitInUse",
+            "type": "bool"
           }
         ]
       }
@@ -7019,6 +7201,26 @@ export const IDL: RaindropsItem = {
                 32
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "buildPermit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "wallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "remainingBuilds",
+            "type": "u16"
           }
         ]
       }
@@ -7332,6 +7534,22 @@ export const IDL: RaindropsItem = {
       }
     },
     {
+      "name": "CreateBuildPermitArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "remainingBuilds",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -7375,6 +7593,10 @@ export const IDL: RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
+          },
+          {
+            "name": "buildPermitRequired",
+            "type": "bool"
           }
         ]
       }
@@ -7403,6 +7625,10 @@ export const IDL: RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
+          },
+          {
+            "name": "buildPermitRequired",
+            "type": "bool"
           }
         ]
       }
@@ -9718,6 +9944,16 @@ export const IDL: RaindropsItem = {
       "code": 6015,
       "name": "PackAlreadyOpened",
       "msg": "Pack Already Opened"
+    },
+    {
+      "code": 6016,
+      "name": "BuildPermitRequired",
+      "msg": "Build Permit Required"
+    },
+    {
+      "code": 6017,
+      "name": "NoBuildsRemaining",
+      "msg": "No Builds Remaining"
     }
   ]
 };

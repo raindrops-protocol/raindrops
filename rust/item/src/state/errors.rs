@@ -49,4 +49,10 @@ pub enum ErrorCode {
 
     #[msg("Pack Already Opened")]
     PackAlreadyOpened,
+
+    #[msg("Build Permit Required")]
+    BuildPermitRequired,
+
+    #[msg("No Builds Remaining")]
+    NoBuildsRemaining,
 }

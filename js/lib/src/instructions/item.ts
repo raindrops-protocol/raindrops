@@ -1081,6 +1081,7 @@ export class Instruction extends SolKitInstruction {
         buildEnabled: args.recipeArgs.buildEnabled,
         payment: args.recipeArgs.payment,
         ingredients: ingredients,
+        buildPermitRequired: args.recipeArgs.buildPermitRequired,
       },
       outputMode: formatItemClassV1OutputMode(args.outputMode),
     };
@@ -1166,12 +1167,26 @@ export class Instruction extends SolKitInstruction {
 
     const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
 
+    const recipeDataRaw = await this.program.client.account.recipe.fetch(
+      recipe
+    );
+
+    // if build permit is required create the pda
+    let buildPermit: web3.PublicKey | null = null;
+    if (recipeDataRaw.buildPermitRequired) {
+      buildPermit = Utils.PDA.getBuildPermit(
+        accounts.itemClass,
+        accounts.builder
+      );
+    }
+
     const ix = await this.program.client.methods
       .startBuild(args)
       .accounts({
         build: build,
         recipe: recipe,
         itemClass: accounts.itemClass,
+        buildPermit: buildPermit,
         builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1466,6 +1481,15 @@ export class Instruction extends SolKitInstruction {
       proofAsRemainingAccounts.push(nodeAccount);
     }
 
+    // if build permit is required create the pda
+    let buildPermit: web3.PublicKey | null = null;
+    if (buildData.buildPermitInUse) {
+      buildPermit = Utils.PDA.getBuildPermit(
+        itemClass,
+        new web3.PublicKey(buildData.builder)
+      );
+    }
+
     const ixArgs = {
       root: args.root,
       leafIndex: args.leafIndex,
@@ -1477,6 +1501,7 @@ export class Instruction extends SolKitInstruction {
         itemMint: accounts.itemMint,
         itemClass: itemClass,
         itemClassItems: itemClassItems,
+        buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
@@ -1513,6 +1538,15 @@ export class Instruction extends SolKitInstruction {
       proofAsRemainingAccounts.push(nodeAccount);
     }
 
+    // if build permit is required create the pda
+    let buildPermit: web3.PublicKey | null = null;
+    if (buildData.buildPermitInUse) {
+      buildPermit = Utils.PDA.getBuildPermit(
+        itemClass,
+        new web3.PublicKey(buildData.builder)
+      );
+    }
+
     const ixArgs = {
       root: args.root,
       leafIndex: args.leafIndex,
@@ -1526,6 +1560,7 @@ export class Instruction extends SolKitInstruction {
         pack: accounts.pack,
         itemClass: itemClass,
         itemClassItems: itemClassItems,
+        buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
@@ -2088,6 +2123,7 @@ export class Instruction extends SolKitInstruction {
       buildEnabled: args.args.buildEnabled,
       ingredients: ingredients,
       payment: args.args.payment,
+      buildPermitRequired: args.args.buildPermitRequired,
     };
 
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
@@ -2146,6 +2182,33 @@ export class Instruction extends SolKitInstruction {
         systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
+    return ix;
+  }
+
+  async createBuildPermit(
+    accounts: CreateBuildPermitAccounts,
+    args: CreateBuildPermitArgs
+  ): Promise<web3.TransactionInstruction> {
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+    const authority = new web3.PublicKey(itemClassData.authority);
+    const buildPermit = Utils.PDA.getBuildPermit(
+      accounts.itemClass,
+      args.wallet
+    );
+
+    const ix = await this.program.client.methods
+      .createBuildPermit(args)
+      .accounts({
+        buildPermit: buildPermit,
+        itemClass: accounts.itemClass,
+        authority: authority,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
     return ix;
   }
 }
@@ -2471,6 +2534,7 @@ export interface RecipeArgs {
   buildEnabled: boolean;
   payment: Payment | null;
   ingredientArgs: RecipeIngredientDataArgs[];
+  buildPermitRequired: boolean;
 }
 
 export type ItemClassV1OutputMode =
@@ -2682,4 +2746,13 @@ export interface AddPaymentAccounts {
   build: web3.PublicKey;
   builder: web3.PublicKey;
   treasury: web3.PublicKey;
+}
+
+export interface CreateBuildPermitAccounts {
+  itemClass: web3.PublicKey;
+}
+
+export interface CreateBuildPermitArgs {
+  wallet: web3.PublicKey;
+  remainingBuilds: number;
 }

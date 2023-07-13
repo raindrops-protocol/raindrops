@@ -50,6 +50,7 @@ pub struct RecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
     pub ingredients: Vec<RecipeIngredientData>,
+    pub build_permit_required: bool,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
@@ -68,6 +69,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         build_enabled: args.recipe_args.build_enabled,
         ingredients: args.recipe_args.ingredients,
         payment: args.recipe_args.payment,
+        build_permit_required: args.recipe_args.build_permit_required,
     });
 
     // initialize merkle tree

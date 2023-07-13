@@ -43,6 +43,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // ingredient 2, NFT
@@ -50,6 +51,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output pNft
@@ -77,6 +79,7 @@ describe.only("itemv1", () => {
           },
         },
       ],
+      buildPermitRequired: false,
     });
 
     // transfer output mints to their item class
@@ -214,6 +217,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output pNft
@@ -233,6 +237,7 @@ describe.only("itemv1", () => {
           },
         },
       ],
+      buildPermitRequired: false,
     });
 
     // transfer output mints to their item class
@@ -386,6 +391,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // ingredient 2, NFT
@@ -393,6 +399,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output pNft
@@ -420,6 +427,7 @@ describe.only("itemv1", () => {
           },
         },
       ],
+      buildPermitRequired: false,
     });
 
     // transfer output mints to their item class
@@ -534,6 +542,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // ingredient 2, NFT
@@ -541,6 +550,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output pNft
@@ -574,6 +584,7 @@ describe.only("itemv1", () => {
             },
           },
         ],
+        buildPermitRequired: false,
       }
     );
 
@@ -709,6 +720,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // ingredient 2, NFT
@@ -716,6 +728,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output pNft
@@ -743,6 +756,7 @@ describe.only("itemv1", () => {
           },
         },
       ],
+      buildPermitRequired: false,
     });
 
     // transfer output mints to their item class
@@ -859,6 +873,7 @@ describe.only("itemv1", () => {
         buildEnabled: false,
         payment: null,
         ingredientArgs: [],
+        buildPermitRequired: false,
       },
       outputMode: { kind: "Item" },
     };
@@ -881,6 +896,7 @@ describe.only("itemv1", () => {
         buildEnabled: false,
         payment: null,
         ingredientArgs: [],
+        buildPermitRequired: false,
       },
     };
 
@@ -935,6 +951,7 @@ describe.only("itemv1", () => {
         buildEnabled: false,
         payment: null,
         ingredientArgs: [],
+        buildPermitRequired: false,
       }
     );
 
@@ -943,6 +960,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // ingredient 3, pNFT
@@ -950,6 +968,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output pNft
@@ -990,6 +1009,7 @@ describe.only("itemv1", () => {
             },
           },
         ],
+        buildPermitRequired: false,
       }
     );
 
@@ -1138,6 +1158,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output
@@ -1160,6 +1181,7 @@ describe.only("itemv1", () => {
             },
           },
         ],
+        buildPermitRequired: false,
       },
       [
         {
@@ -1268,6 +1290,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output
@@ -1290,6 +1313,7 @@ describe.only("itemv1", () => {
             },
           },
         ],
+        buildPermitRequired: false,
       },
       [
         {
@@ -1398,6 +1422,7 @@ describe.only("itemv1", () => {
       buildEnabled: false,
       payment: null,
       ingredientArgs: [],
+      buildPermitRequired: false,
     });
 
     // output
@@ -1420,6 +1445,7 @@ describe.only("itemv1", () => {
             },
           },
         ],
+        buildPermitRequired: false,
       },
       [
         {
@@ -1520,6 +1546,342 @@ describe.only("itemv1", () => {
       // clean up
       await cleanBuild(builderItemProgram, build);
     }
+  });
+
+  it("build pNft requiring a build permit, after permit use try to build again and error", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // ingredient 1, pNFT
+    const pNftItemClass = await createItemClass(payer, connection, 2, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+      buildPermitRequired: false,
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 2, true, {
+      buildEnabled: true,
+      payment: null,
+      ingredientArgs: [
+        {
+          itemClass: pNftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: null,
+            cooldown: null,
+          },
+        },
+      ],
+      buildPermitRequired: true,
+    });
+
+    // check recipe has build permit flag enabled
+    const recipeData = await itemProgram.getRecipe(
+      Utils.PDA.getRecipe(outputItemClass.itemClass, new BN(0))
+    );
+    assert.isTrue(recipeData.buildPermitRequired);
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // create build permit for builder
+    const createBuildPermitResult = await itemProgram.createBuildPermit(
+      { itemClass: outputItemClass.itemClass },
+      { wallet: payer.publicKey, remainingBuilds: 1 }
+    );
+    console.log("createBuildPermitTxSig: %s", createBuildPermitResult.txid);
+
+    const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
+      Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
+    );
+    assert.isTrue(
+      buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass)
+    );
+    assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 1);
+    assert.isTrue(buildPermitDataPreBuild.wallet.equals(payer.publicKey));
+
+    // start the build process
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    const buildData = await itemProgram.getBuild(build);
+    assert.isTrue(buildData.buildPermitInUse);
+
+    // add pNFT to build
+    await addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      0,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // complete build and receive the item
+    await completeBuildItemAndReceiveItem(
+      connection,
+      outputItemClass.tree,
+      0,
+      build,
+      outputItemClass.mints
+    );
+
+    // assert builder received their item
+    const builderItemAta = splToken.getAssociatedTokenAddressSync(
+      outputItemClass.mints[0],
+      payer.publicKey
+    );
+    const tokenBalanceResponse =
+      await itemProgram.client.provider.connection.getTokenAccountBalance(
+        builderItemAta
+      );
+    assert.isTrue(
+      new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
+    );
+
+    await cleanBuild(itemProgram, build);
+
+    const buildPermitDataPostBuild = await itemProgram.getBuildPermit(
+      Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
+    );
+    assert.isTrue(
+      buildPermitDataPostBuild.itemClass.equals(outputItemClass.itemClass)
+    );
+    assert.isTrue(buildPermitDataPostBuild.remainingBuilds === 0);
+    assert.isTrue(buildPermitDataPostBuild.wallet.equals(payer.publicKey));
+
+    // try t start the build process again, but this time we have no remaining uses and it will error
+    const startBuildFailAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildFailArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    assertRejects(
+      itemProgram.startBuild(startBuildFailAccounts, startBuildFailArgs)
+    );
+  });
+
+  it("build pNft requiring a build permit twice", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // ingredient 1, pNFT
+    const pNftItemClass = await createItemClass(payer, connection, 2, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+      buildPermitRequired: false,
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 2, true, {
+      buildEnabled: true,
+      payment: null,
+      ingredientArgs: [
+        {
+          itemClass: pNftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: null,
+            cooldown: null,
+          },
+        },
+      ],
+      buildPermitRequired: true,
+    });
+
+    // check recipe has build permit flag enabled
+    const recipeData = await itemProgram.getRecipe(
+      Utils.PDA.getRecipe(outputItemClass.itemClass, new BN(0))
+    );
+    assert.isTrue(recipeData.buildPermitRequired);
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // create build permit for builder
+    const createBuildPermitResult = await itemProgram.createBuildPermit(
+      { itemClass: outputItemClass.itemClass },
+      { wallet: payer.publicKey, remainingBuilds: 2 }
+    );
+    console.log("createBuildPermitTxSig: %s", createBuildPermitResult.txid);
+
+    const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
+      Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
+    );
+    assert.isTrue(
+      buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass)
+    );
+    assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 2);
+    assert.isTrue(buildPermitDataPreBuild.wallet.equals(payer.publicKey));
+
+    // start the build process
+    const startBuild1Accounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuild1Args: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuild1Accounts,
+      startBuild1Args
+    );
+    console.log("startBuild1TxSig: %s", startBuildResult.txid);
+
+    const [build1, _build1Bump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    const build1Data = await itemProgram.getBuild(build1);
+    assert.isTrue(build1Data.buildPermitInUse);
+
+    // add pNFT to build
+    await addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      0,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // complete build and receive the item
+    await completeBuildItemAndReceiveItem(
+      connection,
+      outputItemClass.tree,
+      0,
+      build1,
+      outputItemClass.mints
+    );
+
+    await cleanBuild(itemProgram, build1);
+
+    const buildPermitDataPostBuild = await itemProgram.getBuildPermit(
+      Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
+    );
+    assert.isTrue(
+      buildPermitDataPostBuild.itemClass.equals(outputItemClass.itemClass)
+    );
+    assert.isTrue(buildPermitDataPostBuild.remainingBuilds === 1);
+    assert.isTrue(buildPermitDataPostBuild.wallet.equals(payer.publicKey));
+
+    // start build 2
+    const startBuild2Accounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuild2Args: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+    };
+
+    const startBuild2Result = await itemProgram.startBuild(
+      startBuild2Accounts,
+      startBuild2Args
+    );
+    console.log("startBuild2TxSig: %s", startBuild2Result.txid);
+
+    const [build2, _build2Bump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    const build2Data = await itemProgram.getBuild(build2);
+    assert.isTrue(build2Data.buildPermitInUse);
+
+    // add pNFT to build
+    await addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      1,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[1],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // complete build and receive the item
+    await completeBuildItemAndReceiveItem(
+      connection,
+      outputItemClass.tree,
+      1,
+      build2,
+      outputItemClass.mints
+    );
+
+    await cleanBuild(itemProgram, build1);
+
+    const buildPermitDataPostBuild2 = await itemProgram.getBuildPermit(
+      Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
+    );
+    assert.isTrue(
+      buildPermitDataPostBuild2.itemClass.equals(outputItemClass.itemClass)
+    );
+    assert.isTrue(buildPermitDataPostBuild2.remainingBuilds === 0);
+    assert.isTrue(buildPermitDataPostBuild2.wallet.equals(payer.publicKey));
   });
 });
 

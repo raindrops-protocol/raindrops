@@ -2063,6 +2063,13 @@ pub mod raindrops_item {
     pub fn add_payment(ctx: Context<AddPayment>) -> Result<()> {
         add_payment::handler(ctx)
     }
+
+    pub fn create_build_permit(
+        ctx: Context<CreateBuildPermit>,
+        args: CreateBuildPermitArgs,
+    ) -> Result<()> {
+        create_build_permit::handler(ctx, args)
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
