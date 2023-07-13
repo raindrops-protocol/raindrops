@@ -123,7 +123,6 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
         match &ctx.accounts.deterministic_ingredient {
             Some(deterministic_ingredient) => {
                 for output in &deterministic_ingredient.outputs {
-                    msg!("{:?}", output);
                     build.output.add_output(output.mint, output.amount);
                 }
             }
