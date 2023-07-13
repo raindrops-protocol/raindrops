@@ -455,3 +455,16 @@ export function getBuildPermit(itemClass: web3.PublicKey, wallet: web3.PublicKey
 
   return buildPermit; 
 }
+
+export function getDeterministicIngredient(itemClass: web3.PublicKey, ingredientMint: web3.PublicKey) {
+  const [deterministicIngredientPermit, _deterministicIngredientPermitBump] = web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("deterministic_ingredient"),
+      itemClass.toBuffer(),
+      ingredientMint.toBuffer(),
+    ],
+    ITEM_ID
+  );
+
+  return deterministicIngredientPermit; 
+}

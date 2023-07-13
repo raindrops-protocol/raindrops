@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1, ItemV1},
+    accounts::{Build, DeterministicIngredient, ItemClassV1, ItemV1},
     errors::ErrorCode,
     BuildStatus, ItemState,
 };
@@ -14,6 +14,12 @@ pub struct AddIngredientSpl<'info> {
     #[account(
         seeds = [ItemClassV1::PREFIX.as_bytes(), ingredient_item_class.items.key().as_ref()], bump)]
     pub ingredient_item_class: Account<'info, ItemClassV1>,
+
+    #[account(
+        has_one = ingredient_mint,
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump
+    )]
+    pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
     #[account(mut, constraint = ingredient_source.mint.eq(&ingredient_mint.key()))]
     pub ingredient_source: Box<Account<'info, token::TokenAccount>>,
@@ -59,16 +65,17 @@ pub fn handler(ctx: Context<AddIngredientSpl>, args: AddIngredientSplArgs) -> Re
         ErrorCode::InvalidBuildStatus
     );
 
-    // verify ingredient_mint
-    let verified = build.verify_build_mint(
-        ctx.accounts.ingredient_item_class.key(),
-        ctx.accounts.ingredient_mint.key(),
-    );
-    require!(verified, ErrorCode::IncorrectIngredient);
-
     // increment current_amount by transfer amount
     build
         .increment_build_amount(ctx.accounts.ingredient_mint.key(), args.amount)
+        .unwrap();
+
+    // find matching build ingredient for the mint
+    let build_ingredient = build
+        .find_build_ingredient(
+            ctx.accounts.ingredient_item_class.key(),
+            ctx.accounts.ingredient_mint.key(),
+        )
         .unwrap();
 
     // set the initial data if item pda has not been initialized until this instruction
@@ -84,6 +91,18 @@ pub fn handler(ctx: Context<AddIngredientSpl>, args: AddIngredientSplArgs) -> Re
             return Err(ErrorCode::ItemOnCooldown.into());
         }
     }
+
+    // add deterministic outputs to build outputs
+    if build_ingredient.is_deterministic {
+        match &ctx.accounts.deterministic_ingredient {
+            Some(deterministic_ingredient) => {
+                for output in &deterministic_ingredient.outputs {
+                    build.output.add_output(output.mint, output.amount);
+                }
+            }
+            None => return Err(ErrorCode::IncorrectIngredient.into()),
+        }
+    };
 
     // transfer tokens to build pda
     let transfer_accounts = token::Transfer {

@@ -35,6 +35,7 @@ import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import { Constants, Utils } from "../main";
 import { sha256 } from "js-sha256";
+import { DeterministicIngredientOutput } from "../state/item";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1071,6 +1072,7 @@ export class Instruction extends SolKitInstruction {
           degradation: degradationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
+        isDeterministic: ingredientArg.isDeterministic,
       };
 
       ingredients.push(ingredient);
@@ -1237,6 +1239,21 @@ export class Instruction extends SolKitInstruction {
       true
     );
 
+    // get deterministic ingredient pda if applicable
+    let deterministicIngredient: web3.PublicKey | null = null;
+    const buildDataRaw = await this.program.client.account.build.fetch(build);
+    for (let rawIngredient of buildDataRaw.ingredients as any[]) {
+      const match = (rawIngredient.mints as any[]).some((mintData) =>
+        new web3.PublicKey(mintData.mint).equals(accounts.ingredientMint)
+      );
+      if (match && Boolean(rawIngredient.isDeterministic)) {
+        deterministicIngredient = Utils.PDA.getDeterministicIngredient(
+          accounts.itemClass,
+          accounts.ingredientMint
+        );
+      }
+    }
+
     const ix = await this.program.client.methods
       .addIngredientSpl(args)
       .accounts({
@@ -1244,6 +1261,7 @@ export class Instruction extends SolKitInstruction {
         ingredientItemClass: accounts.ingredientItemClass,
         ingredientSource: ingredientSource,
         ingredientDestination: ingredientDestination,
+        deterministicIngredient: deterministicIngredient,
         build: build,
         item: item,
         builder: accounts.builder,
@@ -1328,6 +1346,21 @@ export class Instruction extends SolKitInstruction {
       mpl.PROGRAM_ID
     );
 
+    // get deterministic ingredient pda if applicable
+    let deterministicIngredient: web3.PublicKey | null = null;
+    const buildDataRaw = await this.program.client.account.build.fetch(build);
+    for (let rawIngredient of buildDataRaw.ingredients as any[]) {
+      const match = (rawIngredient.mints as any[]).some((mintData) =>
+        new web3.PublicKey(mintData.mint).equals(accounts.ingredientMint)
+      );
+      if (match && Boolean(rawIngredient.isDeterministic)) {
+        deterministicIngredient = Utils.PDA.getDeterministicIngredient(
+          accounts.itemClass,
+          accounts.ingredientMint
+        );
+      }
+    }
+
     // double CU and fee
 
     const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
@@ -1345,6 +1378,7 @@ export class Instruction extends SolKitInstruction {
         ingredientItemClass: accounts.ingredientItemClass,
         ingredientMetadata: ingredientMetadata,
         ingredientEdition: ingredientME,
+        deterministicIngredient: deterministicIngredient,
         authRules: ingredientMetadataData.programmableConfig.ruleSet,
         ingredientSource: ingredientSource,
         ingredientSourceTokenRecord: ingredientSourceTokenRecord,
@@ -2114,6 +2148,7 @@ export class Instruction extends SolKitInstruction {
           degradation: degradationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
+        isDeterministic: ingredientArg.isDeterministic,
       };
 
       ingredients.push(ingredient);
@@ -2203,6 +2238,35 @@ export class Instruction extends SolKitInstruction {
       .accounts({
         buildPermit: buildPermit,
         itemClass: accounts.itemClass,
+        authority: authority,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  async createDeterministicIngredient(
+    accounts: CreateDeterministicIngredientAccounts,
+    args: CreateDeterministicIngredientArgs
+  ): Promise<web3.TransactionInstruction> {
+    const itemClassData = await this.program.client.account.itemClassV1.fetch(
+      accounts.itemClass
+    );
+    const authority = new web3.PublicKey(itemClassData.authority);
+
+    const deterministicIngredient = Utils.PDA.getDeterministicIngredient(
+      accounts.itemClass,
+      accounts.ingredientMint
+    );
+
+    const ix = await this.program.client.methods
+      .createDeterministicIngredient(args)
+      .accounts({
+        itemClass: accounts.itemClass,
+        ingredientMint: accounts.ingredientMint,
+        deterministicIngredient: deterministicIngredient,
         authority: authority,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -2564,6 +2628,7 @@ export interface RecipeIngredientDataArgs {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
   buildEffect: BuildEffect;
+  isDeterministic: boolean;
 }
 
 export interface BuildEffect {
@@ -2755,4 +2820,13 @@ export interface CreateBuildPermitAccounts {
 export interface CreateBuildPermitArgs {
   wallet: web3.PublicKey;
   remainingBuilds: number;
+}
+
+export interface CreateDeterministicIngredientAccounts {
+  ingredientMint: web3.PublicKey;
+  itemClass: web3.PublicKey;
+}
+
+export interface CreateDeterministicIngredientArgs {
+  outputs: DeterministicIngredientOutput[];
 }

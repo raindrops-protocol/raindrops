@@ -55,4 +55,7 @@ pub enum ErrorCode {
 
     #[msg("No Builds Remaining")]
     NoBuildsRemaining,
+
+    #[msg("Invalid Recipe Config")]
+    InvalidRecipeConfig,
 }

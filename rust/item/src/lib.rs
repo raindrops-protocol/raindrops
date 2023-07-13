@@ -2070,6 +2070,13 @@ pub mod raindrops_item {
     ) -> Result<()> {
         create_build_permit::handler(ctx, args)
     }
+
+    pub fn create_deterministic_ingredient(
+        ctx: Context<CreateDeterministicIngredient>,
+        args: CreateDeterministicIngredientArgs,
+    ) -> Result<()> {
+        create_deterministic_ingredient::handler(ctx, args)
+    }
 }
 
 // [COMMON REMAINING ACCOUNTS]
