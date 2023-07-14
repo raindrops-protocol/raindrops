@@ -255,13 +255,13 @@ impl Pack {
     32; // contents hash
 }
 
-// seeds = ['build_permit', wallet, item_class]
+// seeds = ['build_permit', wallet, recipe]
 // we rely on the fact that each wallet can only do 1 concurrent build because of the build pda seed setup
 // if this changes we need to take into account multiple builds in parallel and make sure you can't game the build permit system
 #[account]
 pub struct BuildPermit {
-    pub item_class: Pubkey,
-    pub wallet: Pubkey,
+    pub recipe: Pubkey,
+    pub builder: Pubkey,
     pub remaining_builds: u16,
 }
 
@@ -269,8 +269,8 @@ impl BuildPermit {
     pub const PREFIX: &'static str = "build_permit";
 
     pub const SPACE: usize = 8 + // anchor
-    32 + // item class
-    32 + // wallet
+    32 + // recipe
+    32 + // builder
     2; // remaining_builds
 }
 

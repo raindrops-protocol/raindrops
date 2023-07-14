@@ -7,7 +7,7 @@ use spl_account_compression::{
 use std::convert::TryInto;
 
 use crate::state::{
-    accounts::{Build, BuildPermit, ItemClassV1},
+    accounts::{Build, BuildPermit, ItemClassV1, Recipe},
     errors::ErrorCode,
     is_signer, BuildStatus, NoopProgram,
 };
@@ -24,13 +24,19 @@ pub struct CompleteBuildItem<'info> {
     /// CHECK: checked by spl-account-compression
     pub item_class_items: UncheckedAccount<'info>,
 
-    #[account(mut,
+    #[account(
         has_one = item_class,
-        constraint = build_permit.wallet.eq(&build.builder.key()),
-        seeds = [BuildPermit::PREFIX.as_bytes(), build.builder.key().as_ref(), item_class.key().as_ref()], bump)]
+        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
+    pub recipe: Account<'info, Recipe>,
+
+    #[account(mut,
+        has_one = recipe,
+        constraint = build_permit.builder.eq(&build.builder.key()),
+        seeds = [BuildPermit::PREFIX.as_bytes(), build.builder.key().as_ref(), recipe.key().as_ref()], bump)]
     pub build_permit: Option<Account<'info, BuildPermit>>,
 
     #[account(mut,
+        constraint = recipe.recipe_index == build.recipe_index,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.as_ref()], bump)]
     pub build: Account<'info, Build>,
 

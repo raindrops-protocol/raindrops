@@ -443,12 +443,12 @@ export function getPack(itemClass: web3.PublicKey, id: BN) {
   return pack; 
 }
 
-export function getBuildPermit(itemClass: web3.PublicKey, wallet: web3.PublicKey) {
+export function getBuildPermit(recipe: web3.PublicKey, builder: web3.PublicKey) {
   const [buildPermit, _buildPermitBump] = web3.PublicKey.findProgramAddressSync(
     [
       Buffer.from("build_permit"),
-      wallet.toBuffer(),
-      itemClass.toBuffer(),
+      builder.toBuffer(),
+      recipe.toBuffer(),
     ],
     ITEM_ID
   );

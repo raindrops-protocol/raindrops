@@ -1567,6 +1567,11 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -1612,6 +1617,11 @@ export type RaindropsItem = {
         },
         {
           "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
           "isMut": false,
           "isSigner": false
         },
@@ -2007,8 +2017,13 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "itemClass",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2260,11 +2275,11 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "itemClass",
+            "name": "recipe",
             "type": "publicKey"
           },
           {
-            "name": "wallet",
+            "name": "builder",
             "type": "publicKey"
           },
           {
@@ -2582,7 +2597,7 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "wallet",
+            "name": "builder",
             "type": "publicKey"
           },
           {
@@ -6717,6 +6732,11 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -6762,6 +6782,11 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
           "isMut": false,
           "isSigner": false
         },
@@ -7157,8 +7182,13 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "itemClass",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -7410,11 +7440,11 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "itemClass",
+            "name": "recipe",
             "type": "publicKey"
           },
           {
-            "name": "wallet",
+            "name": "builder",
             "type": "publicKey"
           },
           {
@@ -7732,7 +7762,7 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "wallet",
+            "name": "builder",
             "type": "publicKey"
           },
           {
