@@ -108,6 +108,13 @@ pub fn handler<'a, 'b, 'c, 'info>(
             Some(build_permit) => {
                 // decrement the remaining builds this build permit is allowed
                 build_permit.remaining_builds -= 1;
+
+                // if remaining builds are now 0, lets close the PDA
+                if build_permit.remaining_builds == 0 {
+                    ctx.accounts
+                        .build_permit
+                        .close(ctx.accounts.payer.to_account_info())?;
+                }
             }
             None => return Err(ErrorCode::BuildPermitRequired.into()),
         }

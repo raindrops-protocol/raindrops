@@ -1978,11 +1978,8 @@ pub mod raindrops_item {
         add_item_to_item_class::handler(ctx)
     }
 
-    pub fn add_pack_to_item_class(
-        ctx: Context<AddPackToItemClass>,
-        args: AddPackToItemClassArgs,
-    ) -> Result<()> {
-        add_pack_to_item_class::handler(ctx, args)
+    pub fn create_pack(ctx: Context<CreatePack>, args: CreatePackArgs) -> Result<()> {
+        create_pack::handler(ctx, args)
     }
 
     pub fn start_build(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {

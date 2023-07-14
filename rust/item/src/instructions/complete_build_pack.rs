@@ -1,14 +1,9 @@
 use anchor_lang::prelude::*;
-use spl_account_compression::{
-    cpi::{accounts::VerifyLeaf, verify_leaf},
-    program::SplAccountCompression,
-};
-use std::convert::TryInto;
 
 use crate::state::{
     accounts::{Build, BuildPermit, ItemClassV1, Pack},
     errors::ErrorCode,
-    is_signer, BuildStatus, NoopProgram, PackContents,
+    is_signer, BuildStatus, PackContents,
 };
 
 #[derive(Accounts)]
@@ -20,13 +15,9 @@ pub struct CompleteBuildPack<'info> {
     pub pack: Box<Account<'info, Pack>>,
 
     #[account(
-        constraint = item_class.items.eq(&item_class_items.key()),
         constraint = item_class.output_mode.is_pack(),
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class_items.key().as_ref()], bump)]
+        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
-
-    /// CHECK: checked by spl-account-compression
-    pub item_class_items: UncheckedAccount<'info>,
 
     #[account(mut,
         has_one = item_class,
@@ -40,28 +31,15 @@ pub struct CompleteBuildPack<'info> {
 
     #[account(mut, constraint = is_signer(&payer.key()))]
     pub payer: Signer<'info>,
-
-    pub log_wrapper: Program<'info, NoopProgram>,
-
-    pub account_compression: Program<'info, SplAccountCompression>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CompleteBuildPackArgs {
-    pub root: [u8; 32],
-    pub leaf_index: u32,
     pub pack_contents: PackContents,
     pub pack_contents_hash_nonce: [u8; 16],
 }
 
-pub fn handler<'a, 'b, 'c, 'info>(
-    ctx: Context<'a, 'b, 'c, 'info, CompleteBuildPack<'info>>,
-    args: CompleteBuildPackArgs,
-) -> Result<()> {
-    // check pack is unopened and set it to opened
-    require!(!ctx.accounts.pack.opened, ErrorCode::PackAlreadyOpened);
-    ctx.accounts.pack.opened = true;
-
+pub fn handler(ctx: Context<CompleteBuildPack>, args: CompleteBuildPackArgs) -> Result<()> {
     // check the build is in progress before running completion steps
     require!(
         ctx.accounts.build.status.eq(&BuildStatus::InProgress),
@@ -89,22 +67,6 @@ pub fn handler<'a, 'b, 'c, 'info>(
     let build = &mut ctx.accounts.build;
     build.status = BuildStatus::Complete;
 
-    // verify pack exists in the items tree
-    let verify_item_accounts = VerifyLeaf {
-        merkle_tree: ctx.accounts.item_class_items.to_account_info(),
-    };
-
-    verify_leaf(
-        CpiContext::new(
-            ctx.accounts.account_compression.to_account_info(),
-            verify_item_accounts,
-        )
-        .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
-        args.root,
-        ctx.accounts.pack.key().as_ref().try_into().unwrap(),
-        args.leaf_index,
-    )?;
-
     // check that the pack_contents hash matches the one stored in the pack pda
     let args_hash = args
         .pack_contents
@@ -124,10 +86,20 @@ pub fn handler<'a, 'b, 'c, 'info>(
             Some(build_permit) => {
                 // decrement the remaining builds this build permit is allowed
                 build_permit.remaining_builds -= 1;
+
+                // if remaining builds are now 0, lets close the PDA
+                if build_permit.remaining_builds == 0 {
+                    ctx.accounts
+                        .build_permit
+                        .close(ctx.accounts.payer.to_account_info())?;
+                };
             }
             None => return Err(ErrorCode::BuildPermitRequired.into()),
         }
     }
 
-    Ok(())
+    // close the pack pda
+    ctx.accounts
+        .pack
+        .close(ctx.accounts.payer.to_account_info())
 }

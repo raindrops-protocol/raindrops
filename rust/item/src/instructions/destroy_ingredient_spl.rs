@@ -25,9 +25,8 @@ pub struct DestroyIngredientSpl<'info> {
         seeds = [Build::PREFIX.as_bytes(), build.item_class.as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    /// CHECK: build pda checks this account
     #[account(mut)]
-    pub builder: UncheckedAccount<'info>,
+    pub builder: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
