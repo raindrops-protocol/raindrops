@@ -554,12 +554,30 @@ export interface Recipe {
   payment: Payment | null;
   ingredients: Ingredient[];
   buildPermitRequired: boolean;
+  selectableOutputs: OutputSelectionGroup[];
 }
 
 export interface Ingredient {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
   buildEffect: any;
+}
+
+export interface OutputSelectionGroup {
+  groupId: number;
+  choices: OutputSelection[];
+  maxChoices: number;
+}
+
+export interface OutputSelection {
+  outputId: number;
+  mint: web3.PublicKey;
+  amount: BN;
+}
+
+export interface OutputSelectionArgs {
+  groupId: number;
+  outputId: number;
 }
 
 export interface ItemV1 {

@@ -413,6 +413,41 @@ impl DeterministicIngredientOutput {
     pub const SPACE: usize = 32 + 8;
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OutputSelectionArgs {
+    pub group_id: u8,
+
+    pub output_id: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OutputSelectionGroup {
+    pub group_id: u8,
+
+    pub choices: Vec<OutputSelection>,
+
+    pub max_choices: u8,
+}
+
+impl OutputSelectionGroup {
+    pub fn space(choices_count: usize) -> usize {
+        1 + // group id
+        4 + (OutputSelection::SPACE * choices_count) + // choices
+        1 // max choices
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OutputSelection {
+    pub output_id: u8,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
+impl OutputSelection {
+    pub const SPACE: usize = 1 + 32 + 8;
+}
+
 // anchor wrapper for Noop Program required for spl-account-compression
 #[derive(Clone)]
 pub struct NoopProgram;

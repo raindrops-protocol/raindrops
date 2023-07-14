@@ -58,4 +58,7 @@ pub enum ErrorCode {
 
     #[msg("Invalid Recipe Config")]
     InvalidRecipeConfig,
+
+    #[msg("Invalid Output Selection")]
+    InvalidOutputSelection,
 }

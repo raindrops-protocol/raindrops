@@ -24,6 +24,8 @@ import {
   BuildPermit,
   DeterministicIngredient,
   DeterministicIngredientOutput,
+  OutputSelectionGroup,
+  OutputSelection,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
@@ -500,6 +502,16 @@ export class ItemProgram extends Program.Program {
         };
       }
 
+      const selectableOutputs: OutputSelectionGroup[] = [];
+      for (let output of recipeData.selectableOutputs as any[]) {
+        const choices: OutputSelection[] = [];
+        for (let choice of output.choices as any[]) {
+          choices.push({outputId: Number(choice.outputId), mint: new web3.PublicKey(choice.mint), amount: new BN(choice.amount)})
+        }
+
+        selectableOutputs.push({groupId: Number(output.groupId), choices: choices, maxChoices: Number(output.maxChoices)})
+      }
+
       const recipe: Recipe = {
         itemClass: itemClass,
         recipeIndex: new BN(i),
@@ -507,6 +519,7 @@ export class ItemProgram extends Program.Program {
         buildEnabled: Boolean(recipeData.buildEnabled),
         ingredients: ingredients,
         buildPermitRequired: Boolean(recipeData.buildPermitRequired),
+        selectableOutputs: selectableOutputs,
       };
 
       recipes.push(recipe);
@@ -639,6 +652,16 @@ export class ItemProgram extends Program.Program {
       });
     }
 
+    const selectableOutputs: OutputSelectionGroup[] = [];
+      for (let output of recipeDataRaw.selectableOutputs as any[]) {
+        const choices: OutputSelection[] = [];
+        for (let choice of output.choices as any[]) {
+          choices.push({outputId: Number(choice.outputId), mint: new web3.PublicKey(choice.mint), amount: new BN(choice.amount)})
+        }
+
+        selectableOutputs.push({groupId: Number(output.groupId), choices: choices, maxChoices: Number(output.maxChoices)})
+      }
+
     const recipeData: Recipe = {
       recipeIndex: new BN(recipeDataRaw.recipeIndex),
       itemClass: new web3.PublicKey(recipeDataRaw.itemClass),
@@ -646,6 +669,7 @@ export class ItemProgram extends Program.Program {
       payment: payment,
       ingredients: ingredients,
       buildPermitRequired: Boolean(recipeDataRaw.buildPermitRequired),
+      selectableOutputs: selectableOutputs,
     };
 
     return recipeData;

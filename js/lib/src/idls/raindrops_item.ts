@@ -2189,6 +2189,14 @@ export type RaindropsItem = {
             "type": "bool"
           },
           {
+            "name": "selectableOutputs",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionGroup"
+              }
+            }
+          },
+          {
             "name": "ingredients",
             "type": {
               "vec": {
@@ -2712,6 +2720,14 @@ export type RaindropsItem = {
           {
             "name": "buildPermitRequired",
             "type": "bool"
+          },
+          {
+            "name": "selectableOutputs",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionGroup"
+              }
+            }
           }
         ]
       }
@@ -2744,6 +2760,14 @@ export type RaindropsItem = {
           {
             "name": "buildPermitRequired",
             "type": "bool"
+          },
+          {
+            "name": "selectableOutputs",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionGroup"
+              }
+            }
           }
         ]
       }
@@ -2756,6 +2780,14 @@ export type RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
+          },
+          {
+            "name": "recipeOutputSelection",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionArgs"
+              }
+            }
           }
         ]
       }
@@ -3009,6 +3041,66 @@ export type RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutputSelectionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "groupId",
+            "type": "u8"
+          },
+          {
+            "name": "outputId",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutputSelectionGroup",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "groupId",
+            "type": "u8"
+          },
+          {
+            "name": "choices",
+            "type": {
+              "vec": {
+                "defined": "OutputSelection"
+              }
+            }
+          },
+          {
+            "name": "maxChoices",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutputSelection",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outputId",
+            "type": "u8"
+          },
           {
             "name": "mint",
             "type": "publicKey"
@@ -5101,6 +5193,11 @@ export type RaindropsItem = {
       "code": 6018,
       "name": "InvalidRecipeConfig",
       "msg": "Invalid Recipe Config"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidOutputSelection",
+      "msg": "Invalid Output Selection"
     }
   ]
 };
@@ -7296,6 +7393,14 @@ export const IDL: RaindropsItem = {
             "type": "bool"
           },
           {
+            "name": "selectableOutputs",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionGroup"
+              }
+            }
+          },
+          {
             "name": "ingredients",
             "type": {
               "vec": {
@@ -7819,6 +7924,14 @@ export const IDL: RaindropsItem = {
           {
             "name": "buildPermitRequired",
             "type": "bool"
+          },
+          {
+            "name": "selectableOutputs",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionGroup"
+              }
+            }
           }
         ]
       }
@@ -7851,6 +7964,14 @@ export const IDL: RaindropsItem = {
           {
             "name": "buildPermitRequired",
             "type": "bool"
+          },
+          {
+            "name": "selectableOutputs",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionGroup"
+              }
+            }
           }
         ]
       }
@@ -7863,6 +7984,14 @@ export const IDL: RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
+          },
+          {
+            "name": "recipeOutputSelection",
+            "type": {
+              "vec": {
+                "defined": "OutputSelectionArgs"
+              }
+            }
           }
         ]
       }
@@ -8116,6 +8245,66 @@ export const IDL: RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutputSelectionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "groupId",
+            "type": "u8"
+          },
+          {
+            "name": "outputId",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutputSelectionGroup",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "groupId",
+            "type": "u8"
+          },
+          {
+            "name": "choices",
+            "type": {
+              "vec": {
+                "defined": "OutputSelection"
+              }
+            }
+          },
+          {
+            "name": "maxChoices",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutputSelection",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outputId",
+            "type": "u8"
+          },
           {
             "name": "mint",
             "type": "publicKey"
@@ -10208,6 +10397,11 @@ export const IDL: RaindropsItem = {
       "code": 6018,
       "name": "InvalidRecipeConfig",
       "msg": "Invalid Recipe Config"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidOutputSelection",
+      "msg": "Invalid Output Selection"
     }
   ]
 };

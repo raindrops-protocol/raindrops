@@ -45,6 +45,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // ingredient 2, NFT
@@ -53,6 +54,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -83,6 +85,7 @@ describe.only("itemv1", () => {
         },
       ],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // transfer output mints to their item class
@@ -98,6 +101,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -221,6 +225,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -242,6 +247,7 @@ describe.only("itemv1", () => {
         },
       ],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // transfer output mints to their item class
@@ -257,6 +263,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -339,6 +346,7 @@ describe.only("itemv1", () => {
 
     const startBuild2Args: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuild2Result = await itemProgram.startBuild(
@@ -396,6 +404,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // ingredient 2, NFT
@@ -404,6 +413,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -434,6 +444,7 @@ describe.only("itemv1", () => {
         },
       ],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // transfer output mints to their item class
@@ -449,6 +460,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -549,6 +561,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // ingredient 2, NFT
@@ -557,6 +570,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -593,6 +607,7 @@ describe.only("itemv1", () => {
           },
         ],
         buildPermitRequired: false,
+        selectableOutputs: [],
       }
     );
 
@@ -611,6 +626,7 @@ describe.only("itemv1", () => {
 
       const startBuildArgs: Instructions.Item.StartBuildArgs = {
         recipeIndex: new anchor.BN(0),
+        recipeOutputSelection: [],
       };
 
       const startBuildResult = await itemProgram.startBuild(
@@ -729,6 +745,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // ingredient 2, NFT
@@ -737,6 +754,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -767,6 +785,7 @@ describe.only("itemv1", () => {
         },
       ],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // transfer output mints to their item class
@@ -782,6 +801,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await builderItemProgram.startBuild(
@@ -884,6 +904,7 @@ describe.only("itemv1", () => {
         payment: null,
         ingredientArgs: [],
         buildPermitRequired: false,
+        selectableOutputs: [],
       },
       outputMode: { kind: "Item" },
     };
@@ -907,6 +928,7 @@ describe.only("itemv1", () => {
         payment: null,
         ingredientArgs: [],
         buildPermitRequired: false,
+        selectableOutputs: [],
       },
     };
 
@@ -962,6 +984,7 @@ describe.only("itemv1", () => {
         payment: null,
         ingredientArgs: [],
         buildPermitRequired: false,
+        selectableOutputs: [],
       }
     );
 
@@ -971,6 +994,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // ingredient 3, pNFT
@@ -979,6 +1003,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -1023,6 +1048,7 @@ describe.only("itemv1", () => {
           },
         ],
         buildPermitRequired: false,
+        selectableOutputs: [],
       }
     );
 
@@ -1039,6 +1065,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildIx = await itemProgramBuilder.instruction.startBuild(
@@ -1172,6 +1199,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output
@@ -1196,6 +1224,7 @@ describe.only("itemv1", () => {
           },
         ],
         buildPermitRequired: false,
+        selectableOutputs: [],
       },
       [
         {
@@ -1221,6 +1250,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await builderItemProgram.startBuild(
@@ -1305,6 +1335,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output
@@ -1329,6 +1360,7 @@ describe.only("itemv1", () => {
           },
         ],
         buildPermitRequired: false,
+        selectableOutputs: [],
       },
       [
         {
@@ -1354,6 +1386,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await builderItemProgram.startBuild(
@@ -1438,6 +1471,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output
@@ -1462,6 +1496,7 @@ describe.only("itemv1", () => {
           },
         ],
         buildPermitRequired: false,
+        selectableOutputs: [],
       },
       [
         {
@@ -1502,6 +1537,7 @@ describe.only("itemv1", () => {
 
       const startBuildArgs: Instructions.Item.StartBuildArgs = {
         recipeIndex: new anchor.BN(0),
+        recipeOutputSelection: [],
       };
 
       const startBuildResult = await builderItemProgram.startBuild(
@@ -1583,6 +1619,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -1601,6 +1638,7 @@ describe.only("itemv1", () => {
         },
       ],
       buildPermitRequired: true,
+      selectableOutputs: [],
     });
 
     // check recipe has build permit flag enabled
@@ -1638,6 +1676,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -1710,6 +1749,7 @@ describe.only("itemv1", () => {
 
     const startBuildFailArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     assertRejects(
@@ -1736,6 +1776,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -1750,10 +1791,11 @@ describe.only("itemv1", () => {
             degradation: null,
             cooldown: null,
           },
-          isDeterministic: false, 
+          isDeterministic: false,
         },
       ],
       buildPermitRequired: true,
+      selectableOutputs: [],
     });
 
     // check recipe has build permit flag enabled
@@ -1791,6 +1833,7 @@ describe.only("itemv1", () => {
 
     const startBuild1Args: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -1850,6 +1893,7 @@ describe.only("itemv1", () => {
 
     const startBuild2Args: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuild2Result = await itemProgram.startBuild(
@@ -1921,6 +1965,7 @@ describe.only("itemv1", () => {
       payment: null,
       ingredientArgs: [],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // output pNft
@@ -1939,6 +1984,7 @@ describe.only("itemv1", () => {
         },
       ],
       buildPermitRequired: false,
+      selectableOutputs: [],
     });
 
     // transfer the pNFT to the item class
@@ -1946,7 +1992,7 @@ describe.only("itemv1", () => {
       payer,
       connection,
       outputItemClass.mints[0],
-      outputItemClass.itemClass,
+      outputItemClass.itemClass
     );
 
     // create deterministic pda
@@ -1966,6 +2012,7 @@ describe.only("itemv1", () => {
 
     const startBuildArgs: Instructions.Item.StartBuildArgs = {
       recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
     };
 
     const startBuildResult = await itemProgram.startBuild(
@@ -2004,7 +2051,165 @@ describe.only("itemv1", () => {
     );
 
     // assert builder received the output item and the deterministic item
-    const expectedMints: anchor.web3.PublicKey[] = [outputItemClass.mints[0], deterministicOutputs[0].mint];
+    const expectedMints: anchor.web3.PublicKey[] = [
+      outputItemClass.mints[0],
+      deterministicOutputs[0].mint,
+    ];
+    for (let expected of expectedMints) {
+      const builderItemAta = splToken.getAssociatedTokenAddressSync(
+        expected,
+        new anchor.web3.PublicKey(payer.publicKey)
+      );
+      const tokenBalanceResponse =
+        await itemProgram.client.provider.connection.getTokenAccountBalance(
+          builderItemAta
+        );
+      assert.isTrue(
+        new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
+      );
+    }
+
+    await cleanBuild(itemProgram, build);
+  });
+
+  it("build item with recipe selection", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // ingredient 1, pNFT
+    const pNftItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+      buildPermitRequired: false,
+      selectableOutputs: [],
+    });
+
+    // create mints for selectable outputs
+    const outputSelectionGroups = await createOutputSelectionGroups(
+      connection,
+      payer,
+      1
+    );
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: true,
+      payment: null,
+      ingredientArgs: [
+        {
+          itemClass: pNftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: null,
+            cooldown: null,
+          },
+          isDeterministic: false,
+        },
+      ],
+      buildPermitRequired: false,
+      selectableOutputs: outputSelectionGroups,
+    });
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // transfer selectable outputs to the item class
+    for (let group of outputSelectionGroups) {
+      for (let choice of group.choices) {
+        // transfer the nft to the item class
+        const ata = splToken.getAssociatedTokenAddressSync(
+          choice.mint,
+          outputItemClass.itemClass,
+          true
+        );
+        const createAtaIx =
+          splToken.createAssociatedTokenAccountIdempotentInstruction(
+            payer.publicKey,
+            ata,
+            outputItemClass.itemClass,
+            choice.mint
+          );
+        const transferIx = splToken.createTransferInstruction(
+          splToken.getAssociatedTokenAddressSync(choice.mint, payer.publicKey),
+          ata,
+          payer.publicKey,
+          1
+        );
+
+        const transferTx = new anchor.web3.Transaction().add(
+          createAtaIx,
+          transferIx
+        );
+
+        const transferNftTxSig =
+          await itemProgram.client.provider.sendAndConfirm(transferTx, [], {});
+        console.log("transferNftTxSig: %s", transferNftTxSig);
+      }
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [{ groupId: 0, outputId: 0 }],
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    // add pNFT to build
+    await addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      0,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // complete build and receive the item
+    await completeBuildItemAndReceiveItem(
+      connection,
+      outputItemClass.tree,
+      0,
+      build,
+      outputItemClass.mints
+    );
+
+    // assert builder received the output item and the deterministic item
+    const expectedMints: anchor.web3.PublicKey[] = [
+      outputItemClass.mints[0],
+      outputSelectionGroups[0].choices[0].mint,
+    ];
     for (let expected of expectedMints) {
       const builderItemAta = splToken.getAssociatedTokenAddressSync(
         expected,
@@ -3208,6 +3413,62 @@ async function createDeterministicIngredient(
   );
 
   return deterministicIngredientOutputs;
+}
+
+async function createOutputSelectionGroups(
+  connection: anchor.web3.Connection,
+  authority: anchor.web3.Keypair,
+  groupCount: number
+): Promise<State.Item.OutputSelectionGroup[]> {
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(
+      connection,
+      new anchor.Wallet(authority),
+      {
+        commitment: "confirmed",
+      }
+    ),
+    idl: Idls.ItemIDL,
+  });
+
+  const client = new metaplex.Metaplex(connection, {}).use(
+    metaplex.keypairIdentity(authority)
+  );
+
+  // create output mints and mint to item class
+  const outputSelectionGroups: State.Item.OutputSelectionGroup[] = [];
+  for (let i = 0; i < groupCount; i++) {
+    const ingredientCollectionNft = await createCollectionNft(
+      authority,
+      connection
+    );
+
+    const ingredientMintOutput = await client.nfts().create({
+      tokenStandard: mpl.TokenStandard.NonFungible,
+      uri: "https://foo.com/bar.json",
+      name: "NFT1",
+      sellerFeeBasisPoints: 500,
+      symbol: "N",
+      collection: ingredientCollectionNft,
+      collectionAuthority: authority,
+    });
+    console.log("createNftTxSig: %s", ingredientMintOutput.response.signature);
+
+    outputSelectionGroups.push({
+      groupId: i,
+      choices: [
+        {
+          outputId: 0,
+          mint: ingredientMintOutput.mintAddress,
+          amount: new BN(1),
+        },
+      ],
+      maxChoices: 1,
+    });
+  }
+
+  return outputSelectionGroups;
 }
 
 async function createDelegateAuthorityPNftIx(

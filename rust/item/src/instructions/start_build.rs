@@ -5,7 +5,8 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{Build, BuildPermit, ItemClassV1, Recipe},
     errors::ErrorCode,
-    BuildIngredientData, BuildOutput, BuildStatus, PaymentState,
+    BuildIngredientData, BuildOutput, BuildStatus, OutputSelectionArgs, OutputSelectionGroup,
+    PaymentState,
 };
 
 #[derive(Accounts)]
@@ -40,6 +41,7 @@ pub struct StartBuild<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct StartBuildArgs {
     pub recipe_index: u64,
+    pub recipe_output_selection: Vec<OutputSelectionArgs>,
 }
 
 pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
@@ -90,5 +92,57 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         build_permit_in_use,
     });
 
+    // add selectable outputs to the build data
+    let selected_outputs: Vec<SelectedOutput> = parse_selected_outputs(
+        &args.recipe_output_selection,
+        &ctx.accounts.recipe.selectable_outputs,
+    )?;
+    for selected_output in selected_outputs {
+        ctx.accounts
+            .build
+            .add_output_item(selected_output.mint, selected_output.amount);
+    }
+
     Ok(())
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+struct SelectedOutput {
+    mint: Pubkey,
+    amount: u64,
+}
+
+// TODO: check max choices
+fn parse_selected_outputs(
+    args: &[OutputSelectionArgs],
+    groups: &[OutputSelectionGroup],
+) -> Result<Vec<SelectedOutput>> {
+    let mut mints_and_amounts: Vec<SelectedOutput> = Vec::new();
+
+    for arg in args {
+        let group = groups.iter().find(|g| g.group_id == arg.group_id);
+
+        match group {
+            Some(group) => {
+                let output = group.choices.iter().find(|o| o.output_id == arg.output_id);
+
+                match output {
+                    Some(output) => {
+                        mints_and_amounts.push(SelectedOutput {
+                            mint: output.mint,
+                            amount: output.amount,
+                        });
+                    }
+                    None => {
+                        return Err(ErrorCode::InvalidOutputSelection.into());
+                    }
+                }
+            }
+            None => {
+                return Err(ErrorCode::InvalidOutputSelection.into());
+            }
+        }
+    }
+
+    Ok(mints_and_amounts)
 }
