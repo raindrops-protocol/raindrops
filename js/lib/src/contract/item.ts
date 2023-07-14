@@ -503,7 +503,6 @@ export class ItemProgram extends Program.Program {
       for (let output of recipeData.selectableOutputs as any[]) {
         const choices: OutputSelection[] = [];
         for (let choice of output.choices as any[]) {
-<<<<<<< HEAD
           choices.push({
             outputId: Number(choice.outputId),
             mint: new web3.PublicKey(choice.mint),
@@ -514,14 +513,7 @@ export class ItemProgram extends Program.Program {
         selectableOutputs.push({
           groupId: Number(output.groupId),
           choices: choices,
-          maxChoices: Number(output.maxChoices),
         });
-=======
-          choices.push({outputId: Number(choice.outputId), mint: new web3.PublicKey(choice.mint), amount: new BN(choice.amount)})
-        }
-
-        selectableOutputs.push({groupId: Number(output.groupId), choices: choices, maxChoices: Number(output.maxChoices)})
->>>>>>> 492189998f3d419b9af59d5efefe0c6307639609
       }
 
       const recipe: Recipe = {
@@ -665,7 +657,6 @@ export class ItemProgram extends Program.Program {
     }
 
     const selectableOutputs: OutputSelectionGroup[] = [];
-<<<<<<< HEAD
     for (let output of recipeDataRaw.selectableOutputs as any[]) {
       const choices: OutputSelection[] = [];
       for (let choice of output.choices as any[]) {
@@ -679,19 +670,8 @@ export class ItemProgram extends Program.Program {
       selectableOutputs.push({
         groupId: Number(output.groupId),
         choices: choices,
-        maxChoices: Number(output.maxChoices),
       });
     }
-=======
-      for (let output of recipeDataRaw.selectableOutputs as any[]) {
-        const choices: OutputSelection[] = [];
-        for (let choice of output.choices as any[]) {
-          choices.push({outputId: Number(choice.outputId), mint: new web3.PublicKey(choice.mint), amount: new BN(choice.amount)})
-        }
-
-        selectableOutputs.push({groupId: Number(output.groupId), choices: choices, maxChoices: Number(output.maxChoices)})
-      }
->>>>>>> 492189998f3d419b9af59d5efefe0c6307639609
 
     const recipeData: Recipe = {
       recipeIndex: new BN(recipeDataRaw.recipeIndex),
