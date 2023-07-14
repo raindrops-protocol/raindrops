@@ -1176,7 +1176,7 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgramPayer, build);
   });
 
-  it.only("open a pack of 3 pNFTs", async () => {
+  it("open a pack of 3 pNFTs", async () => {
     const builder = await newPayer(connection);
     const payer = await newPayer(connection);
 
@@ -1312,7 +1312,7 @@ describe.only("itemv1", () => {
     await cleanBuild(builderItemProgram, build);
   });
 
-  it.only("open a pack of 6 tokens, 1 pNFT and 5 SFTs", async () => {
+  it("open a pack of 6 tokens, 1 pNFT and 5 SFTs", async () => {
     const builder = await newPayer(connection);
     const payer = await newPayer(connection);
 
@@ -1448,7 +1448,7 @@ describe.only("itemv1", () => {
     await cleanBuild(builderItemProgram, build);
   });
 
-  it.only("open 3 packs", async () => {
+  it("open 3 packs", async () => {
     const builder = await newPayer(connection);
     const payer = await newPayer(connection);
 
@@ -3454,7 +3454,6 @@ async function createOutputSelectionGroups(
           amount: new BN(1),
         },
       ],
-      maxChoices: 1,
     });
   }
 
