@@ -6,7 +6,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Recipe},
-    ItemClassV1OutputMode, NoopProgram, Payment, RecipeIngredientData,
+    ItemClassV1OutputMode, NoopProgram, OutputSelectionGroup, Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
@@ -23,7 +23,7 @@ pub struct CreateItemClassV1<'info> {
 
     #[account(init,
         payer = authority,
-        space = Recipe::space(args.recipe_args.ingredients.len()),
+        space = Recipe::space(args.recipe_args.ingredients.len(), args.recipe_args.selectable_outputs.len()),
         seeds = [Recipe::PREFIX.as_bytes(), &Recipe::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
@@ -51,6 +51,7 @@ pub struct RecipeArgs {
     pub payment: Option<Payment>,
     pub ingredients: Vec<RecipeIngredientData>,
     pub build_permit_required: bool,
+    pub selectable_outputs: Vec<OutputSelectionGroup>,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
@@ -70,6 +71,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         ingredients: args.recipe_args.ingredients,
         payment: args.recipe_args.payment,
         build_permit_required: args.recipe_args.build_permit_required,
+        selectable_outputs: args.recipe_args.selectable_outputs,
     });
 
     // initialize merkle tree

@@ -4,8 +4,8 @@ use anchor_lang::prelude::*;
 
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildOutputItem, BuildStatus,
-    DeterministicIngredientOutput, ItemClassV1OutputMode, ItemState, Payment, PaymentState,
-    RecipeIngredientData,
+    DeterministicIngredientOutput, ItemClassV1OutputMode, ItemState, OutputSelectionGroup, Payment,
+    PaymentState, RecipeIngredientData,
 };
 
 // seeds = ['item_class_v1', items.key().as_ref()]
@@ -71,6 +71,9 @@ pub struct Recipe {
     // if true, the builder must have a build permit to use this recipe
     pub build_permit_required: bool,
 
+    // the builder can select from these outputs when using this recipe
+    pub selectable_outputs: Vec<OutputSelectionGroup>,
+
     // list of ingredients required to use this recipe to build the item class v1
     pub ingredients: Vec<RecipeIngredientData>,
 }
@@ -78,13 +81,14 @@ pub struct Recipe {
 impl Recipe {
     pub const PREFIX: &'static str = "recipe";
     pub const INITIAL_INDEX: u64 = 0;
-    pub fn space(ingredient_count: usize) -> usize {
+    pub fn space(ingredient_count: usize, selectable_outputs_count: usize) -> usize {
         8 + // anchor
         8 + // recipe index
         32 + // item_class
         1 + // enabled
         (1 + Payment::SPACE) + // payment
         1 + // build permit required
+        4 + (OutputSelectionGroup::space(10) * selectable_outputs_count) + // selectable outputs TODO: dont hardcode
         4 + (RecipeIngredientData::SPACE * ingredient_count) // ingredients
     }
 }

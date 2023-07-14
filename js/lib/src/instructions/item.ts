@@ -35,7 +35,7 @@ import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import { Constants, Utils } from "../main";
 import { sha256 } from "js-sha256";
-import { DeterministicIngredientOutput } from "../state/item";
+import { DeterministicIngredientOutput, OutputSelectionArgs, OutputSelectionGroup } from "../state/item";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1084,6 +1084,7 @@ export class Instruction extends SolKitInstruction {
         payment: args.recipeArgs.payment,
         ingredients: ingredients,
         buildPermitRequired: args.recipeArgs.buildPermitRequired,
+        selectableOutputs: args.recipeArgs.selectableOutputs,
       },
       outputMode: formatItemClassV1OutputMode(args.outputMode),
     };
@@ -2159,6 +2160,7 @@ export class Instruction extends SolKitInstruction {
       ingredients: ingredients,
       payment: args.args.payment,
       buildPermitRequired: args.args.buildPermitRequired,
+      selectableOutputs: args.args.selectableOutputs,
     };
 
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
@@ -2599,6 +2601,7 @@ export interface RecipeArgs {
   payment: Payment | null;
   ingredientArgs: RecipeIngredientDataArgs[];
   buildPermitRequired: boolean;
+  selectableOutputs: OutputSelectionGroup[];
 }
 
 export type ItemClassV1OutputMode =
@@ -2661,6 +2664,7 @@ export interface StartBuildAccounts {
 
 export interface StartBuildArgs {
   recipeIndex: BN;
+  recipeOutputSelection: OutputSelectionArgs[];
 }
 
 export interface AddIngredientAccounts {
