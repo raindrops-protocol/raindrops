@@ -35,9 +35,8 @@ pub struct AddIngredientSpl<'info> {
     #[account(init_if_needed, payer = payer, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
-    /// CHECK: done by build pda
     #[account(mut)]
-    pub builder: UncheckedAccount<'info>,
+    pub builder: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,

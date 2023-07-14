@@ -566,7 +566,6 @@ export interface Ingredient {
 export interface OutputSelectionGroup {
   groupId: number;
   choices: OutputSelection[];
-  maxChoices: number;
 }
 
 export interface OutputSelection {

@@ -11,7 +11,8 @@ use crate::state::{
 pub struct CreateDeterministicIngredient<'info> {
     pub ingredient_mint: Account<'info, token::Mint>,
 
-    #[account(init,
+    // init_if_needed allows you to update the pda with new data if necessary
+    #[account(init_if_needed,
         payer = authority,
         space = DeterministicIngredient::space(args.outputs.len()),
         seeds = [DeterministicIngredient::PREFIX.as_bytes(), item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump)]

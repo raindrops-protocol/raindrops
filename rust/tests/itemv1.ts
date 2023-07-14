@@ -1735,11 +1735,7 @@ describe.only("itemv1", () => {
     const buildPermitDataPostBuild = await itemProgram.getBuildPermit(
       Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
     );
-    assert.isTrue(
-      buildPermitDataPostBuild.itemClass.equals(outputItemClass.itemClass)
-    );
-    assert.isTrue(buildPermitDataPostBuild.remainingBuilds === 0);
-    assert.isTrue(buildPermitDataPostBuild.wallet.equals(payer.publicKey));
+    assert.isNull(buildPermitDataPostBuild);
 
     // try t start the build process again, but this time we have no remaining uses and it will error
     const startBuildFailAccounts: Instructions.Item.StartBuildAccounts = {
@@ -1939,11 +1935,7 @@ describe.only("itemv1", () => {
     const buildPermitDataPostBuild2 = await itemProgram.getBuildPermit(
       Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
     );
-    assert.isTrue(
-      buildPermitDataPostBuild2.itemClass.equals(outputItemClass.itemClass)
-    );
-    assert.isTrue(buildPermitDataPostBuild2.remainingBuilds === 0);
-    assert.isTrue(buildPermitDataPostBuild2.wallet.equals(payer.publicKey));
+    assert.isNull(buildPermitDataPostBuild2);
   });
 
   it("build item using deterministic inputs", async () => {
@@ -2711,21 +2703,19 @@ async function createItemClassPack(
     const packContents = new Instructions.Item.PackContents(entries);
     packs.push(packContents);
 
-    const addPackToItemClassAccounts: Instructions.Item.AddPackToItemClassAccounts =
-      {
-        itemClass: itemClass,
-      };
+    const createPackAccounts: Instructions.Item.CreatePackAccounts = {
+      itemClass: itemClass,
+    };
 
-    const addPackToItemClassArgs: Instructions.Item.AddPackToItemClassArgs = {
+    const createPackArgs: Instructions.Item.CreatePackArgs = {
       contentsHash: packContents.hash(new Uint8Array(16)),
     };
 
-    const [addPackToItemClassResult, pack] =
-      await itemProgram.addPackToItemClass(
-        addPackToItemClassAccounts,
-        addPackToItemClassArgs
-      );
-    console.log("addPackToItemClassTxSig: %s", addPackToItemClassResult.txid);
+    const [createPackResult, pack] = await itemProgram.createPack(
+      createPackAccounts,
+      createPackArgs
+    );
+    console.log("createPackTxSig: %s", createPackResult.txid);
     console.log(
       "itemClass: %s, pack: %s",
       itemClass.toString(),
@@ -3464,7 +3454,6 @@ async function createOutputSelectionGroups(
           amount: new BN(1),
         },
       ],
-      maxChoices: 1,
     });
   }
 

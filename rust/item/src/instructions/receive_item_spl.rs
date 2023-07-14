@@ -27,8 +27,7 @@ pub struct ReceiveItemSpl<'info> {
         seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
 
-    /// CHECK:
-    pub builder: UncheckedAccount<'info>,
+    pub builder: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,

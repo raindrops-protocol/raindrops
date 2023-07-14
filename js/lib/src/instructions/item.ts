@@ -35,7 +35,11 @@ import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import { Constants, Utils } from "../main";
 import { sha256 } from "js-sha256";
-import { DeterministicIngredientOutput, OutputSelectionArgs, OutputSelectionGroup } from "../state/item";
+import {
+  DeterministicIngredientOutput,
+  OutputSelectionArgs,
+  OutputSelectionGroup,
+} from "../state/item";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1134,9 +1138,9 @@ export class Instruction extends SolKitInstruction {
     return ixns;
   }
 
-  async addPackToItemClass(
-    accounts: AddPackToItemClassAccounts,
-    args: AddPackToItemClassArgs
+  async createPack(
+    accounts: CreatePackAccounts,
+    args: CreatePackArgs
   ): Promise<[web3.TransactionInstruction, web3.PublicKey]> {
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
       accounts.itemClass
@@ -1148,14 +1152,11 @@ export class Instruction extends SolKitInstruction {
     const packAccount = getPack(accounts.itemClass, packIndex);
 
     const ix = await this.program.client.methods
-      .addPackToItemClass(args)
+      .createPack(args)
       .accounts({
         pack: packAccount,
         itemClass: accounts.itemClass,
-        items: itemClassItems,
         authority: this.program.client.provider.publicKey!,
-        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
-        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
       .instruction();
 
@@ -2735,11 +2736,11 @@ export interface AddItemsToItemClass {
   itemMints: web3.PublicKey[];
 }
 
-export interface AddPackToItemClassAccounts {
+export interface CreatePackAccounts {
   itemClass: web3.PublicKey;
 }
 
-export interface AddPackToItemClassArgs {
+export interface CreatePackArgs {
   contentsHash: Buffer;
 }
 

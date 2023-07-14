@@ -1018,7 +1018,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "addPackToItemClass",
+      "name": "createPack",
       "accounts": [
         {
           "name": "pack",
@@ -1027,11 +1027,6 @@ export type RaindropsItem = {
         },
         {
           "name": "itemClass",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "items",
           "isMut": true,
           "isSigner": false
         },
@@ -1049,23 +1044,13 @@ export type RaindropsItem = {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "logWrapper",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "accountCompression",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": [
         {
           "name": "args",
           "type": {
-            "defined": "AddPackToItemClassArgs"
+            "defined": "CreatePackArgs"
           }
         }
       ]
@@ -1631,11 +1616,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClassItems",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -1650,16 +1630,6 @@ export type RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "logWrapper",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "accountCompression",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": [
@@ -2265,10 +2235,6 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "opened",
-            "type": "bool"
-          },
-          {
             "name": "id",
             "type": "u64"
           },
@@ -2567,23 +2533,6 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "AddPackToItemClassArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "contentsHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "CompleteBuildItemArgs",
       "type": {
         "kind": "struct",
@@ -2609,19 +2558,6 @@ export type RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "root",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "leafIndex",
-            "type": "u32"
-          },
           {
             "name": "packContents",
             "type": {
@@ -2727,6 +2663,23 @@ export type RaindropsItem = {
               "vec": {
                 "defined": "OutputSelectionGroup"
               }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreatePackArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contentsHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -3084,10 +3037,6 @@ export type RaindropsItem = {
                 "defined": "OutputSelection"
               }
             }
-          },
-          {
-            "name": "maxChoices",
-            "type": "u8"
           }
         ]
       }
@@ -4806,9 +4755,6 @@ export type RaindropsItem = {
                 "type": "u64"
               }
             ]
-          },
-          {
-            "name": "Deterministic"
           }
         ]
       }
@@ -6222,7 +6168,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "addPackToItemClass",
+      "name": "createPack",
       "accounts": [
         {
           "name": "pack",
@@ -6231,11 +6177,6 @@ export const IDL: RaindropsItem = {
         },
         {
           "name": "itemClass",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "items",
           "isMut": true,
           "isSigner": false
         },
@@ -6253,23 +6194,13 @@ export const IDL: RaindropsItem = {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "logWrapper",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "accountCompression",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": [
         {
           "name": "args",
           "type": {
-            "defined": "AddPackToItemClassArgs"
+            "defined": "CreatePackArgs"
           }
         }
       ]
@@ -6835,11 +6766,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "itemClassItems",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -6854,16 +6780,6 @@ export const IDL: RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "logWrapper",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "accountCompression",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": [
@@ -7469,10 +7385,6 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "opened",
-            "type": "bool"
-          },
-          {
             "name": "id",
             "type": "u64"
           },
@@ -7771,23 +7683,6 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "AddPackToItemClassArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "contentsHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "CompleteBuildItemArgs",
       "type": {
         "kind": "struct",
@@ -7813,19 +7708,6 @@ export const IDL: RaindropsItem = {
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "root",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "leafIndex",
-            "type": "u32"
-          },
           {
             "name": "packContents",
             "type": {
@@ -7931,6 +7813,23 @@ export const IDL: RaindropsItem = {
               "vec": {
                 "defined": "OutputSelectionGroup"
               }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreatePackArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contentsHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -8288,10 +8187,6 @@ export const IDL: RaindropsItem = {
                 "defined": "OutputSelection"
               }
             }
-          },
-          {
-            "name": "maxChoices",
-            "type": "u8"
           }
         ]
       }
@@ -10010,9 +9905,6 @@ export const IDL: RaindropsItem = {
                 "type": "u64"
               }
             ]
-          },
-          {
-            "name": "Deterministic"
           }
         ]
       }

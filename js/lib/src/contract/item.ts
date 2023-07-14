@@ -312,15 +312,12 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async addPackToItemClass(
-    accounts: ItemInstruction.AddPackToItemClassAccounts,
-    args: ItemInstruction.AddPackToItemClassArgs,
+  async createPack(
+    accounts: ItemInstruction.CreatePackAccounts,
+    args: ItemInstruction.CreatePackArgs,
     options?: SendOptions
   ): Promise<[Transaction.SendTransactionResult, web3.PublicKey]> {
-    const [ix, pack] = await this.instruction.addPackToItemClass(
-      accounts,
-      args
-    );
+    const [ix, pack] = await this.instruction.createPack(accounts, args);
     const result = await this.sendWithRetry([ix], [], options);
     return [result, pack];
   }
@@ -506,10 +503,17 @@ export class ItemProgram extends Program.Program {
       for (let output of recipeData.selectableOutputs as any[]) {
         const choices: OutputSelection[] = [];
         for (let choice of output.choices as any[]) {
-          choices.push({outputId: Number(choice.outputId), mint: new web3.PublicKey(choice.mint), amount: new BN(choice.amount)})
+          choices.push({
+            outputId: Number(choice.outputId),
+            mint: new web3.PublicKey(choice.mint),
+            amount: new BN(choice.amount),
+          });
         }
 
-        selectableOutputs.push({groupId: Number(output.groupId), choices: choices, maxChoices: Number(output.maxChoices)})
+        selectableOutputs.push({
+          groupId: Number(output.groupId),
+          choices: choices,
+        });
       }
 
       const recipe: Recipe = {
@@ -653,14 +657,21 @@ export class ItemProgram extends Program.Program {
     }
 
     const selectableOutputs: OutputSelectionGroup[] = [];
-      for (let output of recipeDataRaw.selectableOutputs as any[]) {
-        const choices: OutputSelection[] = [];
-        for (let choice of output.choices as any[]) {
-          choices.push({outputId: Number(choice.outputId), mint: new web3.PublicKey(choice.mint), amount: new BN(choice.amount)})
-        }
-
-        selectableOutputs.push({groupId: Number(output.groupId), choices: choices, maxChoices: Number(output.maxChoices)})
+    for (let output of recipeDataRaw.selectableOutputs as any[]) {
+      const choices: OutputSelection[] = [];
+      for (let choice of output.choices as any[]) {
+        choices.push({
+          outputId: Number(choice.outputId),
+          mint: new web3.PublicKey(choice.mint),
+          amount: new BN(choice.amount),
+        });
       }
+
+      selectableOutputs.push({
+        groupId: Number(output.groupId),
+        choices: choices,
+      });
+    }
 
     const recipeData: Recipe = {
       recipeIndex: new BN(recipeDataRaw.recipeIndex),

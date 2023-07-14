@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 use anchor_lang::{prelude::*, solana_program::hash::hash};
 use mpl_token_auth_rules::ID as AuthRulesID;
@@ -11,7 +11,6 @@ pub mod errors;
 pub enum ItemClassV1OutputMode {
     Item,
     Pack { index: u64 },
-    Deterministic,
 }
 
 impl ItemClassV1OutputMode {
@@ -39,10 +38,6 @@ impl ItemClassV1OutputMode {
 
     pub fn is_item(&self) -> bool {
         matches!(self, ItemClassV1OutputMode::Item)
-    }
-
-    pub fn is_deterministic(&self) -> bool {
-        matches!(self, ItemClassV1OutputMode::Deterministic)
     }
 }
 
@@ -343,12 +338,6 @@ impl PackContentsEntry {
     pub const SPACE: usize = 32 + 8;
 }
 
-impl fmt::Display for PackContentsEntry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {})", self.mint, self.amount)
-    }
-}
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BuildOutput {
     pub items: Vec<BuildOutputItem>,
@@ -425,15 +414,12 @@ pub struct OutputSelectionGroup {
     pub group_id: u8,
 
     pub choices: Vec<OutputSelection>,
-
-    pub max_choices: u8,
 }
 
 impl OutputSelectionGroup {
     pub fn space(choices_count: usize) -> usize {
         1 + // group id
-        4 + (OutputSelection::SPACE * choices_count) + // choices
-        1 // max choices
+        4 + (OutputSelection::SPACE * choices_count) // choices
     }
 }
 
