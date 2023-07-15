@@ -10,8 +10,8 @@ use crate::{
 use anchor_lang::{
     error,
     prelude::{
-        msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, Program, ProgramError,
-        Pubkey, Rent, Result, SolanaSysvar, System, Sysvar, UncheckedAccount,
+        msg, Account, AccountInfo, AnchorDeserialize, AnchorSerialize, CpiContext, Program,
+        ProgramError, Pubkey, Rent, Result, Signer, SolanaSysvar, System, Sysvar, UncheckedAccount,
     },
     require,
     solana_program::{
@@ -21,6 +21,7 @@ use anchor_lang::{
         program_pack::{IsInitialized, Pack},
         system_instruction,
     },
+    system_program::{transfer, Transfer},
     Key, ToAccountInfo,
 };
 use anchor_spl::token::{Mint, Token};
@@ -2096,4 +2097,48 @@ pub fn uncache_namespace(
     }
 
     Ok(new_namespaces)
+}
+
+pub fn reallocate<'info>(
+    size_diff: i64,
+    account: &AccountInfo<'info>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+) -> Result<()> {
+    let new_size = (account.data_len() as i64 + size_diff) as usize;
+    account.realloc(new_size, false)?;
+
+    let rent = Rent::get()?;
+
+    let lamports_required = rent.minimum_balance(new_size);
+
+    let current_lamports = account.lamports();
+
+    let transfer_amount: i64 = (lamports_required as i64) - (current_lamports as i64);
+
+    // no need to transfer
+    if transfer_amount == 0 {
+        return Ok(());
+    }
+
+    if transfer_amount > 0 {
+        // if transfer amount is more than 0 we need to transfer lamports to the account
+        let transfer_accounts = Transfer {
+            from: payer.to_account_info(),
+            to: account.to_account_info(),
+        };
+
+        transfer(
+            CpiContext::new(system_program.to_account_info(), transfer_accounts),
+            transfer_amount.try_into().unwrap(),
+        )
+    } else {
+        // if transfer amount is less than 0 this means we need to return lamports to the payer
+        let transfer_to_payer_amount = transfer_amount.unsigned_abs();
+
+        **account.try_borrow_mut_lamports()? -= transfer_to_payer_amount;
+        **payer.try_borrow_mut_lamports()? += transfer_to_payer_amount;
+
+        Ok(())
+    }
 }

@@ -1647,7 +1647,7 @@ describe.only("itemv1", () => {
 
     // create build permit for builder
     const createBuildPermitResult = await itemProgram.createBuildPermit(
-      { recipe: outputItemClass.itemClass },
+      { recipe: recipe },
       { builder: payer.publicKey, remainingBuilds: 1 }
     );
     console.log("createBuildPermitTxSig: %s", createBuildPermitResult.txid);
@@ -1655,11 +1655,9 @@ describe.only("itemv1", () => {
     const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
       Utils.PDA.getBuildPermit(recipe, payer.publicKey)
     );
-    assert.isTrue(
-      buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass)
-    );
+    assert.isTrue(buildPermitDataPreBuild.recipe.equals(recipe));
     assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 1);
-    assert.isTrue(buildPermitDataPreBuild.wallet.equals(payer.publicKey));
+    assert.isTrue(buildPermitDataPreBuild.builder.equals(payer.publicKey));
 
     // start the build process
     const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
@@ -1788,9 +1786,8 @@ describe.only("itemv1", () => {
     });
 
     // check recipe has build permit flag enabled
-    const recipeData = await itemProgram.getRecipe(
-      Utils.PDA.getRecipe(outputItemClass.itemClass, new BN(0))
-    );
+    const recipe = Utils.PDA.getRecipe(outputItemClass.itemClass, new BN(0));
+    const recipeData = await itemProgram.getRecipe(recipe);
     assert.isTrue(recipeData.buildPermitRequired);
 
     // transfer output mints to their item class
@@ -1800,19 +1797,17 @@ describe.only("itemv1", () => {
 
     // create build permit for builder
     const createBuildPermitResult = await itemProgram.createBuildPermit(
-      { recipe: outputItemClass.itemClass },
+      { recipe: recipe },
       { builder: payer.publicKey, remainingBuilds: 2 }
     );
     console.log("createBuildPermitTxSig: %s", createBuildPermitResult.txid);
 
     const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
-      Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
+      Utils.PDA.getBuildPermit(recipe, payer.publicKey)
     );
-    assert.isTrue(
-      buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass)
-    );
+    assert.isTrue(buildPermitDataPreBuild.recipe.equals(recipe));
     assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 2);
-    assert.isTrue(buildPermitDataPreBuild.wallet.equals(payer.publicKey));
+    assert.isTrue(buildPermitDataPreBuild.builder.equals(payer.publicKey));
 
     // start the build process
     const startBuild1Accounts: Instructions.Item.StartBuildAccounts = {
@@ -1866,13 +1861,11 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgram, build1);
 
     const buildPermitDataPostBuild = await itemProgram.getBuildPermit(
-      Utils.PDA.getBuildPermit(outputItemClass.itemClass, payer.publicKey)
+      Utils.PDA.getBuildPermit(recipe, payer.publicKey)
     );
-    assert.isTrue(
-      buildPermitDataPostBuild.itemClass.equals(outputItemClass.itemClass)
-    );
+    assert.isTrue(buildPermitDataPostBuild.recipe.equals(recipe));
     assert.isTrue(buildPermitDataPostBuild.remainingBuilds === 1);
-    assert.isTrue(buildPermitDataPostBuild.wallet.equals(payer.publicKey));
+    assert.isTrue(buildPermitDataPostBuild.builder.equals(payer.publicKey));
 
     // start build 2
     const startBuild2Accounts: Instructions.Item.StartBuildAccounts = {
@@ -1981,12 +1974,17 @@ describe.only("itemv1", () => {
     );
 
     // create deterministic pda
+    const recipe = Utils.PDA.getRecipe(
+      outputItemClass.itemClass,
+      new anchor.BN(0)
+    );
     const deterministicOutputs = await createDeterministicIngredient(
       itemProgram.client.provider.connection,
       payer,
       outputItemClass.itemClass,
+      recipe,
       pNftItemClass.mints[0],
-      1
+      3
     );
 
     // start the build process
@@ -2314,6 +2312,7 @@ describe.only("itemv1", () => {
       itemProgram.client.provider.connection,
       payer,
       outputItemClass.itemClass,
+      Utils.PDA.getRecipe(outputItemClass.itemClass, new anchor.BN(0)),
       pNftItemClass.mints[0],
       1
     );
@@ -2398,7 +2397,7 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgram, build);
   });
 
-  it.only("open pack with deterministic ingredient", async () => {
+  it("open pack with deterministic ingredient", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
@@ -2455,6 +2454,7 @@ describe.only("itemv1", () => {
       itemProgram.client.provider.connection,
       payer,
       outputItemClass.itemClass,
+      Utils.PDA.getRecipe(outputItemClass.itemClass, new anchor.BN(0)),
       pNftItemClass.mints[0],
       1
     );
@@ -2526,6 +2526,153 @@ describe.only("itemv1", () => {
         );
       assert.isTrue(
         new anchor.BN(tokenBalanceResponse.value.amount).gt(new anchor.BN(0))
+      );
+    }
+
+    await cleanBuild(itemProgram, build);
+  });
+
+  it.only("build item class in preset only mode", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+      asyncSigning: false,
+      provider: new anchor.AnchorProvider(
+        connection,
+        new anchor.Wallet(payer),
+        { commitment: "confirmed" }
+      ),
+      idl: Idls.ItemIDL,
+    });
+
+    // ingredient 1, pNFT
+    const pNftItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+      buildPermitRequired: false,
+      selectableOutputs: [],
+    });
+
+    // create mints for selectable outputs
+    const outputSelectionGroups = await createOutputSelectionGroups(
+      connection,
+      payer,
+      2
+    );
+
+    // output pNft, set in preset only mode
+    const outputItemClass = await createItemClassPresetOnly(payer, connection, {
+      buildEnabled: true,
+      payment: null,
+      ingredientArgs: [
+        {
+          itemClass: pNftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: null,
+            cooldown: null,
+          },
+          isDeterministic: false,
+        },
+      ],
+      buildPermitRequired: false,
+      selectableOutputs: outputSelectionGroups,
+    });
+
+    // transfer selectable outputs to the item class
+    for (let group of outputSelectionGroups) {
+      for (let choice of group.choices) {
+        // transfer the nft to the item class
+        const ata = splToken.getAssociatedTokenAddressSync(
+          choice.mint,
+          outputItemClass.itemClass,
+          true
+        );
+        const createAtaIx =
+          splToken.createAssociatedTokenAccountIdempotentInstruction(
+            payer.publicKey,
+            ata,
+            outputItemClass.itemClass,
+            choice.mint
+          );
+        const transferIx = splToken.createTransferInstruction(
+          splToken.getAssociatedTokenAddressSync(choice.mint, payer.publicKey),
+          ata,
+          payer.publicKey,
+          1
+        );
+
+        const transferTx = new anchor.web3.Transaction().add(
+          createAtaIx,
+          transferIx
+        );
+
+        const transferNftTxSig =
+          await itemProgram.client.provider.sendAndConfirm(transferTx, [], {});
+        console.log("transferNftTxSig: %s", transferNftTxSig);
+      }
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.Item.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.Item.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [
+        { groupId: 0, outputId: 0 },
+        { groupId: 1, outputId: 0 },
+      ],
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    // add pNFT to build
+    await addIngredient(
+      itemProgram,
+      pNftItemClass.tree,
+      0,
+      outputItemClass.itemClass,
+      pNftItemClass.mints[0],
+      pNftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // complete build and receive the item
+    await completeBuildPresetOnlyAndReceiveItem(connection, build);
+
+    // assert builder received the output item and the deterministic item
+    const expectedMints: anchor.web3.PublicKey[] = [
+      outputSelectionGroups[0].choices[0].mint,
+      outputSelectionGroups[1].choices[0].mint,
+    ];
+    for (let expected of expectedMints) {
+      const builderItemAta = splToken.getAssociatedTokenAddressSync(
+        expected,
+        new anchor.web3.PublicKey(payer.publicKey)
+      );
+      const tokenBalanceResponse =
+        await itemProgram.client.provider.connection.getTokenAccountBalance(
+          builderItemAta
+        );
+      assert.isTrue(
+        new anchor.BN(tokenBalanceResponse.value.amount).eq(new anchor.BN(1))
       );
     }
 
@@ -3036,6 +3183,35 @@ async function createItemClassPack(
   return { itemClass, packs };
 }
 
+async function createItemClassPresetOnly(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection,
+  recipeArgs: Instructions.Item.RecipeArgs
+): Promise<ItemClassPresetOnlyContainer> {
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(payer), {
+      commitment: "confirmed",
+    }),
+    idl: Idls.ItemIDL,
+  });
+
+  let createItemClassArgs: Instructions.Item.CreateItemClassV1Args = {
+    recipeArgs: recipeArgs,
+    outputMode: { kind: "PresetOnly" },
+  };
+
+  let [itemClass, createItemClassResult] = await itemProgram.createItemClassV1(
+    createItemClassArgs
+  );
+  console.log("createItemClassTxSig: %s", createItemClassResult.txid);
+
+  const tree = initTree({ maxDepth: 16, maxBufferSize: 64 });
+  console.log("tree created: %s", itemClass.toString());
+
+  return { itemClass };
+}
+
 async function transferPNft(
   owner: anchor.web3.Keypair,
   connection: anchor.web3.Connection,
@@ -3514,6 +3690,44 @@ async function completeBuildPackAndReceiveItems(
   }
 }
 
+async function completeBuildPresetOnlyAndReceiveItem(
+  connection: anchor.web3.Connection,
+  build: anchor.web3.PublicKey
+) {
+  const signer = await initSigner(TEST_SIGNER_FILE_PATH, connection);
+
+  const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(signer), {
+      commitment: "confirmed",
+    }),
+    idl: Idls.ItemIDL,
+  });
+
+  // complete the build process
+  const completeBuildItemAccounts: Instructions.Item.CompleteBuildPresetOnlyAccounts =
+    {
+      payer: itemProgram.client.provider.publicKey,
+      build: build,
+    };
+
+  const completeBuildResult = await itemProgram.completeBuildPresetOnly(
+    completeBuildItemAccounts
+  );
+  console.log("completeBuildPresetOnlyTxSig: %s", completeBuildResult.txid);
+
+  // send items to builder
+  const receiveItemAccounts: Instructions.Item.ReceiveItemAccounts = {
+    build: build,
+    payer: itemProgram.client.provider.publicKey,
+  };
+
+  const receiveItemResults = await itemProgram.receiveItem(receiveItemAccounts);
+  for (let result of receiveItemResults) {
+    console.log("receiveItemTxSig: %s", result.txid);
+  }
+}
+
 async function cleanBuild(
   itemProgram: ItemProgram,
   build: anchor.web3.PublicKey
@@ -3614,6 +3828,7 @@ async function createDeterministicIngredient(
   connection: anchor.web3.Connection,
   authority: anchor.web3.Keypair,
   itemClass: anchor.web3.PublicKey,
+  recipe: anchor.web3.PublicKey,
   ingredientMint: anchor.web3.PublicKey,
   outputCount: number
 ): Promise<State.Item.DeterministicIngredientOutput[]> {
@@ -3694,7 +3909,7 @@ async function createDeterministicIngredient(
 
   const createDeterministicIngredientResult =
     await itemProgram.createDeterministicIngredient(
-      { itemClass: itemClass, ingredientMint: ingredientMint },
+      { recipe: recipe, ingredientMint: ingredientMint },
       { outputs: deterministicIngredientOutputs }
     );
   console.log(
@@ -3855,6 +4070,10 @@ interface ItemClassContainer {
 interface ItemClassPackContainer {
   itemClass: anchor.web3.PublicKey;
   packs: Instructions.Item.PackContents[];
+}
+
+interface ItemClassPresetOnlyContainer {
+  itemClass: anchor.web3.PublicKey;
 }
 
 async function assertFreshBuild(

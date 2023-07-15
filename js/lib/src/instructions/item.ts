@@ -1179,10 +1179,7 @@ export class Instruction extends SolKitInstruction {
     // if build permit is required create the pda
     let buildPermit: web3.PublicKey | null = null;
     if (recipeDataRaw.buildPermitRequired) {
-      buildPermit = Utils.PDA.getBuildPermit(
-        accounts.itemClass,
-        accounts.builder
-      );
+      buildPermit = Utils.PDA.getBuildPermit(recipe, accounts.builder);
     }
 
     const ix = await this.program.client.methods
@@ -1214,16 +1211,22 @@ export class Instruction extends SolKitInstruction {
       accounts.ingredientMint
     );
 
+    const buildDataRaw = await this.program.client.account.build.fetch(build);
+
+    const recipe = Utils.PDA.getRecipe(
+      accounts.itemClass,
+      new BN(buildDataRaw.recipeIndex as any)
+    );
+
     // get deterministic ingredient pda if applicable
     let deterministicIngredient: web3.PublicKey | null = null;
-    const buildDataRaw = await this.program.client.account.build.fetch(build);
     for (let rawIngredient of buildDataRaw.ingredients as any[]) {
       const match = (rawIngredient.mints as any[]).some((mintData) =>
         new web3.PublicKey(mintData.mint).equals(accounts.ingredientMint)
       );
       if (match && Boolean(rawIngredient.isDeterministic)) {
         deterministicIngredient = Utils.PDA.getDeterministicIngredient(
-          accounts.itemClass,
+          recipe,
           accounts.ingredientMint
         );
       }
@@ -1235,6 +1238,7 @@ export class Instruction extends SolKitInstruction {
         accounts,
         build,
         item,
+        recipe,
         deterministicIngredient
       );
       ixns.push(...pNftIxns);
@@ -1243,6 +1247,7 @@ export class Instruction extends SolKitInstruction {
         accounts,
         build,
         item,
+        recipe,
         deterministicIngredient,
         args
       );
@@ -1256,6 +1261,7 @@ export class Instruction extends SolKitInstruction {
     accounts: AddIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey,
+    recipe: web3.PublicKey,
     deterministicIngredient: web3.PublicKey | null,
     args: AddIngredientArgs
   ): Promise<web3.TransactionInstruction> {
@@ -1277,6 +1283,7 @@ export class Instruction extends SolKitInstruction {
         ingredientSource: ingredientSource,
         ingredientDestination: ingredientDestination,
         deterministicIngredient: deterministicIngredient,
+        recipe: recipe,
         build: build,
         item: item,
         builder: accounts.builder,
@@ -1296,6 +1303,7 @@ export class Instruction extends SolKitInstruction {
     accounts: AddIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey,
+    recipe: web3.PublicKey,
     deterministicIngredient: web3.PublicKey | null
   ): Promise<web3.TransactionInstruction[]> {
     const [ingredientMetadata, _ingredientMetadataBump] =
@@ -1385,6 +1393,7 @@ export class Instruction extends SolKitInstruction {
         ingredientSourceTokenRecord: ingredientSourceTokenRecord,
         ingredientDestination: ingredientDestination,
         ingredientDestinationTokenRecord: ingredientDestinationTokenRecord,
+        recipe: recipe,
         build: build,
         item: item,
         payer: accounts.payer,
@@ -1439,6 +1448,7 @@ export class Instruction extends SolKitInstruction {
         ingredientItemClassItems: ingredientItemClassItems,
         build: build,
         payer: accounts.payer,
+        systemProgram: web3.SystemProgram.programId,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
@@ -1491,8 +1501,6 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async completeBuild() {}
-
   async completeBuildItem(
     accounts: CompleteBuildItemAccounts,
     args: CompleteBuildItemArgs
@@ -1527,7 +1535,7 @@ export class Instruction extends SolKitInstruction {
     let buildPermit: web3.PublicKey | null = null;
     if (buildData.buildPermitInUse) {
       buildPermit = Utils.PDA.getBuildPermit(
-        itemClass,
+        recipe,
         new web3.PublicKey(buildData.builder)
       );
     }
@@ -1547,6 +1555,7 @@ export class Instruction extends SolKitInstruction {
         buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
+        systemProgram: web3.SystemProgram.programId,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
@@ -1575,7 +1584,7 @@ export class Instruction extends SolKitInstruction {
     let buildPermit: web3.PublicKey | null = null;
     if (buildData.buildPermitInUse) {
       buildPermit = Utils.PDA.getBuildPermit(
-        itemClass,
+        recipe,
         new web3.PublicKey(buildData.builder)
       );
     }
@@ -1594,6 +1603,45 @@ export class Instruction extends SolKitInstruction {
         buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return ix;
+  }
+
+  async completeBuildPresetOnly(
+    accounts: CompleteBuildPresetOnlyAccounts
+  ): Promise<web3.TransactionInstruction> {
+    const buildData = await this.program.client.account.build.fetch(
+      accounts.build
+    );
+
+    const itemClass = new web3.PublicKey(buildData.itemClass);
+
+    const recipe = Utils.PDA.getRecipe(
+      itemClass,
+      new BN(buildData.recipeIndex as any)
+    );
+
+    // if build permit is required create the pda
+    let buildPermit: web3.PublicKey | null = null;
+    if (buildData.buildPermitInUse) {
+      buildPermit = Utils.PDA.getBuildPermit(
+        recipe,
+        new web3.PublicKey(buildData.builder)
+      );
+    }
+
+    const ix = await this.program.client.methods
+      .completeBuildPresetOnly()
+      .accounts({
+        itemClass: itemClass,
+        recipe: recipe,
+        buildPermit: buildPermit,
+        build: accounts.build,
+        payer: accounts.payer,
+        systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
 
@@ -2250,20 +2298,26 @@ export class Instruction extends SolKitInstruction {
     accounts: CreateDeterministicIngredientAccounts,
     args: CreateDeterministicIngredientArgs
   ): Promise<web3.TransactionInstruction> {
+    const recipeData = await this.program.client.account.recipe.fetch(
+      accounts.recipe
+    );
+    const itemClass = new web3.PublicKey(recipeData.itemClass);
+
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
-      accounts.itemClass
+      itemClass
     );
     const authority = new web3.PublicKey(itemClassData.authority);
 
     const deterministicIngredient = Utils.PDA.getDeterministicIngredient(
-      accounts.itemClass,
+      accounts.recipe,
       accounts.ingredientMint
     );
 
     const ix = await this.program.client.methods
       .createDeterministicIngredient(args)
       .accounts({
-        itemClass: accounts.itemClass,
+        recipe: accounts.recipe,
+        itemClass: itemClass,
         ingredientMint: accounts.ingredientMint,
         deterministicIngredient: deterministicIngredient,
         authority: authority,
@@ -2603,7 +2657,8 @@ export interface RecipeArgs {
 
 export type ItemClassV1OutputMode =
   | { kind: "Item" }
-  | { kind: "Pack"; index: BN };
+  | { kind: "Pack"; index: BN }
+  | { kind: "PresetOnly" };
 
 export function formatItemClassV1OutputMode(mode: ItemClassV1OutputMode): any {
   switch (mode.kind) {
@@ -2611,6 +2666,8 @@ export function formatItemClassV1OutputMode(mode: ItemClassV1OutputMode): any {
       return { item: {} };
     case "Pack":
       return { pack: { index: mode.index } };
+    case "PresetOnly":
+      return { presetOnly: {} };
   }
 }
 
@@ -2719,6 +2776,11 @@ export interface CompleteBuildPackArgs {
   packContentsHashNonce: Uint8Array;
 }
 
+export interface CompleteBuildPresetOnlyAccounts {
+  payer: web3.PublicKey;
+  build: web3.PublicKey;
+}
+
 export interface ReceiveItemAccounts {
   build: web3.PublicKey;
   payer: web3.PublicKey;
@@ -2822,7 +2884,7 @@ export interface CreateBuildPermitArgs {
 
 export interface CreateDeterministicIngredientAccounts {
   ingredientMint: web3.PublicKey;
-  itemClass: web3.PublicKey;
+  recipe: web3.PublicKey;
 }
 
 export interface CreateDeterministicIngredientArgs {

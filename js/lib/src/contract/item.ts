@@ -385,6 +385,14 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async completeBuildPresetOnly(
+    accounts: ItemInstruction.CompleteBuildPresetOnlyAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.completeBuildPresetOnly(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+
   async receiveItem(
     accounts: ItemInstruction.ReceiveItemAccounts,
     options?: SendOptions
@@ -717,8 +725,8 @@ export class ItemProgram extends Program.Program {
     }
 
     const buildPermitData: BuildPermit = {
-      itemClass: new web3.PublicKey(buildPermitDataRaw.itemClass),
-      wallet: new web3.PublicKey(buildPermitDataRaw.wallet),
+      recipe: new web3.PublicKey(buildPermitDataRaw.recipe),
+      builder: new web3.PublicKey(buildPermitDataRaw.builder),
       remainingBuilds: Number(buildPermitDataRaw.remainingBuilds),
     };
 
@@ -747,7 +755,7 @@ export class ItemProgram extends Program.Program {
     }
 
     const deterministicIngredientData: DeterministicIngredient = {
-      itemClass: new web3.PublicKey(deterministicIngredientDataRaw.itemClass),
+      recipe: new web3.PublicKey(deterministicIngredientDataRaw.recipe),
       ingredientMint: new web3.PublicKey(
         deterministicIngredientDataRaw.ingredientMint
       ),

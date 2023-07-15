@@ -1159,6 +1159,11 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -1246,6 +1251,11 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -1322,6 +1332,11 @@ export type RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "logWrapper",
@@ -1588,6 +1603,11 @@ export type RaindropsItem = {
           "isSigner": true
         },
         {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "logWrapper",
           "isMut": false,
           "isSigner": false
@@ -1640,6 +1660,11 @@ export type RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1650,6 +1675,38 @@ export type RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "completeBuildPresetOnly",
+      "accounts": [
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "applyBuildEffect",
@@ -2065,6 +2122,11 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
@@ -2295,7 +2357,7 @@ export type RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "itemClass",
+            "name": "recipe",
             "type": "publicKey"
           },
           {
@@ -4770,6 +4832,9 @@ export type RaindropsItem = {
                 "type": "u64"
               }
             ]
+          },
+          {
+            "name": "PresetOnly"
           }
         ]
       }
@@ -6324,6 +6389,11 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -6411,6 +6481,11 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -6487,6 +6562,11 @@ export const IDL: RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "logWrapper",
@@ -6753,6 +6833,11 @@ export const IDL: RaindropsItem = {
           "isSigner": true
         },
         {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "logWrapper",
           "isMut": false,
           "isSigner": false
@@ -6805,6 +6890,11 @@ export const IDL: RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -6815,6 +6905,38 @@ export const IDL: RaindropsItem = {
           }
         }
       ]
+    },
+    {
+      "name": "completeBuildPresetOnly",
+      "accounts": [
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "buildPermit",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "applyBuildEffect",
@@ -7230,6 +7352,11 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
@@ -7460,7 +7587,7 @@ export const IDL: RaindropsItem = {
         "kind": "struct",
         "fields": [
           {
-            "name": "itemClass",
+            "name": "recipe",
             "type": "publicKey"
           },
           {
@@ -9935,6 +10062,9 @@ export const IDL: RaindropsItem = {
                 "type": "u64"
               }
             ]
+          },
+          {
+            "name": "PresetOnly"
           }
         ]
       }

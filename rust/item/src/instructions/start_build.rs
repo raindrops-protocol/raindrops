@@ -14,7 +14,7 @@ use crate::state::{
 pub struct StartBuild<'info> {
     #[account(init,
         payer = builder,
-        space = Build::space(&recipe.ingredients),
+        space = Build::INIT_SPACE,
         seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
@@ -63,13 +63,6 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         }
     };
 
-    // set initial build ingredient state
-    let mut ingredients: Vec<BuildIngredientData> =
-        Vec::with_capacity(ctx.accounts.recipe.ingredients.len());
-    for required_ingredient in ctx.accounts.recipe.ingredients.clone() {
-        ingredients.push(required_ingredient.into());
-    }
-
     let payment: Option<PaymentState> =
         ctx.accounts
             .recipe
@@ -88,9 +81,25 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         output: BuildOutput::new(),
         status: BuildStatus::InProgress,
         payment,
-        ingredients,
+        ingredients: vec![],
         build_permit_in_use,
     });
+
+    // set initial build ingredient state
+    let mut ingredients: Vec<BuildIngredientData> =
+        Vec::with_capacity(ctx.accounts.recipe.ingredients.len());
+    for required_ingredient in ctx.accounts.recipe.ingredients.clone() {
+        ingredients.push(required_ingredient.into());
+    }
+
+    let build_account = &ctx.accounts.build.to_account_info();
+
+    ctx.accounts.build.set_initial_ingredient_state(
+        ingredients,
+        build_account,
+        ctx.accounts.builder.clone(),
+        ctx.accounts.system_program.clone(),
+    )?;
 
     // add selectable outputs to the build data
     let selected_outputs: Vec<SelectedOutput> = parse_selected_outputs(
@@ -98,9 +107,13 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         &ctx.accounts.recipe.selectable_outputs,
     )?;
     for selected_output in selected_outputs {
-        ctx.accounts
-            .build
-            .add_output_item(selected_output.mint, selected_output.amount);
+        ctx.accounts.build.add_output_item(
+            selected_output.mint,
+            selected_output.amount,
+            build_account,
+            ctx.accounts.builder.clone(),
+            ctx.accounts.system_program.clone(),
+        )?;
     }
 
     Ok(())
@@ -112,7 +125,6 @@ struct SelectedOutput {
     amount: u64,
 }
 
-// TODO: check max choices
 fn parse_selected_outputs(
     args: &[OutputSelectionArgs],
     groups: &[OutputSelectionGroup],

@@ -644,13 +644,13 @@ export interface Pack {
 }
 
 export interface BuildPermit {
-  itemClass: web3.PublicKey;
-  wallet: web3.PublicKey;
+  recipe: web3.PublicKey;
+  builder: web3.PublicKey;
   remainingBuilds: number;
 }
 
 export interface DeterministicIngredient {
-  itemClass: web3.PublicKey;
+  recipe: web3.PublicKey;
   ingredientMint: web3.PublicKey;
   outputs: DeterministicIngredientOutput[];
 }

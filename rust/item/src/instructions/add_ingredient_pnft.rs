@@ -6,7 +6,7 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, ItemClassV1, ItemV1},
+    accounts::{Build, DeterministicIngredient, ItemClassV1, ItemV1, Recipe},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, ItemState, TokenMetadataProgram,
 };
@@ -21,7 +21,8 @@ pub struct AddIngredientPNft<'info> {
 
     #[account(
         has_one = ingredient_mint,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump
+        has_one = recipe,
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), recipe.key().as_ref(), ingredient_mint.key().as_ref()], bump
     )]
     pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
@@ -43,19 +44,31 @@ pub struct AddIngredientPNft<'info> {
     #[account(mut)]
     pub ingredient_source_token_record: UncheckedAccount<'info>,
 
-    #[account(init_if_needed, payer = payer, associated_token::mint = ingredient_mint, associated_token::authority = build)]
+    #[account(init_if_needed,
+        payer = payer,
+        associated_token::mint = ingredient_mint,
+        associated_token::authority = build)]
     pub ingredient_destination: Box<Account<'info, token::TokenAccount>>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
     pub ingredient_destination_token_record: UncheckedAccount<'info>,
 
+    #[account(
+        constraint = recipe.item_class.eq(&build.item_class),
+        constraint = recipe.recipe_index == build.recipe_index,
+        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), recipe.item_class.key().as_ref()], bump)]
+    pub recipe: Box<Account<'info, Recipe>>,
+
     #[account(mut,
         has_one = builder,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(init_if_needed, payer = payer, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
+    #[account(init_if_needed,
+        payer = payer,
+        space = ItemV1::SPACE,
+        seeds = [ItemV1::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
     #[account(mut)]
@@ -82,6 +95,7 @@ pub struct AddIngredientPNft<'info> {
 }
 
 pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
+    let build_account = &ctx.accounts.build.to_account_info();
     let build = &mut ctx.accounts.build;
 
     // check that the build is in progress
@@ -122,7 +136,13 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
         match &ctx.accounts.deterministic_ingredient {
             Some(deterministic_ingredient) => {
                 for output in &deterministic_ingredient.outputs {
-                    build.output.add_output(output.mint, output.amount);
+                    build.add_output_item(
+                        output.mint,
+                        output.amount,
+                        build_account,
+                        ctx.accounts.payer.clone(),
+                        ctx.accounts.system_program.clone(),
+                    )?;
                 }
             }
             None => return Err(ErrorCode::IncorrectIngredient.into()),

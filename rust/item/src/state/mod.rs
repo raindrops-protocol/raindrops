@@ -11,6 +11,7 @@ pub mod errors;
 pub enum ItemClassV1OutputMode {
     Item,
     Pack { index: u64 },
+    PresetOnly,
 }
 
 impl ItemClassV1OutputMode {
@@ -39,6 +40,10 @@ impl ItemClassV1OutputMode {
     pub fn is_item(&self) -> bool {
         matches!(self, ItemClassV1OutputMode::Item)
     }
+
+    pub fn is_preset_only(&self) -> bool {
+        matches!(self, ItemClassV1OutputMode::PresetOnly)
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
@@ -63,13 +68,15 @@ pub struct BuildIngredientData {
 }
 
 impl BuildIngredientData {
-    pub fn space(required_amount: usize) -> usize {
-        (1 + 32) + // verified_item_mint
-        32 + // item_class
-        8 + // current amount
-        8 + // required amount
-        BuildEffect::SPACE + // build effect
-        (4 + (required_amount * IngredientMint::SPACE))
+    pub const INIT_SPACE: usize = 32 + // item class
+    8 + // current amount
+    8 + // required amount
+    BuildEffect::SPACE + // build effect 
+    4 + // initial empty mints vector
+    1; // is determinisitic bool
+
+    pub fn current_space(&self) -> usize {
+        BuildIngredientData::INIT_SPACE + (self.mints.len() * IngredientMint::SPACE)
     }
 }
 
@@ -344,12 +351,14 @@ pub struct BuildOutput {
 }
 
 impl BuildOutput {
+    pub const INIT_SPACE: usize = 4;
+
     pub fn new() -> Self {
         BuildOutput { items: vec![] }
     }
 
-    pub fn space(output_count: usize) -> usize {
-        4 + (BuildOutputItem::SPACE * output_count)
+    pub fn current_space(&self) -> usize {
+        BuildOutput::INIT_SPACE + (self.items.len() * BuildOutputItem::SPACE)
     }
 
     pub fn add_output(&mut self, mint: Pubkey, amount: u64) {
@@ -417,9 +426,9 @@ pub struct OutputSelectionGroup {
 }
 
 impl OutputSelectionGroup {
-    pub fn space(choices_count: usize) -> usize {
+    pub fn current_space(&self) -> usize {
         1 + // group id
-        4 + (OutputSelection::SPACE * choices_count) // choices
+        (OutputSelection::SPACE * self.choices.len()) // choices
     }
 }
 

@@ -1,5 +1,3 @@
-pub mod utils;
-
 use crate::utils::{
     assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
     assert_mint_authority_matches_mint, assert_permissiveness_access,
@@ -26,6 +24,7 @@ use std::str::FromStr;
 
 pub mod instructions;
 pub mod state;
+pub mod utils;
 pub use instructions::*;
 
 anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
@@ -2031,6 +2030,10 @@ pub mod raindrops_item {
         args: CompleteBuildPackArgs,
     ) -> Result<()> {
         complete_build_pack::handler(ctx, args)
+    }
+
+    pub fn complete_build_preset_only(ctx: Context<CompleteBuildPresetOnly>) -> Result<()> {
+        complete_build_preset_only::handler(ctx)
     }
 
     pub fn apply_build_effect(ctx: Context<ApplyBuildEffect>) -> Result<()> {

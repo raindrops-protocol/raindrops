@@ -9,8 +9,7 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{Build, ItemClassV1},
-    errors::ErrorCode,
-    IngredientMint, NoopProgram,
+    NoopProgram,
 };
 
 #[derive(Accounts)]
@@ -29,6 +28,8 @@ pub struct VerifyIngredient<'info> {
 
     #[account(mut)]
     pub payer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
 
     pub log_wrapper: Program<'info, NoopProgram>,
 
@@ -67,40 +68,12 @@ pub fn handler<'a, 'b, 'c, 'info>(
     )?;
 
     // set the verified mint in the build data
-    let build = &mut ctx.accounts.build;
-    let mut verified = false;
-    for build_ingredient_data in build.ingredients.iter_mut() {
-        if build_ingredient_data
-            .item_class
-            .eq(&ctx.accounts.ingredient_item_class.key())
-        {
-            // error if builder already escrowed enough of this ingredient
-            require!(
-                build_ingredient_data.current_amount < build_ingredient_data.required_amount,
-                ErrorCode::IncorrectIngredient
-            );
-
-            let ingredient_mint = ctx.accounts.ingredient_mint.key();
-
-            // check this mint wasn't already verified
-            let already_verified = build_ingredient_data
-                .mints
-                .iter()
-                .any(|mint_data| mint_data.mint.eq(&ingredient_mint));
-            require!(!already_verified, ErrorCode::IncorrectIngredient);
-
-            // add the mint to the list of build ingredients
-            build_ingredient_data.mints.push(IngredientMint {
-                build_effect_applied: false,
-                mint: ctx.accounts.ingredient_mint.key(),
-            });
-
-            verified = true;
-
-            break;
-        }
-    }
-    require!(verified, ErrorCode::IncorrectIngredient);
-
-    Ok(())
+    let build_account = &ctx.accounts.build.to_account_info();
+    ctx.accounts.build.add_ingredient(
+        ctx.accounts.ingredient_mint.key(),
+        &ctx.accounts.ingredient_item_class.key(),
+        build_account,
+        ctx.accounts.payer.clone(),
+        ctx.accounts.system_program.clone(),
+    )
 }
