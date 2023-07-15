@@ -65,7 +65,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
         recipe_index: Recipe::INITIAL_INDEX,
-        output_mode: output_mode,
+        output_mode,
     });
 
     // init recipe

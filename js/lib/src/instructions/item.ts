@@ -1220,7 +1220,7 @@ export class Instruction extends SolKitInstruction {
 
     // get deterministic ingredient pda if applicable
     let deterministicIngredient: web3.PublicKey | null = null;
-    for (let rawIngredient of buildDataRaw.ingredients as any[]) {
+    for (const rawIngredient of buildDataRaw.ingredients as any[]) {
       const match = (rawIngredient.mints as any[]).some((mintData) =>
         new web3.PublicKey(mintData.mint).equals(accounts.ingredientMint)
       );
@@ -1656,7 +1656,7 @@ export class Instruction extends SolKitInstruction {
     );
 
     const ixnGroups: web3.TransactionInstruction[][] = [];
-    for (let item of (buildData.output as any).items) {
+    for (const item of (buildData.output as any).items) {
       // if received already, dont send again
       if (item.received === true) {
         continue;

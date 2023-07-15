@@ -400,7 +400,7 @@ export class ItemProgram extends Program.Program {
     const ixnGroups = await this.instruction.receiveItem(accounts);
 
     const resultPromises: Promise<Transaction.SendTransactionResult>[] = [];
-    for (let group of ixnGroups) {
+    for (const group of ixnGroups) {
       const resultPromise = this.sendWithRetry(group, [], options);
       resultPromises.push(resultPromise);
     }
@@ -508,9 +508,9 @@ export class ItemProgram extends Program.Program {
       }
 
       const selectableOutputs: OutputSelectionGroup[] = [];
-      for (let output of recipeData.selectableOutputs as any[]) {
+      for (const output of recipeData.selectableOutputs as any[]) {
         const choices: OutputSelection[] = [];
-        for (let choice of output.choices as any[]) {
+        for (const choice of output.choices as any[]) {
           choices.push({
             outputId: Number(choice.outputId),
             mint: new web3.PublicKey(choice.mint),
@@ -577,7 +577,7 @@ export class ItemProgram extends Program.Program {
     }
 
     const buildOutput: ItemInstruction.BuildOutput = { items: [] };
-    for (let output of buildDataRaw.output.items) {
+    for (const output of buildDataRaw.output.items) {
       buildOutput.items.push({
         mint: new web3.PublicKey(output.mint),
         amount: new BN(output.amount),
@@ -665,9 +665,9 @@ export class ItemProgram extends Program.Program {
     }
 
     const selectableOutputs: OutputSelectionGroup[] = [];
-    for (let output of recipeDataRaw.selectableOutputs as any[]) {
+    for (const output of recipeDataRaw.selectableOutputs as any[]) {
       const choices: OutputSelection[] = [];
-      for (let choice of output.choices as any[]) {
+      for (const choice of output.choices as any[]) {
         choices.push({
           outputId: Number(choice.outputId),
           mint: new web3.PublicKey(choice.mint),
@@ -747,7 +747,7 @@ export class ItemProgram extends Program.Program {
     }
 
     const outputs: DeterministicIngredientOutput[] = [];
-    for (let output of deterministicIngredientDataRaw.outputs) {
+    for (const output of deterministicIngredientDataRaw.outputs) {
       outputs.push({
         mint: new web3.PublicKey(output.mint),
         amount: new BN(output.amount),

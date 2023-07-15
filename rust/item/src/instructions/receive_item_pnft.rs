@@ -100,7 +100,7 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
     // transfer the pNFT to the builder
     // transfer item_mint to destination
     let transfer_args = TransferArgs::V1 {
-        amount: amount, // this should always be 1 for a pNFT
+        amount, // this should always be 1 for a pNFT
         authorization_data: None,
     };
 

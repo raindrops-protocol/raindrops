@@ -319,7 +319,7 @@ impl Build {
 
         let mut verified = false;
         for build_ingredient_data in self.ingredients.iter_mut() {
-            if build_ingredient_data.item_class.eq(&ingredient_item_class) {
+            if build_ingredient_data.item_class.eq(ingredient_item_class) {
                 // error if builder already escrowed enough of this ingredient
                 require!(
                     build_ingredient_data.current_amount < build_ingredient_data.required_amount,
