@@ -2532,7 +2532,7 @@ describe.only("itemv1", () => {
     await cleanBuild(itemProgram, build);
   });
 
-  it.only("build item class in preset only mode", async () => {
+  it("build item class in preset only mode", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
