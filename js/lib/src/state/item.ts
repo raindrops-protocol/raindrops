@@ -11,7 +11,12 @@ import {
   PermissivenessType,
   Root,
 } from "./common";
-import { BuildOutput, PackContents, Payment, PaymentState } from "../instructions/item";
+import {
+  BuildOutput,
+  PackContents,
+  Payment,
+  PaymentState,
+} from "../instructions/item";
 
 extendBorsh();
 

@@ -435,36 +435,39 @@ export function getPack(itemClass: web3.PublicKey, id: BN) {
     [
       Buffer.from("pack"),
       itemClass.toBuffer(),
-      id.toArrayLike(Buffer, "le", 8)
+      id.toArrayLike(Buffer, "le", 8),
     ],
     ITEM_ID
   );
 
-  return pack; 
+  return pack;
 }
 
-export function getBuildPermit(recipe: web3.PublicKey, builder: web3.PublicKey) {
+export function getBuildPermit(
+  recipe: web3.PublicKey,
+  builder: web3.PublicKey
+) {
   const [buildPermit, _buildPermitBump] = web3.PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("build_permit"),
-      builder.toBuffer(),
-      recipe.toBuffer(),
-    ],
+    [Buffer.from("build_permit"), builder.toBuffer(), recipe.toBuffer()],
     ITEM_ID
   );
 
-  return buildPermit; 
+  return buildPermit;
 }
 
-export function getDeterministicIngredient(recipe: web3.PublicKey, ingredientMint: web3.PublicKey) {
-  const [deterministicIngredient, _deterministicIngredientBump] = web3.PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("deterministic_ingredient"),
-      recipe.toBuffer(),
-      ingredientMint.toBuffer(),
-    ],
-    ITEM_ID
-  );
+export function getDeterministicIngredient(
+  recipe: web3.PublicKey,
+  ingredientMint: web3.PublicKey
+) {
+  const [deterministicIngredient, _deterministicIngredientBump] =
+    web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("deterministic_ingredient"),
+        recipe.toBuffer(),
+        ingredientMint.toBuffer(),
+      ],
+      ITEM_ID
+    );
 
-  return deterministicIngredient; 
+  return deterministicIngredient;
 }
