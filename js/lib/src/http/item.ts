@@ -1,8 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 import * as errors from "./errors";
-import { Build, BuildStatus, ItemClassV1, ItemV1 } from "../state/item";
+import { Build, BuildStatus, ItemClass, Item, getBuildPda } from "../state/itemv2";
 import { fetch } from "cross-fetch";
-import { getBuild } from "../utils/pda";
 import IsoWebsocket from "isomorphic-ws";
 
 export class Client {
@@ -34,8 +33,8 @@ export class Client {
       case "devnet": {
         //this.baseUrl = "https://dev.api.items.itsboots.xyz"; this points to the old api gateway still in the CDK (cert is migrated), we will update in a subsequent operation
         this.baseUrl =
-          "https://hwheczmzx7.execute-api.us-east-1.amazonaws.com/prod";
-        this.wsUrl = "wss://dev.ws.items.itsboots.xyz";
+          "https://43jqhj70a6.execute-api.us-east-1.amazonaws.com/v2";
+        this.wsUrl = "wss://7iyl5fcdgd.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "localnet": {
@@ -101,7 +100,7 @@ export class Client {
     console.log(
       "building item class: %s from recipe: %s",
       itemClass.toString(),
-      JSON.stringify(recipe)
+      recipe.recipeIndex,
     );
 
     // get start build tx and sign it
@@ -133,25 +132,22 @@ export class Client {
       data: {
         ingredients: JSON.stringify(recipe.ingredients),
         startBuildTx: signedTx.serialize().toString("base64"),
-        build: getBuild(itemClass, this.provider.publicKey).toString(),
+        build: getBuildPda(itemClass, this.provider.publicKey).toString(),
       },
     };
 
     // on connection open, send the signed start build tx
     socket.onopen = (event) => {
-      console.log("socket status:", JSON.stringify(socket));
       console.log("websocket event received: %s", JSON.stringify(event));
       console.log("sending build request");
       socket.send(JSON.stringify({ buildRequest: buildRequest }));
     };
 
     socket.onclose = (event) => {
-      console.log("socket status:", JSON.stringify(socket));
       console.log("close:", JSON.stringify(event));
     };
 
     socket.onerror = (event) => {
-      console.log("socket status:", JSON.stringify(socket));
       console.log("websocket error:", JSON.stringify(event));
     };
 
@@ -300,7 +296,7 @@ export class Client {
 
   async getItem(
     itemMint: anchor.web3.PublicKey
-  ): Promise<[anchor.web3.PublicKey, ItemV1]> {
+  ): Promise<[anchor.web3.PublicKey, Item]> {
     const params = new URLSearchParams({
       itemMint: itemMint.toString(),
     });
@@ -316,13 +312,13 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const itemData: ItemV1 = JSON.parse(body.itemData);
+    const itemData: Item = JSON.parse(body.itemData);
     const item = new anchor.web3.PublicKey(body.item);
 
     return [item, itemData];
   }
 
-  async getItemClass(itemClass: anchor.web3.PublicKey): Promise<ItemClassV1> {
+  async getItemClass(itemClass: anchor.web3.PublicKey): Promise<ItemClass> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
     });
@@ -338,7 +334,7 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const itemClassData: ItemClassV1 = JSON.parse(body.itemClassData);
+    const itemClassData: ItemClass = JSON.parse(body.itemClassData);
 
     return itemClassData;
   }
@@ -450,7 +446,7 @@ export class Client {
   // the builder will receive the output of the build here
   async receiveItem(
     build: anchor.web3.PublicKey
-  ): Promise<anchor.web3.PublicKey> {
+  ): Promise<any> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
@@ -462,7 +458,7 @@ export class Client {
     const body = await errors.handleResponse(response);
     console.log("receiveItemTxSig: %s", body.txSig);
 
-    return body.itemMint;
+    return body;
   }
 
   // clean up all build artifacts

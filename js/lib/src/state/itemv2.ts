@@ -4,7 +4,7 @@ import {
 } from "../instructions/item";
 
 export const ITEMV2_ID = new web3.PublicKey(
-  "iTeMj6WXB5BTgts3HodmPYywzotaTvSvfusMMzQL7Je"
+  "itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo"
 );
 
 export interface ItemClass {
