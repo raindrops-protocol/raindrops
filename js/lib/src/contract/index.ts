@@ -1,4 +1,5 @@
 export * from "./item";
+export * from "./itemv2";
 export * from "./matches";
 export * from "./namespace";
 export * from "./player";

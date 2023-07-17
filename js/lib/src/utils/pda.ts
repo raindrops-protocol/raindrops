@@ -402,6 +402,24 @@ export function getItemV1(itemMint: web3.PublicKey): web3.PublicKey {
   return item;
 }
 
+export function getItemClassV2(items: web3.PublicKey): web3.PublicKey {
+  const [itemClass, _itemClassBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("item_class"), items.toBuffer()],
+    ITEM_ID
+  );
+
+  return itemClass;
+}
+
+export function getItemV2(itemMint: web3.PublicKey): web3.PublicKey {
+  const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("item"), itemMint.toBuffer()],
+    ITEM_ID
+  );
+
+  return item;
+}
+
 export function getBuild(
   itemClass: web3.PublicKey,
   builder: web3.PublicKey
