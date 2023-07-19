@@ -13,7 +13,6 @@ import {
 import { Constants, Utils } from "../main";
 import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
-import { sha256 } from "js-sha256";
 import {
   DeterministicIngredientOutput,
   OutputSelectionArgs,
@@ -26,6 +25,9 @@ import {
   getBuildPermitPda,
   getItemPda,
   getBuildPda,
+  PackContents,
+  ItemClassOutputMode,
+  formatItemClassOutputMode,
 } from "../state/itemv2";
 
 export class Instruction extends SolKitInstruction {
@@ -606,7 +608,7 @@ export class Instruction extends SolKitInstruction {
 
     const ixArgs = {
       packContents: args.packContents,
-      packContentsHashNonce: args.packContentsHashNonce,
+      packContentsHashNonce: args.packContents.nonce,
     };
 
     const ix = await this.program.client.methods
@@ -1358,22 +1360,6 @@ export interface RecipeArgs {
   selectableOutputs: OutputSelectionGroup[];
 }
 
-export type ItemClassOutputMode =
-  | { kind: "Item" }
-  | { kind: "Pack"; index: BN }
-  | { kind: "PresetOnly" };
-
-export function formatItemClassOutputMode(mode: ItemClassOutputMode): any {
-  switch (mode.kind) {
-    case "Item":
-      return { item: {} };
-    case "Pack":
-      return { pack: { index: mode.index } };
-    case "PresetOnly":
-      return { presetOnly: {} };
-  }
-}
-
 export interface RecipeIngredientDataArgs {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
@@ -1466,7 +1452,6 @@ export interface CompleteBuildPackAccounts {
 
 export interface CompleteBuildPackArgs {
   packContents: PackContents;
-  packContentsHashNonce: Uint8Array;
 }
 
 export interface CompleteBuildPresetOnlyAccounts {
@@ -1490,39 +1475,6 @@ export interface CreatePackAccounts {
 
 export interface CreatePackArgs {
   contentsHash: Buffer;
-}
-
-export class PackContents {
-  readonly entries: PackContentsEntry[];
-
-  constructor(entries: PackContentsEntry[]) {
-    this.entries = entries;
-  }
-
-  hash(nonce: Uint8Array): Buffer {
-    // match this with the program code
-    if (nonce.length !== 16) {
-      throw new Error(`nonce must be 16 bytes`);
-    }
-    const contentBuffers = this.entries.map((entry) =>
-      Buffer.concat([
-        entry.mint.toBuffer(),
-        entry.amount.toArrayLike(Buffer, "le", 8),
-      ])
-    );
-
-    const digest = sha256.digest(
-      Buffer.concat([...contentBuffers, Buffer.from(nonce)])
-    );
-    const hash = Buffer.from(digest);
-
-    return hash;
-  }
-}
-
-export interface PackContentsEntry {
-  mint: web3.PublicKey;
-  amount: BN;
 }
 
 export interface ApplyBuildEffectAccounts {

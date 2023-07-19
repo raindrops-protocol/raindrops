@@ -1514,15 +1514,13 @@ describe.only("itemv2", () => {
     );
 
     // check pack data
-    const packs: anchor.web3.PublicKey[] = [];
-    for (let i = 0; i < 3; i++) {
-      const pack = State.ItemV2.getPackPda(outputItemClass.itemClass, new BN(i));
-      const packData = await builderItemProgramV2.getPack(pack);
-      assert.isTrue(packData.contentsHash.length === 32);
-      assert.isTrue(packData.itemClass.equals(outputItemClass.itemClass));
-      assert.isTrue(packData.id.eq(new BN(i)));
-      packs.push(pack);
+    const packs = await builderItemProgramV2.getPacks(outputItemClass.itemClass);
+    assert.strictEqual(packs.length, 3);
+    for (let pack of packs) {
+      assert.isTrue(pack.contentsHash.length === 32);
+      assert.isTrue(pack.itemClass.equals(outputItemClass.itemClass));
     }
+    console.log("pack data verified");
 
     for (let i = 0; i < packs.length; i++) {
       // start the build process
@@ -1585,7 +1583,7 @@ describe.only("itemv2", () => {
       await completeBuildPackAndReceiveItems(
         connection,
         build,
-        packs[i],
+        packs[i].address,
         outputItemClass.packs[i]
       );
 
@@ -2891,10 +2889,10 @@ async function createItemClassPack(
     metaplex.keypairIdentity(payer)
   );
 
-  const packs: Instructions.ItemV2.PackContents[] = [];
+  const packs: State.ItemV2.PackContents[] = [];
   for (let y = 0; y < packConfig.length; y++) {
     // entries for one pack
-    const entries: Instructions.ItemV2.PackContentsEntry[] = [];
+    const entries: State.ItemV2.PackContentsEntry[] = [];
 
     // create all the pNfts
     for (let i = 0; i < packConfig[y].pNftCount; i++) {
@@ -3157,7 +3155,7 @@ async function createItemClassPack(
     }
 
     // create pack
-    const packContents = new Instructions.ItemV2.PackContents(entries);
+    const packContents = new State.ItemV2.PackContents(entries, new Uint8Array(16));
     packs.push(packContents);
 
     const createPackAccounts: Instructions.ItemV2.CreatePackAccounts = {
@@ -3165,7 +3163,7 @@ async function createItemClassPack(
     };
 
     const createPackArgs: Instructions.ItemV2.CreatePackArgs = {
-      contentsHash: packContents.hash(new Uint8Array(16)),
+      contentsHash: packContents.hash(),
     };
 
     const [createPackResult, pack] = await itemProgram.createPack(
@@ -3647,7 +3645,7 @@ async function completeBuildPackAndReceiveItems(
   connection: anchor.web3.Connection,
   build: anchor.web3.PublicKey,
   pack: anchor.web3.PublicKey,
-  packContents: Instructions.ItemV2.PackContents
+  packContents: State.ItemV2.PackContents
 ) {
   const signer = await initSigner(TEST_SIGNER_FILE_PATH, connection);
 
@@ -3669,7 +3667,6 @@ async function completeBuildPackAndReceiveItems(
 
   const completeBuildPackArgs: Instructions.ItemV2.CompleteBuildPackArgs = {
     packContents: packContents,
-    packContentsHashNonce: new Uint8Array(16),
   };
 
   const completeBuildResult = await itemProgram.completeBuildPack(
@@ -4057,7 +4054,7 @@ interface ItemClassContainer {
 
 interface ItemClassPackContainer {
   itemClass: anchor.web3.PublicKey;
-  packs: Instructions.ItemV2.PackContents[];
+  packs: State.ItemV2.PackContents[];
 }
 
 interface ItemClassPresetOnlyContainer {

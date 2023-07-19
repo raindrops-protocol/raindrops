@@ -152,7 +152,7 @@ export class Client {
     };
 
     // wait for a response from the websocket api
-    const itemMint = await new Promise((resolve, reject) => {
+    const buildOutput = await new Promise((resolve, reject) => {
       socket.onmessage = (event) => {
         try {
           console.log("received event: %s", JSON.stringify(event));
@@ -162,9 +162,9 @@ export class Client {
         }
       };
     });
-    console.log("itemMint: %s", itemMint);
+    console.log("buildOutput: %s", buildOutput);
 
-    return itemMint;
+    return buildOutput;
   }
 
   async continueBuild(
@@ -360,6 +360,50 @@ export class Client {
     return recipeData;
   }
 
+  async getPack(pack: anchor.web3.PublicKey): Promise<[any, any[]]> {
+    const params = new URLSearchParams({
+      pack: pack.toString(),
+    });
+
+    // return the pack data
+    const response = await fetch(`${this.baseUrl}/pack?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey),
+    });
+
+    if (response.status === 400) {
+      return null;
+    }
+
+    const body = await errors.handleResponse(response);
+
+    const packData: any = JSON.parse(body.pack);
+
+    const packItems: any[] = JSON.parse(body.items);
+
+    return [packData, packItems];
+  }
+
+  async getPackItemClass(itemClass: anchor.web3.PublicKey): Promise<any> {
+    const params = new URLSearchParams({
+      itemClass: itemClass.toString(),
+    });
+
+    // return the pack data
+    const response = await fetch(`${this.baseUrl}/packItemClass?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey),
+    });
+
+    if (response.status === 400) {
+      return null;
+    }
+
+    const body = await errors.handleResponse(response);
+
+    const packConfig: any = JSON.parse(body.packConfig);
+
+    return packConfig;
+  }
+
   async startBuild(
     itemClass: anchor.web3.PublicKey,
     recipeIndex: anchor.BN,
@@ -429,7 +473,7 @@ export class Client {
   }
 
   // mark build as complete, contract checks that required ingredients have been escrowed
-  async completeBuild(build: anchor.web3.PublicKey): Promise<void> {
+  async completeBuild(build: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
@@ -440,7 +484,13 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    console.log("completeBuildTxSig: %s", body.txSig);
+    console.log("completeBuildTxSig: %s", body.result.txSig);
+
+    // return pack pda if its defined
+    if (body.result.pack) {
+      return new anchor.web3.PublicKey(body.result.pack);
+    };
+    return undefined
   }
 
   // the builder will receive the output of the build here

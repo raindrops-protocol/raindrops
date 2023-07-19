@@ -1,7 +1,9 @@
 import { BN, web3 } from "@project-serum/anchor";
 import {
   BuildOutput,
-} from "../instructions/item";
+} from "../instructions/itemv2";
+import { sha256 } from "js-sha256";
+
 
 export const ITEMV2_ID = new web3.PublicKey(
   "itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo"
@@ -12,6 +14,23 @@ export interface ItemClass {
   items: web3.PublicKey;
   recipeIndex: BN;
   recipes: Recipe[];
+  outputMode: ItemClassOutputMode;
+}
+
+export type ItemClassOutputMode =
+  | { kind: "Item" }
+  | { kind: "Pack"; index: BN }
+  | { kind: "PresetOnly" };
+
+export function formatItemClassOutputMode(mode: ItemClassOutputMode): any {
+  switch (mode.kind) {
+    case "Item":
+      return { item: {} };
+    case "Pack":
+      return { pack: { index: mode.index } };
+    case "PresetOnly":
+      return { presetOnly: {} };
+  }
 }
 
 export interface Recipe {
@@ -58,6 +77,7 @@ export interface ItemState {
 }
 
 export interface Build {
+  address: web3.PublicKey;
   recipeIndex: BN;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
@@ -114,10 +134,46 @@ export interface Payment {
 }
 
 export interface Pack {
+  address: web3.PublicKey;
   opened: boolean;
   itemClass: web3.PublicKey;
   id: BN;
   contentsHash: Uint8Array;
+}
+
+export class PackContents {
+  readonly entries: PackContentsEntry[];
+  readonly nonce: Uint8Array;
+
+  constructor(entries: PackContentsEntry[], nonce: Uint8Array) {
+    if (nonce.length !== 16) {
+      throw new Error(`nonce must be 16 bytes`);
+    }
+    this.nonce = nonce;
+    this.entries = entries;
+  }
+
+  hash(): Buffer {
+    // match this with the program code 
+    const contentBuffers = this.entries.map((entry) =>
+      Buffer.concat([
+        entry.mint.toBuffer(),
+        entry.amount.toArrayLike(Buffer, "le", 8),
+      ])
+    );
+
+    const digest = sha256.digest(
+      Buffer.concat([...contentBuffers, Buffer.from(this.nonce)])
+    );
+    const hash = Buffer.from(digest);
+
+    return hash;
+  }
+}
+
+export interface PackContentsEntry {
+  mint: web3.PublicKey;
+  amount: BN;
 }
 
 export interface BuildPermit {

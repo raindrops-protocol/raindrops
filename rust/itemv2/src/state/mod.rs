@@ -312,6 +312,7 @@ impl PaymentState {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct PackContents {
     pub entries: Vec<PackContentsEntry>,
+    pub nonce: [u8; 16], 
 }
 
 impl PackContents {
@@ -319,7 +320,7 @@ impl PackContents {
         4 + (entry_count * PackContentsEntry::SPACE)
     }
 
-    pub fn hash_pack_contents(&self, nonce: &[u8; 16]) -> [u8; 32] {
+    pub fn hash_pack_contents(&self) -> [u8; 32] {
         let mut bytes = self
             .entries
             .iter()
@@ -330,7 +331,7 @@ impl PackContents {
                 b
             })
             .collect::<Vec<u8>>();
-        bytes.extend_from_slice(nonce);
+        bytes.extend_from_slice(&self.nonce);
         hash(&bytes).to_bytes()
     }
 }

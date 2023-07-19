@@ -1532,15 +1532,6 @@ export type Itemv2 = {
             "type": {
               "defined": "PackContents"
             }
-          },
-          {
-            "name": "packContentsHashNonce",
-            "type": {
-              "array": [
-                "u8",
-                16
-              ]
-            }
           }
         ]
       }
@@ -1901,6 +1892,15 @@ export type Itemv2 = {
               "vec": {
                 "defined": "PackContentsEntry"
               }
+            }
+          },
+          {
+            "name": "nonce",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
             }
           }
         ]
@@ -3775,15 +3775,6 @@ export const IDL: Itemv2 = {
             "type": {
               "defined": "PackContents"
             }
-          },
-          {
-            "name": "packContentsHashNonce",
-            "type": {
-              "array": [
-                "u8",
-                16
-              ]
-            }
           }
         ]
       }
@@ -4144,6 +4135,15 @@ export const IDL: Itemv2 = {
               "vec": {
                 "defined": "PackContentsEntry"
               }
+            }
+          },
+          {
+            "name": "nonce",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
             }
           }
         ]

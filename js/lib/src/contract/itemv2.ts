@@ -24,7 +24,9 @@ import {
   Payment,
   PaymentState,
   ITEMV2_ID,
-  getRecipePda
+  getRecipePda,
+  getPackPda,
+  ItemClassOutputMode
 } from "../state/itemv2";
 import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
@@ -282,14 +284,29 @@ export class ItemProgramV2 extends Program.Program {
       recipes.push(recipe);
     }
 
-    const itemClassV1: ItemClass = {
+    let outputMode: ItemClassOutputMode = { kind: "Item" };
+    switch (Object.keys(itemClassData.outputMode)[0]) {
+      case 'pack':
+        outputMode = { kind: "Pack", index: new BN((itemClassData.outputMode as any).pack.index) }
+        break;
+      case 'item':
+        break;
+      case 'presetOnly':
+        outputMode = { kind: "PresetOnly" };
+        break; 
+      default:
+        throw new Error(`unknown item class mode: ${itemClassData.outputMode}`);
+    };
+
+    const data: ItemClass = {
       authority: new web3.PublicKey(itemClassData.authority),
       items: new web3.PublicKey(itemClassData.items),
       recipeIndex: recipeIndex,
       recipes: recipes,
+      outputMode: outputMode,
     };
 
-    return itemClassV1;
+    return data;
   }
 
   async getBuild(build: web3.PublicKey): Promise<Build | null> {
@@ -344,6 +361,7 @@ export class ItemProgramV2 extends Program.Program {
     }
 
     const buildData: Build = {
+      address: build,
       recipeIndex: new BN(buildDataRaw.recipeIndex as string),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
@@ -448,6 +466,7 @@ export class ItemProgramV2 extends Program.Program {
     }
 
     const packData: Pack = {
+      address: pack,
       opened: Boolean(packDataRaw.opened),
       itemClass: new web3.PublicKey(packDataRaw.itemClass),
       id: new BN(packDataRaw.id),
@@ -455,6 +474,48 @@ export class ItemProgramV2 extends Program.Program {
     };
 
     return packData;
+  }
+
+  async getPacks(itemClass: web3.PublicKey): Promise<Pack[]> {
+    const itemClassData = await this.getItemClass(itemClass);
+
+    if (itemClassData.outputMode.kind !== "Pack") {
+      throw new Error(`ItemClass ${itemClass.toString()} is not configured for Packs`);
+    }
+
+    // get all pack pdas
+    const packIndex = itemClassData.outputMode.index.toNumber();
+    const packAddresses: web3.PublicKey[] = [];
+    for (let i = 0; i < packIndex; i++) {
+      packAddresses.push(getPackPda(itemClass, new BN(i)))
+    }
+    console.log("found %d possible packs", packAddresses.length);
+
+    // fetch all packs at once
+    const fetchPackDataPromises: Promise<Pack | null>[] = [];
+    for (let pack of packAddresses) {
+      fetchPackDataPromises.push(this.getPack(pack));
+    }
+    const allPackData = await Promise.all(fetchPackDataPromises);
+
+    const availablePacks: Pack[] = [];
+    for (let packData of allPackData) {
+
+      // skip if pda data doesnt exist
+      if (packData === null || packData === undefined) {
+        continue
+      }
+
+      // skip if pack data is already opened
+      if (packData.opened) {
+        continue
+      }
+
+      availablePacks.push(packData);
+    }
+    console.log("found %d available packs", availablePacks.length);
+
+    return availablePacks
   }
 
   async getBuildPermit(

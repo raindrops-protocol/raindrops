@@ -44,7 +44,6 @@ pub struct CompleteBuildPack<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CompleteBuildPackArgs {
     pub pack_contents: PackContents,
-    pub pack_contents_hash_nonce: [u8; 16],
 }
 
 pub fn handler(ctx: Context<CompleteBuildPack>, args: CompleteBuildPackArgs) -> Result<()> {
@@ -54,7 +53,7 @@ pub fn handler(ctx: Context<CompleteBuildPack>, args: CompleteBuildPackArgs) -> 
     // check that the pack_contents hash matches the one stored in the pack pda
     let args_hash = args
         .pack_contents
-        .hash_pack_contents(&args.pack_contents_hash_nonce);
+        .hash_pack_contents();
     let pda_hash = &ctx.accounts.pack.contents_hash;
     require!(args_hash.eq(pda_hash), ErrorCode::InvalidPackContents);
 
