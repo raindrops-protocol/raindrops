@@ -80,7 +80,7 @@ export class Client {
   async build(
     itemClass: anchor.web3.PublicKey,
     ingredientArgs: IngredientArg[]
-  ): Promise<any> {
+  ): Promise<BuildResult> {
     // check ingredients and find a valid recipe for the item class we want to build
     const buildableRecipes = await this.checkIngredients(
       itemClass,
@@ -152,7 +152,7 @@ export class Client {
     };
 
     // wait for a response from the websocket api
-    const buildOutput = await new Promise((resolve, reject) => {
+    const buildOutput: any = await new Promise((resolve, reject) => {
       socket.onmessage = (event) => {
         try {
           console.log("received event: %s", JSON.stringify(event));
@@ -164,7 +164,24 @@ export class Client {
     });
     console.log("buildOutput: %s", buildOutput);
 
-    return buildOutput;
+    let pack: anchor.web3.PublicKey | undefined
+    if (buildOutput.pack) {
+      pack = new anchor.web3.PublicKey(buildOutput.pack);
+    }
+
+    const receivedItems: [anchor.web3.PublicKey, anchor.BN][] = [];
+    for (let receivedItem of buildOutput.outputs.receivedItems) {
+      receivedItems.push([new anchor.web3.PublicKey(receivedItem[0]), new anchor.BN(receivedItem[1])]);
+    }
+
+    const buildResult: BuildResult = {
+      build: new anchor.web3.PublicKey(buildOutput.build),
+      pack: pack,
+      txSigs: buildOutput.outputs.txSigs,
+      receivedItems: receivedItems,
+    };
+
+    return buildResult;
   }
 
   async continueBuild(
@@ -642,6 +659,13 @@ export class Client {
 
     return body.txSig;
   }
+}
+
+export interface BuildResult {
+  pack?: anchor.web3.PublicKey;
+  build: anchor.web3.PublicKey;
+  txSigs: string[];
+  receivedItems: [anchor.web3.PublicKey, anchor.BN][];
 }
 
 export interface Recipe {
