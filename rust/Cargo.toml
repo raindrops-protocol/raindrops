@@ -5,7 +5,8 @@ members = [
   "namespace/",
   "matches/",
   "staking/",
-  "avatar/"
+  "avatar/",
+  "itemv2"
 ]
 exclude = [
 ]

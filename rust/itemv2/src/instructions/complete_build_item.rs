@@ -7,7 +7,7 @@ use spl_account_compression::{
 use std::convert::TryInto;
 
 use crate::state::{
-    accounts::{Build, BuildPermit, ItemClassV1, Recipe},
+    accounts::{Build, BuildPermit, ItemClass, Recipe},
     errors::ErrorCode,
     is_signer, BuildStatus, NoopProgram,
 };
@@ -19,8 +19,8 @@ pub struct CompleteBuildItem<'info> {
     #[account(
         constraint = item_class.items.eq(&item_class_items.key()),
         constraint = item_class.output_mode.is_item(),
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class_items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class_items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     /// CHECK: checked by spl-account-compression
     pub item_class_items: UncheckedAccount<'info>,

@@ -9,9 +9,8 @@ pub struct CloseBuild<'info> {
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    /// CHECK: by build account constraint
     #[account(mut)]
-    pub builder: UncheckedAccount<'info>,
+    pub builder: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,

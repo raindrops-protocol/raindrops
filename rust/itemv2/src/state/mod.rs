@@ -1,11 +1,50 @@
 use std::str::FromStr;
 
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::hash::hash};
 use mpl_token_auth_rules::ID as AuthRulesID;
 use mpl_token_metadata::ID as TokenMetadataPID;
 
 pub mod accounts;
 pub mod errors;
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ItemClassOutputMode {
+    Item,
+    Pack { index: u64 },
+    PresetOnly,
+}
+
+impl ItemClassOutputMode {
+    pub const SPACE: usize = 1 + 8;
+
+    pub fn get_index(&self) -> Result<u64> {
+        match self {
+            ItemClassOutputMode::Pack { index } => Ok(*index),
+            _ => Err(errors::ErrorCode::InvalidItemClassOutputMode.into()),
+        }
+    }
+
+    pub fn increment_index(&mut self) -> Result<()> {
+        if let ItemClassOutputMode::Pack { index } = self {
+            *index += 1;
+            Ok(())
+        } else {
+            Err(errors::ErrorCode::InvalidItemClassOutputMode.into())
+        }
+    }
+
+    pub fn is_pack(&self) -> bool {
+        matches!(self, ItemClassOutputMode::Pack { .. })
+    }
+
+    pub fn is_item(&self) -> bool {
+        matches!(self, ItemClassOutputMode::Item)
+    }
+
+    pub fn is_preset_only(&self) -> bool {
+        matches!(self, ItemClassOutputMode::PresetOnly)
+    }
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
 pub struct BuildIngredientData {
@@ -21,17 +60,23 @@ pub struct BuildIngredientData {
     // defines what happens to these items after being used in a build
     pub build_effect: BuildEffect,
 
+    // list of mints that make up this ingredient
     pub mints: Vec<IngredientMint>,
+
+    // if true, this is a deterministic ingredient and we expect a deterministic pda created
+    pub is_deterministic: bool,
 }
 
 impl BuildIngredientData {
-    pub fn space(required_amount: usize) -> usize {
-        (1 + 32) + // verified_item_mint
-        32 + // item_class
-        8 + // current amount
-        8 + // required amount
-        BuildEffect::SPACE + // build effect
-        (4 + (required_amount * IngredientMint::SPACE))
+    pub const INIT_SPACE: usize = 32 + // item class
+    8 + // current amount
+    8 + // required amount
+    BuildEffect::SPACE + // build effect 
+    4 + // initial empty mints vector
+    1; // is determinisitic bool
+
+    pub fn current_space(&self) -> usize {
+        BuildIngredientData::INIT_SPACE + (self.mints.len() * IngredientMint::SPACE)
     }
 }
 
@@ -60,11 +105,15 @@ pub struct RecipeIngredientData {
 
     // what happens to these items as a result of being used in this build
     pub build_effect: BuildEffect,
+
+    // if true, we expect a deterministic ingredient pda created for this mint
+    pub is_deterministic: bool,
 }
 
 impl RecipeIngredientData {
     pub const SPACE: usize = 32 + // item class
     8 + // required amount
+    1 + // is deterministic
     BuildEffect::SPACE; // build effect
 }
 
@@ -76,6 +125,7 @@ impl From<RecipeIngredientData> for BuildIngredientData {
             required_amount: value.required_amount,
             build_effect: value.build_effect,
             mints: vec![],
+            is_deterministic: value.is_deterministic,
         }
     }
 }
@@ -191,7 +241,6 @@ impl ItemState {
 
     // returns true if the item has no more durability left
     pub fn broken(&self) -> bool {
-        msg!("{:?}", &self);
         match self {
             Self::Fungible => false,
             Self::NonFungible {
@@ -258,6 +307,141 @@ impl From<Payment> for PaymentState {
 
 impl PaymentState {
     pub const SPACE: usize = 1 + Payment::SPACE;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PackContents {
+    pub entries: Vec<PackContentsEntry>,
+    pub nonce: [u8; 16], 
+}
+
+impl PackContents {
+    pub fn space(entry_count: usize) -> usize {
+        4 + (entry_count * PackContentsEntry::SPACE)
+    }
+
+    pub fn hash_pack_contents(&self) -> [u8; 32] {
+        let mut bytes = self
+            .entries
+            .iter()
+            .flat_map(|entry| {
+                let mut b = Vec::new();
+                b.extend_from_slice(entry.mint.as_ref());
+                b.extend_from_slice(&entry.amount.to_le_bytes());
+                b
+            })
+            .collect::<Vec<u8>>();
+        bytes.extend_from_slice(&self.nonce);
+        hash(&bytes).to_bytes()
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PackContentsEntry {
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
+impl PackContentsEntry {
+    pub const SPACE: usize = 32 + 8;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct BuildOutput {
+    pub items: Vec<BuildOutputItem>,
+}
+
+impl BuildOutput {
+    pub const INIT_SPACE: usize = 4;
+
+    pub fn new() -> Self {
+        BuildOutput { items: vec![] }
+    }
+
+    pub fn current_space(&self) -> usize {
+        BuildOutput::INIT_SPACE + (self.items.len() * BuildOutputItem::SPACE)
+    }
+
+    pub fn add_output(&mut self, mint: Pubkey, amount: u64) {
+        self.items.push(BuildOutputItem {
+            mint,
+            amount,
+            received: false,
+        })
+    }
+
+    pub fn find_output_amount(&self, mint: &Pubkey) -> u64 {
+        self.items
+            .iter()
+            .find(|output| output.mint.eq(mint) && !output.received)
+            .unwrap()
+            .amount
+    }
+
+    pub fn set_output_as_received(&mut self, mint: &Pubkey) {
+        for output in self.items.iter_mut() {
+            if output.mint.eq(mint) {
+                output.received = true;
+            }
+        }
+    }
+
+    pub fn all_outputs_sent(&self) -> bool {
+        self.items.iter().all(|output| output.received)
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct BuildOutputItem {
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub received: bool,
+}
+
+impl BuildOutputItem {
+    pub const SPACE: usize = 32 + 8 + 1;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct DeterministicIngredientOutput {
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
+impl DeterministicIngredientOutput {
+    pub const SPACE: usize = 32 + 8;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OutputSelectionArgs {
+    pub group_id: u8,
+
+    pub output_id: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OutputSelectionGroup {
+    pub group_id: u8,
+
+    pub choices: Vec<OutputSelection>,
+}
+
+impl OutputSelectionGroup {
+    pub fn current_space(&self) -> usize {
+        1 + // group id
+        (OutputSelection::SPACE * self.choices.len()) // choices
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OutputSelection {
+    pub output_id: u8,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
+
+impl OutputSelection {
+    pub const SPACE: usize = 1 + 32 + 8;
 }
 
 // anchor wrapper for Noop Program required for spl-account-compression

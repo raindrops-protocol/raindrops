@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token;
 
 use crate::state::{
-    accounts::{DeterministicIngredient, ItemClassV1, Recipe},
+    accounts::{DeterministicIngredient, ItemClass, Recipe},
     DeterministicIngredientOutput,
 };
 
@@ -24,8 +24,8 @@ pub struct CreateDeterministicIngredient<'info> {
 
     #[account(mut,
         has_one = authority,
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     #[account(mut)]
     pub authority: Signer<'info>,

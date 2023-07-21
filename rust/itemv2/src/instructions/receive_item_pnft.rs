@@ -6,7 +6,7 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1},
+    accounts::{Build, ItemClass},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, TokenMetadataProgram,
 };
@@ -47,8 +47,8 @@ pub struct ReceiveItemPNft<'info> {
     pub build: Account<'info, Build>,
 
     #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     pub builder: SystemAccount<'info>,
 
@@ -149,7 +149,7 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
         &transfer_ix.instruction(),
         &transfer_accounts,
         &[&[
-            ItemClassV1::PREFIX.as_bytes(),
+            ItemClass::PREFIX.as_bytes(),
             ctx.accounts.item_class.items.as_ref(),
             &[*ctx.bumps.get("item_class").unwrap()],
         ]],
@@ -171,7 +171,7 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
             ctx.accounts.token_program.to_account_info(),
             close_ata_accounts,
             &[&[
-                ItemClassV1::PREFIX.as_bytes(),
+                ItemClass::PREFIX.as_bytes(),
                 ctx.accounts.item_class.items.as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],

@@ -37,4 +37,28 @@ pub enum ErrorCode {
 
     #[msg("Must make build payment")]
     BuildNotPaid,
+
+    #[msg("Invalid ItemClassOutputMode")]
+    InvalidItemClassOutputMode,
+
+    #[msg("Invalid Build Output")]
+    InvalidBuildOutput,
+
+    #[msg("Invalid Pack Contents")]
+    InvalidPackContents,
+
+    #[msg("Pack Already Opened")]
+    PackAlreadyOpened,
+
+    #[msg("Build Permit Required")]
+    BuildPermitRequired,
+
+    #[msg("No Builds Remaining")]
+    NoBuildsRemaining,
+
+    #[msg("Invalid Recipe Config")]
+    InvalidRecipeConfig,
+
+    #[msg("Invalid Output Selection")]
+    InvalidOutputSelection,
 }

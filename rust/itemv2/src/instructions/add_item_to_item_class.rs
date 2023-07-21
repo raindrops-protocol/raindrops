@@ -7,7 +7,7 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{accounts::ItemClassV1, NoopProgram};
+use crate::state::{accounts::ItemClass, NoopProgram};
 
 #[derive(Accounts)]
 pub struct AddItemToItemClass<'info> {
@@ -16,8 +16,9 @@ pub struct AddItemToItemClass<'info> {
     #[account(
         has_one = authority,
         has_one = items,
-        seeds = [ItemClassV1::PREFIX.as_bytes(), items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        constraint = item_class.output_mode.is_item(),
+        seeds = [ItemClass::PREFIX.as_bytes(), items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     /// CHECK: done by spl-account-compression
     #[account(mut)]
@@ -43,13 +44,11 @@ pub fn handler(ctx: Context<AddItemToItemClass>) -> Result<()> {
             ctx.accounts.account_compression.to_account_info(),
             append_accounts,
             &[&[
-                ItemClassV1::PREFIX.as_bytes(),
+                ItemClass::PREFIX.as_bytes(),
                 ctx.accounts.items.key().as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],
         ),
         ctx.accounts.item_mint.key().as_ref().try_into().unwrap(),
-    )?;
-
-    Ok(())
+    )
 }

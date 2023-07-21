@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, ItemClassV1},
+    accounts::{Build, ItemClass},
     errors::ErrorCode,
     BuildStatus,
 };
@@ -24,8 +24,8 @@ pub struct ReceiveItemSpl<'info> {
     pub build: Account<'info, Build>,
 
     #[account(
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     pub builder: SystemAccount<'info>,
 
@@ -78,7 +78,7 @@ pub fn handler(ctx: Context<ReceiveItemSpl>) -> Result<()> {
             ctx.accounts.token_program.to_account_info(),
             transfer_accounts,
             &[&[
-                ItemClassV1::PREFIX.as_bytes(),
+                ItemClass::PREFIX.as_bytes(),
                 ctx.accounts.item_class.items.as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],
@@ -102,7 +102,7 @@ pub fn handler(ctx: Context<ReceiveItemSpl>) -> Result<()> {
             ctx.accounts.token_program.to_account_info(),
             close_ata_accounts,
             &[&[
-                ItemClassV1::PREFIX.as_bytes(),
+                ItemClass::PREFIX.as_bytes(),
                 ctx.accounts.item_class.items.as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],

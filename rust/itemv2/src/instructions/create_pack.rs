@@ -1,4 +1,4 @@
-use crate::state::accounts::{ItemClassV1, Pack};
+use crate::state::accounts::{ItemClass, Pack};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -13,8 +13,8 @@ pub struct CreatePack<'info> {
     #[account(mut,
         has_one = authority,
         constraint = item_class.output_mode.is_pack(),
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     #[account(mut)]
     pub authority: Signer<'info>,

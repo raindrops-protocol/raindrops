@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::state::{
-    accounts::{Build, BuildPermit, ItemClassV1, Recipe},
+    accounts::{Build, BuildPermit, ItemClass, Recipe},
     errors::ErrorCode,
     is_signer, BuildStatus,
 };
@@ -10,8 +10,8 @@ use crate::state::{
 pub struct CompleteBuildPresetOnly<'info> {
     #[account(
         constraint = item_class.output_mode.is_preset_only(),
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     #[account(
         has_one = item_class,

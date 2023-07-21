@@ -6,19 +6,14 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, ItemV1},
+    accounts::{Build, ItemClassV1},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, TokenMetadataProgram,
 };
 
 #[derive(Accounts)]
-pub struct ReturnIngredientPNft<'info> {
-    #[account(mut,
-        has_one = item_mint,
-        seeds = [ItemV1::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
-    pub item: Account<'info, ItemV1>,
-
-    pub item_mint: Box<Account<'info, token::Mint>>,
+pub struct ReceiveItem<'info> {
+    pub item_mint: Account<'info, token::Mint>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
@@ -31,7 +26,7 @@ pub struct ReturnIngredientPNft<'info> {
     /// CHECK: Done by token metadata
     pub auth_rules: UncheckedAccount<'info>,
 
-    #[account(mut, associated_token::mint = item_mint, associated_token::authority = build)]
+    #[account(mut, associated_token::mint = item_mint, associated_token::authority = item_class)]
     pub item_source: Box<Account<'info, token::TokenAccount>>,
 
     /// CHECK: Done by token metadata
@@ -46,11 +41,17 @@ pub struct ReturnIngredientPNft<'info> {
     pub item_destination_token_record: UncheckedAccount<'info>,
 
     #[account(
+        mut,
         has_one = builder,
-        mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
+        constraint = item_mint.key().eq(&build.item_mint.unwrap()),
+        seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    /// CHECK: build pda checks this account
+    #[account(
+        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClassV1>,
+
+    /// CHECK:
     pub builder: UncheckedAccount<'info>,
 
     #[account(mut)]
@@ -73,33 +74,15 @@ pub struct ReturnIngredientPNft<'info> {
     pub auth_rules_program: Program<'info, AuthRulesProgram>,
 }
 
-pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
-    match ctx.accounts.build.status {
-        BuildStatus::InProgress => {
-            // if the build is still in progress allow the builder to withdraw
-        }
-        BuildStatus::ItemReceived => {
-            // verify item is eligible to be returned to the builder
-            // if the item has no durability left, the token must be burned
-            require!(
-                ctx.accounts.item.item_state.returnable(),
-                ErrorCode::ItemNotReturnable
-            );
+pub fn handler(ctx: Context<ReceiveItem>) -> Result<()> {
+    // check that the build is complete
+    require!(
+        ctx.accounts.build.status.eq(&BuildStatus::Complete),
+        ErrorCode::InvalidBuildStatus
+    );
 
-            // check that the build effect is applied
-            ctx.accounts
-                .build
-                .build_effect_applied(ctx.accounts.item_mint.key())
-                .unwrap();
-        }
-        _ => return Err(ErrorCode::ItemNotReturnable.into()),
-    }
-
-    // decrement the amount in the build pda so we know its been returned
-    ctx.accounts
-        .build
-        .decrement_build_amount(ctx.accounts.item_mint.key(), 1)
-        .unwrap();
+    // set build to final state
+    ctx.accounts.build.status = BuildStatus::ItemReceived;
 
     // transfer the pNFT to the builder
     // transfer item_mint to destination
@@ -110,7 +93,7 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
 
     let transfer_ix = Transfer {
         token: ctx.accounts.item_source.key(),
-        token_owner: ctx.accounts.build.key(),
+        token_owner: ctx.accounts.item_class.key(),
         destination: ctx.accounts.item_destination.key(),
         destination_owner: ctx.accounts.builder.key(),
         mint: ctx.accounts.item_mint.key(),
@@ -118,7 +101,7 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
         edition: Some(ctx.accounts.item_edition.key()),
         owner_token_record: Some(ctx.accounts.item_source_token_record.key()),
         destination_token_record: Some(ctx.accounts.item_destination_token_record.key()),
-        authority: ctx.accounts.build.key(),
+        authority: ctx.accounts.item_class.key(),
         payer: ctx.accounts.payer.key(),
         system_program: ctx.accounts.system_program.key(),
         sysvar_instructions: ctx.accounts.instructions.key(),
@@ -131,7 +114,7 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
 
     let transfer_accounts = [
         ctx.accounts.item_source.to_account_info(),
-        ctx.accounts.build.to_account_info(),
+        ctx.accounts.item_class.to_account_info(),
         ctx.accounts.item_destination.to_account_info(),
         ctx.accounts.builder.to_account_info(),
         ctx.accounts.item_mint.to_account_info(),
@@ -139,7 +122,7 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
         ctx.accounts.item_edition.to_account_info(),
         ctx.accounts.item_source_token_record.to_account_info(),
         ctx.accounts.item_destination_token_record.to_account_info(),
-        ctx.accounts.build.to_account_info(),
+        ctx.accounts.item_class.to_account_info(),
         ctx.accounts.payer.to_account_info(),
         ctx.accounts.system_program.to_account_info(),
         ctx.accounts.instructions.to_account_info(),
@@ -153,20 +136,13 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
         &transfer_ix.instruction(),
         &transfer_accounts,
         &[&[
-            Build::PREFIX.as_bytes(),
-            ctx.accounts.build.item_class.key().as_ref(),
-            ctx.accounts.builder.key().as_ref(),
-            &[*ctx.bumps.get("build").unwrap()],
+            ItemClassV1::PREFIX.as_bytes(),
+            ctx.accounts.item_class.items.as_ref(),
+            &[*ctx.bumps.get("item_class").unwrap()],
         ]],
     )?;
 
-    // if the item pda is holding no state we destroy it to save on rent
-    if ctx.accounts.item.item_state.no_state() {
-        ctx.accounts
-            .item
-            .close(ctx.accounts.payer.to_account_info())
-            .unwrap();
-    };
+    // TODO: close item class ATA here
 
     Ok(())
 }

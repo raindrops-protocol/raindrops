@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::accounts::{BuildPermit, ItemClassV1, Recipe};
+use crate::state::accounts::{BuildPermit, ItemClass, Recipe};
 
 #[derive(Accounts)]
 #[instruction(args: CreateBuildPermitArgs)]
@@ -19,8 +19,8 @@ pub struct CreateBuildPermit<'info> {
 
     #[account(
         has_one = authority,
-        seeds = [ItemClassV1::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     #[account(mut)]
     pub authority: Signer<'info>,

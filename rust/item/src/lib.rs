@@ -1,3 +1,5 @@
+pub mod utils;
+
 use crate::utils::{
     assert_builder_must_be_holder_check, assert_is_ata, assert_keys_equal, assert_metadata_valid,
     assert_mint_authority_matches_mint, assert_permissiveness_access,
@@ -24,7 +26,6 @@ use std::str::FromStr;
 
 pub mod instructions;
 pub mod state;
-pub mod utils;
 pub use instructions::*;
 
 anchor_lang::declare_id!("itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6");
@@ -1977,10 +1978,6 @@ pub mod raindrops_item {
         add_item_to_item_class::handler(ctx)
     }
 
-    pub fn create_pack(ctx: Context<CreatePack>, args: CreatePackArgs) -> Result<()> {
-        create_pack::handler(ctx, args)
-    }
-
     pub fn start_build(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
         start_build::handler(ctx, args)
     }
@@ -2010,30 +2007,15 @@ pub mod raindrops_item {
         verify_ingredient_test::handler(ctx, args)
     }
 
-    pub fn receive_item_pnft(ctx: Context<ReceiveItemPNft>) -> Result<()> {
-        receive_item_pnft::handler(ctx)
+    pub fn receive_item(ctx: Context<ReceiveItem>) -> Result<()> {
+        receive_item::handler(ctx)
     }
 
-    pub fn receive_item_spl(ctx: Context<ReceiveItemSpl>) -> Result<()> {
-        receive_item_spl::handler(ctx)
-    }
-
-    pub fn complete_build_item<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, CompleteBuildItem<'info>>,
-        args: CompleteBuildItemArgs,
+    pub fn complete_build<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CompleteBuild<'info>>,
+        args: CompleteBuildArgs,
     ) -> Result<()> {
-        complete_build_item::handler(ctx, args)
-    }
-
-    pub fn complete_build_pack<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, CompleteBuildPack<'info>>,
-        args: CompleteBuildPackArgs,
-    ) -> Result<()> {
-        complete_build_pack::handler(ctx, args)
-    }
-
-    pub fn complete_build_preset_only(ctx: Context<CompleteBuildPresetOnly>) -> Result<()> {
-        complete_build_preset_only::handler(ctx)
+        complete_build::handler(ctx, args)
     }
 
     pub fn apply_build_effect(ctx: Context<ApplyBuildEffect>) -> Result<()> {
@@ -2062,20 +2044,6 @@ pub mod raindrops_item {
 
     pub fn add_payment(ctx: Context<AddPayment>) -> Result<()> {
         add_payment::handler(ctx)
-    }
-
-    pub fn create_build_permit(
-        ctx: Context<CreateBuildPermit>,
-        args: CreateBuildPermitArgs,
-    ) -> Result<()> {
-        create_build_permit::handler(ctx, args)
-    }
-
-    pub fn create_deterministic_ingredient(
-        ctx: Context<CreateDeterministicIngredient>,
-        args: CreateDeterministicIngredientArgs,
-    ) -> Result<()> {
-        create_deterministic_ingredient::handler(ctx, args)
     }
 }
 

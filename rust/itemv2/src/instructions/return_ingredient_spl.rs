@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, ItemV1},
+    accounts::{Build, Item},
     errors::ErrorCode,
     BuildStatus,
 };
@@ -11,8 +11,8 @@ use crate::state::{
 pub struct ReturnIngredientSpl<'info> {
     #[account(mut,
         has_one = item_mint,
-        seeds = [ItemV1::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
-    pub item: Account<'info, ItemV1>,
+        seeds = [Item::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
+    pub item: Account<'info, Item>,
 
     pub item_mint: Box<Account<'info, token::Mint>>,
 
@@ -27,9 +27,8 @@ pub struct ReturnIngredientSpl<'info> {
         mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    /// CHECK: build pda checks this account
     #[account(mut)]
-    pub builder: UncheckedAccount<'info>,
+    pub builder: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,

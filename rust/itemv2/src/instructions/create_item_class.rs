@@ -5,25 +5,24 @@ use spl_account_compression::{
 };
 
 use crate::state::{
-    accounts::{ItemClassV1, Recipe},
-    NoopProgram, Payment, RecipeIngredientData,
+    accounts::{ItemClass, Recipe},
+    ItemClassOutputMode, NoopProgram, OutputSelectionGroup, Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
-#[instruction(args: CreateItemClassV1Args)]
-pub struct CreateItemClassV1<'info> {
+pub struct CreateItemClass<'info> {
     /// CHECK: initialized by spl-account-compression program
     #[account(zero)]
     pub items: UncheckedAccount<'info>,
 
     #[account(init,
-        payer = authority, space = ItemClassV1::SPACE,
-        seeds = [ItemClassV1::PREFIX.as_bytes(), items.key().as_ref()], bump)]
-    pub item_class: Account<'info, ItemClassV1>,
+        payer = authority, space = ItemClass::SPACE,
+        seeds = [ItemClass::PREFIX.as_bytes(), items.key().as_ref()], bump)]
+    pub item_class: Account<'info, ItemClass>,
 
     #[account(init,
         payer = authority,
-        space = Recipe::space(args.recipe_args.ingredients.len()),
+        space = Recipe::INIT_SPACE,
         seeds = [Recipe::PREFIX.as_bytes(), &Recipe::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
@@ -40,8 +39,9 @@ pub struct CreateItemClassV1<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct CreateItemClassV1Args {
+pub struct CreateItemClassArgs {
     pub recipe_args: RecipeArgs,
+    pub output_mode: ItemClassOutputMode,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -49,14 +49,23 @@ pub struct RecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
     pub ingredients: Vec<RecipeIngredientData>,
+    pub build_permit_required: bool,
+    pub selectable_outputs: Vec<OutputSelectionGroup>,
 }
 
-pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
+pub fn handler(ctx: Context<CreateItemClass>, args: CreateItemClassArgs) -> Result<()> {
+    let output_mode = match args.output_mode {
+        ItemClassOutputMode::Item => ItemClassOutputMode::Item,
+        ItemClassOutputMode::Pack { .. } => ItemClassOutputMode::Pack { index: 0 },
+        ItemClassOutputMode::PresetOnly => ItemClassOutputMode::PresetOnly,
+    };
+
     // init item class
-    ctx.accounts.item_class.set_inner(ItemClassV1 {
+    ctx.accounts.item_class.set_inner(ItemClass {
         authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
         recipe_index: Recipe::INITIAL_INDEX,
+        output_mode,
     });
 
     // init recipe
@@ -64,9 +73,26 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         recipe_index: Recipe::INITIAL_INDEX,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.recipe_args.build_enabled,
-        ingredients: args.recipe_args.ingredients,
+        ingredients: vec![],
         payment: args.recipe_args.payment,
+        build_permit_required: args.recipe_args.build_permit_required,
+        selectable_outputs: vec![],
     });
+
+    // set vectors here
+    let recipe_account = &ctx.accounts.recipe.to_account_info();
+    ctx.accounts.recipe.set_selectable_outputs(
+        args.recipe_args.selectable_outputs,
+        recipe_account,
+        ctx.accounts.authority.clone(),
+        ctx.accounts.system_program.clone(),
+    )?;
+    ctx.accounts.recipe.set_ingredient_data(
+        args.recipe_args.ingredients,
+        recipe_account,
+        ctx.accounts.authority.clone(),
+        ctx.accounts.system_program.clone(),
+    )?;
 
     // initialize merkle tree
     let init_empty_merkle_tree_accounts = Initialize {
@@ -80,7 +106,7 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
             ctx.accounts.account_compression.to_account_info(),
             init_empty_merkle_tree_accounts,
             &[&[
-                ItemClassV1::PREFIX.as_bytes(),
+                ItemClass::PREFIX.as_bytes(),
                 ctx.accounts.items.key().as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],
