@@ -50,7 +50,8 @@ pub struct ReturnIngredientPNft<'info> {
         mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    pub builder: SystemAccount<'info>,
+    /// CHECK: build pda checks this account
+    pub builder: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,

@@ -1,11 +1,10 @@
+use std::convert::TryInto;
+
 use anchor_lang::prelude::*;
 
-use crate::utils::reallocate;
-
 use super::{
-    errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus,
-    DeterministicIngredientOutput, IngredientMint, ItemClassV1OutputMode, ItemState,
-    OutputSelectionGroup, Payment, PaymentState, RecipeIngredientData,
+    errors::ErrorCode, BuildIngredientData, BuildStatus, ItemState, Payment, PaymentState,
+    RecipeIngredientData,
 };
 
 // seeds = ['item_class_v1', items.key().as_ref()]
@@ -18,9 +17,6 @@ pub struct ItemClassV1 {
     pub items: Pubkey,
 
     pub recipe_index: u64,
-
-    // defines the behavior when the item class is the target of a build output
-    pub output_mode: ItemClassV1OutputMode,
 }
 
 impl ItemClassV1 {
@@ -28,8 +24,7 @@ impl ItemClassV1 {
     pub const SPACE: usize = 8 + // anchor
     32 + // authority
     32 + // items 
-    8 + // recipe_index
-    ItemClassV1OutputMode::SPACE; // output mode
+    8; // recipe_index
 }
 
 // seeds = ['item_v1', item_mint.key().as_ref()]
@@ -68,12 +63,6 @@ pub struct Recipe {
     // if Some, SOL is required
     pub payment: Option<Payment>,
 
-    // if true, the builder must have a build permit to use this recipe
-    pub build_permit_required: bool,
-
-    // the builder can select from these outputs when using this recipe
-    pub selectable_outputs: Vec<OutputSelectionGroup>,
-
     // list of ingredients required to use this recipe to build the item class v1
     pub ingredients: Vec<RecipeIngredientData>,
 }
@@ -81,61 +70,13 @@ pub struct Recipe {
 impl Recipe {
     pub const PREFIX: &'static str = "recipe";
     pub const INITIAL_INDEX: u64 = 0;
-    pub const INIT_SPACE: usize = 8 + // anchor
-    8 + // recipe index
-    32 + // item class
-    1 + // build enabled
-    (1 + Payment::SPACE) + // optional payment
-    1 + // build permit required
-    4 + // init selectable outputs vector
-    4; // init ingredients vector
-
-    fn current_space(&self) -> usize {
-        let mut total_space = Recipe::INIT_SPACE;
-
-        total_space += self.ingredients.len() * RecipeIngredientData::SPACE;
-
-        for output_group in &self.selectable_outputs {
-            total_space += output_group.current_space();
-        }
-
-        total_space
-    }
-
-    pub fn set_selectable_outputs<'info>(
-        &mut self,
-        selectable_outputs: Vec<OutputSelectionGroup>,
-        recipe: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        self.selectable_outputs = selectable_outputs;
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(diff, recipe, payer, system_program)
-    }
-
-    pub fn set_ingredient_data<'info>(
-        &mut self,
-        ingredient_data: Vec<RecipeIngredientData>,
-        recipe: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        self.ingredients = ingredient_data;
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(diff, recipe, payer, system_program)
+    pub fn space(ingredient_count: usize) -> usize {
+        8 + // anchor
+        8 + // recipe index
+        32 + // item_class
+        1 + // enabled
+        (1 + Payment::SPACE) + // payment
+        4 + (RecipeIngredientData::SPACE * ingredient_count) // ingredients
     }
 }
 
@@ -152,7 +93,7 @@ pub struct Build {
     pub item_class: Pubkey,
 
     // mint of the token received at the end
-    pub output: BuildOutput,
+    pub item_mint: Option<Pubkey>,
 
     // payment state
     pub payment: Option<PaymentState>,
@@ -162,34 +103,29 @@ pub struct Build {
 
     // current status of the build
     pub status: BuildStatus,
-
-    // if true, a build permit is used for this build
-    pub build_permit_in_use: bool,
 }
 
 impl Build {
     pub const PREFIX: &'static str = "build";
-    pub const INIT_SPACE: usize = 8 + // anchor
+    pub fn space(recipe_ingredient_data: &Vec<RecipeIngredientData>) -> usize {
+        8 + // anchor
         8 + // recipe_index
         32 + // builder
         32 + // item class
-        BuildOutput::INIT_SPACE + // build output
         (1 + 32) + // item mint
         (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
-        1 + // build permit in use
-        4; // ingredients init
+        4 + (Self::build_ingredient_data_space(recipe_ingredient_data)) // ingredients
+    }
 
-    fn current_space(&self) -> usize {
-        let mut total_space = Build::INIT_SPACE;
-
-        for ingredient in &self.ingredients {
-            total_space += ingredient.current_space();
+    fn build_ingredient_data_space(recipe_ingredient_data: &Vec<RecipeIngredientData>) -> usize {
+        let mut total_build_ingredient_space: usize = 0;
+        for ingredient_data in recipe_ingredient_data {
+            total_build_ingredient_space +=
+                BuildIngredientData::space(ingredient_data.required_amount.try_into().unwrap())
         }
 
-        total_space += self.output.current_space();
-
-        total_space
+        total_build_ingredient_space
     }
 
     pub fn build_effect_applied(&self, ingredient_mint: Pubkey) -> Result<()> {
@@ -208,11 +144,11 @@ impl Build {
         Err(ErrorCode::IncorrectIngredient.into())
     }
 
-    pub fn find_build_ingredient(
+    pub fn verify_build_mint(
         &self,
         ingredient_item_class: Pubkey,
         ingredient_mint: Pubkey,
-    ) -> Result<&BuildIngredientData> {
+    ) -> bool {
         // verify ingredient_mint
         for build_ingredient_data in &self.ingredients {
             // find the corresponding item class
@@ -222,12 +158,10 @@ impl Build {
                     .mints
                     .iter()
                     .any(|mint_data| mint_data.mint.eq(&ingredient_mint));
-                if verified {
-                    return Ok(build_ingredient_data);
-                }
+                return verified;
             }
         }
-        Err(ErrorCode::IncorrectIngredient.into())
+        false
     }
 
     pub fn increment_build_amount(&mut self, ingredient_mint: Pubkey, amount: u64) -> Result<()> {
@@ -268,199 +202,5 @@ impl Build {
         } else {
             Err(ErrorCode::IncorrectIngredient.into())
         }
-    }
-
-    pub fn set_initial_ingredient_state<'info>(
-        &mut self,
-        ingredient_data: Vec<BuildIngredientData>,
-        build: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        self.ingredients = ingredient_data;
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(diff, build, payer, system_program)
-    }
-
-    pub fn add_output_item<'info>(
-        &mut self,
-        mint: Pubkey,
-        amount: u64,
-        build: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        self.output.add_output(mint, amount);
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(diff, build, payer, system_program)
-    }
-
-    pub fn add_ingredient<'info>(
-        &mut self,
-        ingredient_mint: Pubkey,
-        ingredient_item_class: &Pubkey,
-        build: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        let mut verified = false;
-        for build_ingredient_data in self.ingredients.iter_mut() {
-            if build_ingredient_data.item_class.eq(ingredient_item_class) {
-                // error if builder already escrowed enough of this ingredient
-                require!(
-                    build_ingredient_data.current_amount < build_ingredient_data.required_amount,
-                    ErrorCode::IncorrectIngredient
-                );
-
-                // check this mint wasn't already verified
-                let already_verified = build_ingredient_data
-                    .mints
-                    .iter()
-                    .any(|mint_data| mint_data.mint.eq(&ingredient_mint));
-                require!(!already_verified, ErrorCode::IncorrectIngredient);
-
-                // add the mint to the list of build ingredients
-                build_ingredient_data.mints.push(IngredientMint {
-                    build_effect_applied: false,
-                    mint: ingredient_mint,
-                });
-
-                verified = true;
-
-                break;
-            }
-        }
-        require!(verified, ErrorCode::IncorrectIngredient);
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(diff, build, payer, system_program)
-    }
-
-    pub fn validate_build_criteria(&self) -> Result<()> {
-        // check build is in progress
-        require!(
-            self.status.eq(&BuildStatus::InProgress),
-            ErrorCode::InvalidBuildStatus
-        );
-
-        // check build requirements are met
-        let build_requirements_met = self
-            .ingredients
-            .iter()
-            .all(|ingredient| ingredient.current_amount >= ingredient.required_amount);
-        require!(build_requirements_met, ErrorCode::MissingIngredient);
-
-        // check payment has been made
-        self.payment.as_ref().map_or(Ok(()), |payment| {
-            require!(payment.paid, ErrorCode::BuildNotPaid);
-            Ok(())
-        })
-    }
-}
-
-// seeds = ['pack', item_class.key().as_ref(), &id.to_le_bytes()]
-#[account]
-pub struct Pack {
-    // unique id
-    pub id: u64,
-
-    // item class which this pack belongs to
-    pub item_class: Pubkey,
-
-    // a hash of the contents stored by this pack
-    pub contents_hash: [u8; 32],
-}
-
-impl Pack {
-    pub const PREFIX: &'static str = "pack";
-
-    pub const SPACE: usize = 8 + // anchor
-    8 + // id
-    32 + // item class
-    32; // contents hash
-}
-
-// seeds = ['build_permit', wallet, recipe]
-// we rely on the fact that each wallet can only do 1 concurrent build because of the build pda seed setup
-// if this changes we need to take into account multiple builds in parallel and make sure you can't game the build permit system
-#[account]
-pub struct BuildPermit {
-    pub recipe: Pubkey,
-    pub builder: Pubkey,
-    pub remaining_builds: u16,
-}
-
-impl BuildPermit {
-    pub const PREFIX: &'static str = "build_permit";
-
-    pub const SPACE: usize = 8 + // anchor
-    32 + // recipe
-    32 + // builder
-    2; // remaining_builds
-}
-
-// seeds = ['deterministic_ingredient', recipe.key(), ingredient_mint.key().as_ref()]
-#[account]
-pub struct DeterministicIngredient {
-    pub recipe: Pubkey,
-
-    pub ingredient_mint: Pubkey,
-
-    pub outputs: Vec<DeterministicIngredientOutput>,
-}
-
-impl DeterministicIngredient {
-    pub const PREFIX: &'static str = "deterministic_ingredient";
-
-    pub const INIT_SPACE: usize = 8 + // anchor
-    32 + // recipe
-    32 + // ingredient mint
-    4; // empty vector
-
-    pub fn current_space(&self) -> usize {
-        DeterministicIngredient::INIT_SPACE
-            + (self.outputs.len() * DeterministicIngredientOutput::SPACE)
-    }
-
-    pub fn set_outputs<'info>(
-        &mut self,
-        outputs: Vec<DeterministicIngredientOutput>,
-        deterministic_ingredient_account: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        for output in outputs {
-            self.outputs.push(output);
-        }
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(
-            diff,
-            deterministic_ingredient_account,
-            payer,
-            system_program,
-        )
     }
 }

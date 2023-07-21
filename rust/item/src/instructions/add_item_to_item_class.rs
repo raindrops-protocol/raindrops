@@ -16,7 +16,6 @@ pub struct AddItemToItemClass<'info> {
     #[account(
         has_one = authority,
         has_one = items,
-        constraint = item_class.output_mode.is_item(),
         seeds = [ItemClassV1::PREFIX.as_bytes(), items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClassV1>,
 
@@ -50,5 +49,7 @@ pub fn handler(ctx: Context<AddItemToItemClass>) -> Result<()> {
             ]],
         ),
         ctx.accounts.item_mint.key().as_ref().try_into().unwrap(),
-    )
+    )?;
+
+    Ok(())
 }

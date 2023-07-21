@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, ItemClassV1, ItemV1, Recipe},
+    accounts::{Build, ItemClassV1, ItemV1},
     errors::ErrorCode,
     BuildStatus, ItemState,
 };
@@ -15,40 +15,23 @@ pub struct AddIngredientSpl<'info> {
         seeds = [ItemClassV1::PREFIX.as_bytes(), ingredient_item_class.items.key().as_ref()], bump)]
     pub ingredient_item_class: Account<'info, ItemClassV1>,
 
-    #[account(
-        has_one = ingredient_mint,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), recipe.key().as_ref(), ingredient_mint.key().as_ref()], bump
-    )]
-    pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
-
     #[account(mut, constraint = ingredient_source.mint.eq(&ingredient_mint.key()))]
     pub ingredient_source: Box<Account<'info, token::TokenAccount>>,
 
-    #[account(init_if_needed,
-        payer = payer,
-        associated_token::mint = ingredient_mint,
-        associated_token::authority = build)]
+    #[account(init_if_needed, payer = payer, associated_token::mint = ingredient_mint, associated_token::authority = build)]
     pub ingredient_destination: Box<Account<'info, token::TokenAccount>>,
-
-    #[account(
-        constraint = recipe.item_class.eq(&build.item_class),
-        constraint = recipe.recipe_index == build.recipe_index,
-        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), recipe.item_class.key().as_ref()], bump)]
-    pub recipe: Account<'info, Recipe>,
 
     #[account(mut,
         has_one = builder,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(init_if_needed,
-        payer = payer,
-        space = ItemV1::SPACE,
-        seeds = [ItemV1::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
+    #[account(init_if_needed, payer = payer, space = ItemV1::SPACE, seeds = [ItemV1::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
     pub item: Account<'info, ItemV1>,
 
+    /// CHECK: done by build pda
     #[account(mut)]
-    pub builder: SystemAccount<'info>,
+    pub builder: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -68,7 +51,6 @@ pub struct AddIngredientSplArgs {
 }
 
 pub fn handler(ctx: Context<AddIngredientSpl>, args: AddIngredientSplArgs) -> Result<()> {
-    let build_account = &ctx.accounts.build.to_account_info();
     let build = &mut ctx.accounts.build;
 
     // check that the build is in progress
@@ -77,17 +59,16 @@ pub fn handler(ctx: Context<AddIngredientSpl>, args: AddIngredientSplArgs) -> Re
         ErrorCode::InvalidBuildStatus
     );
 
+    // verify ingredient_mint
+    let verified = build.verify_build_mint(
+        ctx.accounts.ingredient_item_class.key(),
+        ctx.accounts.ingredient_mint.key(),
+    );
+    require!(verified, ErrorCode::IncorrectIngredient);
+
     // increment current_amount by transfer amount
     build
         .increment_build_amount(ctx.accounts.ingredient_mint.key(), args.amount)
-        .unwrap();
-
-    // find matching build ingredient for the mint
-    let build_ingredient = build
-        .find_build_ingredient(
-            ctx.accounts.ingredient_item_class.key(),
-            ctx.accounts.ingredient_mint.key(),
-        )
         .unwrap();
 
     // set the initial data if item pda has not been initialized until this instruction
@@ -103,24 +84,6 @@ pub fn handler(ctx: Context<AddIngredientSpl>, args: AddIngredientSplArgs) -> Re
             return Err(ErrorCode::ItemOnCooldown.into());
         }
     }
-
-    // add deterministic outputs to build outputs
-    if build_ingredient.is_deterministic {
-        match &ctx.accounts.deterministic_ingredient {
-            Some(deterministic_ingredient) => {
-                for output in &deterministic_ingredient.outputs {
-                    build.add_output_item(
-                        output.mint,
-                        output.amount,
-                        build_account,
-                        ctx.accounts.payer.clone(),
-                        ctx.accounts.system_program.clone(),
-                    )?;
-                }
-            }
-            None => return Err(ErrorCode::IncorrectIngredient.into()),
-        }
-    };
 
     // transfer tokens to build pda
     let transfer_accounts = token::Transfer {

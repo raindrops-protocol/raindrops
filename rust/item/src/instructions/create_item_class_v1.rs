@@ -6,10 +6,11 @@ use spl_account_compression::{
 
 use crate::state::{
     accounts::{ItemClassV1, Recipe},
-    ItemClassV1OutputMode, NoopProgram, OutputSelectionGroup, Payment, RecipeIngredientData,
+    NoopProgram, Payment, RecipeIngredientData,
 };
 
 #[derive(Accounts)]
+#[instruction(args: CreateItemClassV1Args)]
 pub struct CreateItemClassV1<'info> {
     /// CHECK: initialized by spl-account-compression program
     #[account(zero)]
@@ -22,7 +23,7 @@ pub struct CreateItemClassV1<'info> {
 
     #[account(init,
         payer = authority,
-        space = Recipe::INIT_SPACE,
+        space = Recipe::space(args.recipe_args.ingredients.len()),
         seeds = [Recipe::PREFIX.as_bytes(), &Recipe::INITIAL_INDEX.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
@@ -41,7 +42,6 @@ pub struct CreateItemClassV1<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassV1Args {
     pub recipe_args: RecipeArgs,
-    pub output_mode: ItemClassV1OutputMode,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -49,23 +49,14 @@ pub struct RecipeArgs {
     pub build_enabled: bool,
     pub payment: Option<Payment>,
     pub ingredients: Vec<RecipeIngredientData>,
-    pub build_permit_required: bool,
-    pub selectable_outputs: Vec<OutputSelectionGroup>,
 }
 
 pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> Result<()> {
-    let output_mode = match args.output_mode {
-        ItemClassV1OutputMode::Item => ItemClassV1OutputMode::Item,
-        ItemClassV1OutputMode::Pack { .. } => ItemClassV1OutputMode::Pack { index: 0 },
-        ItemClassV1OutputMode::PresetOnly => ItemClassV1OutputMode::PresetOnly,
-    };
-
     // init item class
     ctx.accounts.item_class.set_inner(ItemClassV1 {
         authority: ctx.accounts.authority.key(),
         items: ctx.accounts.items.key(),
         recipe_index: Recipe::INITIAL_INDEX,
-        output_mode,
     });
 
     // init recipe
@@ -73,26 +64,9 @@ pub fn handler(ctx: Context<CreateItemClassV1>, args: CreateItemClassV1Args) -> 
         recipe_index: Recipe::INITIAL_INDEX,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.recipe_args.build_enabled,
-        ingredients: vec![],
+        ingredients: args.recipe_args.ingredients,
         payment: args.recipe_args.payment,
-        build_permit_required: args.recipe_args.build_permit_required,
-        selectable_outputs: vec![],
     });
-
-    // set vectors here
-    let recipe_account = &ctx.accounts.recipe.to_account_info();
-    ctx.accounts.recipe.set_selectable_outputs(
-        args.recipe_args.selectable_outputs,
-        recipe_account,
-        ctx.accounts.authority.clone(),
-        ctx.accounts.system_program.clone(),
-    )?;
-    ctx.accounts.recipe.set_ingredient_data(
-        args.recipe_args.ingredients,
-        recipe_account,
-        ctx.accounts.authority.clone(),
-        ctx.accounts.system_program.clone(),
-    )?;
 
     // initialize merkle tree
     let init_empty_merkle_tree_accounts = Initialize {
