@@ -152,7 +152,7 @@ export class Client {
     };
 
     // wait for a response from the websocket api
-    const buildOutput: any = await new Promise((resolve, reject) => {
+    const buildOutputRaw: any = await new Promise((resolve, reject) => {
       socket.onmessage = (event) => {
         try {
           console.log("received event: %s", JSON.stringify(event));
@@ -162,7 +162,7 @@ export class Client {
         }
       };
     });
-    console.log("buildOutput: %s", buildOutput);
+    const buildOutput: any = JSON.parse(buildOutputRaw);
 
     let pack: anchor.web3.PublicKey | undefined
     if (buildOutput.pack) {
@@ -170,14 +170,14 @@ export class Client {
     }
 
     const receivedItems: [anchor.web3.PublicKey, anchor.BN][] = [];
-    for (let receivedItem of buildOutput.outputs.receivedItems) {
+    for (let receivedItem of buildOutput.receivedItems) {
       receivedItems.push([new anchor.web3.PublicKey(receivedItem[0]), new anchor.BN(receivedItem[1])]);
     }
 
     const buildResult: BuildResult = {
       build: new anchor.web3.PublicKey(buildOutput.build),
       pack: pack,
-      txSigs: buildOutput.outputs.txSigs,
+      txSigs: buildOutput.txSigs,
       receivedItems: receivedItems,
     };
 
@@ -377,7 +377,8 @@ export class Client {
     return recipeData;
   }
 
-  async getPack(pack: anchor.web3.PublicKey): Promise<[any, any[]]> {
+  // get all pack data
+  async getPack(pack: anchor.web3.PublicKey): Promise<[any, any[], any]> {
     const params = new URLSearchParams({
       pack: pack.toString(),
     });
@@ -393,11 +394,7 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const packData: any = JSON.parse(body.pack);
-
-    const packItems: any[] = JSON.parse(body.items);
-
-    return [packData, packItems];
+    return [body.pack, body.items, body.packConfig];
   }
 
   async getPackItemClass(itemClass: anchor.web3.PublicKey): Promise<any> {
@@ -416,9 +413,7 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const packConfig: any = JSON.parse(body.packConfig);
-
-    return packConfig;
+    return body.packConfig;
   }
 
   async startBuild(
@@ -523,7 +518,7 @@ export class Client {
     });
 
     const body = await errors.handleResponse(response);
-    console.log("receiveItemTxSig: %s", body.txSig);
+    console.log("receiveItemResult:", body);
 
     return body;
   }
