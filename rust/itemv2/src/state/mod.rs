@@ -312,7 +312,7 @@ impl PaymentState {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct PackContents {
     pub entries: Vec<PackContentsEntry>,
-    pub nonce: [u8; 16], 
+    pub nonce: [u8; 16],
 }
 
 impl PackContents {

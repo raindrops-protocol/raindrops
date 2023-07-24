@@ -17,7 +17,8 @@ pub struct VerifyIngredient<'info> {
     pub ingredient_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
-        seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class_items.key().as_ref()], bump)]
+        constraint = ingredient_item_class.items.unwrap().eq(&ingredient_item_class_items.key()),
+        seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.authority_mint.as_ref()], bump)]
     pub ingredient_item_class: Box<Account<'info, ItemClass>>,
 
     /// CHECK: checked by spl-account-compression

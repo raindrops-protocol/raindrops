@@ -1,6 +1,9 @@
 use std::convert::TryInto;
 
-use anchor_lang::{prelude::*, system_program::{Transfer, transfer}};
+use anchor_lang::{
+    prelude::*,
+    system_program::{transfer, Transfer},
+};
 
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus,
@@ -8,14 +11,16 @@ use super::{
     OutputSelectionGroup, Payment, PaymentState, RecipeIngredientData,
 };
 
-// seeds = ['item_class', items.key().as_ref()]
+// seeds = ['item_class', authority_mint.key().as_ref()]
 #[account]
 pub struct ItemClass {
-    // controls the item class
-    pub authority: Pubkey,
+    pub name: String,
+
+    // token owners have authority over the item class
+    pub authority_mint: Pubkey,
 
     // merkle tree containing all item addresses belonging to this item class
-    pub items: Pubkey,
+    pub items: Option<Pubkey>,
 
     pub recipe_index: u64,
 
@@ -25,11 +30,15 @@ pub struct ItemClass {
 
 impl ItemClass {
     pub const PREFIX: &'static str = "item_class";
-    pub const SPACE: usize = 8 + // anchor
-    32 + // authority
-    32 + // items 
-    8 + // recipe_index
-    ItemClassOutputMode::SPACE; // output mode
+
+    pub fn space(name: String) -> usize {
+        8 + // anchor
+        4 + name.len() + // name size
+        32 + // authority mint
+        (1 + 32) + // optional items merkle tree
+        8 + // recipe_index
+        ItemClassOutputMode::SPACE // output mode
+    }
 }
 
 // seeds = ['item', item_mint.key().as_ref()]

@@ -17,7 +17,7 @@ pub struct CompleteBuildItem<'info> {
     pub item_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
-        constraint = item_class.items.eq(&item_class_items.key()),
+        constraint = item_class.items.unwrap().eq(&item_class_items.key()),
         constraint = item_class.output_mode.is_item(),
         seeds = [ItemClass::PREFIX.as_bytes(), item_class_items.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,

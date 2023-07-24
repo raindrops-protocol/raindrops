@@ -14,11 +14,19 @@ pub struct AddItemToItemClass<'info> {
     pub item_mint: Account<'info, token::Mint>,
 
     #[account(
-        has_one = authority,
-        has_one = items,
+        constraint = item_class.items.unwrap().eq(&items.key()),
+        constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
         constraint = item_class.output_mode.is_item(),
-        seeds = [ItemClass::PREFIX.as_bytes(), items.key().as_ref()], bump)]
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
+
+    #[account(mint::authority = item_class)]
+    pub item_class_authority_mint: Account<'info, token::Mint>,
+
+    #[account(
+        constraint = item_class_authority_mint_ata.amount >= 1,
+        associated_token::mint = item_class_authority_mint, associated_token::authority = authority)]
+    pub item_class_authority_mint_ata: Account<'info, token::TokenAccount>,
 
     /// CHECK: done by spl-account-compression
     #[account(mut)]

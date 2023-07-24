@@ -1,5 +1,6 @@
 use crate::state::accounts::{ItemClass, Pack};
 use anchor_lang::prelude::*;
+use anchor_spl::token;
 
 #[derive(Accounts)]
 #[instruction(args: CreatePackArgs)]
@@ -11,10 +12,18 @@ pub struct CreatePack<'info> {
     pub pack: Account<'info, Pack>,
 
     #[account(mut,
-        has_one = authority,
+        constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
         constraint = item_class.output_mode.is_pack(),
-        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
+
+    #[account(mint::authority = item_class)]
+    pub item_class_authority_mint: Account<'info, token::Mint>,
+
+    #[account(
+        constraint = item_class_authority_mint_ata.amount >= 1,
+        associated_token::mint = item_class_authority_mint, associated_token::authority = authority)]
+    pub item_class_authority_mint_ata: Account<'info, token::TokenAccount>,
 
     #[account(mut)]
     pub authority: Signer<'info>,

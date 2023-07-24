@@ -10,7 +10,7 @@ use crate::state::{
 pub struct CompleteBuildPresetOnly<'info> {
     #[account(
         constraint = item_class.output_mode.is_preset_only(),
-        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 
     #[account(

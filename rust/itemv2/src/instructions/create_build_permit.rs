@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token;
 
 use crate::state::accounts::{BuildPermit, ItemClass, Recipe};
 
@@ -18,9 +19,17 @@ pub struct CreateBuildPermit<'info> {
     pub recipe: Account<'info, Recipe>,
 
     #[account(
-        has_one = authority,
-        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+        constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
+
+    #[account(mint::authority = item_class)]
+    pub item_class_authority_mint: Account<'info, token::Mint>,
+
+    #[account(
+        constraint = item_class_authority_mint_ata.amount >= 1,
+        associated_token::mint = item_class_authority_mint, associated_token::authority = authority)]
+    pub item_class_authority_mint_ata: Account<'info, token::TokenAccount>,
 
     #[account(mut)]
     pub authority: Signer<'info>,

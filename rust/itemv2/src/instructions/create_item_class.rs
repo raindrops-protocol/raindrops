@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token;
 use spl_account_compression::{
     cpi::{accounts::Initialize, init_empty_merkle_tree},
     program::SplAccountCompression,
@@ -10,15 +11,24 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
+#[instruction(args: CreateItemClassArgs)]
 pub struct CreateItemClass<'info> {
     /// CHECK: initialized by spl-account-compression program
     #[account(zero)]
     pub items: UncheckedAccount<'info>,
 
     #[account(init,
-        payer = authority, space = ItemClass::SPACE,
-        seeds = [ItemClass::PREFIX.as_bytes(), items.key().as_ref()], bump)]
+        payer = authority, space = ItemClass::space(args.item_class_name),
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
+
+    #[account(mint::authority = item_class, mint::decimals = 0)]
+    pub item_class_authority_mint: Account<'info, token::Mint>,
+
+    #[account(
+        constraint = item_class_authority_mint_ata.amount >= 1,
+        associated_token::mint = item_class_authority_mint, associated_token::authority = authority)]
+    pub item_class_authority_mint_ata: Account<'info, token::TokenAccount>,
 
     #[account(init,
         payer = authority,
@@ -40,6 +50,7 @@ pub struct CreateItemClass<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassArgs {
+    pub item_class_name: String,
     pub recipe_args: RecipeArgs,
     pub output_mode: ItemClassOutputMode,
 }
@@ -62,8 +73,9 @@ pub fn handler(ctx: Context<CreateItemClass>, args: CreateItemClassArgs) -> Resu
 
     // init item class
     ctx.accounts.item_class.set_inner(ItemClass {
-        authority: ctx.accounts.authority.key(),
-        items: ctx.accounts.items.key(),
+        name: args.item_class_name,
+        authority_mint: ctx.accounts.item_class_authority_mint.key(),
+        items: Some(ctx.accounts.items.key()),
         recipe_index: Recipe::INITIAL_INDEX,
         output_mode,
     });

@@ -9,7 +9,7 @@ declare_id!("itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo");
 #[program]
 pub mod itemv2 {
     use super::*;
- 
+
     pub fn create_item_class(
         ctx: Context<CreateItemClass>,
         args: CreateItemClassArgs,
@@ -124,5 +124,23 @@ pub mod itemv2 {
         args: CreateDeterministicIngredientArgs,
     ) -> Result<()> {
         create_deterministic_ingredient::handler(ctx, args)
+    }
+
+    pub fn mint_authority_tokens(
+        ctx: Context<MintAuthorityTokens>,
+        args: MintAuthorityTokensArgs,
+    ) -> Result<()> {
+        mint_authority_tokens::handler(ctx, args)
+    }
+
+    pub fn release_from_escrow_spl(
+        ctx: Context<ReleaseFromEscrowSpl>,
+        args: ReleaseFromEscrowSplArgs,
+    ) -> Result<()> {
+        release_from_escrow_spl::handler(ctx, args)
+    }
+
+    pub fn release_from_escrow_pnft(ctx: Context<ReleaseFromEscrowPNft>) -> Result<()> {
+        release_from_escrow_pnft::handler(ctx)
     }
 }

@@ -16,6 +16,16 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "recipe",
           "isMut": true,
           "isSigner": false
@@ -69,6 +79,16 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -107,6 +127,16 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "items",
           "isMut": true,
           "isSigner": false
@@ -140,6 +170,16 @@ export type Itemv2 = {
         {
           "name": "itemClass",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1196,6 +1236,16 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -1244,6 +1294,16 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -1267,6 +1327,248 @@ export type Itemv2 = {
           }
         }
       ]
+    },
+    {
+      "name": "mintAuthorityTokens",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "destination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destinationAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MintAuthorityTokensArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "releaseFromEscrowSpl",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destinationAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ReleaseFromEscrowSplArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "releaseFromEscrowPnft",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destinationAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -1276,12 +1578,14 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "authority",
+            "name": "authorityMint",
             "type": "publicKey"
           },
           {
             "name": "items",
-            "type": "publicKey"
+            "type": {
+              "option": "publicKey"
+            }
           },
           {
             "name": "recipeIndex",
@@ -1681,6 +1985,30 @@ export type Itemv2 = {
                 "defined": "OutputSelectionGroup"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAuthorityTokensArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReleaseFromEscrowSplArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
           }
         ]
       }
@@ -2259,6 +2587,16 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "recipe",
           "isMut": true,
           "isSigner": false
@@ -2312,6 +2650,16 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -2350,6 +2698,16 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "items",
           "isMut": true,
           "isSigner": false
@@ -2383,6 +2741,16 @@ export const IDL: Itemv2 = {
         {
           "name": "itemClass",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -3439,6 +3807,16 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -3487,6 +3865,16 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -3510,6 +3898,248 @@ export const IDL: Itemv2 = {
           }
         }
       ]
+    },
+    {
+      "name": "mintAuthorityTokens",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "destination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destinationAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MintAuthorityTokensArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "releaseFromEscrowSpl",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destinationAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ReleaseFromEscrowSplArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "releaseFromEscrowPnft",
+      "accounts": [
+        {
+          "name": "itemMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemEdition",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authRules",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemSourceTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destinationAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemDestinationTokenRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "itemClassAuthorityMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "instructions",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authRulesProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -3519,12 +4149,14 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "authority",
+            "name": "authorityMint",
             "type": "publicKey"
           },
           {
             "name": "items",
-            "type": "publicKey"
+            "type": {
+              "option": "publicKey"
+            }
           },
           {
             "name": "recipeIndex",
@@ -3924,6 +4556,30 @@ export const IDL: Itemv2 = {
                 "defined": "OutputSelectionGroup"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAuthorityTokensArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReleaseFromEscrowSplArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
           }
         ]
       }
