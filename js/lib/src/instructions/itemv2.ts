@@ -671,7 +671,7 @@ export class Instruction extends SolKitInstruction {
     if (buildData.buildPermitInUse) {
       buildPermit = getBuildPermitPda(
         new web3.PublicKey(buildData.builder),
-        itemClass,
+        itemClass
       );
     }
 
@@ -709,7 +709,7 @@ export class Instruction extends SolKitInstruction {
     if (buildData.buildPermitInUse) {
       buildPermit = getBuildPermitPda(
         new web3.PublicKey(buildData.builder),
-        itemClass,
+        itemClass
       );
     }
 
@@ -1301,10 +1301,7 @@ export class Instruction extends SolKitInstruction {
     }
 
     // get new recipe pda based off item class recipe index
-    const newRecipe = getRecipePda(
-      accounts.itemClass,
-      recipeIndex,
-    );
+    const newRecipe = getRecipePda(accounts.itemClass, recipeIndex);
 
     const ix = await this.program.client.methods
       .createRecipe(ixArgs)

@@ -227,61 +227,61 @@ export class ItemProgramV2 extends Program.Program {
     const recipes: Recipe[] = [];
     if (recipeIndex !== null) {
       for (let i = 0; i <= recipeIndex.toNumber(); i++) {
-      const recipeAddr = getRecipePda(itemClass, new BN(i));
+        const recipeAddr = getRecipePda(itemClass, new BN(i));
 
-      const recipeData = await this.client.account.recipe.fetch(recipeAddr);
+        const recipeData = await this.client.account.recipe.fetch(recipeAddr);
 
-      // get recipe ingredients
-      const ingredients: Ingredient[] = [];
-      for (const recipeIngredient of recipeData.ingredients as any[]) {
-        const ingredient: Ingredient = {
-          itemClass: new web3.PublicKey(recipeIngredient.itemClass),
-          requiredAmount: new BN(recipeIngredient.requiredAmount as string),
-          buildEffect: recipeIngredient.buildEffect,
-        };
+        // get recipe ingredients
+        const ingredients: Ingredient[] = [];
+        for (const recipeIngredient of recipeData.ingredients as any[]) {
+          const ingredient: Ingredient = {
+            itemClass: new web3.PublicKey(recipeIngredient.itemClass),
+            requiredAmount: new BN(recipeIngredient.requiredAmount as string),
+            buildEffect: recipeIngredient.buildEffect,
+          };
 
-        ingredients.push(ingredient);
-      }
+          ingredients.push(ingredient);
+        }
 
-      // get payment data
-      let payment: Payment | null = null;
-      if (recipeData.payment) {
-        payment = {
-          amount: new BN((recipeData.payment as any).amount as string),
-          treasury: new web3.PublicKey((recipeData.payment as any).treasury),
-        };
-      }
+        // get payment data
+        let payment: Payment | null = null;
+        if (recipeData.payment) {
+          payment = {
+            amount: new BN((recipeData.payment as any).amount as string),
+            treasury: new web3.PublicKey((recipeData.payment as any).treasury),
+          };
+        }
 
-      const selectableOutputs: OutputSelectionGroup[] = [];
-      for (const output of recipeData.selectableOutputs as any[]) {
-        const choices: OutputSelection[] = [];
-        for (const choice of output.choices as any[]) {
-          choices.push({
-            outputId: Number(choice.outputId),
-            mint: new web3.PublicKey(choice.mint),
-            amount: new BN(choice.amount),
+        const selectableOutputs: OutputSelectionGroup[] = [];
+        for (const output of recipeData.selectableOutputs as any[]) {
+          const choices: OutputSelection[] = [];
+          for (const choice of output.choices as any[]) {
+            choices.push({
+              outputId: Number(choice.outputId),
+              mint: new web3.PublicKey(choice.mint),
+              amount: new BN(choice.amount),
+            });
+          }
+
+          selectableOutputs.push({
+            groupId: Number(output.groupId),
+            choices: choices,
           });
         }
 
-        selectableOutputs.push({
-          groupId: Number(output.groupId),
-          choices: choices,
-        });
-      }
+        const recipe: Recipe = {
+          itemClass: itemClass,
+          recipeIndex: new BN(i),
+          payment: payment,
+          buildEnabled: Boolean(recipeData.buildEnabled),
+          ingredients: ingredients,
+          buildPermitRequired: Boolean(recipeData.buildPermitRequired),
+          selectableOutputs: selectableOutputs,
+        };
 
-      const recipe: Recipe = {
-        itemClass: itemClass,
-        recipeIndex: new BN(i),
-        payment: payment,
-        buildEnabled: Boolean(recipeData.buildEnabled),
-        ingredients: ingredients,
-        buildPermitRequired: Boolean(recipeData.buildPermitRequired),
-        selectableOutputs: selectableOutputs,
-      };
-
-      recipes.push(recipe);
+        recipes.push(recipe);
       }
-    };
+    }
 
     let outputMode: ItemClassOutputMode = { kind: "Item" };
     switch (Object.keys(itemClassData.outputMode)[0]) {
