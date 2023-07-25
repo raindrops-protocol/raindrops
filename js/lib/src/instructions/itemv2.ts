@@ -33,11 +33,104 @@ import {
 export class Instruction extends SolKitInstruction {
   constructor(args: { program: Program.Program }) {
     super(args);
-  } 
+  }
 
   async createItemClass(
     args: CreateItemClassArgs
-  ): Promise<[web3.PublicKey, web3.Keypair, web3.TransactionInstruction[]]> {
+  ): Promise<[web3.PublicKey, web3.Keypair[], web3.TransactionInstruction[]]> {
+    // create authority mint account and mint some to the creator
+    const authorityMint = web3.Keypair.generate();
+
+    // derive item class pda
+    const itemClass = getItemClassPda(authorityMint.publicKey);
+
+    const createAuthorityMintAccountIx = await web3.SystemProgram.createAccount(
+      {
+        programId: splToken.TOKEN_PROGRAM_ID,
+        space: splToken.MintLayout.span,
+        fromPubkey: this.program.client.provider.publicKey!,
+        newAccountPubkey: authorityMint.publicKey,
+        lamports:
+          await this.program.client.provider.connection.getMinimumBalanceForRentExemption(
+            splToken.MintLayout.span
+          ),
+      }
+    );
+
+    // make it an SFT
+    const initAuthorityMintIx = splToken.createInitializeMintInstruction(
+      authorityMint.publicKey,
+      0,
+      this.program.client.provider.publicKey!,
+      this.program.client.provider.publicKey!
+    );
+
+    const destinationAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint.publicKey,
+      this.program.client.provider.publicKey!
+    );
+
+    const createAuthorityMintDestinationIx =
+      splToken.createAssociatedTokenAccountIdempotentInstruction(
+        this.program.client.provider.publicKey!,
+        destinationAta,
+        this.program.client.provider.publicKey!,
+        authorityMint.publicKey
+      );
+
+    const [metadata, _metadataBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        authorityMint.publicKey.toBuffer(),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const createAuthorityMintMetadataIx =
+      mpl.createCreateMetadataAccountV3Instruction(
+        {
+          metadata: metadata,
+          mint: authorityMint.publicKey,
+          mintAuthority: this.program.client.provider.publicKey!,
+          payer: this.program.client.provider.publicKey!,
+          updateAuthority: this.program.client.provider.publicKey!,
+        },
+        {
+          createMetadataAccountArgsV3: {
+            data: {
+              name: "ItemsV2 Auth Token",
+              symbol: "AUTH",
+              uri: "https://foo.com/bar.json",
+              sellerFeeBasisPoints: 0,
+              creators: null,
+              collection: null,
+              uses: null,
+            },
+            collectionDetails: null,
+            isMutable: true,
+          },
+        }
+      );
+
+    // mint 3 tokens to the deployer/authority
+    const mintAuthorityTokensIx = splToken.createMintToInstruction(
+      authorityMint.publicKey,
+      destinationAta,
+      this.program.client.provider.publicKey!,
+      3
+    );
+
+    // transfer minting authority to item class
+    const transferAuthorityToItemClassIx =
+      splToken.createSetAuthorityInstruction(
+        authorityMint.publicKey,
+        this.program.client.provider.publicKey!,
+        splToken.AuthorityType.MintTokens,
+        itemClass
+      );
+
+    // create merkle tree account
     const items = web3.Keypair.generate();
 
     const maxDepth = 16;
@@ -62,60 +155,18 @@ export class Instruction extends SolKitInstruction {
       programId: cmp.PROGRAM_ID,
     });
 
-    const itemClass = getItemClassPda(items.publicKey);
-
-    const recipe = getRecipePda(itemClass, new BN(0));
-
-    const ingredients: any[] = [];
-    for (const ingredientArg of args.recipeArgs.ingredientArgs) {
-      let degradationBuildEffect;
-      if (ingredientArg.buildEffect.degradation) {
-        degradationBuildEffect = {
-          on: { rate: ingredientArg.buildEffect.degradation.rate },
-        };
-      } else {
-        degradationBuildEffect = { off: {} };
-      }
-
-      let cooldownBuildEffect;
-      if (ingredientArg.buildEffect.cooldown) {
-        cooldownBuildEffect = {
-          on: { seconds: ingredientArg.buildEffect.cooldown.seconds },
-        };
-      } else {
-        cooldownBuildEffect = { off: {} };
-      }
-
-      const ingredient = {
-        itemClass: ingredientArg.itemClass,
-        requiredAmount: ingredientArg.requiredAmount,
-        buildEffect: {
-          degradation: degradationBuildEffect,
-          cooldown: cooldownBuildEffect,
-        },
-        isDeterministic: ingredientArg.isDeterministic,
-      };
-
-      ingredients.push(ingredient);
-    }
-
     const ixArgs = {
-      recipeArgs: {
-        buildEnabled: args.recipeArgs.buildEnabled,
-        payment: args.recipeArgs.payment,
-        ingredients: ingredients,
-        buildPermitRequired: args.recipeArgs.buildPermitRequired,
-        selectableOutputs: args.recipeArgs.selectableOutputs,
-      },
+      itemClassName: args.itemClassName,
       outputMode: formatItemClassOutputMode(args.outputMode),
     };
 
-    const ix = await this.program.client.methods
+    const createItemClassIx = await this.program.client.methods
       .createItemClass(ixArgs)
       .accounts({
         items: items.publicKey,
         itemClass: itemClass,
-        recipe: recipe,
+        itemClassAuthorityMint: authorityMint.publicKey,
+        itemClassAuthorityMintAta: destinationAta,
         authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
         accountCompression: cmp.PROGRAM_ID,
@@ -124,7 +175,20 @@ export class Instruction extends SolKitInstruction {
       })
       .instruction();
 
-    return [itemClass, items, [createMembersAccountIx, ix]];
+    return [
+      itemClass,
+      [items, authorityMint],
+      [
+        createMembersAccountIx,
+        createAuthorityMintAccountIx,
+        initAuthorityMintIx,
+        createAuthorityMintDestinationIx,
+        createAuthorityMintMetadataIx,
+        mintAuthorityTokensIx,
+        transferAuthorityToItemClassIx,
+        createItemClassIx,
+      ],
+    ];
   }
 
   async addItemsToItemClass(
@@ -135,6 +199,12 @@ export class Instruction extends SolKitInstruction {
     );
     const itemClassItems = new web3.PublicKey(itemClassData.items);
 
+    const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
+    const authorityMintAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint,
+      this.program.client.provider.publicKey!
+    );
+
     const ixns: web3.TransactionInstruction[] = [];
     for (const itemMint of accounts.itemMints) {
       const ix = await this.program.client.methods
@@ -142,6 +212,8 @@ export class Instruction extends SolKitInstruction {
         .accounts({
           itemMint: itemMint,
           itemClass: accounts.itemClass,
+          itemClassAuthorityMint: authorityMint,
+          itemClassAuthorityMintAta: authorityMintAta,
           items: itemClassItems,
           authority: this.program.client.provider.publicKey!,
           logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
@@ -163,6 +235,12 @@ export class Instruction extends SolKitInstruction {
       accounts.itemClass
     );
 
+    const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
+    const authorityMintAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint,
+      this.program.client.provider.publicKey!
+    );
+
     const packIndex = new BN((itemClassData.outputMode as any).pack.index);
 
     const packAccount = getPackPda(accounts.itemClass, packIndex);
@@ -172,6 +250,8 @@ export class Instruction extends SolKitInstruction {
       .accounts({
         pack: packAccount,
         itemClass: accounts.itemClass,
+        itemClassAuthorityMint: authorityMint,
+        itemClassAuthorityMintAta: authorityMintAta,
         authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -196,7 +276,7 @@ export class Instruction extends SolKitInstruction {
     // if build permit is required create the pda
     let buildPermit: web3.PublicKey | null = null;
     if (recipeDataRaw.buildPermitRequired) {
-      buildPermit = getBuildPermitPda(recipe, accounts.builder);
+      buildPermit = getBuildPermitPda(accounts.builder, accounts.itemClass);
     }
 
     const ix = await this.program.client.methods
@@ -528,11 +608,6 @@ export class Instruction extends SolKitInstruction {
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
 
-    const recipe = getRecipePda(
-      itemClass,
-      new BN(buildData.recipeIndex as any)
-    );
-
     const itemClassData = await this.program.client.account.itemClass.fetch(
       itemClass
     );
@@ -552,8 +627,8 @@ export class Instruction extends SolKitInstruction {
     let buildPermit: web3.PublicKey | null = null;
     if (buildData.buildPermitInUse) {
       buildPermit = getBuildPermitPda(
-        recipe,
-        new web3.PublicKey(buildData.builder)
+        new web3.PublicKey(buildData.builder),
+        itemClass
       );
     }
 
@@ -568,7 +643,6 @@ export class Instruction extends SolKitInstruction {
         itemMint: accounts.itemMint,
         itemClass: itemClass,
         itemClassItems: itemClassItems,
-        recipe: recipe,
         buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
@@ -592,17 +666,12 @@ export class Instruction extends SolKitInstruction {
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
 
-    const recipe = getRecipePda(
-      itemClass,
-      new BN(buildData.recipeIndex as any)
-    );
-
     // if build permit is required create the pda
     let buildPermit: web3.PublicKey | null = null;
     if (buildData.buildPermitInUse) {
       buildPermit = getBuildPermitPda(
-        recipe,
-        new web3.PublicKey(buildData.builder)
+        new web3.PublicKey(buildData.builder),
+        itemClass,
       );
     }
 
@@ -616,7 +685,6 @@ export class Instruction extends SolKitInstruction {
       .accounts({
         pack: accounts.pack,
         itemClass: itemClass,
-        recipe: recipe,
         buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
@@ -636,17 +704,12 @@ export class Instruction extends SolKitInstruction {
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
 
-    const recipe = getRecipePda(
-      itemClass,
-      new BN(buildData.recipeIndex as any)
-    );
-
     // if build permit is required create the pda
     let buildPermit: web3.PublicKey | null = null;
     if (buildData.buildPermitInUse) {
       buildPermit = getBuildPermitPda(
-        recipe,
-        new web3.PublicKey(buildData.builder)
+        new web3.PublicKey(buildData.builder),
+        itemClass,
       );
     }
 
@@ -654,7 +717,6 @@ export class Instruction extends SolKitInstruction {
       .completeBuildPresetOnly()
       .accounts({
         itemClass: itemClass,
-        recipe: recipe,
         buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
@@ -1225,10 +1287,23 @@ export class Instruction extends SolKitInstruction {
       accounts.itemClass
     );
 
+    const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
+    const authorityMintAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint,
+      this.program.client.provider.publicKey!
+    );
+
+    let recipeIndex: BN;
+    if (itemClassData.recipeIndex === null) {
+      recipeIndex = new BN(0);
+    } else {
+      recipeIndex = new BN(itemClassData.recipeIndex as any).add(new BN(1));
+    }
+
     // get new recipe pda based off item class recipe index
     const newRecipe = getRecipePda(
       accounts.itemClass,
-      (itemClassData.recipeIndex as BN).add(new BN(1))
+      recipeIndex,
     );
 
     const ix = await this.program.client.methods
@@ -1236,7 +1311,9 @@ export class Instruction extends SolKitInstruction {
       .accounts({
         recipe: newRecipe,
         itemClass: accounts.itemClass,
-        authority: accounts.authority,
+        itemClassAuthorityMint: authorityMint,
+        itemClassAuthorityMintAta: authorityMintAta,
+        authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
       })
@@ -1284,25 +1361,27 @@ export class Instruction extends SolKitInstruction {
     accounts: CreateBuildPermitAccounts,
     args: CreateBuildPermitArgs
   ): Promise<web3.TransactionInstruction> {
-    const recipeData = await this.program.client.account.recipe.fetch(
-      accounts.recipe
-    );
-    const itemClass = new web3.PublicKey(recipeData.itemClass);
     const itemClassData = await this.program.client.account.itemClass.fetch(
-      itemClass
+      accounts.itemClass
     );
 
-    const authority = new web3.PublicKey(itemClassData.authority);
+    const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
+    const authorityMintAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint,
+      this.program.client.provider.publicKey!
+    );
 
-    const buildPermit = getBuildPermitPda(accounts.recipe, args.builder);
+    const buildPermit = getBuildPermitPda(accounts.builder, accounts.itemClass);
 
     const ix = await this.program.client.methods
       .createBuildPermit(args)
       .accounts({
         buildPermit: buildPermit,
-        recipe: accounts.recipe,
-        itemClass: itemClass,
-        authority: authority,
+        builder: accounts.builder,
+        itemClass: accounts.itemClass,
+        itemClassAuthorityMint: authorityMint,
+        itemClassAuthorityMintAta: authorityMintAta,
+        authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
       })
@@ -1323,7 +1402,11 @@ export class Instruction extends SolKitInstruction {
     const itemClassData = await this.program.client.account.itemClass.fetch(
       itemClass
     );
-    const authority = new web3.PublicKey(itemClassData.authority);
+    const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
+    const authorityMintAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint,
+      this.program.client.provider.publicKey!
+    );
 
     const deterministicIngredient = getDeterministicIngredientPda(
       accounts.recipe,
@@ -1337,7 +1420,9 @@ export class Instruction extends SolKitInstruction {
         itemClass: itemClass,
         ingredientMint: accounts.ingredientMint,
         deterministicIngredient: deterministicIngredient,
-        authority: authority,
+        itemClassAuthorityMint: authorityMint,
+        itemClassAuthorityMintAta: authorityMintAta,
+        authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
       })
@@ -1348,7 +1433,7 @@ export class Instruction extends SolKitInstruction {
 }
 
 export interface CreateItemClassArgs {
-  recipeArgs: RecipeArgs;
+  itemClassName: string;
   outputMode: ItemClassOutputMode;
 }
 
@@ -1493,7 +1578,6 @@ export interface ReturnIngredientAccounts {
 
 export interface CreateRecipeAccounts {
   itemClass: web3.PublicKey;
-  authority: web3.PublicKey;
 }
 
 export interface CreateRecipeArgs {
@@ -1519,11 +1603,11 @@ export interface AddPaymentAccounts {
 }
 
 export interface CreateBuildPermitAccounts {
-  recipe: web3.PublicKey;
+  itemClass: web3.PublicKey;
+  builder: web3.PublicKey;
 }
 
 export interface CreateBuildPermitArgs {
-  builder: web3.PublicKey;
   remainingBuilds: number;
 }
 

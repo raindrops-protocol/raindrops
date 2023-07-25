@@ -22,7 +22,7 @@ pub struct ItemClass {
     // merkle tree containing all item addresses belonging to this item class
     pub items: Option<Pubkey>,
 
-    pub recipe_index: u64,
+    pub recipe_index: Option<u64>,
 
     // defines the behavior when the item class is the target of a build output
     pub output_mode: ItemClassOutputMode,
@@ -36,8 +36,15 @@ impl ItemClass {
         4 + name.len() + // name size
         32 + // authority mint
         (1 + 32) + // optional items merkle tree
-        8 + // recipe_index
+        (1 + 8) + // recipe_index
         ItemClassOutputMode::SPACE // output mode
+    }
+
+    pub fn get_next_recipe_index(&self) -> u64 {
+        match self.recipe_index {
+            Some(index) => index + 1,
+            None => 0,
+        }
     }
 }
 
@@ -406,13 +413,13 @@ impl Pack {
     32; // contents hash
 }
 
-// seeds = ['build_permit', wallet, recipe]
+// seeds = ['build_permit', builder, item_class]
 // we rely on the fact that each wallet can only do 1 concurrent build because of the build pda seed setup
 // if this changes we need to take into account multiple builds in parallel and make sure you can't game the build permit system
 #[account]
 pub struct BuildPermit {
-    pub recipe: Pubkey,
     pub builder: Pubkey,
+    pub item_class: Pubkey,
     pub remaining_builds: u16,
 }
 
@@ -420,7 +427,7 @@ impl BuildPermit {
     pub const PREFIX: &'static str = "build_permit";
 
     pub const SPACE: usize = 8 + // anchor
-    32 + // recipe
+    32 + // item class
     32 + // builder
     2; // remaining_builds
 }

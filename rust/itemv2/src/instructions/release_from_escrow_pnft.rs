@@ -9,7 +9,7 @@ use crate::state::{accounts::ItemClass, AuthRulesProgram, TokenMetadataProgram};
 
 #[derive(Accounts)]
 pub struct ReleaseFromEscrowPNft<'info> {
-    pub item_mint: Account<'info, token::Mint>,
+    pub item_mint: Box<Account<'info, token::Mint>>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]

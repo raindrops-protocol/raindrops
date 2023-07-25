@@ -26,11 +26,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -734,11 +729,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -793,11 +783,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -833,11 +818,6 @@ export type Itemv2 = {
       "accounts": [
         {
           "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
           "isMut": false,
           "isSigner": false
         },
@@ -1226,7 +1206,7 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
+          "name": "builder",
           "isMut": false,
           "isSigner": false
         },
@@ -1578,6 +1558,10 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
+            "name": "name",
+            "type": "string"
+          },
+          {
             "name": "authorityMint",
             "type": "publicKey"
           },
@@ -1589,7 +1573,9 @@ export type Itemv2 = {
           },
           {
             "name": "recipeIndex",
-            "type": "u64"
+            "type": {
+              "option": "u64"
+            }
           },
           {
             "name": "outputMode",
@@ -1753,11 +1739,11 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipe",
+            "name": "builder",
             "type": "publicKey"
           },
           {
-            "name": "builder",
+            "name": "itemClass",
             "type": "publicKey"
           },
           {
@@ -1846,10 +1832,6 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "builder",
-            "type": "publicKey"
-          },
-          {
             "name": "remainingBuilds",
             "type": "u16"
           }
@@ -1878,55 +1860,13 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipeArgs",
-            "type": {
-              "defined": "RecipeArgs"
-            }
+            "name": "itemClassName",
+            "type": "string"
           },
           {
             "name": "outputMode",
             "type": {
               "defined": "ItemClassOutputMode"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "RecipeArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "buildEnabled",
-            "type": "bool"
-          },
-          {
-            "name": "payment",
-            "type": {
-              "option": {
-                "defined": "Payment"
-              }
-            }
-          },
-          {
-            "name": "ingredients",
-            "type": {
-              "vec": {
-                "defined": "RecipeIngredientData"
-              }
-            }
-          },
-          {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
             }
           }
         ]
@@ -2597,11 +2537,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -3305,11 +3240,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -3364,11 +3294,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "buildPermit",
           "isMut": true,
           "isSigner": false,
@@ -3404,11 +3329,6 @@ export const IDL: Itemv2 = {
       "accounts": [
         {
           "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
           "isMut": false,
           "isSigner": false
         },
@@ -3797,7 +3717,7 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
+          "name": "builder",
           "isMut": false,
           "isSigner": false
         },
@@ -4149,6 +4069,10 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
+            "name": "name",
+            "type": "string"
+          },
+          {
             "name": "authorityMint",
             "type": "publicKey"
           },
@@ -4160,7 +4084,9 @@ export const IDL: Itemv2 = {
           },
           {
             "name": "recipeIndex",
-            "type": "u64"
+            "type": {
+              "option": "u64"
+            }
           },
           {
             "name": "outputMode",
@@ -4324,11 +4250,11 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipe",
+            "name": "builder",
             "type": "publicKey"
           },
           {
-            "name": "builder",
+            "name": "itemClass",
             "type": "publicKey"
           },
           {
@@ -4417,10 +4343,6 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "builder",
-            "type": "publicKey"
-          },
-          {
             "name": "remainingBuilds",
             "type": "u16"
           }
@@ -4449,55 +4371,13 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipeArgs",
-            "type": {
-              "defined": "RecipeArgs"
-            }
+            "name": "itemClassName",
+            "type": "string"
           },
           {
             "name": "outputMode",
             "type": {
               "defined": "ItemClassOutputMode"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "RecipeArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "buildEnabled",
-            "type": "bool"
-          },
-          {
-            "name": "payment",
-            "type": {
-              "option": {
-                "defined": "Payment"
-              }
-            }
-          },
-          {
-            "name": "ingredients",
-            "type": {
-              "vec": {
-                "defined": "RecipeIngredientData"
-              }
-            }
-          },
-          {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
             }
           }
         ]

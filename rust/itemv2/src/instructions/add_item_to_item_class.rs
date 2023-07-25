@@ -53,7 +53,7 @@ pub fn handler(ctx: Context<AddItemToItemClass>) -> Result<()> {
             append_accounts,
             &[&[
                 ItemClass::PREFIX.as_bytes(),
-                ctx.accounts.items.key().as_ref(),
+                ctx.accounts.item_class_authority_mint.key().as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],
         ),

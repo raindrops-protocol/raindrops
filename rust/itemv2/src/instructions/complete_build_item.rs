@@ -7,7 +7,7 @@ use spl_account_compression::{
 use std::convert::TryInto;
 
 use crate::state::{
-    accounts::{Build, BuildPermit, ItemClass, Recipe},
+    accounts::{Build, BuildPermit, ItemClass},
     errors::ErrorCode,
     is_signer, BuildStatus, NoopProgram,
 };
@@ -19,25 +19,19 @@ pub struct CompleteBuildItem<'info> {
     #[account(
         constraint = item_class.items.unwrap().eq(&item_class_items.key()),
         constraint = item_class.output_mode.is_item(),
-        seeds = [ItemClass::PREFIX.as_bytes(), item_class_items.key().as_ref()], bump)]
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.authority_mint.as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 
     /// CHECK: checked by spl-account-compression
     pub item_class_items: UncheckedAccount<'info>,
 
-    #[account(
-        has_one = item_class,
-        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub recipe: Account<'info, Recipe>,
-
     #[account(mut,
-        has_one = recipe,
+        has_one = item_class,
         constraint = build_permit.builder.eq(&build.builder.key()),
-        seeds = [BuildPermit::PREFIX.as_bytes(), build.builder.key().as_ref(), recipe.key().as_ref()], bump)]
+        seeds = [BuildPermit::PREFIX.as_bytes(), build.builder.key().as_ref(), item_class.key().as_ref()], bump)]
     pub build_permit: Option<Account<'info, BuildPermit>>,
 
     #[account(mut,
-        constraint = recipe.recipe_index == build.recipe_index,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.as_ref()], bump)]
     pub build: Account<'info, Build>,
 

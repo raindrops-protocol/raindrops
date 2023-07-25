@@ -899,13 +899,7 @@ describe.only("itemv2", () => {
     });
 
     let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
-      recipeArgs: {
-        buildEnabled: false,
-        payment: null,
-        ingredientArgs: [],
-        buildPermitRequired: false,
-        selectableOutputs: [],
-      },
+      itemClassName: "testing",
       outputMode: { kind: "Item" },
     };
 
@@ -913,16 +907,15 @@ describe.only("itemv2", () => {
       await itemProgram.createItemClass(createItemClassArgs);
     console.log("createItemClassTxSig: %s", createItemClassResult.txid);
 
-    // first recipe is created during item class creation
-    const itemClassDataPre = await itemProgram.getItemClass(itemClass);
-    assert.isTrue(itemClassDataPre.recipeIndex.eq(new anchor.BN(0)));
+    // no recipes created initially
+    const itemClassData0 = await itemProgram.getItemClass(itemClass);
+    assert.isNull(itemClassData0.recipeIndex);
 
-    const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
+    const createRecipe1Accounts: Instructions.ItemV2.CreateRecipeAccounts = {
       itemClass: itemClass,
-      authority: payer.publicKey,
     };
 
-    const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
+    const createRecipe1Args: Instructions.ItemV2.CreateRecipeArgs = {
       args: {
         buildEnabled: false,
         payment: null,
@@ -932,15 +925,39 @@ describe.only("itemv2", () => {
       },
     };
 
-    const createRecipeResult = await itemProgram.createRecipe(
-      createRecipeAccounts,
-      createRecipeArgs
+    const createRecipe1Result = await itemProgram.createRecipe(
+      createRecipe1Accounts,
+      createRecipe1Args
     );
-    console.log("createRecipeTxSig: %s", createRecipeResult.txid);
+    console.log("createRecipe1TxSig: %s", createRecipe1Result.txid);
 
-    // first recipe is created during item class creation
-    const itemClassDataPost = await itemProgram.getItemClass(itemClass);
-    assert.isTrue(itemClassDataPost.recipeIndex.eq(new anchor.BN(1)));
+    // after 1 recipe have been created
+    const itemClassData1 = await itemProgram.getItemClass(itemClass);
+    assert.isTrue(itemClassData1.recipeIndex.eq(new anchor.BN(0)));
+
+    const createRecipe2Accounts: Instructions.ItemV2.CreateRecipeAccounts = {
+      itemClass: itemClass,
+    };
+
+    const createRecipe2Args: Instructions.ItemV2.CreateRecipeArgs = {
+      args: {
+        buildEnabled: false,
+        payment: null,
+        ingredientArgs: [],
+        buildPermitRequired: false,
+        selectableOutputs: [],
+      },
+    };
+
+    const createRecipe2Result = await itemProgram.createRecipe(
+      createRecipe2Accounts,
+      createRecipe2Args
+    );
+    console.log("createRecipe2TxSig: %s", createRecipe2Result.txid);
+
+    // after 2 recipes have been created
+    const itemClassData2 = await itemProgram.getItemClass(itemClass);
+    assert.isTrue(itemClassData2.recipeIndex.eq(new anchor.BN(1)));
   });
 
   it("build pNFT with only 1 signature from builder", async () => {
@@ -1645,15 +1662,15 @@ describe.only("itemv2", () => {
 
     // create build permit for builder
     const createBuildPermitResult = await itemProgram.createBuildPermit(
-      { recipe: recipe },
-      { builder: payer.publicKey, remainingBuilds: 1 }
+      { itemClass: outputItemClass.itemClass, builder: payer.publicKey },
+      { remainingBuilds: 1 }
     );
     console.log("createBuildPermitTxSig: %s", createBuildPermitResult.txid);
 
     const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
-      State.ItemV2.getBuildPermitPda(recipe, payer.publicKey)
+      State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
-    assert.isTrue(buildPermitDataPreBuild.recipe.equals(recipe));
+    assert.isTrue(buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass));
     assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 1);
     assert.isTrue(buildPermitDataPreBuild.builder.equals(payer.publicKey));
 
@@ -1722,7 +1739,7 @@ describe.only("itemv2", () => {
     await cleanBuild(itemProgram, build);
 
     const buildPermitDataPostBuild = await itemProgram.getBuildPermit(
-      State.ItemV2.getBuildPermitPda(recipe, payer.publicKey)
+      State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
     assert.isNull(buildPermitDataPostBuild);
 
@@ -1795,15 +1812,15 @@ describe.only("itemv2", () => {
 
     // create build permit for builder
     const createBuildPermitResult = await itemProgram.createBuildPermit(
-      { recipe: recipe },
-      { builder: payer.publicKey, remainingBuilds: 2 }
+      { itemClass: outputItemClass.itemClass, builder: payer.publicKey },
+      { remainingBuilds: 2 }
     );
     console.log("createBuildPermitTxSig: %s", createBuildPermitResult.txid);
 
     const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
-      State.ItemV2.getBuildPermitPda(recipe, payer.publicKey)
+      State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
-    assert.isTrue(buildPermitDataPreBuild.recipe.equals(recipe));
+    assert.isTrue(buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass));
     assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 2);
     assert.isTrue(buildPermitDataPreBuild.builder.equals(payer.publicKey));
 
@@ -1859,9 +1876,9 @@ describe.only("itemv2", () => {
     await cleanBuild(itemProgram, build1);
 
     const buildPermitDataPostBuild = await itemProgram.getBuildPermit(
-      State.ItemV2.getBuildPermitPda(recipe, payer.publicKey)
+      State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
-    assert.isTrue(buildPermitDataPostBuild.recipe.equals(recipe));
+    assert.isTrue(buildPermitDataPostBuild.itemClass.equals(outputItemClass.itemClass));
     assert.isTrue(buildPermitDataPostBuild.remainingBuilds === 1);
     assert.isTrue(buildPermitDataPostBuild.builder.equals(payer.publicKey));
 
@@ -1917,7 +1934,7 @@ describe.only("itemv2", () => {
     await cleanBuild(itemProgram, build1);
 
     const buildPermitDataPostBuild2 = await itemProgram.getBuildPermit(
-      State.ItemV2.getBuildPermitPda(outputItemClass.itemClass, payer.publicKey)
+      State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
     assert.isNull(buildPermitDataPostBuild2);
   });
@@ -2703,7 +2720,7 @@ async function createItemClass(
   connection: anchor.web3.Connection,
   ingredientCount: number,
   isPNft: boolean,
-  recipeArgs: Instructions.ItemV2.RecipeArgs
+  recipeArgs?: Instructions.ItemV2.RecipeArgs
 ): Promise<ItemClassContainer> {
   const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
     asyncSigning: false,
@@ -2714,7 +2731,7 @@ async function createItemClass(
   });
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
-    recipeArgs: recipeArgs,
+    itemClassName: "testing",
     outputMode: { kind: "Item" },
   };
 
@@ -2858,6 +2875,24 @@ async function createItemClass(
 
     mints.push(ingredientMintOutput.mintAddress);
   }
+
+  // if recipe args are defined, create them
+  if (recipeArgs) {
+    const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
+      itemClass: itemClass,
+    };
+  
+    const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
+      args: recipeArgs
+    };
+  
+    const createRecipeResult = await itemProgram.createRecipe(
+      createRecipeAccounts,
+      createRecipeArgs
+    );
+    console.log("createRecipeTxSig: %s", createRecipeResult.txid);
+  }
+
   return { itemClass, mints, tree };
 }
 
@@ -2876,7 +2911,7 @@ async function createItemClassPack(
   });
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
-    recipeArgs: recipeArgs,
+    itemClassName: "testing",
     outputMode: { kind: "Pack", index: new BN(0) },
   };
 
@@ -3178,6 +3213,23 @@ async function createItemClassPack(
     );
   }
 
+  // if recipe args are defined, create them
+  if (recipeArgs) {
+    const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
+      itemClass: itemClass,
+    };
+  
+    const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
+      args: recipeArgs
+    };
+  
+    const createRecipeResult = await itemProgram.createRecipe(
+      createRecipeAccounts,
+      createRecipeArgs
+    );
+    console.log("createRecipeTxSig: %s", createRecipeResult.txid);
+  }
+
   return { itemClass, packs };
 }
 
@@ -3195,7 +3247,7 @@ async function createItemClassPresetOnly(
   });
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
-    recipeArgs: recipeArgs,
+    itemClassName: "testing",
     outputMode: { kind: "PresetOnly" },
   };
 
@@ -3206,6 +3258,23 @@ async function createItemClassPresetOnly(
 
   const tree = initTree({ maxDepth: 16, maxBufferSize: 64 });
   console.log("tree created: %s", itemClass.toString());
+
+  // if recipe args are defined, create them
+  if (recipeArgs) {
+    const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
+      itemClass: itemClass,
+    };
+  
+    const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
+      args: recipeArgs
+    };
+  
+    const createRecipeResult = await itemProgram.createRecipe(
+      createRecipeAccounts,
+      createRecipeArgs
+    );
+    console.log("createRecipeTxSig: %s", createRecipeResult.txid);
+  }
 
   return { itemClass };
 }

@@ -25,9 +25,9 @@ pub struct StartBuild<'info> {
     pub item_class: Account<'info, ItemClass>,
 
     #[account(mut,
-        has_one = recipe,
+        has_one = item_class,
         has_one = builder,
-        seeds = [BuildPermit::PREFIX.as_bytes(), builder.key().as_ref(), recipe.key().as_ref()], bump)]
+        seeds = [BuildPermit::PREFIX.as_bytes(), builder.key().as_ref(), item_class.key().as_ref()], bump)]
     pub build_permit: Option<Account<'info, BuildPermit>>,
 
     #[account(mut)]
