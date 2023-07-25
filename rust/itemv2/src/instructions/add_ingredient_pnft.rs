@@ -6,7 +6,7 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, ItemClass, Item, Recipe},
+    accounts::{Build, DeterministicIngredient, Item, ItemClass, Recipe},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, ItemState, TokenMetadataProgram,
 };
@@ -16,7 +16,7 @@ pub struct AddIngredientPNft<'info> {
     pub ingredient_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
-        seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.items.key().as_ref()], bump)]
+        seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.authority_mint.key().as_ref()], bump)]
     pub ingredient_item_class: Box<Account<'info, ItemClass>>,
 
     #[account(

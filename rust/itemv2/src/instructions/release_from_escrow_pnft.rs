@@ -5,15 +5,11 @@ use anchor_lang::{
 use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
-use crate::state::{
-    accounts::{Build, ItemClass},
-    errors::ErrorCode,
-    AuthRulesProgram, BuildStatus, TokenMetadataProgram,
-};
+use crate::state::{accounts::ItemClass, AuthRulesProgram, TokenMetadataProgram};
 
 #[derive(Accounts)]
-pub struct ReceiveItemPNft<'info> {
-    pub item_mint: Account<'info, token::Mint>,
+pub struct ReleaseFromEscrowPNft<'info> {
+    pub item_mint: Box<Account<'info, token::Mint>>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
@@ -33,33 +29,36 @@ pub struct ReceiveItemPNft<'info> {
     #[account(mut)]
     pub item_source_token_record: UncheckedAccount<'info>,
 
-    #[account(init_if_needed, payer = payer, associated_token::mint = item_mint, associated_token::authority = builder)]
+    #[account(init_if_needed, payer = authority, associated_token::mint = item_mint, associated_token::authority = destination_authority)]
     pub item_destination: Box<Account<'info, token::TokenAccount>>,
+
+    pub destination_authority: SystemAccount<'info>,
 
     /// CHECK: Done by token metadata
     #[account(mut)]
     pub item_destination_token_record: UncheckedAccount<'info>,
 
     #[account(
-        mut,
-        has_one = builder,
-        seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
-    pub build: Account<'info, Build>,
-
-    #[account(
-        seeds = [ItemClass::PREFIX.as_bytes(), item_class.authority_mint.key().as_ref()], bump)]
+        constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 
-    pub builder: SystemAccount<'info>,
+    #[account(mint::authority = item_class)]
+    pub item_class_authority_mint: Account<'info, token::Mint>,
+
+    #[account(
+        constraint = item_class_authority_mint_ata.amount >= 1,
+        associated_token::mint = item_class_authority_mint, associated_token::authority = authority)]
+    pub item_class_authority_mint_ata: Account<'info, token::TokenAccount>,
 
     #[account(mut)]
-    pub payer: Signer<'info>,
-
-    pub rent: Sysvar<'info, Rent>,
+    pub authority: Signer<'info>,
 
     /// CHECK: checked with constraint
     #[account(address = InstructionsID)]
     pub instructions: UncheckedAccount<'info>,
+
+    pub rent: Sysvar<'info, Rent>,
 
     pub system_program: Program<'info, System>,
 
@@ -72,35 +71,10 @@ pub struct ReceiveItemPNft<'info> {
     pub auth_rules_program: Program<'info, AuthRulesProgram>,
 }
 
-pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
-    // check that the build is complete
-    require!(
-        ctx.accounts.build.status.eq(&BuildStatus::Complete),
-        ErrorCode::InvalidBuildStatus
-    );
-
-    // get output amount for item mint
-    let amount = ctx
-        .accounts
-        .build
-        .output
-        .find_output_amount(&ctx.accounts.item_mint.key());
-
-    // set build output to received
-    ctx.accounts
-        .build
-        .output
-        .set_output_as_received(&ctx.accounts.item_mint.key());
-
-    // if all outputs have been dispensed, set build to final state
-    if ctx.accounts.build.output.all_outputs_sent() {
-        ctx.accounts.build.status = BuildStatus::ItemReceived;
-    }
-
-    // transfer the pNFT to the builder
+pub fn handler(ctx: Context<ReleaseFromEscrowPNft>) -> Result<()> {
     // transfer item_mint to destination
     let transfer_args = TransferArgs::V1 {
-        amount, // this should always be 1 for a pNFT
+        amount: 1, // this should always be 1 for a pNFT
         authorization_data: None,
     };
 
@@ -108,14 +82,14 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
         token: ctx.accounts.item_source.key(),
         token_owner: ctx.accounts.item_class.key(),
         destination: ctx.accounts.item_destination.key(),
-        destination_owner: ctx.accounts.builder.key(),
+        destination_owner: ctx.accounts.destination_authority.key(),
         mint: ctx.accounts.item_mint.key(),
         metadata: ctx.accounts.item_metadata.key(),
         edition: Some(ctx.accounts.item_edition.key()),
         owner_token_record: Some(ctx.accounts.item_source_token_record.key()),
         destination_token_record: Some(ctx.accounts.item_destination_token_record.key()),
         authority: ctx.accounts.item_class.key(),
-        payer: ctx.accounts.payer.key(),
+        payer: ctx.accounts.authority.key(),
         system_program: ctx.accounts.system_program.key(),
         sysvar_instructions: ctx.accounts.instructions.key(),
         spl_token_program: ctx.accounts.token_program.key(),
@@ -129,14 +103,14 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
         ctx.accounts.item_source.to_account_info(),
         ctx.accounts.item_class.to_account_info(),
         ctx.accounts.item_destination.to_account_info(),
-        ctx.accounts.builder.to_account_info(),
+        ctx.accounts.destination_authority.to_account_info(),
         ctx.accounts.item_mint.to_account_info(),
         ctx.accounts.item_metadata.to_account_info(),
         ctx.accounts.item_edition.to_account_info(),
         ctx.accounts.item_source_token_record.to_account_info(),
         ctx.accounts.item_destination_token_record.to_account_info(),
         ctx.accounts.item_class.to_account_info(),
-        ctx.accounts.payer.to_account_info(),
+        ctx.accounts.authority.to_account_info(),
         ctx.accounts.system_program.to_account_info(),
         ctx.accounts.instructions.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
@@ -150,7 +124,7 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
         &transfer_accounts,
         &[&[
             ItemClass::PREFIX.as_bytes(),
-            ctx.accounts.item_class.authority_mint.as_ref(),
+            ctx.accounts.item_class_authority_mint.key().as_ref(),
             &[*ctx.bumps.get("item_class").unwrap()],
         ]],
     )?;
@@ -163,7 +137,7 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
         // close item class ata
         let close_ata_accounts = token::CloseAccount {
             account: ctx.accounts.item_source.to_account_info(),
-            destination: ctx.accounts.payer.to_account_info(),
+            destination: ctx.accounts.authority.to_account_info(),
             authority: ctx.accounts.item_class.to_account_info(),
         };
 
@@ -172,7 +146,7 @@ pub fn handler(ctx: Context<ReceiveItemPNft>) -> Result<()> {
             close_ata_accounts,
             &[&[
                 ItemClass::PREFIX.as_bytes(),
-                ctx.accounts.item_class.authority_mint.as_ref(),
+                ctx.accounts.item_class_authority_mint.key().as_ref(),
                 &[*ctx.bumps.get("item_class").unwrap()],
             ]],
         ))?;

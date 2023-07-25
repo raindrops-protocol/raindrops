@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token;
 
 use crate::state::{
     accounts::{ItemClass, Recipe},
@@ -11,13 +12,21 @@ pub struct CreateRecipe<'info> {
     #[account(init,
         payer = authority,
         space = Recipe::INIT_SPACE,
-        seeds = [Recipe::PREFIX.as_bytes(), &(item_class.recipe_index + 1).to_le_bytes(), item_class.key().as_ref()], bump)]
+        seeds = [Recipe::PREFIX.as_bytes(), &item_class.get_next_recipe_index().to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
     #[account(mut,
-        has_one = authority,
-        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+        constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
+
+    #[account(mint::authority = item_class)]
+    pub item_class_authority_mint: Account<'info, token::Mint>,
+
+    #[account(
+        constraint = item_class_authority_mint_ata.amount >= 1,
+        associated_token::mint = item_class_authority_mint, associated_token::authority = authority)]
+    pub item_class_authority_mint_ata: Account<'info, token::TokenAccount>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -37,13 +46,15 @@ pub struct CreateRecipeArgs {
 }
 
 pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()> {
+    let recipe_index = ctx.accounts.item_class.get_next_recipe_index();
+
     // increment recipe index on item class
     let item_class = &mut ctx.accounts.item_class;
-    item_class.recipe_index += 1;
+    item_class.recipe_index = Some(recipe_index);
 
     // init recipe
     ctx.accounts.recipe.set_inner(Recipe {
-        recipe_index: ctx.accounts.item_class.recipe_index,
+        recipe_index: recipe_index,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.build_enabled,
         ingredients: vec![],

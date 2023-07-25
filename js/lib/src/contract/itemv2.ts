@@ -1,8 +1,4 @@
-import {
-  Program,
-  Transaction,
-  SendOptions,
-} from "@raindrop-studios/sol-kit";
+import { Program, Transaction, SendOptions } from "@raindrop-studios/sol-kit";
 import { web3, BN, Wallet } from "@project-serum/anchor";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import * as ItemInstruction from "../instructions/itemv2";
@@ -26,7 +22,7 @@ import {
   ITEMV2_ID,
   getRecipePda,
   getPackPda,
-  ItemClassOutputMode
+  ItemClassOutputMode,
 } from "../state/itemv2";
 import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
@@ -38,15 +34,15 @@ export class ItemProgramV2 extends Program.Program {
   constructor() {
     super();
     this.instruction = new ItemInstruction.Instruction({ program: this });
-  } 
+  }
 
   async createItemClass(
     args: ItemInstruction.CreateItemClassArgs,
     options?: SendOptions
   ): Promise<[web3.PublicKey, Transaction.SendTransactionResult]> {
-    const [itemClass, itemsKp, instructions] =
+    const [itemClass, signers, instructions] =
       await this.instruction.createItemClass(args);
-    const result = await this.sendWithRetry(instructions, [itemsKp], options);
+    const result = await this.sendWithRetry(instructions, signers, options);
     return [itemClass, result];
   }
 
@@ -218,88 +214,95 @@ export class ItemProgramV2 extends Program.Program {
   }
 
   async getItemClass(itemClass: web3.PublicKey): Promise<ItemClass | null> {
-    const itemClassData = await this.client.account.itemClass.fetch(
-      itemClass
-    );
+    const itemClassData = await this.client.account.itemClass.fetch(itemClass);
     if (!itemClassData) {
       return null;
     }
 
-    const recipeIndex = new BN(itemClassData.recipeIndex as string);
+    let recipeIndex: BN | null = null;
+    if (itemClassData.recipeIndex !== null) {
+      recipeIndex = new BN(itemClassData.recipeIndex as any);
+    }
 
     const recipes: Recipe[] = [];
-    for (let i = 0; i <= recipeIndex.toNumber(); i++) {
-      const recipeAddr = getRecipePda(itemClass, new BN(i));
+    if (recipeIndex !== null) {
+      for (let i = 0; i <= recipeIndex.toNumber(); i++) {
+        const recipeAddr = getRecipePda(itemClass, new BN(i));
 
-      const recipeData = await this.client.account.recipe.fetch(recipeAddr);
+        const recipeData = await this.client.account.recipe.fetch(recipeAddr);
 
-      // get recipe ingredients
-      const ingredients: Ingredient[] = [];
-      for (const recipeIngredient of recipeData.ingredients as any[]) {
-        const ingredient: Ingredient = {
-          itemClass: new web3.PublicKey(recipeIngredient.itemClass),
-          requiredAmount: new BN(recipeIngredient.requiredAmount as string),
-          buildEffect: recipeIngredient.buildEffect,
-        };
+        // get recipe ingredients
+        const ingredients: Ingredient[] = [];
+        for (const recipeIngredient of recipeData.ingredients as any[]) {
+          const ingredient: Ingredient = {
+            itemClass: new web3.PublicKey(recipeIngredient.itemClass),
+            requiredAmount: new BN(recipeIngredient.requiredAmount as string),
+            buildEffect: recipeIngredient.buildEffect,
+          };
 
-        ingredients.push(ingredient);
-      }
+          ingredients.push(ingredient);
+        }
 
-      // get payment data
-      let payment: Payment | null = null;
-      if (recipeData.payment) {
-        payment = {
-          amount: new BN((recipeData.payment as any).amount as string),
-          treasury: new web3.PublicKey((recipeData.payment as any).treasury),
-        };
-      }
+        // get payment data
+        let payment: Payment | null = null;
+        if (recipeData.payment) {
+          payment = {
+            amount: new BN((recipeData.payment as any).amount as string),
+            treasury: new web3.PublicKey((recipeData.payment as any).treasury),
+          };
+        }
 
-      const selectableOutputs: OutputSelectionGroup[] = [];
-      for (const output of recipeData.selectableOutputs as any[]) {
-        const choices: OutputSelection[] = [];
-        for (const choice of output.choices as any[]) {
-          choices.push({
-            outputId: Number(choice.outputId),
-            mint: new web3.PublicKey(choice.mint),
-            amount: new BN(choice.amount),
+        const selectableOutputs: OutputSelectionGroup[] = [];
+        for (const output of recipeData.selectableOutputs as any[]) {
+          const choices: OutputSelection[] = [];
+          for (const choice of output.choices as any[]) {
+            choices.push({
+              outputId: Number(choice.outputId),
+              mint: new web3.PublicKey(choice.mint),
+              amount: new BN(choice.amount),
+            });
+          }
+
+          selectableOutputs.push({
+            groupId: Number(output.groupId),
+            choices: choices,
           });
         }
 
-        selectableOutputs.push({
-          groupId: Number(output.groupId),
-          choices: choices,
-        });
+        const recipe: Recipe = {
+          itemClass: itemClass,
+          recipeIndex: new BN(i),
+          payment: payment,
+          buildEnabled: Boolean(recipeData.buildEnabled),
+          ingredients: ingredients,
+          buildPermitRequired: Boolean(recipeData.buildPermitRequired),
+          selectableOutputs: selectableOutputs,
+        };
+
+        recipes.push(recipe);
       }
-
-      const recipe: Recipe = {
-        itemClass: itemClass,
-        recipeIndex: new BN(i),
-        payment: payment,
-        buildEnabled: Boolean(recipeData.buildEnabled),
-        ingredients: ingredients,
-        buildPermitRequired: Boolean(recipeData.buildPermitRequired),
-        selectableOutputs: selectableOutputs,
-      };
-
-      recipes.push(recipe);
     }
 
     let outputMode: ItemClassOutputMode = { kind: "Item" };
     switch (Object.keys(itemClassData.outputMode)[0]) {
-      case 'pack':
-        outputMode = { kind: "Pack", index: new BN((itemClassData.outputMode as any).pack.index) }
+      case "pack":
+        outputMode = {
+          kind: "Pack",
+          index: new BN((itemClassData.outputMode as any).pack.index),
+        };
         break;
-      case 'item':
+      case "item":
         break;
-      case 'presetOnly':
+      case "presetOnly":
         outputMode = { kind: "PresetOnly" };
-        break; 
+        break;
       default:
         throw new Error(`unknown item class mode: ${itemClassData.outputMode}`);
-    };
+    }
 
     const data: ItemClass = {
-      authority: new web3.PublicKey(itemClassData.authority),
+      name: String(itemClassData.name),
+      authorityMint: new web3.PublicKey(itemClassData.authorityMint),
       items: new web3.PublicKey(itemClassData.items),
       recipeIndex: recipeIndex,
       recipes: recipes,
@@ -480,14 +483,16 @@ export class ItemProgramV2 extends Program.Program {
     const itemClassData = await this.getItemClass(itemClass);
 
     if (itemClassData.outputMode.kind !== "Pack") {
-      throw new Error(`ItemClass ${itemClass.toString()} is not configured for Packs`);
+      throw new Error(
+        `ItemClass ${itemClass.toString()} is not configured for Packs`
+      );
     }
 
     // get all pack pdas
     const packIndex = itemClassData.outputMode.index.toNumber();
     const packAddresses: web3.PublicKey[] = [];
     for (let i = 0; i < packIndex; i++) {
-      packAddresses.push(getPackPda(itemClass, new BN(i)))
+      packAddresses.push(getPackPda(itemClass, new BN(i)));
     }
     console.log("found %d possible packs", packAddresses.length);
 
@@ -500,22 +505,21 @@ export class ItemProgramV2 extends Program.Program {
 
     const availablePacks: Pack[] = [];
     for (let packData of allPackData) {
-
       // skip if pda data doesnt exist
       if (packData === null || packData === undefined) {
-        continue
+        continue;
       }
 
       // skip if pack data is already opened
       if (packData.opened) {
-        continue
+        continue;
       }
 
       availablePacks.push(packData);
     }
     console.log("found %d available packs", availablePacks.length);
 
-    return availablePacks
+    return availablePacks;
   }
 
   async getBuildPermit(
@@ -531,7 +535,7 @@ export class ItemProgramV2 extends Program.Program {
     }
 
     const buildPermitData: BuildPermit = {
-      recipe: new web3.PublicKey(buildPermitDataRaw.recipe),
+      itemClass: new web3.PublicKey(buildPermitDataRaw.itemClass),
       builder: new web3.PublicKey(buildPermitDataRaw.builder),
       remainingBuilds: Number(buildPermitDataRaw.remainingBuilds),
     };

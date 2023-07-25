@@ -1,6 +1,9 @@
 use std::convert::TryInto;
 
-use anchor_lang::{prelude::*, system_program::{Transfer, transfer}};
+use anchor_lang::{
+    prelude::*,
+    system_program::{transfer, Transfer},
+};
 
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus,
@@ -8,16 +11,18 @@ use super::{
     OutputSelectionGroup, Payment, PaymentState, RecipeIngredientData,
 };
 
-// seeds = ['item_class', items.key().as_ref()]
+// seeds = ['item_class', authority_mint.key().as_ref()]
 #[account]
 pub struct ItemClass {
-    // controls the item class
-    pub authority: Pubkey,
+    pub name: String,
+
+    // token owners have authority over the item class
+    pub authority_mint: Pubkey,
 
     // merkle tree containing all item addresses belonging to this item class
-    pub items: Pubkey,
+    pub items: Option<Pubkey>,
 
-    pub recipe_index: u64,
+    pub recipe_index: Option<u64>,
 
     // defines the behavior when the item class is the target of a build output
     pub output_mode: ItemClassOutputMode,
@@ -25,11 +30,22 @@ pub struct ItemClass {
 
 impl ItemClass {
     pub const PREFIX: &'static str = "item_class";
-    pub const SPACE: usize = 8 + // anchor
-    32 + // authority
-    32 + // items 
-    8 + // recipe_index
-    ItemClassOutputMode::SPACE; // output mode
+
+    pub fn space(name: String) -> usize {
+        8 + // anchor
+        4 + name.len() + // name size
+        32 + // authority mint
+        (1 + 32) + // optional items merkle tree
+        (1 + 8) + // recipe_index
+        ItemClassOutputMode::SPACE // output mode
+    }
+
+    pub fn get_next_recipe_index(&self) -> u64 {
+        match self.recipe_index {
+            Some(index) => index + 1,
+            None => 0,
+        }
+    }
 }
 
 // seeds = ['item', item_mint.key().as_ref()]
@@ -397,13 +413,13 @@ impl Pack {
     32; // contents hash
 }
 
-// seeds = ['build_permit', wallet, recipe]
+// seeds = ['build_permit', builder, item_class]
 // we rely on the fact that each wallet can only do 1 concurrent build because of the build pda seed setup
 // if this changes we need to take into account multiple builds in parallel and make sure you can't game the build permit system
 #[account]
 pub struct BuildPermit {
-    pub recipe: Pubkey,
     pub builder: Pubkey,
+    pub item_class: Pubkey,
     pub remaining_builds: u16,
 }
 
@@ -411,7 +427,7 @@ impl BuildPermit {
     pub const PREFIX: &'static str = "build_permit";
 
     pub const SPACE: usize = 8 + // anchor
-    32 + // recipe
+    32 + // item class
     32 + // builder
     2; // remaining_builds
 }

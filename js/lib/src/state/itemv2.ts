@@ -10,9 +10,10 @@ export const ITEMV2_ID = new web3.PublicKey(
 );
 
 export interface ItemClass {
-  authority: web3.PublicKey;
-  items: web3.PublicKey;
-  recipeIndex: BN;
+  name: string;
+  authorityMint: web3.PublicKey;
+  items: web3.PublicKey | null;
+  recipeIndex: BN | null;
   recipes: Recipe[];
   outputMode: ItemClassOutputMode;
 }
@@ -177,7 +178,7 @@ export interface PackContentsEntry {
 }
 
 export interface BuildPermit {
-  recipe: web3.PublicKey;
+  itemClass: web3.PublicKey;
   builder: web3.PublicKey;
   remainingBuilds: number;
 }
@@ -193,9 +194,9 @@ export interface DeterministicIngredientOutput {
   amount: BN;
 }
 
-export function getItemClassPda(items: web3.PublicKey): web3.PublicKey {
+export function getItemClassPda(authorityMint: web3.PublicKey): web3.PublicKey {
   const [itemClass, _itemClassBump] = web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("item_class"), items.toBuffer()],
+    [Buffer.from("item_class"), authorityMint.toBuffer()],
     ITEMV2_ID
   );
 
@@ -253,11 +254,11 @@ export function getPackPda(itemClass: web3.PublicKey, id: BN) {
 }
 
 export function getBuildPermitPda(
-  recipe: web3.PublicKey,
-  builder: web3.PublicKey
+  builder: web3.PublicKey,
+  itemClass: web3.PublicKey,
 ) {
   const [buildPermit, _buildPermitBump] = web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("build_permit"), builder.toBuffer(), recipe.toBuffer()],
+    [Buffer.from("build_permit"), builder.toBuffer(), itemClass.toBuffer()],
     ITEMV2_ID
   );
 

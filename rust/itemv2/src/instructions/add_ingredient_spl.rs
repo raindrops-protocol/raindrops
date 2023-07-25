@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, ItemClass, Item, Recipe},
+    accounts::{Build, DeterministicIngredient, Item, ItemClass, Recipe},
     errors::ErrorCode,
     BuildStatus, ItemState,
 };
@@ -12,7 +12,7 @@ pub struct AddIngredientSpl<'info> {
     pub ingredient_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
-        seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.items.key().as_ref()], bump)]
+        seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.authority_mint.key().as_ref()], bump)]
     pub ingredient_item_class: Account<'info, ItemClass>,
 
     #[account(

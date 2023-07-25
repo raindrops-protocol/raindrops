@@ -21,13 +21,13 @@ pub struct StartBuild<'info> {
     #[account(seeds = [Recipe::PREFIX.as_bytes(), &args.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
-    #[account(mut, seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+    #[account(mut, seeds = [ItemClass::PREFIX.as_bytes(), item_class.authority_mint.as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 
     #[account(mut,
-        has_one = recipe,
+        has_one = item_class,
         has_one = builder,
-        seeds = [BuildPermit::PREFIX.as_bytes(), builder.key().as_ref(), recipe.key().as_ref()], bump)]
+        seeds = [BuildPermit::PREFIX.as_bytes(), builder.key().as_ref(), item_class.key().as_ref()], bump)]
     pub build_permit: Option<Account<'info, BuildPermit>>,
 
     #[account(mut)]

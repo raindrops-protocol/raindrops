@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::state::{
-    accounts::{Build, BuildPermit, ItemClass, Pack, Recipe},
+    accounts::{Build, BuildPermit, ItemClass, Pack},
     errors::ErrorCode,
     is_signer, BuildStatus, PackContents,
 };
@@ -16,22 +16,16 @@ pub struct CompleteBuildPack<'info> {
 
     #[account(
         constraint = item_class.output_mode.is_pack(),
-        seeds = [ItemClass::PREFIX.as_bytes(), item_class.items.key().as_ref()], bump)]
+        seeds = [ItemClass::PREFIX.as_bytes(), item_class.authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 
-    #[account(
-        has_one = item_class,
-        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub recipe: Account<'info, Recipe>,
-
     #[account(mut,
-        has_one = recipe,
+        has_one = item_class,
         constraint = build_permit.builder.eq(&build.builder.key()),
-        seeds = [BuildPermit::PREFIX.as_bytes(), build.builder.key().as_ref(), recipe.key().as_ref()], bump)]
+        seeds = [BuildPermit::PREFIX.as_bytes(), build.builder.key().as_ref(), item_class.key().as_ref()], bump)]
     pub build_permit: Option<Account<'info, BuildPermit>>,
 
     #[account(mut,
-        constraint = recipe.recipe_index == build.recipe_index,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.as_ref()], bump)]
     pub build: Account<'info, Build>,
 
@@ -51,9 +45,7 @@ pub fn handler(ctx: Context<CompleteBuildPack>, args: CompleteBuildPackArgs) -> 
     ctx.accounts.build.validate_build_criteria()?;
 
     // check that the pack_contents hash matches the one stored in the pack pda
-    let args_hash = args
-        .pack_contents
-        .hash_pack_contents();
+    let args_hash = args.pack_contents.hash_pack_contents();
     let pda_hash = &ctx.accounts.pack.contents_hash;
     require!(args_hash.eq(pda_hash), ErrorCode::InvalidPackContents);
 
