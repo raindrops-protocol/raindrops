@@ -53,10 +53,19 @@ export class Client {
   // check this list of ingredients can build the item
   async checkIngredients(
     itemClass: anchor.web3.PublicKey,
-    ingredients: IngredientArg[]
+    ingredients: IngredientArg[],
+    builder?: anchor.web3.PublicKey,
   ): Promise<Recipe[]> {
+
+    // if builder is provided overide the initialized provider
+    let recipeBuilder = this.provider.publicKey;
+    if (builder !== undefined) {
+      recipeBuilder = builder;
+    }
+
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
+      builder: recipeBuilder.toString(),
     });
 
     for (const ingredient of ingredients) {
@@ -187,7 +196,7 @@ export class Client {
   async continueBuild(
     itemClass: anchor.web3.PublicKey,
     ingredientArgs: IngredientArg[],
-    builder?: anchor.web3.PublicKey
+    builder: anchor.web3.PublicKey
   ) {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),

@@ -232,7 +232,7 @@ export class Instruction extends SolKitInstruction {
     args: CreatePackArgs
   ): Promise<[web3.TransactionInstruction, web3.PublicKey]> {
     const itemClassData = await this.program.client.account.itemClass.fetch(
-      accounts.itemClass
+      accounts.itemClass, "processed"
     );
 
     const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
