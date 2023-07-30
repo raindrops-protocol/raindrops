@@ -54,7 +54,7 @@ pub fn handler(ctx: Context<CreateRecipe>, args: CreateRecipeArgs) -> Result<()>
 
     // init recipe
     ctx.accounts.recipe.set_inner(Recipe {
-        recipe_index: recipe_index,
+        recipe_index,
         item_class: ctx.accounts.item_class.key(),
         build_enabled: args.build_enabled,
         ingredients: vec![],
