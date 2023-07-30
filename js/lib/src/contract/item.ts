@@ -20,18 +20,11 @@ import {
   ItemV1,
   Ingredient,
   Recipe,
-  Pack,
-  BuildPermit,
-  DeterministicIngredient,
-  DeterministicIngredientOutput,
-  OutputSelectionGroup,
-  OutputSelection,
 } from "../state/item";
 import { getAtaForMint, getItemPDA } from "../utils/pda";
 import { PREFIX } from "../constants/item";
 import { Utils } from "../main";
 import { Payment, PaymentState } from "../instructions/item";
-import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
 export class ItemProgram extends Program.Program {
   declare instruction: ItemInstruction.Instruction;
@@ -312,16 +305,6 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry(ixns, [], options);
   }
 
-  async createPack(
-    accounts: ItemInstruction.CreatePackAccounts,
-    args: ItemInstruction.CreatePackArgs,
-    options?: SendOptions
-  ): Promise<[Transaction.SendTransactionResult, web3.PublicKey]> {
-    const [ix, pack] = await this.instruction.createPack(accounts, args);
-    const result = await this.sendWithRetry([ix], [], options);
-    return [result, pack];
-  }
-
   async createRecipe(
     accounts: ItemInstruction.CreateRecipeAccounts,
     args: ItemInstruction.CreateRecipeArgs,
@@ -367,46 +350,21 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async completeBuildItem(
-    accounts: ItemInstruction.CompleteBuildItemAccounts,
-    args: ItemInstruction.CompleteBuildItemArgs,
+  async completeBuild(
+    accounts: ItemInstruction.CompleteBuildAccounts,
+    args: ItemInstruction.CompleteBuildArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuildItem(accounts, args);
-    return await this.sendWithRetry([ix], [], options);
-  }
-
-  async completeBuildPack(
-    accounts: ItemInstruction.CompleteBuildPackAccounts,
-    args: ItemInstruction.CompleteBuildPackArgs,
-    options?: SendOptions
-  ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuildPack(accounts, args);
-    return await this.sendWithRetry([ix], [], options);
-  }
-
-  async completeBuildPresetOnly(
-    accounts: ItemInstruction.CompleteBuildPresetOnlyAccounts,
-    options?: SendOptions
-  ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuildPresetOnly(accounts);
+    const ix = await this.instruction.completeBuild(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
   async receiveItem(
     accounts: ItemInstruction.ReceiveItemAccounts,
     options?: SendOptions
-  ): Promise<Transaction.SendTransactionResult[]> {
-    const ixnGroups = await this.instruction.receiveItem(accounts);
-
-    const resultPromises: Promise<Transaction.SendTransactionResult>[] = [];
-    for (const group of ixnGroups) {
-      const resultPromise = this.sendWithRetry(group, [], options);
-      resultPromises.push(resultPromise);
-    }
-    const results = await Promise.all(resultPromises);
-
-    return results;
+  ): Promise<Transaction.SendTransactionResult> {
+    const ixns = await this.instruction.receiveItem(accounts);
+    return await this.sendWithRetry(ixns, [], options);
   }
 
   async applyBuildEffect(
@@ -449,27 +407,6 @@ export class ItemProgram extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async createBuildPermit(
-    accounts: ItemInstruction.CreateBuildPermitAccounts,
-    args: ItemInstruction.CreateBuildPermitArgs,
-    options?: SendOptions
-  ): Promise<SendTransactionResult> {
-    const ix = await this.instruction.createBuildPermit(accounts, args);
-    return await this.sendWithRetry([ix], [], options);
-  }
-
-  async createDeterministicIngredient(
-    accounts: ItemInstruction.CreateDeterministicIngredientAccounts,
-    args: ItemInstruction.CreateDeterministicIngredientArgs,
-    options?: SendOptions
-  ): Promise<SendTransactionResult> {
-    const ix = await this.instruction.createDeterministicIngredient(
-      accounts,
-      args
-    );
-    return await this.sendWithRetry([ix], [], options);
-  }
-
   async getItemClassV1(itemClass: web3.PublicKey): Promise<ItemClassV1 | null> {
     const itemClassData = await this.client.account.itemClassV1.fetch(
       itemClass
@@ -507,31 +444,12 @@ export class ItemProgram extends Program.Program {
         };
       }
 
-      const selectableOutputs: OutputSelectionGroup[] = [];
-      for (const output of recipeData.selectableOutputs as any[]) {
-        const choices: OutputSelection[] = [];
-        for (const choice of output.choices as any[]) {
-          choices.push({
-            outputId: Number(choice.outputId),
-            mint: new web3.PublicKey(choice.mint),
-            amount: new BN(choice.amount),
-          });
-        }
-
-        selectableOutputs.push({
-          groupId: Number(output.groupId),
-          choices: choices,
-        });
-      }
-
       const recipe: Recipe = {
         itemClass: itemClass,
         recipeIndex: new BN(i),
         payment: payment,
-        buildEnabled: Boolean(recipeData.buildEnabled),
+        buildEnabled: recipeData.buildEnabled as boolean,
         ingredients: ingredients,
-        buildPermitRequired: Boolean(recipeData.buildPermitRequired),
-        selectableOutputs: selectableOutputs,
       };
 
       recipes.push(recipe);
@@ -572,17 +490,12 @@ export class ItemProgram extends Program.Program {
         requiredAmount: new BN(rawIngredient.requiredAmount),
         buildEffect: rawIngredient.buildEffect,
         mints: mints,
-        isDeterministic: Boolean(rawIngredient.isDeterministic),
       });
     }
 
-    const buildOutput: ItemInstruction.BuildOutput = { items: [] };
-    for (const output of buildDataRaw.output.items) {
-      buildOutput.items.push({
-        mint: new web3.PublicKey(output.mint),
-        amount: new BN(output.amount),
-        received: Boolean(output.received),
-      });
+    let itemMint: web3.PublicKey | null = null;
+    if (buildDataRaw.itemMint !== null) {
+      itemMint = new web3.PublicKey(buildDataRaw.itemMint);
     }
 
     // detect payment
@@ -602,11 +515,10 @@ export class ItemProgram extends Program.Program {
       recipeIndex: new BN(buildDataRaw.recipeIndex as string),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
-      output: buildOutput,
+      itemMint: itemMint,
       payment: paymentData,
       ingredients: buildIngredientData,
       status: convertToBuildStatus(buildDataRaw.status),
-      buildPermitInUse: Boolean(buildDataRaw.buildPermitInUse),
     };
 
     return buildData;
@@ -664,105 +576,15 @@ export class ItemProgram extends Program.Program {
       });
     }
 
-    const selectableOutputs: OutputSelectionGroup[] = [];
-    for (const output of recipeDataRaw.selectableOutputs as any[]) {
-      const choices: OutputSelection[] = [];
-      for (const choice of output.choices as any[]) {
-        choices.push({
-          outputId: Number(choice.outputId),
-          mint: new web3.PublicKey(choice.mint),
-          amount: new BN(choice.amount),
-        });
-      }
-
-      selectableOutputs.push({
-        groupId: Number(output.groupId),
-        choices: choices,
-      });
-    }
-
     const recipeData: Recipe = {
       recipeIndex: new BN(recipeDataRaw.recipeIndex),
       itemClass: new web3.PublicKey(recipeDataRaw.itemClass),
-      buildEnabled: Boolean(recipeDataRaw.buildEnabled),
+      buildEnabled: recipeDataRaw.buildEnabled as boolean,
       payment: payment,
       ingredients: ingredients,
-      buildPermitRequired: Boolean(recipeDataRaw.buildPermitRequired),
-      selectableOutputs: selectableOutputs,
     };
 
     return recipeData;
-  }
-
-  async getPack(pack: web3.PublicKey): Promise<Pack | null> {
-    let packDataRaw;
-    try {
-      packDataRaw = await this.client.account.pack.fetch(pack);
-    } catch (_e) {
-      return null;
-    }
-
-    const packData: Pack = {
-      opened: Boolean(packDataRaw.opened),
-      itemClass: new web3.PublicKey(packDataRaw.itemClass),
-      id: new BN(packDataRaw.id),
-      contentsHash: Uint8Array.from(packDataRaw.contentsHash),
-    };
-
-    return packData;
-  }
-
-  async getBuildPermit(
-    buildPermit: web3.PublicKey
-  ): Promise<BuildPermit | null> {
-    let buildPermitDataRaw;
-    try {
-      buildPermitDataRaw = await this.client.account.buildPermit.fetch(
-        buildPermit
-      );
-    } catch (_e) {
-      return null;
-    }
-
-    const buildPermitData: BuildPermit = {
-      recipe: new web3.PublicKey(buildPermitDataRaw.recipe),
-      builder: new web3.PublicKey(buildPermitDataRaw.builder),
-      remainingBuilds: Number(buildPermitDataRaw.remainingBuilds),
-    };
-
-    return buildPermitData;
-  }
-
-  async getDeterministicIngredient(
-    deterministicIngredient: web3.PublicKey
-  ): Promise<DeterministicIngredient | null> {
-    let deterministicIngredientDataRaw;
-    try {
-      deterministicIngredientDataRaw =
-        await this.client.account.deterministicIngredient.fetch(
-          deterministicIngredient
-        );
-    } catch (_e) {
-      return null;
-    }
-
-    const outputs: DeterministicIngredientOutput[] = [];
-    for (const output of deterministicIngredientDataRaw.outputs) {
-      outputs.push({
-        mint: new web3.PublicKey(output.mint),
-        amount: new BN(output.amount),
-      });
-    }
-
-    const deterministicIngredientData: DeterministicIngredient = {
-      recipe: new web3.PublicKey(deterministicIngredientDataRaw.recipe),
-      ingredientMint: new web3.PublicKey(
-        deterministicIngredientDataRaw.ingredientMint
-      ),
-      outputs: outputs,
-    };
-
-    return deterministicIngredientData;
   }
 }
 export class ItemClassWrapper implements ObjectWrapper<ItemClass, ItemProgram> {

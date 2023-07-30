@@ -11,12 +11,7 @@ import {
   PermissivenessType,
   Root,
 } from "./common";
-import {
-  BuildOutput,
-  PackContents,
-  Payment,
-  PaymentState,
-} from "../instructions/item";
+import { Payment, PaymentState } from "../instructions/item";
 
 extendBorsh();
 
@@ -558,30 +553,12 @@ export interface Recipe {
   buildEnabled: boolean;
   payment: Payment | null;
   ingredients: Ingredient[];
-  buildPermitRequired: boolean;
-  selectableOutputs: OutputSelectionGroup[];
 }
 
 export interface Ingredient {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
   buildEffect: any;
-}
-
-export interface OutputSelectionGroup {
-  groupId: number;
-  choices: OutputSelection[];
-}
-
-export interface OutputSelection {
-  outputId: number;
-  mint: web3.PublicKey;
-  amount: BN;
-}
-
-export interface OutputSelectionArgs {
-  groupId: number;
-  outputId: number;
 }
 
 export interface ItemV1 {
@@ -599,11 +576,10 @@ export interface Build {
   recipeIndex: BN;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
-  output: BuildOutput;
+  itemMint: web3.PublicKey | null;
   payment: PaymentState | null;
   ingredients: BuildIngredientData[];
   status: BuildStatus;
-  buildPermitInUse: boolean;
 }
 
 export interface BuildIngredientData {
@@ -612,7 +588,6 @@ export interface BuildIngredientData {
   requiredAmount: BN;
   buildEffect: any;
   mints: IngredientMint[];
-  isDeterministic: boolean;
 }
 
 export interface IngredientMint {
@@ -639,28 +614,4 @@ export function convertToBuildStatus(buildStatusRaw: any): BuildStatus {
     default:
       throw new Error(`Invalid Build Status: ${buildStatusRaw}`);
   }
-}
-
-export interface Pack {
-  opened: boolean;
-  itemClass: web3.PublicKey;
-  id: BN;
-  contentsHash: Uint8Array;
-}
-
-export interface BuildPermit {
-  recipe: web3.PublicKey;
-  builder: web3.PublicKey;
-  remainingBuilds: number;
-}
-
-export interface DeterministicIngredient {
-  recipe: web3.PublicKey;
-  ingredientMint: web3.PublicKey;
-  outputs: DeterministicIngredientOutput[];
-}
-
-export interface DeterministicIngredientOutput {
-  mint: web3.PublicKey;
-  amount: BN;
 }

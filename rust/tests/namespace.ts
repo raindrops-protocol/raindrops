@@ -76,7 +76,7 @@ describe("namespace", () => {
         connection,
         payer
       );
-    console.log("mints")
+    console.log("mints");
 
     const permissivenessSettings: State.Namespace.PermissivenessSettings = {
       namespacePermissiveness: State.Namespace.Permissiveness.Whitelist,

@@ -10,30 +10,19 @@
       "variants": [
         {
           "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/male/pipe-blond.png",
-          "forVariant": [
-            "gender12::gendero0",
-            "haircolo::haircol1"
-          ]
+          "forVariant": ["gender12::gendero0", "haircolo::haircol1"]
         },
         {
           "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/male/pipe-blue.png",
-          "forVariant": [
-            "gender12::gendero0",
-            "haircolo::haircol2"
-          ]
+          "forVariant": ["gender12::gendero0", "haircolo::haircol2"]
         },
         {
           "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/male/pipe-brown.png",
-          "forVariant": [
-            "gender12::gendero0",
-            "haircolo::haircol3"
-          ]
+          "forVariant": ["gender12::gendero0", "haircolo::haircol3"]
         },
         {
           "layerUri": "https://lily-traits.s3.amazonaws.com/mouth/pipe.png",
-          "forVariant": [
-            "gender12::gendero1"
-          ]
+          "forVariant": ["gender12::gendero1"]
         }
       ]
     },

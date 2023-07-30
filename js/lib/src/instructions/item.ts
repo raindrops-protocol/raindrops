@@ -21,7 +21,6 @@ import {
   getItemEscrow,
   getItemPDA,
   getMetadata,
-  getPack,
 } from "../utils/pda";
 import {
   MPL_AUTH_RULES_PROGRAM_ID,
@@ -34,12 +33,6 @@ import { ItemClassWrapper } from "../contract/item";
 import * as cmp from "@solana/spl-account-compression";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
 import { Constants, Utils } from "../main";
-import { sha256 } from "js-sha256";
-import {
-  DeterministicIngredientOutput,
-  OutputSelectionArgs,
-  OutputSelectionGroup,
-} from "../state/item";
 
 const {
   generateRemainingAccountsForCreateClass,
@@ -1076,7 +1069,6 @@ export class Instruction extends SolKitInstruction {
           degradation: degradationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
-        isDeterministic: ingredientArg.isDeterministic,
       };
 
       ingredients.push(ingredient);
@@ -1087,10 +1079,7 @@ export class Instruction extends SolKitInstruction {
         buildEnabled: args.recipeArgs.buildEnabled,
         payment: args.recipeArgs.payment,
         ingredients: ingredients,
-        buildPermitRequired: args.recipeArgs.buildPermitRequired,
-        selectableOutputs: args.recipeArgs.selectableOutputs,
       },
-      outputMode: formatItemClassV1OutputMode(args.outputMode),
     };
 
     const ix = await this.program.client.methods
@@ -1138,32 +1127,6 @@ export class Instruction extends SolKitInstruction {
     return ixns;
   }
 
-  async createPack(
-    accounts: CreatePackAccounts,
-    args: CreatePackArgs
-  ): Promise<[web3.TransactionInstruction, web3.PublicKey]> {
-    const itemClassData = await this.program.client.account.itemClassV1.fetch(
-      accounts.itemClass
-    );
-
-    const packIndex = new BN((itemClassData.outputMode as any).pack.index);
-
-    const packAccount = getPack(accounts.itemClass, packIndex);
-
-    const ix = await this.program.client.methods
-      .createPack(args)
-      .accounts({
-        pack: packAccount,
-        itemClass: accounts.itemClass,
-        authority: this.program.client.provider.publicKey!,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .instruction();
-
-    return [ix, packAccount];
-  }
-
   async startBuild(
     accounts: StartBuildAccounts,
     args: StartBuildArgs
@@ -1172,23 +1135,12 @@ export class Instruction extends SolKitInstruction {
 
     const build = Utils.PDA.getBuild(accounts.itemClass, accounts.builder);
 
-    const recipeDataRaw = await this.program.client.account.recipe.fetch(
-      recipe
-    );
-
-    // if build permit is required create the pda
-    let buildPermit: web3.PublicKey | null = null;
-    if (recipeDataRaw.buildPermitRequired) {
-      buildPermit = Utils.PDA.getBuildPermit(recipe, accounts.builder);
-    }
-
     const ix = await this.program.client.methods
       .startBuild(args)
       .accounts({
         build: build,
         recipe: recipe,
         itemClass: accounts.itemClass,
-        buildPermit: buildPermit,
         builder: accounts.builder,
         rent: web3.SYSVAR_RENT_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1211,46 +1163,12 @@ export class Instruction extends SolKitInstruction {
       accounts.ingredientMint
     );
 
-    const buildDataRaw = await this.program.client.account.build.fetch(build);
-
-    const recipe = Utils.PDA.getRecipe(
-      accounts.itemClass,
-      new BN(buildDataRaw.recipeIndex as any)
-    );
-
-    // get deterministic ingredient pda if applicable
-    let deterministicIngredient: web3.PublicKey | null = null;
-    for (const rawIngredient of buildDataRaw.ingredients as any[]) {
-      const match = (rawIngredient.mints as any[]).some((mintData) =>
-        new web3.PublicKey(mintData.mint).equals(accounts.ingredientMint)
-      );
-      if (match && Boolean(rawIngredient.isDeterministic)) {
-        deterministicIngredient = Utils.PDA.getDeterministicIngredient(
-          recipe,
-          accounts.ingredientMint
-        );
-      }
-    }
-
     const ixns: web3.TransactionInstruction[] = [];
     if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-      const pNftIxns = await this.addIngredientPnft(
-        accounts,
-        build,
-        item,
-        recipe,
-        deterministicIngredient
-      );
+      const pNftIxns = await this.addIngredientPnft(accounts, build, item);
       ixns.push(...pNftIxns);
     } else {
-      const ix = await this.addIngredientSpl(
-        accounts,
-        build,
-        item,
-        recipe,
-        deterministicIngredient,
-        args
-      );
+      const ix = await this.addIngredientSpl(accounts, build, item, args);
       ixns.push(ix);
     }
 
@@ -1261,8 +1179,6 @@ export class Instruction extends SolKitInstruction {
     accounts: AddIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey,
-    recipe: web3.PublicKey,
-    deterministicIngredient: web3.PublicKey | null,
     args: AddIngredientArgs
   ): Promise<web3.TransactionInstruction> {
     const ingredientSource = await splToken.getAssociatedTokenAddress(
@@ -1282,8 +1198,6 @@ export class Instruction extends SolKitInstruction {
         ingredientItemClass: accounts.ingredientItemClass,
         ingredientSource: ingredientSource,
         ingredientDestination: ingredientDestination,
-        deterministicIngredient: deterministicIngredient,
-        recipe: recipe,
         build: build,
         item: item,
         builder: accounts.builder,
@@ -1302,9 +1216,7 @@ export class Instruction extends SolKitInstruction {
   private async addIngredientPnft(
     accounts: AddIngredientAccounts,
     build: web3.PublicKey,
-    item: web3.PublicKey,
-    recipe: web3.PublicKey,
-    deterministicIngredient: web3.PublicKey | null
+    item: web3.PublicKey
   ): Promise<web3.TransactionInstruction[]> {
     const [ingredientMetadata, _ingredientMetadataBump] =
       web3.PublicKey.findProgramAddressSync(
@@ -1387,13 +1299,11 @@ export class Instruction extends SolKitInstruction {
         ingredientItemClass: accounts.ingredientItemClass,
         ingredientMetadata: ingredientMetadata,
         ingredientEdition: ingredientME,
-        deterministicIngredient: deterministicIngredient,
         authRules: ingredientMetadataData.programmableConfig.ruleSet,
         ingredientSource: ingredientSource,
         ingredientSourceTokenRecord: ingredientSourceTokenRecord,
         ingredientDestination: ingredientDestination,
         ingredientDestinationTokenRecord: ingredientDestinationTokenRecord,
-        recipe: recipe,
         build: build,
         item: item,
         payer: accounts.payer,
@@ -1448,7 +1358,6 @@ export class Instruction extends SolKitInstruction {
         ingredientItemClassItems: ingredientItemClassItems,
         build: build,
         payer: accounts.payer,
-        systemProgram: web3.SystemProgram.programId,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
@@ -1501,20 +1410,15 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async completeBuildItem(
-    accounts: CompleteBuildItemAccounts,
-    args: CompleteBuildItemArgs
+  async completeBuild(
+    accounts: CompleteBuildAccounts,
+    args: CompleteBuildArgs
   ): Promise<web3.TransactionInstruction> {
     const buildData = await this.program.client.account.build.fetch(
       accounts.build
     );
 
     const itemClass = new web3.PublicKey(buildData.itemClass);
-
-    const recipe = Utils.PDA.getRecipe(
-      itemClass,
-      new BN(buildData.recipeIndex as any)
-    );
 
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
       itemClass
@@ -1531,31 +1435,19 @@ export class Instruction extends SolKitInstruction {
       proofAsRemainingAccounts.push(nodeAccount);
     }
 
-    // if build permit is required create the pda
-    let buildPermit: web3.PublicKey | null = null;
-    if (buildData.buildPermitInUse) {
-      buildPermit = Utils.PDA.getBuildPermit(
-        recipe,
-        new web3.PublicKey(buildData.builder)
-      );
-    }
-
     const ixArgs = {
       root: args.root,
       leafIndex: args.leafIndex,
     };
 
     const ix = await this.program.client.methods
-      .completeBuildItem(ixArgs)
+      .completeBuild(ixArgs)
       .accounts({
         itemMint: accounts.itemMint,
         itemClass: itemClass,
         itemClassItems: itemClassItems,
-        recipe: recipe,
-        buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
-        systemProgram: web3.SystemProgram.programId,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
       })
@@ -1565,139 +1457,15 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async completeBuildPack(
-    accounts: CompleteBuildPackAccounts,
-    args: CompleteBuildPackArgs
-  ): Promise<web3.TransactionInstruction> {
-    const buildData = await this.program.client.account.build.fetch(
-      accounts.build
-    );
-
-    const itemClass = new web3.PublicKey(buildData.itemClass);
-
-    const recipe = Utils.PDA.getRecipe(
-      itemClass,
-      new BN(buildData.recipeIndex as any)
-    );
-
-    // if build permit is required create the pda
-    let buildPermit: web3.PublicKey | null = null;
-    if (buildData.buildPermitInUse) {
-      buildPermit = Utils.PDA.getBuildPermit(
-        recipe,
-        new web3.PublicKey(buildData.builder)
-      );
-    }
-
-    const ixArgs = {
-      packContents: args.packContents,
-      packContentsHashNonce: args.packContentsHashNonce,
-    };
-
-    const ix = await this.program.client.methods
-      .completeBuildPack(ixArgs)
-      .accounts({
-        pack: accounts.pack,
-        itemClass: itemClass,
-        recipe: recipe,
-        buildPermit: buildPermit,
-        build: accounts.build,
-        payer: accounts.payer,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .instruction();
-
-    return ix;
-  }
-
-  async completeBuildPresetOnly(
-    accounts: CompleteBuildPresetOnlyAccounts
-  ): Promise<web3.TransactionInstruction> {
-    const buildData = await this.program.client.account.build.fetch(
-      accounts.build
-    );
-
-    const itemClass = new web3.PublicKey(buildData.itemClass);
-
-    const recipe = Utils.PDA.getRecipe(
-      itemClass,
-      new BN(buildData.recipeIndex as any)
-    );
-
-    // if build permit is required create the pda
-    let buildPermit: web3.PublicKey | null = null;
-    if (buildData.buildPermitInUse) {
-      buildPermit = Utils.PDA.getBuildPermit(
-        recipe,
-        new web3.PublicKey(buildData.builder)
-      );
-    }
-
-    const ix = await this.program.client.methods
-      .completeBuildPresetOnly()
-      .accounts({
-        itemClass: itemClass,
-        recipe: recipe,
-        buildPermit: buildPermit,
-        build: accounts.build,
-        payer: accounts.payer,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .instruction();
-
-    return ix;
-  }
-
   async receiveItem(
     accounts: ReceiveItemAccounts
-  ): Promise<web3.TransactionInstruction[][]> {
+  ): Promise<web3.TransactionInstruction[]> {
     const buildData = await this.program.client.account.build.fetch(
       accounts.build
     );
 
-    const ixnGroups: web3.TransactionInstruction[][] = [];
-    for (const item of (buildData.output as any).items) {
-      // if received already, dont send again
-      if (item.received === true) {
-        continue;
-      }
-
-      const itemMint = new web3.PublicKey(item.mint);
-
-      // detect what type of token we are adding
-      const tokenStandard = await Utils.Item.getTokenStandard(
-        this.program.client.provider.connection,
-        new web3.PublicKey(item.mint)
-      );
-
-      if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
-        const pNftIxns = await this.receiveItemPNft(
-          accounts.build,
-          accounts.payer,
-          itemMint
-        );
-        ixnGroups.push(pNftIxns);
-      } else {
-        const splIx = await this.receiveItemSpl(
-          accounts.build,
-          accounts.payer,
-          itemMint
-        );
-        ixnGroups.push([splIx]);
-      }
-    }
-
-    return ixnGroups;
-  }
-
-  private async receiveItemPNft(
-    build: web3.PublicKey,
-    payer: web3.PublicKey,
-    itemMint: web3.PublicKey
-  ): Promise<web3.TransactionInstruction[]> {
-    const buildData = await this.program.client.account.build.fetch(build);
-
     const itemClass = new web3.PublicKey(buildData.itemClass);
+    const itemMint = new web3.PublicKey(buildData.itemMint);
     const builder = new web3.PublicKey(buildData.builder);
 
     const [itemMetadata, _itemMetadataBump] =
@@ -1770,7 +1538,7 @@ export class Instruction extends SolKitInstruction {
     });
 
     const ix = await this.program.client.methods
-      .receiveItemPnft()
+      .receiveItem()
       .accounts({
         itemMint: itemMint,
         itemMetadata: itemMetadata,
@@ -1781,9 +1549,9 @@ export class Instruction extends SolKitInstruction {
         itemDestination: itemDestination,
         itemDestinationTokenRecord: itemDestinationTokenRecord,
         itemClass: itemClass,
-        build: build,
+        build: accounts.build,
         builder: builder,
-        payer: payer,
+        payer: accounts.payer,
         rent: web3.SYSVAR_RENT_PUBKEY,
         instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
         systemProgram: web3.SystemProgram.programId,
@@ -1795,44 +1563,6 @@ export class Instruction extends SolKitInstruction {
       .instruction();
 
     return [increaseCUIx, addPriorityFeeIx, ix];
-  }
-
-  private async receiveItemSpl(
-    build: web3.PublicKey,
-    payer: web3.PublicKey,
-    itemMint: web3.PublicKey
-  ): Promise<web3.TransactionInstruction> {
-    const buildData = await this.program.client.account.build.fetch(build);
-
-    const itemClass = new web3.PublicKey(buildData.itemClass);
-    const builder = new web3.PublicKey(buildData.builder);
-
-    const itemSource = splToken.getAssociatedTokenAddressSync(
-      itemMint,
-      itemClass,
-      true
-    );
-    const itemDestination = await splToken.getAssociatedTokenAddress(
-      itemMint,
-      builder
-    );
-
-    return await this.program.client.methods
-      .receiveItemSpl()
-      .accounts({
-        itemMint: itemMint,
-        itemSource: itemSource,
-        itemDestination: itemDestination,
-        itemClass: itemClass,
-        build: build,
-        builder: builder,
-        payer: payer,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        systemProgram: web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      })
-      .instruction();
   }
 
   async applyBuildEffect(
@@ -2031,6 +1761,13 @@ export class Instruction extends SolKitInstruction {
       accounts.build
     );
     const builder = new web3.PublicKey(buildData.builder);
+    const outputItemClass = new web3.PublicKey(buildData.itemClass);
+
+    const outputItemClassData =
+      await this.program.client.account.itemClassV1.fetch(outputItemClass);
+    const outputItemClassAuthority = new web3.PublicKey(
+      outputItemClassData.authority
+    );
 
     const tokenStandard = await Utils.Item.getTokenStandard(
       this.program.client.provider.connection,
@@ -2190,7 +1927,6 @@ export class Instruction extends SolKitInstruction {
           degradation: degradationBuildEffect,
           cooldown: cooldownBuildEffect,
         },
-        isDeterministic: ingredientArg.isDeterministic,
       };
 
       ingredients.push(ingredient);
@@ -2200,8 +1936,6 @@ export class Instruction extends SolKitInstruction {
       buildEnabled: args.args.buildEnabled,
       ingredients: ingredients,
       payment: args.args.payment,
-      buildPermitRequired: args.args.buildPermitRequired,
-      selectableOutputs: args.args.selectableOutputs,
     };
 
     const itemClassData = await this.program.client.account.itemClassV1.fetch(
@@ -2260,72 +1994,6 @@ export class Instruction extends SolKitInstruction {
         systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
-    return ix;
-  }
-
-  async createBuildPermit(
-    accounts: CreateBuildPermitAccounts,
-    args: CreateBuildPermitArgs
-  ): Promise<web3.TransactionInstruction> {
-    const recipeData = await this.program.client.account.recipe.fetch(
-      accounts.recipe
-    );
-    const itemClass = new web3.PublicKey(recipeData.itemClass);
-    const itemClassData = await this.program.client.account.itemClassV1.fetch(
-      itemClass
-    );
-
-    const authority = new web3.PublicKey(itemClassData.authority);
-
-    const buildPermit = Utils.PDA.getBuildPermit(accounts.recipe, args.builder);
-
-    const ix = await this.program.client.methods
-      .createBuildPermit(args)
-      .accounts({
-        buildPermit: buildPermit,
-        recipe: accounts.recipe,
-        itemClass: itemClass,
-        authority: authority,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .instruction();
-
-    return ix;
-  }
-
-  async createDeterministicIngredient(
-    accounts: CreateDeterministicIngredientAccounts,
-    args: CreateDeterministicIngredientArgs
-  ): Promise<web3.TransactionInstruction> {
-    const recipeData = await this.program.client.account.recipe.fetch(
-      accounts.recipe
-    );
-    const itemClass = new web3.PublicKey(recipeData.itemClass);
-
-    const itemClassData = await this.program.client.account.itemClassV1.fetch(
-      itemClass
-    );
-    const authority = new web3.PublicKey(itemClassData.authority);
-
-    const deterministicIngredient = Utils.PDA.getDeterministicIngredient(
-      accounts.recipe,
-      accounts.ingredientMint
-    );
-
-    const ix = await this.program.client.methods
-      .createDeterministicIngredient(args)
-      .accounts({
-        recipe: accounts.recipe,
-        itemClass: itemClass,
-        ingredientMint: accounts.ingredientMint,
-        deterministicIngredient: deterministicIngredient,
-        authority: authority,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .instruction();
-
     return ix;
   }
 }
@@ -2644,31 +2312,12 @@ export interface UpdateItemAdditionalArgs {}
 
 export interface CreateItemClassV1Args {
   recipeArgs: RecipeArgs;
-  outputMode: ItemClassV1OutputMode;
 }
 
 export interface RecipeArgs {
   buildEnabled: boolean;
   payment: Payment | null;
   ingredientArgs: RecipeIngredientDataArgs[];
-  buildPermitRequired: boolean;
-  selectableOutputs: OutputSelectionGroup[];
-}
-
-export type ItemClassV1OutputMode =
-  | { kind: "Item" }
-  | { kind: "Pack"; index: BN }
-  | { kind: "PresetOnly" };
-
-export function formatItemClassV1OutputMode(mode: ItemClassV1OutputMode): any {
-  switch (mode.kind) {
-    case "Item":
-      return { item: {} };
-    case "Pack":
-      return { pack: { index: mode.index } };
-    case "PresetOnly":
-      return { presetOnly: {} };
-  }
 }
 
 export interface PaymentState {
@@ -2685,7 +2334,6 @@ export interface RecipeIngredientDataArgs {
   itemClass: web3.PublicKey;
   requiredAmount: BN;
   buildEffect: BuildEffect;
-  isDeterministic: boolean;
 }
 
 export interface BuildEffect {
@@ -2701,16 +2349,6 @@ export interface Cooldown {
   seconds: BN;
 }
 
-export interface BuildOutput {
-  items: BuildOutputItem[];
-}
-
-export interface BuildOutputItem {
-  mint: web3.PublicKey;
-  amount: BN;
-  received: boolean;
-}
-
 export interface StartBuildAccounts {
   itemClass: web3.PublicKey;
   builder: web3.PublicKey;
@@ -2718,7 +2356,6 @@ export interface StartBuildAccounts {
 
 export interface StartBuildArgs {
   recipeIndex: BN;
-  recipeOutputSelection: OutputSelectionArgs[];
 }
 
 export interface AddIngredientAccounts {
@@ -2753,32 +2390,16 @@ export interface VerifyIngredientTestAccounts {
   payer: web3.PublicKey;
 }
 
-export interface CompleteBuildItemAccounts {
+export interface CompleteBuildAccounts {
   itemMint: web3.PublicKey;
   payer: web3.PublicKey;
   build: web3.PublicKey;
 }
 
-export interface CompleteBuildItemArgs {
+export interface CompleteBuildArgs {
   root: Buffer;
   leafIndex: number;
   proof: Buffer[];
-}
-
-export interface CompleteBuildPackAccounts {
-  pack: web3.PublicKey;
-  payer: web3.PublicKey;
-  build: web3.PublicKey;
-}
-
-export interface CompleteBuildPackArgs {
-  packContents: PackContents;
-  packContentsHashNonce: Uint8Array;
-}
-
-export interface CompleteBuildPresetOnlyAccounts {
-  payer: web3.PublicKey;
-  build: web3.PublicKey;
 }
 
 export interface ReceiveItemAccounts {
@@ -2789,47 +2410,6 @@ export interface ReceiveItemAccounts {
 export interface AddItemsToItemClass {
   itemClass: web3.PublicKey;
   itemMints: web3.PublicKey[];
-}
-
-export interface CreatePackAccounts {
-  itemClass: web3.PublicKey;
-}
-
-export interface CreatePackArgs {
-  contentsHash: Buffer;
-}
-
-export class PackContents {
-  readonly entries: PackContentsEntry[];
-
-  constructor(entries: PackContentsEntry[]) {
-    this.entries = entries;
-  }
-
-  hash(nonce: Uint8Array): Buffer {
-    // match this with the program code
-    if (nonce.length !== 16) {
-      throw new Error(`nonce must be 16 bytes`);
-    }
-    const contentBuffers = this.entries.map((entry) =>
-      Buffer.concat([
-        entry.mint.toBuffer(),
-        entry.amount.toArrayLike(Buffer, "le", 8),
-      ])
-    );
-
-    const digest = sha256.digest(
-      Buffer.concat([...contentBuffers, Buffer.from(nonce)])
-    );
-    const hash = Buffer.from(digest);
-
-    return hash;
-  }
-}
-
-export interface PackContentsEntry {
-  mint: web3.PublicKey;
-  amount: BN;
 }
 
 export interface ApplyBuildEffectAccounts {
@@ -2871,22 +2451,4 @@ export interface AddPaymentAccounts {
   build: web3.PublicKey;
   builder: web3.PublicKey;
   treasury: web3.PublicKey;
-}
-
-export interface CreateBuildPermitAccounts {
-  recipe: web3.PublicKey;
-}
-
-export interface CreateBuildPermitArgs {
-  builder: web3.PublicKey;
-  remainingBuilds: number;
-}
-
-export interface CreateDeterministicIngredientAccounts {
-  ingredientMint: web3.PublicKey;
-  recipe: web3.PublicKey;
-}
-
-export interface CreateDeterministicIngredientArgs {
-  outputs: DeterministicIngredientOutput[];
 }

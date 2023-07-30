@@ -29,15 +29,18 @@ describe("itemv2", () => {
   it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -209,15 +212,18 @@ describe("itemv2", () => {
   it("build pNFT 1 pNFT which goes on cooldown, try to use again and get error", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -388,15 +394,18 @@ describe("itemv2", () => {
   it("build pNFT using 1 NFT and 1 pNFT, both burned after usage", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -545,15 +554,18 @@ describe("itemv2", () => {
   it("build pNFT twice with the same builder", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -888,23 +900,27 @@ describe("itemv2", () => {
   it("create item class with multiple recipes", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
       itemClassName: "testing",
       outputMode: { kind: "Item" },
     };
 
-    let [itemClass, createItemClassResult] =
-      await itemProgram.createItemClass(createItemClassArgs);
+    let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
+      createItemClassArgs
+    );
     console.log("createItemClassTxSig: %s", createItemClassResult.txid);
 
     // no recipes created initially
@@ -1531,7 +1547,9 @@ describe("itemv2", () => {
     );
 
     // check pack data
-    const packs = await builderItemProgramV2.getPacks(outputItemClass.itemClass);
+    const packs = await builderItemProgramV2.getPacks(
+      outputItemClass.itemClass
+    );
     assert.strictEqual(packs.length, 3);
     for (let pack of packs) {
       assert.isTrue(pack.contentsHash.length === 32);
@@ -1612,15 +1630,18 @@ describe("itemv2", () => {
   it("build pNft requiring a build permit, after permit use try to build again and error", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 2, true, {
@@ -1651,7 +1672,10 @@ describe("itemv2", () => {
     });
 
     // check recipe has build permit flag enabled
-    const recipe = State.ItemV2.getRecipePda(outputItemClass.itemClass, new BN(0));
+    const recipe = State.ItemV2.getRecipePda(
+      outputItemClass.itemClass,
+      new BN(0)
+    );
     const recipeData = await itemProgram.getRecipe(recipe);
     assert.isTrue(recipeData.buildPermitRequired);
 
@@ -1670,7 +1694,9 @@ describe("itemv2", () => {
     const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
       State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
-    assert.isTrue(buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass));
+    assert.isTrue(
+      buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass)
+    );
     assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 1);
     assert.isTrue(buildPermitDataPreBuild.builder.equals(payer.publicKey));
 
@@ -1762,15 +1788,18 @@ describe("itemv2", () => {
   it("build pNft requiring a build permit twice", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 2, true, {
@@ -1801,7 +1830,10 @@ describe("itemv2", () => {
     });
 
     // check recipe has build permit flag enabled
-    const recipe = State.ItemV2.getRecipePda(outputItemClass.itemClass, new BN(0));
+    const recipe = State.ItemV2.getRecipePda(
+      outputItemClass.itemClass,
+      new BN(0)
+    );
     const recipeData = await itemProgram.getRecipe(recipe);
     assert.isTrue(recipeData.buildPermitRequired);
 
@@ -1820,7 +1852,9 @@ describe("itemv2", () => {
     const buildPermitDataPreBuild = await itemProgram.getBuildPermit(
       State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
-    assert.isTrue(buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass));
+    assert.isTrue(
+      buildPermitDataPreBuild.itemClass.equals(outputItemClass.itemClass)
+    );
     assert.isTrue(buildPermitDataPreBuild.remainingBuilds === 2);
     assert.isTrue(buildPermitDataPreBuild.builder.equals(payer.publicKey));
 
@@ -1878,7 +1912,9 @@ describe("itemv2", () => {
     const buildPermitDataPostBuild = await itemProgram.getBuildPermit(
       State.ItemV2.getBuildPermitPda(payer.publicKey, outputItemClass.itemClass)
     );
-    assert.isTrue(buildPermitDataPostBuild.itemClass.equals(outputItemClass.itemClass));
+    assert.isTrue(
+      buildPermitDataPostBuild.itemClass.equals(outputItemClass.itemClass)
+    );
     assert.isTrue(buildPermitDataPostBuild.remainingBuilds === 1);
     assert.isTrue(buildPermitDataPostBuild.builder.equals(payer.publicKey));
 
@@ -1942,15 +1978,18 @@ describe("itemv2", () => {
   it("build item using deterministic inputs", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -2073,15 +2112,18 @@ describe("itemv2", () => {
   it("build item with recipe selection", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -2232,15 +2274,18 @@ describe("itemv2", () => {
   it("open pack with selectable output and deterministic ingredient", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -2415,15 +2460,18 @@ describe("itemv2", () => {
   it("open pack with deterministic ingredient", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -2550,15 +2598,18 @@ describe("itemv2", () => {
   it("build item class in preset only mode", async () => {
     const payer = await newPayer(connection);
 
-    const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-      asyncSigning: false,
-      provider: new anchor.AnchorProvider(
-        connection,
-        new anchor.Wallet(payer),
-        { commitment: "confirmed" }
-      ),
-      idl: Idls.ItemV2IDL,
-    });
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
 
     // ingredient 1, pNFT
     const pNftItemClass = await createItemClass(payer, connection, 1, true, {
@@ -2855,10 +2906,11 @@ async function createItemClass(
     }
 
     // add mint to the items tree on chain
-    const addItemsToItemClassAccounts: Instructions.ItemV2.AddItemsToItemClass = {
-      itemClass: itemClass,
-      itemMints: [ingredientMintOutput.mintAddress],
-    };
+    const addItemsToItemClassAccounts: Instructions.ItemV2.AddItemsToItemClass =
+      {
+        itemClass: itemClass,
+        itemMints: [ingredientMintOutput.mintAddress],
+      };
 
     const addItemsToItemClassResult = await itemProgram.addItemsToItemClass(
       addItemsToItemClassAccounts
@@ -2881,11 +2933,11 @@ async function createItemClass(
     const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
       itemClass: itemClass,
     };
-  
+
     const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
-      args: recipeArgs
+      args: recipeArgs,
     };
-  
+
     const createRecipeResult = await itemProgram.createRecipe(
       createRecipeAccounts,
       createRecipeArgs
@@ -3190,7 +3242,10 @@ async function createItemClassPack(
     }
 
     // create pack
-    const packContents = new State.ItemV2.PackContents(entries, new Uint8Array(16));
+    const packContents = new State.ItemV2.PackContents(
+      entries,
+      new Uint8Array(16)
+    );
     packs.push(packContents);
 
     const createPackAccounts: Instructions.ItemV2.CreatePackAccounts = {
@@ -3218,11 +3273,11 @@ async function createItemClassPack(
     const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
       itemClass: itemClass,
     };
-  
+
     const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
-      args: recipeArgs
+      args: recipeArgs,
     };
-  
+
     const createRecipeResult = await itemProgram.createRecipe(
       createRecipeAccounts,
       createRecipeArgs
@@ -3264,11 +3319,11 @@ async function createItemClassPresetOnly(
     const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
       itemClass: itemClass,
     };
-  
+
     const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
-      args: recipeArgs
+      args: recipeArgs,
     };
-  
+
     const createRecipeResult = await itemProgram.createRecipe(
       createRecipeAccounts,
       createRecipeArgs
@@ -3565,13 +3620,14 @@ async function addIngredient(
   ingredientAmount: anchor.BN
 ) {
   // verify build ingredient
-  const verifyIngredientAccounts: Instructions.ItemV2.VerifyIngredientAccounts = {
-    ingredientMint: ingredientMint,
-    ingredientItemClass: ingredientItemClass,
-    itemClass: outputItemClass,
-    builder: itemProgram.client.provider.publicKey,
-    payer: itemProgram.client.provider.publicKey,
-  };
+  const verifyIngredientAccounts: Instructions.ItemV2.VerifyIngredientAccounts =
+    {
+      ingredientMint: ingredientMint,
+      ingredientItemClass: ingredientItemClass,
+      itemClass: outputItemClass,
+      builder: itemProgram.client.provider.publicKey,
+      payer: itemProgram.client.provider.publicKey,
+    };
 
   // get proof for mint
   const proof = tree.getProof(leafIndex);
@@ -3617,13 +3673,14 @@ async function addIngredientPermissionless(
   ingredientAmount: anchor.BN
 ) {
   // verify build ingredient
-  const verifyIngredientAccounts: Instructions.ItemV2.VerifyIngredientAccounts = {
-    ingredientMint: ingredientMint,
-    ingredientItemClass: ingredientItemClass,
-    itemClass: outputItemClass,
-    builder: builder,
-    payer: itemProgram.client.provider.publicKey,
-  };
+  const verifyIngredientAccounts: Instructions.ItemV2.VerifyIngredientAccounts =
+    {
+      ingredientMint: ingredientMint,
+      ingredientItemClass: ingredientItemClass,
+      itemClass: outputItemClass,
+      builder: builder,
+      payer: itemProgram.client.provider.publicKey,
+    };
 
   // get proof for mint
   const proof = tree.getProof(0);

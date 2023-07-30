@@ -1,88 +1,87 @@
 [
-    {
-      "name": "Aura",
-      "id": 0,
-      "values": [
-        { "name": "Lightning", "count": 191 },
-        { "name": "Hollow", "count": 170 },
-        { "name": "Cherry", "count": 165 },
-        { "name": "Fire", "count": 162 },
-        { "name": "Earth", "count": 159 },
-        { "name": "Party", "count": 156 },
-        { "name": "Wind", "count": 154 },
-        { "name": "Fireflies", "count": 145 },
-        { "name": "Aqua", "count": 130 }
-      ]
-    },
-    {
-      "name": "Headgear",
-      "id": 1,
-      "values": [
-        { "name": "Newsboy", "count": 283 },
-        { "name": "Beanie", "count": 277 },
-        { "name": "Cap", "count": 276 },
-        { "name": "Cap Strap", "count": 272 },
-        { "name": "Backwards Cap", "count": 263 },
-        { "name": "Blue Beanie", "count": 262 },
-        { "name": "Fisher", "count": 262 },
-        { "name": "Stone Fisher", "count": 262 },
-        { "name": "White Beanie", "count": 243 },
-        { "name": "Bandana", "count": 231 },
-        { "name": "Bucket", "count": 227 },
-        { "name": "White Cap Strap", "count": 227 },
-        { "name": "Printed Bandana", "count": 204 },
-        { "name": "Brown Backwards Cap", "count": 201 },
-        { "name": "Brown Bucket", "count": 172 },
-        { "name": "Red Cap", "count": 149 },
-        { "name": "Rice", "count": 149 },
-        { "name": "Cowboy", "count": 127 },
-        { "name": "Soldier", "count": 127 },
-        { "name": "White Durag", "count": 119 },
-        { "name": "Engineer", "count": 116 },
-        { "name": "Red Cap Strap", "count": 116 },
-        { "name": "Durag", "count": 115 },
-        { "name": "Kente", "count": 103 },
-        { "name": "Sombrero", "count": 96 },
-        { "name": "Officer", "count": 86 },
-        { "name": "Ushanka", "count": 52 },
-        { "name": "Marine", "count": 50 },
-        { "name": "Catmet", "count": 49 },
-        { "name": "Smooth Criminal", "count": 47 },
-        { "name": "Pandamet", "count": 46 },
-        { "name": "Crown", "count": 44 },
-        { "name": "Vengeance", "count": 44 },
-        { "name": "Frogmet", "count": 42 },
-        { "name": "Strawhat", "count": 42 },
-        { "name": "Bullmet", "count": 40 },
-        { "name": "Bearmet", "count": 38 },
-        { "name": "Sunflower", "count": 30 },
-        { "name": "Petalmet", "count": 29 },
-        { "name": "Oathkeeper", "count": 27 },
-        { "name": "Red Turban", "count": 26 },
-        { "name": "Lily", "count": 20 }
-      ]
-    },
-    {
-        "name": "Background",
-        "id": 2,
-        "values": [
-            { "name": "Gold", "count": 1372 },
-            { "name": "Eight", "count": 1370, "additionalAttributeIds": [1] },
-            { "name": "Five", "count": 1358 },
-            { "name": "Three", "count": 1303 },
-            { "name": "Seven", "count": 1297 },
-            { "name": "Four", "count": 1277 },
-            { "name": "Ten", "count": 1257 },
-            { "name": "One", "count": 756 }
-        ]
-    },
-    {
-        "name": "Type",
-        "id": 3,
-        "values": [
-            { "name": "Female", "count": 5069 },
-            { "name": "Male", "count": 4921 }
-        ]
-    }
+  {
+    "name": "Aura",
+    "id": 0,
+    "values": [
+      { "name": "Lightning", "count": 191 },
+      { "name": "Hollow", "count": 170 },
+      { "name": "Cherry", "count": 165 },
+      { "name": "Fire", "count": 162 },
+      { "name": "Earth", "count": 159 },
+      { "name": "Party", "count": 156 },
+      { "name": "Wind", "count": 154 },
+      { "name": "Fireflies", "count": 145 },
+      { "name": "Aqua", "count": 130 }
+    ]
+  },
+  {
+    "name": "Headgear",
+    "id": 1,
+    "values": [
+      { "name": "Newsboy", "count": 283 },
+      { "name": "Beanie", "count": 277 },
+      { "name": "Cap", "count": 276 },
+      { "name": "Cap Strap", "count": 272 },
+      { "name": "Backwards Cap", "count": 263 },
+      { "name": "Blue Beanie", "count": 262 },
+      { "name": "Fisher", "count": 262 },
+      { "name": "Stone Fisher", "count": 262 },
+      { "name": "White Beanie", "count": 243 },
+      { "name": "Bandana", "count": 231 },
+      { "name": "Bucket", "count": 227 },
+      { "name": "White Cap Strap", "count": 227 },
+      { "name": "Printed Bandana", "count": 204 },
+      { "name": "Brown Backwards Cap", "count": 201 },
+      { "name": "Brown Bucket", "count": 172 },
+      { "name": "Red Cap", "count": 149 },
+      { "name": "Rice", "count": 149 },
+      { "name": "Cowboy", "count": 127 },
+      { "name": "Soldier", "count": 127 },
+      { "name": "White Durag", "count": 119 },
+      { "name": "Engineer", "count": 116 },
+      { "name": "Red Cap Strap", "count": 116 },
+      { "name": "Durag", "count": 115 },
+      { "name": "Kente", "count": 103 },
+      { "name": "Sombrero", "count": 96 },
+      { "name": "Officer", "count": 86 },
+      { "name": "Ushanka", "count": 52 },
+      { "name": "Marine", "count": 50 },
+      { "name": "Catmet", "count": 49 },
+      { "name": "Smooth Criminal", "count": 47 },
+      { "name": "Pandamet", "count": 46 },
+      { "name": "Crown", "count": 44 },
+      { "name": "Vengeance", "count": 44 },
+      { "name": "Frogmet", "count": 42 },
+      { "name": "Strawhat", "count": 42 },
+      { "name": "Bullmet", "count": 40 },
+      { "name": "Bearmet", "count": 38 },
+      { "name": "Sunflower", "count": 30 },
+      { "name": "Petalmet", "count": 29 },
+      { "name": "Oathkeeper", "count": 27 },
+      { "name": "Red Turban", "count": 26 },
+      { "name": "Lily", "count": 20 }
+    ]
+  },
+  {
+    "name": "Background",
+    "id": 2,
+    "values": [
+      { "name": "Gold", "count": 1372 },
+      { "name": "Eight", "count": 1370, "additionalAttributeIds": [1] },
+      { "name": "Five", "count": 1358 },
+      { "name": "Three", "count": 1303 },
+      { "name": "Seven", "count": 1297 },
+      { "name": "Four", "count": 1277 },
+      { "name": "Ten", "count": 1257 },
+      { "name": "One", "count": 756 }
+    ]
+  },
+  {
+    "name": "Type",
+    "id": 3,
+    "values": [
+      { "name": "Female", "count": 5069 },
+      { "name": "Male", "count": 4921 }
+    ]
+  }
 ]
-  
