@@ -1,9 +1,6 @@
 import { BN, web3 } from "@project-serum/anchor";
-import {
-  BuildOutput,
-} from "../instructions/itemv2";
+import { BuildOutput } from "../instructions/itemv2";
 import { sha256 } from "js-sha256";
-
 
 export const ITEMV2_ID = new web3.PublicKey(
   "itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo"
@@ -155,7 +152,7 @@ export class PackContents {
   }
 
   hash(): Buffer {
-    // match this with the program code 
+    // match this with the program code
     const contentBuffers = this.entries.map((entry) =>
       Buffer.concat([
         entry.mint.toBuffer(),
@@ -255,7 +252,7 @@ export function getPackPda(itemClass: web3.PublicKey, id: BN) {
 
 export function getBuildPermitPda(
   builder: web3.PublicKey,
-  itemClass: web3.PublicKey,
+  itemClass: web3.PublicKey
 ) {
   const [buildPermit, _buildPermitBump] = web3.PublicKey.findProgramAddressSync(
     [Buffer.from("build_permit"), builder.toBuffer(), itemClass.toBuffer()],

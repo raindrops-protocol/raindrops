@@ -498,13 +498,13 @@ export class ItemProgramV2 extends Program.Program {
 
     // fetch all packs at once
     const fetchPackDataPromises: Promise<Pack | null>[] = [];
-    for (let pack of packAddresses) {
+    for (const pack of packAddresses) {
       fetchPackDataPromises.push(this.getPack(pack));
     }
     const allPackData = await Promise.all(fetchPackDataPromises);
 
     const availablePacks: Pack[] = [];
-    for (let packData of allPackData) {
+    for (const packData of allPackData) {
       // skip if pda data doesnt exist
       if (packData === null || packData === undefined) {
         continue;
