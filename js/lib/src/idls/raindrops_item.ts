@@ -1018,44 +1018,6 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "createPack",
-      "accounts": [
-        {
-          "name": "pack",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CreatePackArgs"
-          }
-        }
-      ]
-    },
-    {
       "name": "startBuild",
       "accounts": [
         {
@@ -1072,12 +1034,6 @@ export type RaindropsItem = {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
         },
         {
           "name": "builder",
@@ -1118,12 +1074,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "deterministicIngredient",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "ingredientMetadata",
           "isMut": true,
           "isSigner": false
@@ -1156,11 +1106,6 @@ export type RaindropsItem = {
         {
           "name": "ingredientDestinationTokenRecord",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1235,12 +1180,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "deterministicIngredient",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "ingredientSource",
           "isMut": true,
           "isSigner": false
@@ -1248,11 +1187,6 @@ export type RaindropsItem = {
         {
           "name": "ingredientDestination",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1334,11 +1268,6 @@ export type RaindropsItem = {
           "isSigner": true
         },
         {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "logWrapper",
           "isMut": false,
           "isSigner": false
@@ -1402,7 +1331,7 @@ export type RaindropsItem = {
       ]
     },
     {
-      "name": "receiveItemPnft",
+      "name": "receiveItem",
       "accounts": [
         {
           "name": "itemMint",
@@ -1503,68 +1432,7 @@ export type RaindropsItem = {
       "args": []
     },
     {
-      "name": "receiveItemSpl",
-      "accounts": [
-        {
-          "name": "itemMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemSource",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemDestination",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "completeBuildItem",
+      "name": "completeBuild",
       "accounts": [
         {
           "name": "itemMint",
@@ -1582,17 +1450,6 @@ export type RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -1601,11 +1458,6 @@ export type RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "logWrapper",
@@ -1622,91 +1474,10 @@ export type RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "CompleteBuildItemArgs"
+            "defined": "CompleteBuildArgs"
           }
         }
       ]
-    },
-    {
-      "name": "completeBuildPack",
-      "accounts": [
-        {
-          "name": "pack",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CompleteBuildPackArgs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "completeBuildPresetOnly",
-      "accounts": [
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": []
     },
     {
       "name": "applyBuildEffect",
@@ -2064,97 +1835,6 @@ export type RaindropsItem = {
         }
       ],
       "args": []
-    },
-    {
-      "name": "createBuildPermit",
-      "accounts": [
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CreateBuildPermitArgs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "createDeterministicIngredient",
-      "accounts": [
-        {
-          "name": "ingredientMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "deterministicIngredient",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CreateDeterministicIngredientArgs"
-          }
-        }
-      ]
     }
   ],
   "accounts": [
@@ -2174,12 +1854,6 @@ export type RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
-          },
-          {
-            "name": "outputMode",
-            "type": {
-              "defined": "ItemClassV1OutputMode"
-            }
           }
         ]
       }
@@ -2232,18 +1906,6 @@ export type RaindropsItem = {
             }
           },
           {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
-            }
-          },
-          {
             "name": "ingredients",
             "type": {
               "vec": {
@@ -2272,9 +1934,9 @@ export type RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "output",
+            "name": "itemMint",
             "type": {
-              "defined": "BuildOutput"
+              "option": "publicKey"
             }
           },
           {
@@ -2297,79 +1959,6 @@ export type RaindropsItem = {
             "name": "status",
             "type": {
               "defined": "BuildStatus"
-            }
-          },
-          {
-            "name": "buildPermitInUse",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "pack",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "id",
-            "type": "u64"
-          },
-          {
-            "name": "itemClass",
-            "type": "publicKey"
-          },
-          {
-            "name": "contentsHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "buildPermit",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "recipe",
-            "type": "publicKey"
-          },
-          {
-            "name": "builder",
-            "type": "publicKey"
-          },
-          {
-            "name": "remainingBuilds",
-            "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "deterministicIngredient",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "recipe",
-            "type": "publicKey"
-          },
-          {
-            "name": "ingredientMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "outputs",
-            "type": {
-              "vec": {
-                "defined": "DeterministicIngredientOutput"
-              }
             }
           }
         ]
@@ -2610,7 +2199,7 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "CompleteBuildItemArgs",
+      "name": "CompleteBuildArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2631,61 +2220,6 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "CompleteBuildPackArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "packContents",
-            "type": {
-              "defined": "PackContents"
-            }
-          },
-          {
-            "name": "packContentsHashNonce",
-            "type": {
-              "array": [
-                "u8",
-                16
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CreateBuildPermitArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "builder",
-            "type": "publicKey"
-          },
-          {
-            "name": "remainingBuilds",
-            "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CreateDeterministicIngredientArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "outputs",
-            "type": {
-              "vec": {
-                "defined": "DeterministicIngredientOutput"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -2694,12 +2228,6 @@ export type RaindropsItem = {
             "name": "recipeArgs",
             "type": {
               "defined": "RecipeArgs"
-            }
-          },
-          {
-            "name": "outputMode",
-            "type": {
-              "defined": "ItemClassV1OutputMode"
             }
           }
         ]
@@ -2729,35 +2257,6 @@ export type RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
-          },
-          {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CreatePackArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "contentsHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
           }
         ]
       }
@@ -2786,18 +2285,6 @@ export type RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
-          },
-          {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
-            }
           }
         ]
       }
@@ -2810,14 +2297,6 @@ export type RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
-          },
-          {
-            "name": "recipeOutputSelection",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionArgs"
-              }
-            }
           }
         ]
       }
@@ -2894,10 +2373,6 @@ export type RaindropsItem = {
                 "defined": "IngredientMint"
               }
             }
-          },
-          {
-            "name": "isDeterministic",
-            "type": "bool"
           }
         ]
       }
@@ -2936,10 +2411,6 @@ export type RaindropsItem = {
             "type": {
               "defined": "BuildEffect"
             }
-          },
-          {
-            "name": "isDeterministic",
-            "type": "bool"
           }
         ]
       }
@@ -2994,146 +2465,6 @@ export type RaindropsItem = {
             "type": {
               "defined": "Payment"
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "PackContents",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "entries",
-            "type": {
-              "vec": {
-                "defined": "PackContentsEntry"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "PackContentsEntry",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "BuildOutput",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "items",
-            "type": {
-              "vec": {
-                "defined": "BuildOutputItem"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "BuildOutputItem",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "received",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DeterministicIngredientOutput",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "OutputSelectionArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "groupId",
-            "type": "u8"
-          },
-          {
-            "name": "outputId",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "OutputSelectionGroup",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "groupId",
-            "type": "u8"
-          },
-          {
-            "name": "choices",
-            "type": {
-              "vec": {
-                "defined": "OutputSelection"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "OutputSelection",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "outputId",
-            "type": "u8"
-          },
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
           }
         ]
       }
@@ -4817,29 +4148,6 @@ export type RaindropsItem = {
       }
     },
     {
-      "name": "ItemClassV1OutputMode",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Item"
-          },
-          {
-            "name": "Pack",
-            "fields": [
-              {
-                "name": "index",
-                "type": "u64"
-              }
-            ]
-          },
-          {
-            "name": "PresetOnly"
-          }
-        ]
-      }
-    },
-    {
       "name": "BuildStatus",
       "type": {
         "kind": "enum",
@@ -5184,46 +4492,6 @@ export type RaindropsItem = {
       "code": 6011,
       "name": "BuildNotPaid",
       "msg": "Must make build payment"
-    },
-    {
-      "code": 6012,
-      "name": "InvalidItemClassV1OutputMode",
-      "msg": "Invalid ItemClassV1OutputMode"
-    },
-    {
-      "code": 6013,
-      "name": "InvalidBuildOutput",
-      "msg": "Invalid Build Output"
-    },
-    {
-      "code": 6014,
-      "name": "InvalidPackContents",
-      "msg": "Invalid Pack Contents"
-    },
-    {
-      "code": 6015,
-      "name": "PackAlreadyOpened",
-      "msg": "Pack Already Opened"
-    },
-    {
-      "code": 6016,
-      "name": "BuildPermitRequired",
-      "msg": "Build Permit Required"
-    },
-    {
-      "code": 6017,
-      "name": "NoBuildsRemaining",
-      "msg": "No Builds Remaining"
-    },
-    {
-      "code": 6018,
-      "name": "InvalidRecipeConfig",
-      "msg": "Invalid Recipe Config"
-    },
-    {
-      "code": 6019,
-      "name": "InvalidOutputSelection",
-      "msg": "Invalid Output Selection"
     }
   ]
 };
@@ -6248,44 +5516,6 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "createPack",
-      "accounts": [
-        {
-          "name": "pack",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CreatePackArgs"
-          }
-        }
-      ]
-    },
-    {
       "name": "startBuild",
       "accounts": [
         {
@@ -6302,12 +5532,6 @@ export const IDL: RaindropsItem = {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
         },
         {
           "name": "builder",
@@ -6348,12 +5572,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "deterministicIngredient",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "ingredientMetadata",
           "isMut": true,
           "isSigner": false
@@ -6386,11 +5604,6 @@ export const IDL: RaindropsItem = {
         {
           "name": "ingredientDestinationTokenRecord",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -6465,12 +5678,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "deterministicIngredient",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "ingredientSource",
           "isMut": true,
           "isSigner": false
@@ -6478,11 +5685,6 @@ export const IDL: RaindropsItem = {
         {
           "name": "ingredientDestination",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -6564,11 +5766,6 @@ export const IDL: RaindropsItem = {
           "isSigner": true
         },
         {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "logWrapper",
           "isMut": false,
           "isSigner": false
@@ -6632,7 +5829,7 @@ export const IDL: RaindropsItem = {
       ]
     },
     {
-      "name": "receiveItemPnft",
+      "name": "receiveItem",
       "accounts": [
         {
           "name": "itemMint",
@@ -6733,68 +5930,7 @@ export const IDL: RaindropsItem = {
       "args": []
     },
     {
-      "name": "receiveItemSpl",
-      "accounts": [
-        {
-          "name": "itemMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemSource",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemDestination",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "builder",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "completeBuildItem",
+      "name": "completeBuild",
       "accounts": [
         {
           "name": "itemMint",
@@ -6812,17 +5948,6 @@ export const IDL: RaindropsItem = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -6831,11 +5956,6 @@ export const IDL: RaindropsItem = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "logWrapper",
@@ -6852,91 +5972,10 @@ export const IDL: RaindropsItem = {
         {
           "name": "args",
           "type": {
-            "defined": "CompleteBuildItemArgs"
+            "defined": "CompleteBuildArgs"
           }
         }
       ]
-    },
-    {
-      "name": "completeBuildPack",
-      "accounts": [
-        {
-          "name": "pack",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CompleteBuildPackArgs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "completeBuildPresetOnly",
-      "accounts": [
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": []
     },
     {
       "name": "applyBuildEffect",
@@ -7294,97 +6333,6 @@ export const IDL: RaindropsItem = {
         }
       ],
       "args": []
-    },
-    {
-      "name": "createBuildPermit",
-      "accounts": [
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CreateBuildPermitArgs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "createDeterministicIngredient",
-      "accounts": [
-        {
-          "name": "ingredientMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "deterministicIngredient",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CreateDeterministicIngredientArgs"
-          }
-        }
-      ]
     }
   ],
   "accounts": [
@@ -7404,12 +6352,6 @@ export const IDL: RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
-          },
-          {
-            "name": "outputMode",
-            "type": {
-              "defined": "ItemClassV1OutputMode"
-            }
           }
         ]
       }
@@ -7462,18 +6404,6 @@ export const IDL: RaindropsItem = {
             }
           },
           {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
-            }
-          },
-          {
             "name": "ingredients",
             "type": {
               "vec": {
@@ -7502,9 +6432,9 @@ export const IDL: RaindropsItem = {
             "type": "publicKey"
           },
           {
-            "name": "output",
+            "name": "itemMint",
             "type": {
-              "defined": "BuildOutput"
+              "option": "publicKey"
             }
           },
           {
@@ -7527,79 +6457,6 @@ export const IDL: RaindropsItem = {
             "name": "status",
             "type": {
               "defined": "BuildStatus"
-            }
-          },
-          {
-            "name": "buildPermitInUse",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "pack",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "id",
-            "type": "u64"
-          },
-          {
-            "name": "itemClass",
-            "type": "publicKey"
-          },
-          {
-            "name": "contentsHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "buildPermit",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "recipe",
-            "type": "publicKey"
-          },
-          {
-            "name": "builder",
-            "type": "publicKey"
-          },
-          {
-            "name": "remainingBuilds",
-            "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "deterministicIngredient",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "recipe",
-            "type": "publicKey"
-          },
-          {
-            "name": "ingredientMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "outputs",
-            "type": {
-              "vec": {
-                "defined": "DeterministicIngredientOutput"
-              }
             }
           }
         ]
@@ -7840,7 +6697,7 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "CompleteBuildItemArgs",
+      "name": "CompleteBuildArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -7861,61 +6718,6 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "CompleteBuildPackArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "packContents",
-            "type": {
-              "defined": "PackContents"
-            }
-          },
-          {
-            "name": "packContentsHashNonce",
-            "type": {
-              "array": [
-                "u8",
-                16
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CreateBuildPermitArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "builder",
-            "type": "publicKey"
-          },
-          {
-            "name": "remainingBuilds",
-            "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CreateDeterministicIngredientArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "outputs",
-            "type": {
-              "vec": {
-                "defined": "DeterministicIngredientOutput"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "CreateItemClassV1Args",
       "type": {
         "kind": "struct",
@@ -7924,12 +6726,6 @@ export const IDL: RaindropsItem = {
             "name": "recipeArgs",
             "type": {
               "defined": "RecipeArgs"
-            }
-          },
-          {
-            "name": "outputMode",
-            "type": {
-              "defined": "ItemClassV1OutputMode"
             }
           }
         ]
@@ -7959,35 +6755,6 @@ export const IDL: RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
-          },
-          {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CreatePackArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "contentsHash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
           }
         ]
       }
@@ -8016,18 +6783,6 @@ export const IDL: RaindropsItem = {
                 "defined": "RecipeIngredientData"
               }
             }
-          },
-          {
-            "name": "buildPermitRequired",
-            "type": "bool"
-          },
-          {
-            "name": "selectableOutputs",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionGroup"
-              }
-            }
           }
         ]
       }
@@ -8040,14 +6795,6 @@ export const IDL: RaindropsItem = {
           {
             "name": "recipeIndex",
             "type": "u64"
-          },
-          {
-            "name": "recipeOutputSelection",
-            "type": {
-              "vec": {
-                "defined": "OutputSelectionArgs"
-              }
-            }
           }
         ]
       }
@@ -8124,10 +6871,6 @@ export const IDL: RaindropsItem = {
                 "defined": "IngredientMint"
               }
             }
-          },
-          {
-            "name": "isDeterministic",
-            "type": "bool"
           }
         ]
       }
@@ -8166,10 +6909,6 @@ export const IDL: RaindropsItem = {
             "type": {
               "defined": "BuildEffect"
             }
-          },
-          {
-            "name": "isDeterministic",
-            "type": "bool"
           }
         ]
       }
@@ -8224,146 +6963,6 @@ export const IDL: RaindropsItem = {
             "type": {
               "defined": "Payment"
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "PackContents",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "entries",
-            "type": {
-              "vec": {
-                "defined": "PackContentsEntry"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "PackContentsEntry",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "BuildOutput",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "items",
-            "type": {
-              "vec": {
-                "defined": "BuildOutputItem"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "BuildOutputItem",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "received",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DeterministicIngredientOutput",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "OutputSelectionArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "groupId",
-            "type": "u8"
-          },
-          {
-            "name": "outputId",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "OutputSelectionGroup",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "groupId",
-            "type": "u8"
-          },
-          {
-            "name": "choices",
-            "type": {
-              "vec": {
-                "defined": "OutputSelection"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "OutputSelection",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "outputId",
-            "type": "u8"
-          },
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
           }
         ]
       }
@@ -10047,29 +8646,6 @@ export const IDL: RaindropsItem = {
       }
     },
     {
-      "name": "ItemClassV1OutputMode",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Item"
-          },
-          {
-            "name": "Pack",
-            "fields": [
-              {
-                "name": "index",
-                "type": "u64"
-              }
-            ]
-          },
-          {
-            "name": "PresetOnly"
-          }
-        ]
-      }
-    },
-    {
       "name": "BuildStatus",
       "type": {
         "kind": "enum",
@@ -10414,46 +8990,6 @@ export const IDL: RaindropsItem = {
       "code": 6011,
       "name": "BuildNotPaid",
       "msg": "Must make build payment"
-    },
-    {
-      "code": 6012,
-      "name": "InvalidItemClassV1OutputMode",
-      "msg": "Invalid ItemClassV1OutputMode"
-    },
-    {
-      "code": 6013,
-      "name": "InvalidBuildOutput",
-      "msg": "Invalid Build Output"
-    },
-    {
-      "code": 6014,
-      "name": "InvalidPackContents",
-      "msg": "Invalid Pack Contents"
-    },
-    {
-      "code": 6015,
-      "name": "PackAlreadyOpened",
-      "msg": "Pack Already Opened"
-    },
-    {
-      "code": 6016,
-      "name": "BuildPermitRequired",
-      "msg": "Build Permit Required"
-    },
-    {
-      "code": 6017,
-      "name": "NoBuildsRemaining",
-      "msg": "No Builds Remaining"
-    },
-    {
-      "code": 6018,
-      "name": "InvalidRecipeConfig",
-      "msg": "Invalid Recipe Config"
-    },
-    {
-      "code": 6019,
-      "name": "InvalidOutputSelection",
-      "msg": "Invalid Output Selection"
     }
   ]
 };
