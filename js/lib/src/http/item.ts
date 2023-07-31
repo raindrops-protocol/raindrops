@@ -31,9 +31,9 @@ export class Client {
       case "mainnet-beta": {
         //this.baseUrl = "https://api.items.itsboots.xyz"; this points to the old api gateway still in the CDK and cert itself, we will update in a subsequent operation
         this.baseUrl =
-          "https://w2badi4dgl.execute-api.us-east-1.amazonaws.com/prod";
+          "https://d9ef3zg9gc.execute-api.us-east-1.amazonaws.com/v2/";
         this.wsUrl =
-          "wss://7mbqz4vp5e.execute-api.us-east-1.amazonaws.com/main";
+          "wss://3pg01ss3dd.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "devnet": {
