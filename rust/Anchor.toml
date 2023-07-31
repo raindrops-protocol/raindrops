@@ -6,7 +6,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.localnet]
-itemv2 = "itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo"
+itemv2 = "itEm2FtqJWqUmMTYrUxoFcmFtBxEpd68VTmxJamQXA3"
 raindrops_item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 raindrops_player = "p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1"
 raindrops_namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
@@ -15,7 +15,7 @@ raindrops_staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 raindrops_avatar = "AvAtARWmYZLbUFfoQc3RzT7zR5zLRs92VSMm8CsCadYN"
 
 [programs.devnet]
-itemv2 = "itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo"
+itemv2 = "itEm2FtqJWqUmMTYrUxoFcmFtBxEpd68VTmxJamQXA3"
 raindrops_item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 raindrops_player = "p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1"
 raindrops_namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"
@@ -24,7 +24,7 @@ raindrops_staking = "stk9HFnKhZN2PZjnn5C4wTzmeiAEgsDkbqnHkNjX1Z4"
 raindrops_avatar = "AvAtARWmYZLbUFfoQc3RzT7zR5zLRs92VSMm8CsCadYN"
 
 [programs.mainnet]
-itemv2 = "itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo"
+itemv2 = "itEm2FtqJWqUmMTYrUxoFcmFtBxEpd68VTmxJamQXA3"
 raindrops_item = "itemX1XWs9dK8T2Zca4vEEPfCAhRc7yvYFntPjTTVx6"
 raindrops_player = "p1ay5K7mcAZUkzR1ArMLCCQ6C58ULUt7SUi7puGEWc1"
 raindrops_namespace = "nameAxQRRBnd4kLfsVoZBBXfrByZdZTkh8mULLxLyqV"

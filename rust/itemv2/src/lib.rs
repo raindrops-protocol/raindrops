@@ -4,7 +4,7 @@ pub mod instructions;
 pub mod state;
 pub use instructions::*;
 
-declare_id!("itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo");
+declare_id!("itEm2FtqJWqUmMTYrUxoFcmFtBxEpd68VTmxJamQXA3");
 
 #[program]
 pub mod itemv2 {

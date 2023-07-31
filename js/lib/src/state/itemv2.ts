@@ -3,7 +3,7 @@ import { BuildOutput } from "../instructions/itemv2";
 import { sha256 } from "js-sha256";
 
 export const ITEMV2_ID = new web3.PublicKey(
-  "itEM2PBUUqSjYhSmEKSbJx9SRPjRXSe3AhSiYk7Mouo"
+  "itEm2FtqJWqUmMTYrUxoFcmFtBxEpd68VTmxJamQXA3"
 );
 
 export interface ItemClass {
