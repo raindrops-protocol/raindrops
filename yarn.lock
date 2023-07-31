@@ -2452,9 +2452,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metaplex-foundation/mpl-token-metadata@npm:2.11.0":
-  version: 2.11.0
-  resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.11.0"
+"@metaplex-foundation/mpl-token-metadata@npm:^2.13.0":
+  version: 2.13.0
+  resolution: "@metaplex-foundation/mpl-token-metadata@npm:2.13.0"
   dependencies:
     "@metaplex-foundation/beet": ^0.7.1
     "@metaplex-foundation/beet-solana": ^0.4.0
@@ -2463,7 +2463,7 @@ __metadata:
     "@solana/web3.js": ^1.66.2
     bn.js: ^5.2.0
     debug: ^4.3.4
-  checksum: 68487e4b7f58a1539f73be8e66e4d799c55cec9cde70df3a82061c4650c539c0391b80454ab7aabe3baf968b4a198f4fb32346780e6d83a3bf0b657959426968
+  checksum: 89f82980f435ac45d961e6ab03859c7e4ab9809ad2d9f84aca91bcf50fdc60e210d0596d8856adf63e474ca69d971c51a4c27d0fe4dab115fcef64d57f3be611
   languageName: node
   linkType: hard
 
@@ -2754,7 +2754,7 @@ __metadata:
   dependencies:
     "@metaplex-foundation/js": ^0.18.1
     "@metaplex-foundation/mpl-token-auth-rules": 1.1.0
-    "@metaplex-foundation/mpl-token-metadata": 2.11.0
+    "@metaplex-foundation/mpl-token-metadata": ^2.13.0
     "@msgpack/msgpack": ^2.8.0
     "@project-serum/anchor": ^0.26.0
     "@project-serum/common": ^0.0.1-beta.3

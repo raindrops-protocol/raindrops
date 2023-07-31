@@ -1163,12 +1163,15 @@ async function createItemClass(
 
     let ingredientMintOutput: metaplex.CreateNftOutput;
     if (isPNft) {
-      const ingredientCollectionNft = await createCollectionPNft(payer, connection);
+      const ingredientCollectionNft = await createCollectionPNft(
+        payer,
+        connection
+      );
 
       const ruleSetPda = await createRuleSet(payer, connection);
 
       ingredientMintOutput = await client.nfts().create({
-        tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
+        tokenStandard: mpl.TokenStandard.ProgrammableNonFungible as number,
         uri: "https://foo.com/bar.json",
         name: "pNFT1",
         sellerFeeBasisPoints: 500,
@@ -1219,29 +1222,35 @@ async function createItemClass(
           mpl.PROGRAM_ID
         );
 
-      const verifyIx = mpl.createVerifyInstruction({
-        authority: payer.publicKey,
-        delegateRecord: tokenRecord,
-        metadata: ingredientMintOutput.metadataAddress,
-        collectionMint: ingredientCollectionNft,
-        collectionMetadata: collectionMetadata,
-        collectionMasterEdition: collectionME,
-        sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-      }, {
-        verificationArgs: mpl.VerificationArgs.CollectionV1,
-      });
+      const verifyIx = mpl.createVerifyInstruction(
+        {
+          authority: payer.publicKey,
+          delegateRecord: tokenRecord,
+          metadata: ingredientMintOutput.metadataAddress,
+          collectionMint: ingredientCollectionNft,
+          collectionMetadata: collectionMetadata,
+          collectionMasterEdition: collectionME,
+          sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        },
+        {
+          verificationArgs: mpl.VerificationArgs.CollectionV1,
+        }
+      );
       const verifyTxSig = await connection.sendTransaction(
         new anchor.web3.Transaction().add(verifyIx),
         [payer],
-        {skipPreflight: false}
+        { skipPreflight: false }
       );
       console.log("verifyTxSig: %s", verifyTxSig);
       await connection.confirmTransaction(verifyTxSig);
     } else {
-      const ingredientCollectionNft = await createCollectionNft(payer, connection);
+      const ingredientCollectionNft = await createCollectionNft(
+        payer,
+        connection
+      );
 
       ingredientMintOutput = await client.nfts().create({
-        tokenStandard: mpl.TokenStandard.NonFungible,
+        tokenStandard: mpl.TokenStandard.NonFungible as number,
         uri: "https://foo.com/bar.json",
         name: "NFT1",
         sellerFeeBasisPoints: 500,
@@ -1407,7 +1416,7 @@ async function createCollectionNft(
   );
 
   const result = await client.nfts().create({
-    tokenStandard: mpl.TokenStandard.NonFungible,
+    tokenStandard: mpl.TokenStandard.NonFungible as number,
     uri: "https://foo.com/bar.json",
     name: "collectionNft",
     sellerFeeBasisPoints: 0,
@@ -1427,7 +1436,7 @@ async function createCollectionPNft(
   );
 
   const result = await client.nfts().create({
-    tokenStandard: mpl.TokenStandard.ProgrammableNonFungible,
+    tokenStandard: mpl.TokenStandard.ProgrammableNonFungible as number,
     uri: "https://foo.com/bar.json",
     name: "collectionNft",
     sellerFeeBasisPoints: 0,
@@ -1670,11 +1679,9 @@ async function completeBuildAndReceiveItem(
 
   const itemProgram = await ItemProgram.getProgramWithConfig(ItemProgram, {
     asyncSigning: false,
-    provider: new anchor.AnchorProvider(
-      connection,
-      new anchor.Wallet(signer),
-      { commitment: "confirmed" }
-    ),
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(signer), {
+      commitment: "confirmed",
+    }),
     idl: Idls.ItemIDL,
   });
 
@@ -1927,29 +1934,36 @@ async function assertRejects(fn: Promise<any | void>) {
 }
 
 // either read from file or env var
-async function initSigner(filePath: string, connection: anchor.web3.Connection): Promise<anchor.web3.Keypair> {
+async function initSigner(
+  filePath: string,
+  connection: anchor.web3.Connection
+): Promise<anchor.web3.Keypair> {
   let kpSecret;
   try {
-    kpSecret = fs.readFileSync(filePath.startsWith("/")
-    ? filePath
-    : path.join(process.cwd(), filePath), "utf8");
-  } catch(_e) {
+    kpSecret = fs.readFileSync(
+      filePath.startsWith("/") ? filePath : path.join(process.cwd(), filePath),
+      "utf8"
+    );
+  } catch (_e) {
     try {
       kpSecret = Buffer.from(process.env.TEST_SIGNER, "utf8");
-    } catch(_e) {
-      throw new Error(`It's required to have a signer for testing raindrops_item, refer to the static variable 'TEST_SIGNER' in the program code`)
+    } catch (_e) {
+      throw new Error(
+        `It's required to have a signer for testing raindrops_item, refer to the static variable 'TEST_SIGNER' in the program code`
+      );
     }
   }
 
-  const keypairSecret = new Uint8Array(
-      JSON.parse(kpSecret)
-  );
-  
+  const keypairSecret = new Uint8Array(JSON.parse(kpSecret));
+
   const signer = anchor.web3.Keypair.fromSecretKey(keypairSecret);
 
   // get this signer some lamports
-  const airdropTxSig = await connection.requestAirdrop(signer.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
+  const airdropTxSig = await connection.requestAirdrop(
+    signer.publicKey,
+    10 * anchor.web3.LAMPORTS_PER_SOL
+  );
   await connection.confirmTransaction(airdropTxSig, "confirmed");
 
-  return signer
+  return signer;
 }

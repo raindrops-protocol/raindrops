@@ -402,6 +402,24 @@ export function getItemV1(itemMint: web3.PublicKey): web3.PublicKey {
   return item;
 }
 
+export function getItemClassV2(items: web3.PublicKey): web3.PublicKey {
+  const [itemClass, _itemClassBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("item_class"), items.toBuffer()],
+    ITEM_ID
+  );
+
+  return itemClass;
+}
+
+export function getItemV2(itemMint: web3.PublicKey): web3.PublicKey {
+  const [item, _itemBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("item"), itemMint.toBuffer()],
+    ITEM_ID
+  );
+
+  return item;
+}
+
 export function getBuild(
   itemClass: web3.PublicKey,
   builder: web3.PublicKey
@@ -428,4 +446,46 @@ export function getRecipe(
   );
 
   return recipe;
+}
+
+export function getPack(itemClass: web3.PublicKey, id: BN) {
+  const [pack, _packBump] = web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("pack"),
+      itemClass.toBuffer(),
+      id.toArrayLike(Buffer, "le", 8),
+    ],
+    ITEM_ID
+  );
+
+  return pack;
+}
+
+export function getBuildPermit(
+  recipe: web3.PublicKey,
+  builder: web3.PublicKey
+) {
+  const [buildPermit, _buildPermitBump] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("build_permit"), builder.toBuffer(), recipe.toBuffer()],
+    ITEM_ID
+  );
+
+  return buildPermit;
+}
+
+export function getDeterministicIngredient(
+  recipe: web3.PublicKey,
+  ingredientMint: web3.PublicKey
+) {
+  const [deterministicIngredient, _deterministicIngredientBump] =
+    web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("deterministic_ingredient"),
+        recipe.toBuffer(),
+        ingredientMint.toBuffer(),
+      ],
+      ITEM_ID
+    );
+
+  return deterministicIngredient;
 }

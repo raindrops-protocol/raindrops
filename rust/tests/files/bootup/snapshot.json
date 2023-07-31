@@ -1,36 +1,36 @@
 [
-    {
-        "number": "3019",
-        "mint": "6JN5cknHjThAEyqHeAAEK5u7Qq6SQfPi1dEfcAmo59Kb",
-        "name": "LILY #3019",
-        "image": "https://bafybeifdoms5qy3db43atm5iwfbht7tgtb3r2xntovvhrkye4lqwqh5hdy.ipfs.nftstorage.link/6354.png?ext=png",
-        "attributes": [
-            { "trait_type": "Type", "value": "Female" },
-            { "trait_type": "Background", "value": "Gold" },
-            { "trait_type": "Headgear", "value": "None" },
-            { "trait_type": "Aura", "value": "None" }
-        ],
-        "variants": {
-            "skinColor": "tan",
-            "hairColor": "grey",
-            "backgroundTint": "original"
-        }
-    },
-    {
-        "number": "2486",
-        "mint": "8fsiDzbS2vhTEJiFsr81mHMYwU35TXPfZyUjT1CtXCSv",
-        "name": "LILY #2486",
-        "image": "https://bafybeiedjm5ch44fgdj5gcbhkihqz4g6itivax5n57wbinvr25mt53vvlm.ipfs.nftstorage.link/4164.png?ext=png",
-        "attributes": [
-            { "trait_type": "Type", "value": "Male" },
-            { "trait_type": "Background", "value": "Gold" },
-            { "trait_type": "Headgear", "value": "Brown Backwards Cap" },
-            { "trait_type": "Aura", "value": "None" }
-        ],
-        "variants": {
-            "skinColor": "light",
-            "hairColor": "red",
-            "backgroundTint": "original"
-        }
+  {
+    "number": "3019",
+    "mint": "6JN5cknHjThAEyqHeAAEK5u7Qq6SQfPi1dEfcAmo59Kb",
+    "name": "LILY #3019",
+    "image": "https://bafybeifdoms5qy3db43atm5iwfbht7tgtb3r2xntovvhrkye4lqwqh5hdy.ipfs.nftstorage.link/6354.png?ext=png",
+    "attributes": [
+      { "trait_type": "Type", "value": "Female" },
+      { "trait_type": "Background", "value": "Gold" },
+      { "trait_type": "Headgear", "value": "None" },
+      { "trait_type": "Aura", "value": "None" }
+    ],
+    "variants": {
+      "skinColor": "tan",
+      "hairColor": "grey",
+      "backgroundTint": "original"
     }
+  },
+  {
+    "number": "2486",
+    "mint": "8fsiDzbS2vhTEJiFsr81mHMYwU35TXPfZyUjT1CtXCSv",
+    "name": "LILY #2486",
+    "image": "https://bafybeiedjm5ch44fgdj5gcbhkihqz4g6itivax5n57wbinvr25mt53vvlm.ipfs.nftstorage.link/4164.png?ext=png",
+    "attributes": [
+      { "trait_type": "Type", "value": "Male" },
+      { "trait_type": "Background", "value": "Gold" },
+      { "trait_type": "Headgear", "value": "Brown Backwards Cap" },
+      { "trait_type": "Aura", "value": "None" }
+    ],
+    "variants": {
+      "skinColor": "light",
+      "hairColor": "red",
+      "backgroundTint": "original"
+    }
+  }
 ]

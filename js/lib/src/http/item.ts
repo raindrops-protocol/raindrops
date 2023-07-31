@@ -1,8 +1,13 @@
 import * as anchor from "@project-serum/anchor";
 import * as errors from "./errors";
-import { Build, BuildStatus, ItemClassV1, ItemV1 } from "../state/item";
+import {
+  Build,
+  BuildStatus,
+  ItemClass,
+  Item,
+  getBuildPda,
+} from "../state/itemv2";
 import { fetch } from "cross-fetch";
-import { getBuild } from "../utils/pda";
 import IsoWebsocket from "isomorphic-ws";
 
 export class Client {
@@ -26,16 +31,17 @@ export class Client {
       case "mainnet-beta": {
         //this.baseUrl = "https://api.items.itsboots.xyz"; this points to the old api gateway still in the CDK and cert itself, we will update in a subsequent operation
         this.baseUrl =
-          "https://w2badi4dgl.execute-api.us-east-1.amazonaws.com/prod";
+          "https://d9ef3zg9gc.execute-api.us-east-1.amazonaws.com/v2/";
         this.wsUrl =
-          "wss://7mbqz4vp5e.execute-api.us-east-1.amazonaws.com/main";
+          "wss://3pg01ss3dd.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "devnet": {
         //this.baseUrl = "https://dev.api.items.itsboots.xyz"; this points to the old api gateway still in the CDK (cert is migrated), we will update in a subsequent operation
         this.baseUrl =
-          "https://hwheczmzx7.execute-api.us-east-1.amazonaws.com/prod";
-        this.wsUrl = "wss://dev.ws.items.itsboots.xyz";
+          "https://43jqhj70a6.execute-api.us-east-1.amazonaws.com/v2";
+        this.wsUrl =
+          "wss://7iyl5fcdgd.execute-api.us-east-1.amazonaws.com/main";
         break;
       }
       case "localnet": {
@@ -54,10 +60,18 @@ export class Client {
   // check this list of ingredients can build the item
   async checkIngredients(
     itemClass: anchor.web3.PublicKey,
-    ingredients: IngredientArg[]
+    ingredients: IngredientArg[],
+    builder?: anchor.web3.PublicKey
   ): Promise<Recipe[]> {
+    // if builder is provided overide the initialized provider
+    let recipeBuilder = this.provider.publicKey;
+    if (builder !== undefined) {
+      recipeBuilder = builder;
+    }
+
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
+      builder: recipeBuilder.toString(),
     });
 
     for (const ingredient of ingredients) {
@@ -81,7 +95,7 @@ export class Client {
   async build(
     itemClass: anchor.web3.PublicKey,
     ingredientArgs: IngredientArg[]
-  ): Promise<any> {
+  ): Promise<BuildResult> {
     // check ingredients and find a valid recipe for the item class we want to build
     const buildableRecipes = await this.checkIngredients(
       itemClass,
@@ -101,7 +115,7 @@ export class Client {
     console.log(
       "building item class: %s from recipe: %s",
       itemClass.toString(),
-      JSON.stringify(recipe)
+      recipe.recipeIndex
     );
 
     // get start build tx and sign it
@@ -133,30 +147,27 @@ export class Client {
       data: {
         ingredients: JSON.stringify(recipe.ingredients),
         startBuildTx: signedTx.serialize().toString("base64"),
-        build: getBuild(itemClass, this.provider.publicKey).toString(),
+        build: getBuildPda(itemClass, this.provider.publicKey).toString(),
       },
     };
 
     // on connection open, send the signed start build tx
     socket.onopen = (event) => {
-      console.log("socket status:", JSON.stringify(socket));
       console.log("websocket event received: %s", JSON.stringify(event));
       console.log("sending build request");
       socket.send(JSON.stringify({ buildRequest: buildRequest }));
     };
 
     socket.onclose = (event) => {
-      console.log("socket status:", JSON.stringify(socket));
       console.log("close:", JSON.stringify(event));
     };
 
     socket.onerror = (event) => {
-      console.log("socket status:", JSON.stringify(socket));
       console.log("websocket error:", JSON.stringify(event));
     };
 
     // wait for a response from the websocket api
-    const itemMint = await new Promise((resolve, reject) => {
+    const buildOutputRaw: any = await new Promise((resolve, reject) => {
       socket.onmessage = (event) => {
         try {
           console.log("received event: %s", JSON.stringify(event));
@@ -166,15 +177,35 @@ export class Client {
         }
       };
     });
-    console.log("itemMint: %s", itemMint);
+    const buildOutput: any = JSON.parse(buildOutputRaw);
 
-    return itemMint;
+    let pack: anchor.web3.PublicKey | undefined;
+    if (buildOutput.pack) {
+      pack = new anchor.web3.PublicKey(buildOutput.pack);
+    }
+
+    const receivedItems: [anchor.web3.PublicKey, anchor.BN][] = [];
+    for (const receivedItem of buildOutput.receivedItems) {
+      receivedItems.push([
+        new anchor.web3.PublicKey(receivedItem[0]),
+        new anchor.BN(receivedItem[1]),
+      ]);
+    }
+
+    const buildResult: BuildResult = {
+      build: new anchor.web3.PublicKey(buildOutput.build),
+      pack: pack,
+      txSigs: buildOutput.txSigs,
+      receivedItems: receivedItems,
+    };
+
+    return buildResult;
   }
 
   async continueBuild(
     itemClass: anchor.web3.PublicKey,
     ingredientArgs: IngredientArg[],
-    builder?: anchor.web3.PublicKey
+    builder: anchor.web3.PublicKey
   ) {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
@@ -300,7 +331,7 @@ export class Client {
 
   async getItem(
     itemMint: anchor.web3.PublicKey
-  ): Promise<[anchor.web3.PublicKey, ItemV1]> {
+  ): Promise<[anchor.web3.PublicKey, Item]> {
     const params = new URLSearchParams({
       itemMint: itemMint.toString(),
     });
@@ -316,13 +347,13 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const itemData: ItemV1 = JSON.parse(body.itemData);
+    const itemData: Item = JSON.parse(body.itemData);
     const item = new anchor.web3.PublicKey(body.item);
 
     return [item, itemData];
   }
 
-  async getItemClass(itemClass: anchor.web3.PublicKey): Promise<ItemClassV1> {
+  async getItemClass(itemClass: anchor.web3.PublicKey): Promise<ItemClass> {
     const params = new URLSearchParams({
       itemClass: itemClass.toString(),
     });
@@ -338,7 +369,7 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const itemClassData: ItemClassV1 = JSON.parse(body.itemClassData);
+    const itemClassData: ItemClass = JSON.parse(body.itemClassData);
 
     return itemClassData;
   }
@@ -362,6 +393,45 @@ export class Client {
     const recipeData: Recipe = JSON.parse(body.recipeData);
 
     return recipeData;
+  }
+
+  // get all pack data
+  async getPack(pack: anchor.web3.PublicKey): Promise<[any, any[], any]> {
+    const params = new URLSearchParams({
+      pack: pack.toString(),
+    });
+
+    // return the pack data
+    const response = await fetch(`${this.baseUrl}/pack?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey),
+    });
+
+    if (response.status === 400) {
+      return null;
+    }
+
+    const body = await errors.handleResponse(response);
+
+    return [body.pack, body.items, body.packConfig];
+  }
+
+  async getPackItemClass(itemClass: anchor.web3.PublicKey): Promise<any> {
+    const params = new URLSearchParams({
+      itemClass: itemClass.toString(),
+    });
+
+    // return the pack data
+    const response = await fetch(`${this.baseUrl}/packItemClass?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey),
+    });
+
+    if (response.status === 400) {
+      return null;
+    }
+
+    const body = await errors.handleResponse(response);
+
+    return body.packConfig;
   }
 
   async startBuild(
@@ -433,7 +503,9 @@ export class Client {
   }
 
   // mark build as complete, contract checks that required ingredients have been escrowed
-  async completeBuild(build: anchor.web3.PublicKey): Promise<void> {
+  async completeBuild(
+    build: anchor.web3.PublicKey
+  ): Promise<anchor.web3.PublicKey | undefined> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
@@ -444,13 +516,17 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    console.log("completeBuildTxSig: %s", body.txSig);
+    console.log("completeBuildTxSig: %s", body.result.txSig);
+
+    // return pack pda if its defined
+    if (body.result.pack) {
+      return new anchor.web3.PublicKey(body.result.pack);
+    }
+    return undefined;
   }
 
   // the builder will receive the output of the build here
-  async receiveItem(
-    build: anchor.web3.PublicKey
-  ): Promise<anchor.web3.PublicKey> {
+  async receiveItem(build: anchor.web3.PublicKey): Promise<any> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
@@ -460,9 +536,9 @@ export class Client {
     });
 
     const body = await errors.handleResponse(response);
-    console.log("receiveItemTxSig: %s", body.txSig);
+    console.log("receiveItemResult:", body);
 
-    return body.itemMint;
+    return body;
   }
 
   // clean up all build artifacts
@@ -596,6 +672,13 @@ export class Client {
 
     return body.txSig;
   }
+}
+
+export interface BuildResult {
+  pack?: anchor.web3.PublicKey;
+  build: anchor.web3.PublicKey;
+  txSigs: string[];
+  receivedItems: [anchor.web3.PublicKey, anchor.BN][];
 }
 
 export interface Recipe {

@@ -1,25 +1,55 @@
 [
-    {
-      "id": "haircolo",
-      "name": "hairColor",
-      "options": [
-        { "name": "grey", "variantId": "haircolo", "optionId": "haircol1", "paymentDetails": null, "traitGate": null },
-        { "name": "red", "variantId": "haircolo", "optionId": "haircol2", "paymentDetails": null, "traitGate": null }
-      ]
-    },
-    {
-      "id": "skincolo",
-      "name": "skinColor",
-      "options": [
-        { "name": "light", "variantId": "skincolo", "optionId": "skinton1", "paymentDetails": null, "traitGate": null },
-        { "name": "tan", "variantId": "skincolo", "optionId": "skinton2", "paymentDetails": null, "traitGate": null }
-      ]
-    },
-    {
-      "id": "backgrou",
-      "name": "backgroundTint",
-      "options": [
-        { "name": "original", "variantId": "backgrou", "optionId": "backgro1", "paymentDetails": null, "traitGate": null }
-      ]
-    }
+  {
+    "id": "haircolo",
+    "name": "hairColor",
+    "options": [
+      {
+        "name": "grey",
+        "variantId": "haircolo",
+        "optionId": "haircol1",
+        "paymentDetails": null,
+        "traitGate": null
+      },
+      {
+        "name": "red",
+        "variantId": "haircolo",
+        "optionId": "haircol2",
+        "paymentDetails": null,
+        "traitGate": null
+      }
+    ]
+  },
+  {
+    "id": "skincolo",
+    "name": "skinColor",
+    "options": [
+      {
+        "name": "light",
+        "variantId": "skincolo",
+        "optionId": "skinton1",
+        "paymentDetails": null,
+        "traitGate": null
+      },
+      {
+        "name": "tan",
+        "variantId": "skincolo",
+        "optionId": "skinton2",
+        "paymentDetails": null,
+        "traitGate": null
+      }
+    ]
+  },
+  {
+    "id": "backgrou",
+    "name": "backgroundTint",
+    "options": [
+      {
+        "name": "original",
+        "variantId": "backgrou",
+        "optionId": "backgro1",
+        "paymentDetails": null,
+        "traitGate": null
+      }
+    ]
+  }
 ]
