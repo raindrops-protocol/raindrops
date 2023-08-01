@@ -2196,10 +2196,3 @@ export function traitConflictsPDA(
     Constants.ProgramIds.AVATAR_ID
   )[0];
 }
-
-function removeTraits(
-  equippedTraits: TraitData[],
-  itemsToRemove: anchor.web3.PublicKey[]
-): TraitData[] {
-  return;
-}
