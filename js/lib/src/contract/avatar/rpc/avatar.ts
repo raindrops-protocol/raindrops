@@ -1921,7 +1921,8 @@ export class AvatarClient {
 
   async getAvatarRenderConfig(
     avatar: anchor.web3.PublicKey,
-    traitMintOverrides: anchor.web3.PublicKey[] = [],
+    traitEquipOverrides: anchor.web3.PublicKey[] = [],
+    traitRemoveOverrides: anchor.web3.PublicKey[] = [],
     variantOverrides: Variant[] = []
   ): Promise<AvatarRenderConfig> {
     // get avatar data
@@ -1948,44 +1949,55 @@ export class AvatarClient {
       shortVariantData.push({ variantId: v.variantId, optionId: v.optionId });
     }
 
-    // set trait overrides
-    const traitOverrideData: {
+    // set trait equip overrides
+    const traitEquipOverrideData: {
       attributeIds: number[];
       trait: anchor.web3.PublicKey;
     }[] = [];
-    for (const traitMintOverride of traitMintOverrides) {
-      const traitOverride = traitPDA(avatarData.avatarClass, traitMintOverride);
+    for (const traitEquipOverride of traitEquipOverrides) {
+      const traitOverride = traitPDA(
+        avatarData.avatarClass,
+        traitEquipOverride
+      );
       const traitData = await this.program.account.trait.fetch(traitOverride);
 
-      traitOverrideData.push({
+      traitEquipOverrideData.push({
         attributeIds: traitData.attributeIds,
         trait: traitOverride,
       });
     }
 
-    // get equipped traits
+    // get remove trait pdas
+    const removeTraitPdas: anchor.web3.PublicKey[] = [];
+    for (const traitMint of traitRemoveOverrides) {
+      removeTraitPdas.push(traitPDA(avatarData.avatarClass, traitMint));
+    }
+
     let equippedTraits: TraitRenderConfig[] = [];
     const traitVariants: Variant[] = [];
+
+    // add all the override data to the render config
+    for (const override of traitEquipOverrideData) {
+      const traitRenderConfig = await this.getTraitRenderConfig(override.trait);
+      equippedTraits.push(traitRenderConfig);
+
+      // right now just get the first option for all variant ids for the override trait
+      const overrideTraitData = await this.getTrait(override.trait);
+      const overrideVariants: Variant[] = overrideTraitData.variantMetadata.map(
+        (vm) => (vm.id, vm.options[0])
+      );
+      traitVariants.push(...overrideVariants);
+    }
+
+    // get equipped traits
     for (const traitData of avatarData.traits) {
-      // check if there's an override for this trait
+      // detect which traits are overridden
       let overridden = false;
-      for (const override of traitOverrideData) {
+      for (const override of traitEquipOverrideData) {
         for (const attributeId of traitData.attributeIds) {
           if (override.attributeIds.includes(attributeId)) {
-            const traitRenderConfig = await this.getTraitRenderConfig(
-              override.trait
-            );
-            equippedTraits.push(traitRenderConfig);
             overridden = true;
           }
-
-          // right now just get the first option for all variant ids for the override trait
-          const overrideTraitData = await this.getTrait(override.trait);
-          const overrideVariants: Variant[] =
-            overrideTraitData.variantMetadata.map(
-              (vm) => (vm.id, vm.options[0])
-            );
-          traitVariants.push(...overrideVariants);
         }
       }
 
@@ -2011,6 +2023,14 @@ export class AvatarClient {
     // dedup equipped traits list
     // there would be duplicates if an override trait has multiple attribute ids
     equippedTraits = [...new Set(equippedTraits)];
+
+    // remove traits
+    equippedTraits = equippedTraits.filter(
+      (equippedTrait) =>
+        !removeTraitPdas.some((traitAddr) =>
+          traitAddr.equals(new anchor.web3.PublicKey(equippedTrait.trait))
+        )
+    );
 
     // set local variant overrides
     for (const variantOverride of variantOverrides) {
