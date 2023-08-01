@@ -1969,7 +1969,7 @@ export class AvatarClient {
 
     // get remove trait pdas
     const removeTraitPdas: anchor.web3.PublicKey[] = [];
-    for (let traitMint of traitRemoveOverrides) {
+    for (const traitMint of traitRemoveOverrides) {
       removeTraitPdas.push(traitPDA(avatarData.avatarClass, traitMint));
     }
 
