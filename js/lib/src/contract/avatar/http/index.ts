@@ -462,12 +462,18 @@ export class AvatarClient {
 
   async preview(
     avatar: anchor.web3.PublicKey,
-    traitMintOverrides: anchor.web3.PublicKey[],
+    traitEquipOverrides: anchor.web3.PublicKey[],
+    traitRemoveOverrides: anchor.web3.PublicKey[],
     variantOverrides: Variant[]
   ): Promise<any> {
-    const traitOverridesStr: string[] = [];
-    for (const traitOverride of traitMintOverrides) {
-      traitOverridesStr.push(traitOverride.toString());
+    const traitEquipOverridesStr: string[] = [];
+    for (const traitEquipOverride of traitEquipOverrides) {
+      traitEquipOverridesStr.push(traitEquipOverride.toString());
+    }
+
+    const traitRemoveOverridesStr: string[] = [];
+    for (const traitRemoveOverride of traitRemoveOverrides) {
+      traitRemoveOverridesStr.push(traitRemoveOverride.toString());
     }
 
     // open websocket connection
@@ -489,7 +495,8 @@ export class AvatarClient {
         avatar: avatar,
       },
       data: {
-        traitOverrides: JSON.stringify(traitOverridesStr),
+        traitEquipOverrides: JSON.stringify(traitEquipOverridesStr),
+        traitRemoveOverrides: JSON.stringify(traitRemoveOverridesStr),
         variantOverrides: JSON.stringify(variantOverrides),
       },
     };
