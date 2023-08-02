@@ -65,6 +65,11 @@ pub struct BeginTraitUpdateArgs {
 }
 
 pub fn handler(ctx: Context<BeginTraitUpdate>, args: BeginTraitUpdateArgs) -> Result<()> {
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
+
     // if the update state has already been initialized, do nothing
     // we have this check here to make this instruction idempotent incase someone is continuing their update
     // we dont want them to pay again or have their update state reset

@@ -61,6 +61,10 @@ address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
 [[test.validator.clone]]
 address = "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg"
 
+# metaplex foundation managed rule set account
+[[test.validator.clone]]
+address = "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+
 # mock $RAIN Mint with our own Mint Authority
 [[test.validator.account]]
 address = "rainH85N1vCoerCi4cQ3w6mCf7oYUdrsTFtFzpaRwjL"

@@ -12,6 +12,8 @@ import * as fs from "fs";
 import { assert } from "chai";
 import { describe } from "mocha";
 import * as cmp from "@solana/spl-account-compression";
+import * as metaplex from "@metaplex-foundation/js";
+import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 
 describe("avatar", () => {
   // Configure the client to use the local cluster.
@@ -309,6 +311,7 @@ describe("avatar", () => {
     const previewRenderConfig =
       await avatarClassAuthorityClient.getAvatarRenderConfig(
         avatar,
+        [],
         [],
         [{ variantId: "haircolo", optionId: "haircol2" }]
       );
@@ -4260,6 +4263,213 @@ describe("avatar", () => {
       nftHolderClient.provider.sendAndConfirm(equipTraitWithConflictTx)
     );
   });
+  it("fail update if delegate is set on avatar nft", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata = [
+      { id: 0, name: "accessories", status: { mutable: true } },
+    ];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: [],
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    // add a delegate to the token account which holds the avatar nft
+    const delegate = anchor.web3.Keypair.generate().publicKey;
+    const approveTxSig = await splToken.approve(
+      connection,
+      nftHolder,
+      splToken.getAssociatedTokenAddressSync(nftMint, nftHolder.publicKey),
+      delegate,
+      nftHolder.publicKey,
+      1
+    );
+    console.log("approveTxSig: %s", approveTxSig);
+
+    const traitAMint = await createTraitSft(
+      connection,
+      "accessories",
+      nftHolder,
+      [nftHolder.publicKey]
+    );
+
+    await createTrait(
+      "accessory1",
+      traitAMint,
+      [0],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      null,
+      null
+    );
+
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      traitMint: traitAMint,
+      payer: nftHolderClient.provider.publicKey,
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    assertRejects(nftHolderClient.provider.sendAndConfirm(equipTraitTx));
+  });
+  it("fail update if delegate is set on avatar pNft", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata = [
+      { id: 0, name: "accessories", status: { mutable: true } },
+    ];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: [],
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintPNft(connection, nftHolder);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    // add a delegate to the token account which holds the avatar nft
+    const delegate = anchor.web3.Keypair.generate().publicKey;
+    await approveTransferAuthorityPNft(
+      connection,
+      nftHolder,
+      delegate,
+      nftMint
+    );
+
+    const traitAMint = await createTraitSft(
+      connection,
+      "accessories",
+      nftHolder,
+      [nftHolder.publicKey]
+    );
+
+    await createTrait(
+      "accessory1",
+      traitAMint,
+      [0],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      null,
+      null
+    );
+
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      traitMint: traitAMint,
+      payer: nftHolderClient.provider.publicKey,
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    assertRejects(nftHolderClient.provider.sendAndConfirm(equipTraitTx));
+  });
 });
 
 async function createSftAvatarClass(
@@ -4377,6 +4587,109 @@ async function mintNft(
       avatarClassAuthority
     );
   return nftMint;
+}
+
+async function mintPNft(
+  connection: anchor.web3.Connection,
+  payer: anchor.web3.Keypair
+): Promise<anchor.web3.PublicKey> {
+  const client = new metaplex.Metaplex(connection, {}).use(
+    metaplex.keypairIdentity(payer)
+  );
+
+  const result = await client.nfts().create({
+    tokenStandard: mpl.TokenStandard.ProgrammableNonFungible as number,
+    uri: "https://foo.com/bar.json",
+    name: "pNFT1",
+    sellerFeeBasisPoints: 500,
+    symbol: "PN",
+    ruleSet: new anchor.web3.PublicKey(
+      "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+    ),
+    collection: null,
+  });
+  console.log("createPNftTxSig: %s", result.response.signature);
+
+  return result.mintAddress;
+}
+
+async function approveTransferAuthorityPNft(
+  connection: anchor.web3.Connection,
+  authority: anchor.web3.Keypair,
+  delegate: anchor.web3.PublicKey,
+  mint: anchor.web3.PublicKey
+): Promise<anchor.web3.TransactionInstruction> {
+  const ata = splToken.getAssociatedTokenAddressSync(mint, authority.publicKey);
+
+  const [metadata, _metadataBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("metadata"), mpl.PROGRAM_ID.toBuffer(), mint.toBuffer()],
+      mpl.PROGRAM_ID
+    );
+
+  const [masterEdition, _masterEditionBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        mint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+  const [tokenRecord, _tokenRecordBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        mint.toBuffer(),
+        Buffer.from("token_record"),
+        ata.toBuffer(),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+  const metadataData = await mpl.Metadata.fromAccountAddress(
+    connection,
+    metadata,
+    "confirmed"
+  );
+  console.log("ruleSet: %s", metadataData.programmableConfig!.ruleSet!);
+
+  const approveIx = mpl.createDelegateInstruction(
+    {
+      delegate: delegate,
+      metadata: metadata,
+      masterEdition: masterEdition,
+      tokenRecord: tokenRecord,
+      mint: mint,
+      token: ata,
+      authority: authority.publicKey,
+      payer: authority.publicKey,
+      authorizationRules: metadataData.programmableConfig!.ruleSet!,
+      authorizationRulesProgram: mplAuth.PROGRAM_ID,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+      splTokenProgram: splToken.TOKEN_PROGRAM_ID,
+    },
+    {
+      delegateArgs: {
+        __kind: "TransferV1",
+        amount: 1,
+        authorizationData: null,
+      },
+    }
+  );
+
+  const approveTxSig = await connection.sendTransaction(
+    new anchor.web3.Transaction().add(approveIx),
+    [authority],
+    {}
+  );
+  console.log("approveTxSig: %s", approveTxSig);
+
+  return approveIx;
 }
 
 async function createTraitSft(
