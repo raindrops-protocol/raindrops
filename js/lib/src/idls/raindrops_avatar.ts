@@ -2250,6 +2250,11 @@ export type RaindropsAvatar = {
       "code": 6015,
       "name": "InvalidUpdateTarget",
       "msg": "Invalid UpdateTarget"
+    },
+    {
+      "code": 6016,
+      "name": "TokenDelegateNotAllowed",
+      "msg": "Token Account Delegate Not Allowed"
     }
   ]
 };
@@ -4506,6 +4511,11 @@ export const IDL: RaindropsAvatar = {
       "code": 6015,
       "name": "InvalidUpdateTarget",
       "msg": "Invalid UpdateTarget"
+    },
+    {
+      "code": 6016,
+      "name": "TokenDelegateNotAllowed",
+      "msg": "Token Account Delegate Not Allowed"
     }
   ]
 };

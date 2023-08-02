@@ -49,4 +49,7 @@ pub enum ErrorCode {
 
     #[msg("Invalid UpdateTarget")]
     InvalidUpdateTarget,
+
+    #[msg("Token Account Delegate Not Allowed")]
+    TokenDelegateNotAllowed,
 }
