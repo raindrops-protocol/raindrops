@@ -45,7 +45,10 @@ pub struct BeginVariantUpdateArgs {
 }
 
 pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -> Result<()> {
-    require!(ctx.accounts.avatar_mint_ata.delegate.is_none(), ErrorCode::TokenDelegateNotAllowed);
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
 
     // if the update state has already been initialized, do nothing
     // we have this check here to make this instruction idempotent incase someone is continuing their update
