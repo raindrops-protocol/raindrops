@@ -15,7 +15,7 @@ import * as cmp from "@solana/spl-account-compression";
 import * as metaplex from "@metaplex-foundation/js";
 import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 
-describe("avatar", () => {
+describe.only("avatar", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 

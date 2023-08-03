@@ -221,50 +221,19 @@ export class Client {
 
     const buildData: Build = JSON.parse(body.buildData);
     const build = new anchor.web3.PublicKey(body.build);
+    console.log("continuing build: %s", JSON.stringify(buildData));
 
     // if build status is still in progress, check the ingredients we have and add them
     let itemMint: anchor.web3.PublicKey;
     if (buildData.status === BuildStatus.InProgress) {
-      // get the matching recipe for this build
-      const buildableRecipes = await this.checkIngredients(
-        itemClass,
-        ingredientArgs
-      );
-      const recipe = buildableRecipes.find(
-        (recipe) => recipe.recipeIndex === buildData.recipeIndex
-      );
 
-      // filter out already added ingredients
-      const missingIngredients = getMissingIngredients(
-        recipe.ingredients,
-        buildData
-      );
-
-      // add the remaining ingredients
-      for (const ingredient of missingIngredients) {
-        await this.verifyIngredient(
-          this.provider.publicKey,
-          itemClass,
-          ingredient.itemMint,
-          ingredient.itemClass
-        );
-
-        await this.addIngredient(
-          this.provider.publicKey,
-          itemClass,
-          ingredient
-        );
+      // if there are any escrowed ingredients return them to the builder
+      if (buildData.ingredients.length > 0) {
+        console.log("in progress build with escrowed ingredients detected");
+        await this.returnIncompleteBuildIngredients(build);
       }
 
-      // if payment is not paid do that now
-      if (buildData.payment !== null) {
-        if (!buildData.payment.paid) {
-          console.log(build.toString());
-          await this.addPayment(build);
-        }
-      }
-
-      itemMint = await this.driveBuild(build);
+      await this.cleanBuild(build);
     } else {
       itemMint = await this.driveBuild(build);
     }
@@ -516,7 +485,11 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    console.log("completeBuildTxSig: %s", body.result.txSig);
+    console.log("completeBuild body: %s", body);
+
+    if (body.result === undefined) {
+      return undefined
+    }
 
     // return pack pda if its defined
     if (body.result.pack) {
@@ -616,6 +589,7 @@ export class Client {
 
       // if done signal is returned, exit
       if (body.done) {
+        console.log("all build ingredients handled")
         return;
       }
 
@@ -655,6 +629,20 @@ export class Client {
     await this.cleanBuild(build);
 
     return itemMint;
+  }
+
+  async returnIncompleteBuildIngredients(build: anchor.web3.PublicKey): Promise<string> {
+    const params = new URLSearchParams({
+      build: build.toString(),
+    });
+
+    const response = await fetch(`${this.baseUrl}/returnIncompleteBuildIngredients?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey),
+    });
+
+    const body = await errors.handleResponse(response);
+
+    return body.txSigs
   }
 
   // sign and send a transaction received from the items api
