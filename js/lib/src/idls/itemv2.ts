@@ -316,11 +316,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "item",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": false
@@ -408,11 +403,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "item",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": false
@@ -455,6 +445,11 @@ export type Itemv2 = {
     {
       "name": "verifyIngredient",
       "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
         {
           "name": "ingredientMint",
           "isMut": false,
@@ -862,6 +857,11 @@ export type Itemv2 = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []
@@ -2827,11 +2827,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "item",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": false
@@ -2919,11 +2914,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "item",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "builder",
           "isMut": true,
           "isSigner": false
@@ -2966,6 +2956,11 @@ export const IDL: Itemv2 = {
     {
       "name": "verifyIngredient",
       "accounts": [
+        {
+          "name": "item",
+          "isMut": true,
+          "isSigner": false
+        },
         {
           "name": "ingredientMint",
           "isMut": false,
@@ -3373,6 +3368,11 @@ export const IDL: Itemv2 = {
           "name": "payer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []

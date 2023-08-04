@@ -8,12 +8,19 @@ use spl_account_compression::{
 };
 
 use crate::state::{
-    accounts::{Build, ItemClass},
-    NoopProgram,
+    accounts::{Build, ItemClass, Item},
+    errors::ErrorCode,
+    NoopProgram, ItemState,
 };
 
 #[derive(Accounts)]
 pub struct VerifyIngredient<'info> {
+    #[account(init_if_needed,
+        payer = payer,
+        space = Item::SPACE,
+        seeds = [Item::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
+    pub item: Account<'info, Item>,
+
     pub ingredient_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
@@ -47,6 +54,21 @@ pub fn handler<'a, 'b, 'c, 'info>(
     ctx: Context<'a, 'b, 'c, 'info, VerifyIngredient<'info>>,
     args: VerifyIngredientArgs,
 ) -> Result<()> {
+
+    // set the initial data if item pda has not been initialized until this instruction
+    if !ctx.accounts.item.initialized {
+        ctx.accounts.item.set_inner(Item {
+            initialized: true,
+            item_mint: ctx.accounts.ingredient_mint.key(),
+            item_state: ItemState::new(),
+        })
+    } else {
+        // check that the item is not on cooldown
+        if ctx.accounts.item.item_state.on_cooldown() {
+            return Err(ErrorCode::ItemOnCooldown.into());
+        }
+    }
+
     // verify mint exists in the items tree
     let verify_item_accounts = VerifyLeaf {
         merkle_tree: ctx.accounts.ingredient_item_class_items.to_account_info(),

@@ -20,7 +20,7 @@ import path from "path";
 // use a local file or set the env var of TEST_SIGNER
 const TEST_SIGNER_FILE_PATH = "./tests/files/test-signer.json";
 
-describe("itemv2", () => {
+describe.only("itemv2", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -2744,6 +2744,125 @@ describe("itemv2", () => {
 
     await cleanBuild(itemProgram, build);
   });
+
+  it("handle verified build items that aren't escrowed", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
+
+    // nft ingredient
+    const nftItemClass = await createItemClass(payer, connection, 2, false, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+      buildPermitRequired: false,
+      selectableOutputs: [],
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: true,
+      payment: {
+        treasury: payer.publicKey,
+        amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+      },
+      ingredientArgs: [
+        {
+          itemClass: nftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: { rate: new anchor.BN(100000) }, // single use
+            cooldown: null,
+          },
+          isDeterministic: false,
+        },
+      ],
+      buildPermitRequired: false,
+      selectableOutputs: [],
+    });
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.ItemV2.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.ItemV2.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    await assertFreshBuild(
+      itemProgram,
+      build,
+      payer.publicKey,
+      outputItemClass.itemClass
+    );
+
+    for (let i = 0; i < nftItemClass.mints.length; i++) {
+      // verify build ingredient
+      const verifyIngredientAccounts: Instructions.ItemV2.VerifyIngredientAccounts =
+      {
+        ingredientMint: nftItemClass.mints[i],
+        ingredientItemClass: nftItemClass.itemClass,
+        itemClass: outputItemClass.itemClass,
+        builder: itemProgram.client.provider.publicKey,
+        payer: itemProgram.client.provider.publicKey,
+      };
+
+      // get proof for mint
+      const proof = nftItemClass.tree.getProof(i);
+
+      const verifyIngredientArgs: Instructions.ItemV2.VerifyIngredientArgs = {
+        root: proof.root,
+        leafIndex: proof.leafIndex,
+        proof: proof.proof,
+      };
+
+      const verifyIngredientResult = await itemProgram.verifyIngredient(
+        verifyIngredientAccounts,
+        verifyIngredientArgs
+      );
+      console.log("verifyIngredientTxSig: %s", verifyIngredientResult.txid);
+    }
+
+    const buildData = await itemProgram.getBuild(build);
+    console.log(JSON.stringify(buildData));
+
+    const closeBuildResutl = await itemProgram.closeBuild({build: build, payer: itemProgram.client.provider.publicKey!});
+    console.log("closeBuildTxSig: %s", closeBuildResutl.txid);
+  })
 });
 
 async function newPayer(

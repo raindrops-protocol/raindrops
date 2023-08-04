@@ -541,6 +541,7 @@ export class Instruction extends SolKitInstruction {
     const ix = await this.program.client.methods
       .verifyIngredient(ixArgs)
       .accounts({
+        item: getItemPda(accounts.ingredientMint),
         ingredientMint: accounts.ingredientMint,
         ingredientItemClass: accounts.ingredientItemClass,
         ingredientItemClassItems: ingredientItemClassItems,
@@ -927,6 +928,7 @@ export class Instruction extends SolKitInstruction {
         itemMint: accounts.ingredientMint,
         build: accounts.build,
         payer: accounts.payer,
+        systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
     return ix;

@@ -2,9 +2,9 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, Item, ItemClass, Recipe},
+    accounts::{Build, DeterministicIngredient, ItemClass, Recipe},
     errors::ErrorCode,
-    BuildStatus, ItemState,
+    BuildStatus,
 };
 
 #[derive(Accounts)]
@@ -40,12 +40,6 @@ pub struct AddIngredientSpl<'info> {
         has_one = builder,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
-
-    #[account(init_if_needed,
-        payer = payer,
-        space = Item::SPACE,
-        seeds = [Item::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
-    pub item: Account<'info, Item>,
 
     #[account(mut)]
     pub builder: SystemAccount<'info>,
@@ -89,20 +83,6 @@ pub fn handler(ctx: Context<AddIngredientSpl>, args: AddIngredientSplArgs) -> Re
             ctx.accounts.ingredient_mint.key(),
         )
         .unwrap();
-
-    // set the initial data if item pda has not been initialized until this instruction
-    if !ctx.accounts.item.initialized {
-        ctx.accounts.item.set_inner(Item {
-            initialized: true,
-            item_mint: ctx.accounts.ingredient_mint.key(),
-            item_state: ItemState::new(),
-        })
-    } else {
-        // check that the item is not on cooldown
-        if ctx.accounts.item.item_state.on_cooldown() {
-            return Err(ErrorCode::ItemOnCooldown.into());
-        }
-    }
 
     // add deterministic outputs to build outputs
     if build_ingredient.is_deterministic {
