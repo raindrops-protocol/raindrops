@@ -204,7 +204,6 @@ export class Client {
 
   async continueBuild(
     itemClass: anchor.web3.PublicKey,
-    ingredientArgs: IngredientArg[],
     builder: anchor.web3.PublicKey
   ) {
     const params = new URLSearchParams({
@@ -612,12 +611,11 @@ export class Client {
   // drive build to completion, these are all permissionless steps
   async driveBuild(
     build: anchor.web3.PublicKey
-  ): Promise<anchor.web3.PublicKey> {
+  ): Promise<any> {
     // complete build
     await this.completeBuild(build);
 
-    // receive item
-    const itemMint = await this.receiveItem(build);
+    const result = await this.receiveItem(build);
 
     // apply build effects to the ingredients used
     await this.applyBuildEffects(build);
@@ -628,7 +626,7 @@ export class Client {
     // clean up
     await this.cleanBuild(build);
 
-    return itemMint;
+    return result;
   }
 
   async returnIncompleteBuildIngredients(build: anchor.web3.PublicKey): Promise<string> {
