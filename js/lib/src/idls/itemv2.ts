@@ -1172,7 +1172,7 @@ export type Itemv2 = {
       "args": []
     },
     {
-      "name": "addPayment",
+      "name": "escrowPayment",
       "accounts": [
         {
           "name": "build",
@@ -1180,12 +1180,43 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "treasury",
+          "name": "buildPaymentEscrow",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transferPayment",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "buildPaymentEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -2137,8 +2168,10 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "paid",
-            "type": "bool"
+            "name": "status",
+            "type": {
+              "defined": "PaymentStatus"
+            }
           },
           {
             "name": "paymentDetails",
@@ -2403,6 +2436,23 @@ export type Itemv2 = {
           }
         ]
       }
+    },
+    {
+      "name": "PaymentStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "NotPaid"
+          },
+          {
+            "name": "Escrowed"
+          },
+          {
+            "name": "SentToTreasury"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -2505,6 +2555,11 @@ export type Itemv2 = {
       "code": 6019,
       "name": "InvalidOutputSelection",
       "msg": "Invalid Output Selection"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidPaymentStatus",
+      "msg": "Payment Status is Invalid for this IX"
     }
   ]
 };
@@ -3683,7 +3738,7 @@ export const IDL: Itemv2 = {
       "args": []
     },
     {
-      "name": "addPayment",
+      "name": "escrowPayment",
       "accounts": [
         {
           "name": "build",
@@ -3691,12 +3746,43 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "treasury",
+          "name": "buildPaymentEscrow",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "builder",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transferPayment",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "buildPaymentEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "destination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -4648,8 +4734,10 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "paid",
-            "type": "bool"
+            "name": "status",
+            "type": {
+              "defined": "PaymentStatus"
+            }
           },
           {
             "name": "paymentDetails",
@@ -4914,6 +5002,23 @@ export const IDL: Itemv2 = {
           }
         ]
       }
+    },
+    {
+      "name": "PaymentStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "NotPaid"
+          },
+          {
+            "name": "Escrowed"
+          },
+          {
+            "name": "SentToTreasury"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -5016,6 +5121,11 @@ export const IDL: Itemv2 = {
       "code": 6019,
       "name": "InvalidOutputSelection",
       "msg": "Invalid Output Selection"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidPaymentStatus",
+      "msg": "Payment Status is Invalid for this IX"
     }
   ]
 };

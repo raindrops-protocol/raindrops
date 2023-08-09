@@ -449,22 +449,43 @@ export class Client {
   }
 
   // TODO: we only support native sol right now
-  async addPayment(build: anchor.web3.PublicKey): Promise<void> {
-    console.log("adding payment to build: %s", build.toString());
+  async escrowPayment(build: anchor.web3.PublicKey): Promise<void> {
+    console.log("escrowing payment to build: %s", build.toString());
     const params = new URLSearchParams({
       build: build.toString(),
-      builder: this.provider.publicKey.toString(),
     });
 
     try {
-      const response = await fetch(`${this.baseUrl}/addPayment?` + params, {
+      const response = await fetch(`${this.baseUrl}/escrowPayment?` + params, {
         headers: createHeaders(this.rpcUrl, this.apiKey),
       });
 
       const body = await errors.handleResponse(response);
 
       const txSig = await this.send(body.tx);
-      console.log("addPaymentTxSig: %s", txSig);
+      console.log("escrowPaymentTxSig: %s", txSig);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // TODO: we only support native sol right now
+  async transferPayment(build: anchor.web3.PublicKey): Promise<void> {
+    console.log("transfering payment from build escrow: %s", build.toString());
+    const params = new URLSearchParams({
+      build: build.toString(),
+      payer: this.provider.publicKey.toString(),
+    });
+  
+    try {
+      const response = await fetch(`${this.baseUrl}/transferPayment?` + params, {
+        headers: createHeaders(this.rpcUrl, this.apiKey),
+      });
+  
+      const body = await errors.handleResponse(response);
+  
+      const txSig = await this.send(body.tx);
+      console.log("transferPaymentTxSig: %s", txSig);
     } catch (e) {
       console.error(e);
     }

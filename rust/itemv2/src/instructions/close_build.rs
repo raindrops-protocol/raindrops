@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{accounts::Build, errors::ErrorCode};
+use crate::state::{accounts::Build, errors::ErrorCode, PaymentStatus};
 
 #[derive(Accounts)]
 pub struct CloseBuild<'info> {
@@ -24,6 +24,14 @@ pub fn handler(ctx: Context<CloseBuild>) -> Result<()> {
         require!(
             build_ingredient_data.current_amount == 0,
             ErrorCode::BuildNotEmpty
+        );
+    }
+
+    // check build payment has been transfered to treasury
+    if let Some(payment) = &ctx.accounts.build.payment {
+        require!(
+            payment.status.ne(&PaymentStatus::Escrowed),
+            ErrorCode::InvalidPaymentStatus
         );
     }
 

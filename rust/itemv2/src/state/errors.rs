@@ -61,4 +61,7 @@ pub enum ErrorCode {
 
     #[msg("Invalid Output Selection")]
     InvalidOutputSelection,
+
+    #[msg("Payment Status is Invalid for this IX")]
+    InvalidPaymentStatus,
 }

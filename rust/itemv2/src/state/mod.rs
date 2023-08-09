@@ -290,16 +290,27 @@ impl Payment {
     pub const SPACE: usize = 32 + 8;
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum PaymentStatus {
+    NotPaid,
+    Escrowed,
+    SentToTreasury,
+}
+
+impl PaymentStatus {
+    pub const SPACE: usize = 1 + 1;
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PaymentState {
-    pub paid: bool,
+    pub status: PaymentStatus,
     pub payment_details: Payment,
 }
 
 impl From<Payment> for PaymentState {
     fn from(value: Payment) -> Self {
         PaymentState {
-            paid: false,
+            status: PaymentStatus::NotPaid,
             payment_details: value,
         }
     }

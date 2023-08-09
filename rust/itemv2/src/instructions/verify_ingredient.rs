@@ -8,9 +8,9 @@ use spl_account_compression::{
 };
 
 use crate::state::{
-    accounts::{Build, ItemClass, Item},
+    accounts::{Build, Item, ItemClass},
     errors::ErrorCode,
-    NoopProgram, ItemState,
+    ItemState, NoopProgram,
 };
 
 #[derive(Accounts)]
@@ -54,7 +54,6 @@ pub fn handler<'a, 'b, 'c, 'info>(
     ctx: Context<'a, 'b, 'c, 'info, VerifyIngredient<'info>>,
     args: VerifyIngredientArgs,
 ) -> Result<()> {
-
     // set the initial data if item pda has not been initialized until this instruction
     if !ctx.accounts.item.initialized {
         ctx.accounts.item.set_inner(Item {

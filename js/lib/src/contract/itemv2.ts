@@ -23,6 +23,7 @@ import {
   getRecipePda,
   getPackPda,
   ItemClassOutputMode,
+  convertToPaymentStatus,
 } from "../state/itemv2";
 import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
@@ -184,11 +185,19 @@ export class ItemProgramV2 extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async addPayment(
-    accounts: ItemInstruction.AddPaymentAccounts,
+  async escrowPayment(
+    accounts: ItemInstruction.EscrowPaymentAccounts,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.addPayment(accounts);
+    const ix = await this.instruction.escrowPayment(accounts);
+    return await this.sendWithRetry([ix], [], options);
+  }
+  
+  async transferPayment(
+    accounts: ItemInstruction.TransferPaymentAccounts,
+    options?: SendOptions
+  ): Promise<Transaction.SendTransactionResult> {
+    const ix = await this.instruction.transferPayment(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -355,7 +364,7 @@ export class ItemProgramV2 extends Program.Program {
     const payment = buildDataRaw.payment;
     if (payment !== null) {
       paymentData = {
-        paid: payment.paid as boolean,
+        status: convertToPaymentStatus(payment.status),
         paymentDetails: {
           treasury: new web3.PublicKey(payment.paymentDetails.treasury),
           amount: new BN(payment.paymentDetails.amount as string),

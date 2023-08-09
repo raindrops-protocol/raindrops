@@ -6,7 +6,7 @@ use crate::state::{
     accounts::{Build, BuildPermit, ItemClass, Recipe},
     errors::ErrorCode,
     BuildIngredientData, BuildOutput, BuildStatus, OutputSelectionArgs, OutputSelectionGroup,
-    PaymentState,
+    PaymentState, PaymentStatus,
 };
 
 #[derive(Accounts)]
@@ -69,7 +69,7 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
             .payment
             .as_ref()
             .map(|payment| PaymentState {
-                paid: false,
+                status: PaymentStatus::NotPaid,
                 payment_details: payment.clone(),
             });
 

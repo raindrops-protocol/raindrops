@@ -5,6 +5,8 @@ use anchor_lang::{
     system_program::{transfer, Transfer},
 };
 
+use crate::state::PaymentStatus;
+
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus,
     DeterministicIngredientOutput, IngredientMint, ItemClassOutputMode, ItemState,
@@ -185,6 +187,7 @@ pub struct Build {
 
 impl Build {
     pub const PREFIX: &'static str = "build";
+    pub const PAYMENT_ESCROW_PREFIX: &'static str = "build_payment_escrow";
     pub const INIT_SPACE: usize = 8 + // anchor
         8 + // recipe_index
         32 + // builder
@@ -377,9 +380,12 @@ impl Build {
             .all(|ingredient| ingredient.current_amount >= ingredient.required_amount);
         require!(build_requirements_met, ErrorCode::MissingIngredient);
 
-        // check payment has been made
+        // check payment has either been escrowed or sent to final destination
         self.payment.as_ref().map_or(Ok(()), |payment| {
-            require!(payment.paid, ErrorCode::BuildNotPaid);
+            require!(
+                payment.status.ne(&PaymentStatus::NotPaid),
+                ErrorCode::BuildNotPaid
+            );
             Ok(())
         })
     }

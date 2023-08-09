@@ -121,8 +121,29 @@ export function convertToBuildStatus(buildStatusRaw: any): BuildStatus {
   }
 }
 
+export enum PaymentStatus {
+  NotPaid,
+  Escrowed,
+  SentToTreasury,
+}
+
+export function convertToPaymentStatus(paymentStatusRaw: any): PaymentStatus {
+  const paymentStatusStr = JSON.stringify(paymentStatusRaw);
+
+  switch (true) {
+    case paymentStatusStr.includes("notPaid"):
+      return PaymentStatus.NotPaid;
+    case paymentStatusStr.includes("escrowed"):
+      return PaymentStatus.Escrowed;
+    case paymentStatusStr.includes("sentToTreasury"):
+      return PaymentStatus.SentToTreasury;
+    default:
+      throw new Error(`Invalid Payment Status: ${paymentStatusRaw}`);
+  }
+}
+
 export interface PaymentState {
-  paid: boolean;
+  status: PaymentStatus;
   paymentDetails: Payment;
 }
 
@@ -277,4 +298,17 @@ export function getDeterministicIngredientPda(
     );
 
   return deterministicIngredient;
+}
+
+export function getBuildPaymentEscrowPda(build: web3.PublicKey) {
+  const [buildPaymentEscrow, _buildPaymentEscrow] =
+    web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build_payment_escrow"),
+        build.toBuffer(),
+      ],
+      ITEMV2_ID
+    );
+
+  return buildPaymentEscrow; 
 }

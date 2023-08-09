@@ -108,8 +108,12 @@ pub mod itemv2 {
         close_build::handler(ctx)
     }
 
-    pub fn add_payment(ctx: Context<AddPayment>) -> Result<()> {
-        add_payment::handler(ctx)
+    pub fn escrow_payment(ctx: Context<EscrowPayment>) -> Result<()> {
+        escrow_payment::handler(ctx)
+    }
+
+    pub fn transfer_payment(ctx: Context<TransferPayment>) -> Result<()> {
+        transfer_payment::handler(ctx)
     }
 
     pub fn create_build_permit(

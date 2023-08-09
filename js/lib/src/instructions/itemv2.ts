@@ -23,6 +23,7 @@ import {
   Payment,
   getDeterministicIngredientPda,
   getBuildPermitPda,
+  getBuildPaymentEscrowPda,
   getItemPda,
   getBuildPda,
   PackContents,
@@ -1342,15 +1343,35 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async addPayment(
-    accounts: AddPaymentAccounts
+  async escrowPayment(
+    accounts: EscrowPaymentAccounts, 
   ): Promise<web3.TransactionInstruction> {
+    const buildPaymentEscrow = getBuildPaymentEscrowPda(accounts.build);
+
     const ix = await this.program.client.methods
-      .addPayment()
+      .escrowPayment()
       .accounts({
         build: accounts.build,
         builder: accounts.builder,
-        treasury: accounts.treasury,
+        buildPaymentEscrow: buildPaymentEscrow,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+    return ix;
+  }
+
+  async transferPayment(
+    accounts: TransferPaymentAccounts, 
+  ): Promise<web3.TransactionInstruction> {
+    const buildPaymentEscrow = getBuildPaymentEscrowPda(accounts.build);
+
+    const ix = await this.program.client.methods
+      .transferPayment()
+      .accounts({
+        build: accounts.build,
+        buildPaymentEscrow: buildPaymentEscrow,
+        destination: accounts.destination,
+        payer: accounts.payer,
         systemProgram: web3.SystemProgram.programId,
       })
       .instruction();
@@ -1596,10 +1617,15 @@ export interface CloseBuildAccounts {
   payer: web3.PublicKey;
 }
 
-export interface AddPaymentAccounts {
+export interface EscrowPaymentAccounts {
   build: web3.PublicKey;
   builder: web3.PublicKey;
-  treasury: web3.PublicKey;
+}
+
+export interface TransferPaymentAccounts {
+  build: web3.PublicKey;
+  destination: web3.PublicKey;
+  payer: web3.PublicKey;
 }
 
 export interface CreateBuildPermitAccounts {

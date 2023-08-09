@@ -152,14 +152,13 @@ describe.only("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgram.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    const escrowPaymentResult = await itemProgram.escrowPayment(escrowPaymentAccounts);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildItemAndReceiveItem(
@@ -306,14 +305,13 @@ describe.only("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgram.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    const escrowPaymentResult = await itemProgram.escrowPayment(escrowPaymentAccounts);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildItemAndReceiveItem(
@@ -517,14 +515,13 @@ describe.only("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgram.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    const escrowPaymentResult = await itemProgram.escrowPayment(escrowPaymentAccounts);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildItemAndReceiveItem(
@@ -686,14 +683,13 @@ describe.only("itemv2", () => {
         new anchor.BN(1)
       );
 
-      const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+      const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
         build: build,
-        builder: payer.publicKey,
-        treasury: payer.publicKey,
+        builder: itemProgram.client.provider.publicKey!,
       };
 
-      const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-      console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+      const escrowPaymentResult = await itemProgram.escrowPayment(escrowPaymentAccounts);
+      console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
       // complete build and receive the item
       await completeBuildItemAndReceiveItem(
@@ -861,16 +857,15 @@ describe.only("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: builderItemProgramV2.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await builderItemProgramV2.addPayment(
-      addPaymentAccounts
+    const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+      escrowPaymentAccounts
     );
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildItemAndReceiveItem(
@@ -1116,13 +1111,13 @@ describe.only("itemv2", () => {
     );
 
     // add build payment ix
-    const addBuildPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: builder.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgramBuilder.client.provider.publicKey!,
     };
-    const addBuildPaymentIx = await itemProgramBuilder.instruction.addPayment(
-      addBuildPaymentAccounts
+
+    const escrowPaymentIx = await itemProgramBuilder.instruction.escrowPayment(
+      escrowPaymentAccounts
     );
 
     // create approve instructions for each ingredient
@@ -1149,7 +1144,7 @@ describe.only("itemv2", () => {
       approveClaymakerIx,
       approveSardIx,
       approveClayIx,
-      addBuildPaymentIx
+      escrowPaymentIx, 
     );
     const delegateTxSig = await itemProgramBuilder.client.provider
       .sendAndConfirm!(tx, undefined, { skipPreflight: true });
@@ -1320,16 +1315,15 @@ describe.only("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: builder.publicKey,
-      treasury: payer.publicKey,
+      builder: builderItemProgramV2.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await builderItemProgramV2.addPayment(
-      addPaymentAccounts
+    const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+      escrowPaymentAccounts
     );
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildPackAndReceiveItems(
@@ -1454,16 +1448,15 @@ describe.only("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: builder.publicKey,
-      treasury: payer.publicKey,
+      builder: builderItemProgramV2.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await builderItemProgramV2.addPayment(
-      addPaymentAccounts
+    const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+      escrowPaymentAccounts
     );
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildPackAndReceiveItems(
@@ -1603,16 +1596,15 @@ describe.only("itemv2", () => {
       );
 
       // add payment to build
-      const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+      const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
         build: build,
-        builder: builder.publicKey,
-        treasury: payer.publicKey,
+        builder: builderItemProgramV2.client.provider.publicKey!, 
       };
 
-      const addPaymentResult = await builderItemProgramV2.addPayment(
-        addPaymentAccounts
+      const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+        escrowPaymentAccounts
       );
-      console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+      console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
       // complete build and receive the item
       await completeBuildPackAndReceiveItems(
@@ -3975,7 +3967,7 @@ async function cleanBuild(
   build: anchor.web3.PublicKey
 ) {
   // get all build ingredient mints/item classes
-  const buildData = await itemProgram.client.account.build.fetch(build);
+  const buildData = await itemProgram.getBuild(build);
   // [item_class, mint pubkeys]
   const buildIngredientMints: [
     anchor.web3.PublicKey,
@@ -4054,6 +4046,17 @@ async function cleanBuild(
         );
       }
     }
+  }
+
+  if (buildData.payment !== null) {
+    const transferPaymentAccounts: Instructions.ItemV2.TransferPaymentAccounts = {
+      build: build,
+      destination: buildData.payment.paymentDetails.treasury,
+      payer: itemProgram.client.provider.publicKey!,
+    };
+
+    const transferPaymentResult = await itemProgram.transferPayment(transferPaymentAccounts);
+    console.log("transferPaymentTxSig: %s", transferPaymentResult.txid);
   }
 
   const closeBuildAccounts: Instructions.ItemV2.CloseBuildAccounts = {
@@ -4315,7 +4318,7 @@ async function assertFreshBuild(
   const buildData = await itemProgram.getBuild(build);
   assert.isTrue(buildData.builder.equals(builder));
   assert.isTrue(buildData.itemClass.equals(itemClass));
-  assert.isFalse(buildData.payment.paid);
+  assert.isTrue(buildData.payment.status === State.ItemV2.PaymentStatus.NotPaid);
   for (let ingredient of buildData.ingredients) {
     assert.isTrue(ingredient.currentAmount.eq(new anchor.BN(0)));
     assert.equal(ingredient.mints.length, 0);

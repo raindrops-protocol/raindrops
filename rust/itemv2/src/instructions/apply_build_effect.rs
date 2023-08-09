@@ -4,20 +4,14 @@ use anchor_spl::token;
 use crate::state::{
     accounts::{Build, Item},
     errors::ErrorCode,
-    BuildStatus
+    BuildStatus,
 };
 
 #[derive(Accounts)]
 pub struct ApplyBuildEffect<'info> {
-    #[account(init_if_needed,
-        payer = payer,
-        space = Item::SPACE,
+    #[account(mut,
         seeds = [Item::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
     pub item: Account<'info, Item>,
-
-    //#[account(mut,
-    //    seeds = [Item::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
-    //pub item: Account<'info, Item>,
 
     pub item_mint: Account<'info, token::Mint>,
 
