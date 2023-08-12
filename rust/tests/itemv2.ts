@@ -26,7 +26,7 @@ describe.only("itemv2", () => {
 
   const connection = anchor.getProvider().connection;
 
-  it("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
+  it.only("build pNFT using 1 NFT and 1 pNFT, nft burned after", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgramV2.getProgramWithConfig(
@@ -183,7 +183,7 @@ describe.only("itemv2", () => {
     );
 
     // verify test ingredient
-    const verifyIngredientTestAccounts: Instructions.ItemV2.VerifyIngredientTestAccounts =
+    const verifyIngredientTestAccounts: Instructions.ItemV2.VerifyIngredientMerkleTreeTestAccounts =
       {
         ingredientMint: pNftItemClass.mints[0],
         ingredientItemClass: pNftItemClass.itemClass,
@@ -910,7 +910,7 @@ describe.only("itemv2", () => {
 
     let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
       itemClassName: "testing",
-      outputMode: { kind: "Item" },
+      mode: { kind: "MerkleTree" },
     };
 
     let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -2894,7 +2894,7 @@ async function createItemClass(
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
     itemClassName: "testing",
-    outputMode: { kind: "Item" },
+    mode: { kind: "MerkleTree" },
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -3075,7 +3075,7 @@ async function createItemClassPack(
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
     itemClassName: "testing",
-    outputMode: { kind: "Pack", index: new BN(0) },
+    mode: { kind: "Pack" },
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -3414,7 +3414,7 @@ async function createItemClassPresetOnly(
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
     itemClassName: "testing",
-    outputMode: { kind: "PresetOnly" },
+    mode: { kind: "PresetOnly" },
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -3845,7 +3845,7 @@ async function completeBuildItemAndReceiveItem(
   });
 
   // complete the build process
-  const completeBuildItemAccounts: Instructions.ItemV2.CompleteBuildItemAccounts =
+  const completeBuildItemAccounts: Instructions.ItemV2.CompleteBuildAccounts =
     {
       itemMint: outputItemMints[leafIndex],
       payer: itemProgram.client.provider.publicKey,
@@ -3854,13 +3854,15 @@ async function completeBuildItemAndReceiveItem(
 
   const proof = tree.getProof(leafIndex);
 
-  const completeBuildItemArgs: Instructions.ItemV2.CompleteBuildItemArgs = {
-    root: proof.root,
-    leafIndex: proof.leafIndex,
-    proof: proof.proof,
+  const completeBuildItemArgs: Instructions.ItemV2.CompleteBuildArgs = {
+    merkleTreeArgs: {
+      root: proof.root,
+      leafIndex: proof.leafIndex,
+      proof: proof.proof,
+    }
   };
 
-  const completeBuildResult = await itemProgram.completeBuildItem(
+  const completeBuildResult = await itemProgram.completeBuild(
     completeBuildItemAccounts,
     completeBuildItemArgs
   );
@@ -3895,18 +3897,20 @@ async function completeBuildPackAndReceiveItems(
   });
 
   // complete the build process
-  const completeBuildPackAccounts: Instructions.ItemV2.CompleteBuildPackAccounts =
+  const completeBuildPackAccounts: Instructions.ItemV2.CompleteBuildAccounts =
     {
       pack: pack,
       payer: itemProgram.client.provider.publicKey,
       build: build,
     };
 
-  const completeBuildPackArgs: Instructions.ItemV2.CompleteBuildPackArgs = {
-    packContents: packContents,
+  const completeBuildPackArgs: Instructions.ItemV2.CompleteBuildArgs = {
+    packArgs: {
+      packContents: packContents,
+    }
   };
 
-  const completeBuildResult = await itemProgram.completeBuildPack(
+  const completeBuildResult = await itemProgram.completeBuild(
     completeBuildPackAccounts,
     completeBuildPackArgs
   );
@@ -3939,14 +3943,17 @@ async function completeBuildPresetOnlyAndReceiveItem(
   });
 
   // complete the build process
-  const completeBuildItemAccounts: Instructions.ItemV2.CompleteBuildPresetOnlyAccounts =
+  const completeBuildAccounts: Instructions.ItemV2.CompleteBuildAccounts =
     {
       payer: itemProgram.client.provider.publicKey,
       build: build,
     };
+  
+  const completeBuildArgs: Instructions.ItemV2.CompleteBuildArgs = {};
 
-  const completeBuildResult = await itemProgram.completeBuildPresetOnly(
-    completeBuildItemAccounts
+  const completeBuildResult = await itemProgram.completeBuild(
+    completeBuildAccounts,
+    completeBuildArgs,
   );
   console.log("completeBuildPresetOnlyTxSig: %s", completeBuildResult.txid);
 

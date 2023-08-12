@@ -6,7 +6,7 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, ItemClass, Recipe},
+    accounts::{Build, DeterministicIngredient, ItemClass},
     errors::ErrorCode,
     AuthRulesProgram, BuildStatus, TokenMetadataProgram,
 };
@@ -21,8 +21,7 @@ pub struct AddIngredientPNft<'info> {
 
     #[account(
         has_one = ingredient_mint,
-        has_one = recipe,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), recipe.key().as_ref(), ingredient_mint.key().as_ref()], bump
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.recipe.as_ref(), ingredient_mint.key().as_ref()], bump
     )]
     pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
@@ -53,12 +52,6 @@ pub struct AddIngredientPNft<'info> {
     /// CHECK: Done by token metadata
     #[account(mut)]
     pub ingredient_destination_token_record: UncheckedAccount<'info>,
-
-    #[account(
-        constraint = recipe.item_class.eq(&build.item_class),
-        constraint = recipe.recipe_index == build.recipe_index,
-        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), recipe.item_class.key().as_ref()], bump)]
-    pub recipe: Box<Account<'info, Recipe>>,
 
     #[account(mut,
         has_one = builder,

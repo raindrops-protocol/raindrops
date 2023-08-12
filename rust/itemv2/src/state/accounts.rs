@@ -4,13 +4,14 @@ use anchor_lang::{
     prelude::*,
     system_program::{transfer, Transfer},
 };
+use anchor_spl::metadata;
 
 use crate::state::PaymentStatus;
 
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus,
-    DeterministicIngredientOutput, IngredientMint, ItemClassOutputMode, ItemState,
-    OutputSelectionGroup, Payment, PaymentState, RecipeIngredientData,
+    DeterministicIngredientOutput, IngredientMint, ItemClassMode, ItemState, OutputSelectionGroup,
+    Payment, PaymentState, RecipeIngredientData,
 };
 
 // seeds = ['item_class', authority_mint.key().as_ref()]
@@ -21,13 +22,11 @@ pub struct ItemClass {
     // token owners have authority over the item class
     pub authority_mint: Pubkey,
 
-    // merkle tree containing all item addresses belonging to this item class
-    pub items: Option<Pubkey>,
-
+    // if none, there aren't any recipes associated with this item class
     pub recipe_index: Option<u64>,
 
-    // defines the behavior when the item class is the target of a build output
-    pub output_mode: ItemClassOutputMode,
+    // item class membership mode
+    pub mode: ItemClassMode,
 }
 
 impl ItemClass {
@@ -37,9 +36,8 @@ impl ItemClass {
         8 + // anchor
         4 + name.len() + // name size
         32 + // authority mint
-        (1 + 32) + // optional items merkle tree
         (1 + 8) + // recipe_index
-        ItemClassOutputMode::SPACE // output mode
+        ItemClassMode::SPACE // membership mode
     }
 
     pub fn get_next_recipe_index(&self) -> u64 {
@@ -162,7 +160,7 @@ impl Recipe {
 #[account]
 pub struct Build {
     // points to the recipe used for this build
-    pub recipe_index: u64,
+    pub recipe: Pubkey,
 
     pub builder: Pubkey,
 
@@ -189,7 +187,7 @@ impl Build {
     pub const PREFIX: &'static str = "build";
     pub const PAYMENT_ESCROW_PREFIX: &'static str = "build_payment_escrow";
     pub const INIT_SPACE: usize = 8 + // anchor
-        8 + // recipe_index
+        32 + // recipe
         32 + // builder
         32 + // item class
         BuildOutput::INIT_SPACE + // build output
@@ -523,4 +521,19 @@ pub fn reallocate<'info>(
 
         Ok(())
     }
+}
+
+pub fn is_collection_member(
+    ingredient_mint_metadata: metadata::MetadataAccount,
+    collection_mint: &Pubkey,
+) -> Result<()> {
+    let collection_data = ingredient_mint_metadata.collection.clone().unwrap();
+
+    require!(collection_data.verified, ErrorCode::IncorrectIngredient);
+    require!(
+        collection_data.key.eq(collection_mint),
+        ErrorCode::IncorrectIngredient
+    );
+
+    Ok(())
 }

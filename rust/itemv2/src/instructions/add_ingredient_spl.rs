@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, ItemClass, Recipe},
+    accounts::{Build, DeterministicIngredient, ItemClass},
     errors::ErrorCode,
     BuildStatus,
 };
@@ -17,7 +17,7 @@ pub struct AddIngredientSpl<'info> {
 
     #[account(
         has_one = ingredient_mint,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), recipe.key().as_ref(), ingredient_mint.key().as_ref()], bump
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.recipe.as_ref(), ingredient_mint.key().as_ref()], bump
     )]
     pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
@@ -29,12 +29,6 @@ pub struct AddIngredientSpl<'info> {
         associated_token::mint = ingredient_mint,
         associated_token::authority = build)]
     pub ingredient_destination: Box<Account<'info, token::TokenAccount>>,
-
-    #[account(
-        constraint = recipe.item_class.eq(&build.item_class),
-        constraint = recipe.recipe_index == build.recipe_index,
-        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), recipe.item_class.key().as_ref()], bump)]
-    pub recipe: Account<'info, Recipe>,
 
     #[account(mut,
         has_one = builder,

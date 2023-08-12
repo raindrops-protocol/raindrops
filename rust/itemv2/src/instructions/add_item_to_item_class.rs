@@ -7,16 +7,15 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{accounts::ItemClass, NoopProgram};
+use crate::state::{accounts::ItemClass, errors::ErrorCode, NoopProgram};
 
 #[derive(Accounts)]
 pub struct AddItemToItemClass<'info> {
     pub item_mint: Account<'info, token::Mint>,
 
     #[account(
-        constraint = item_class.items.unwrap().eq(&items.key()),
         constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
-        constraint = item_class.output_mode.is_item(),
+        constraint = item_class.mode.is_merkle_tree() @ ErrorCode::InvalidItemClassMode,
         seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 
@@ -29,8 +28,8 @@ pub struct AddItemToItemClass<'info> {
     pub item_class_authority_mint_ata: Account<'info, token::TokenAccount>,
 
     /// CHECK: done by spl-account-compression
-    #[account(mut)]
-    pub items: UncheckedAccount<'info>,
+    #[account(mut, constraint = item_class.mode.is_verify_account(&item_class_merkle_tree.key()))]
+    pub item_class_merkle_tree: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -42,7 +41,7 @@ pub struct AddItemToItemClass<'info> {
 
 pub fn handler(ctx: Context<AddItemToItemClass>) -> Result<()> {
     let append_accounts = Modify {
-        merkle_tree: ctx.accounts.items.to_account_info(),
+        merkle_tree: ctx.accounts.item_class_merkle_tree.to_account_info(),
         authority: ctx.accounts.item_class.to_account_info(),
         noop: ctx.accounts.log_wrapper.to_account_info(),
     };

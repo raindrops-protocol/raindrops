@@ -27,8 +27,9 @@ import {
   getItemPda,
   getBuildPda,
   PackContents,
-  ItemClassOutputMode,
-  formatItemClassOutputMode,
+  parseItemClassMode,
+  formatItemClassModeSelection,
+  ItemClassModeSelection,
 } from "../state/itemv2";
 
 export class Instruction extends SolKitInstruction {
@@ -39,8 +40,12 @@ export class Instruction extends SolKitInstruction {
   async createItemClass(
     args: CreateItemClassArgs
   ): Promise<[web3.PublicKey, web3.Keypair[], web3.TransactionInstruction[]]> {
+    const signers: web3.Keypair[] = [];
+    const ixns: web3.TransactionInstruction[] = [];
+
     // create authority mint account and mint some to the creator
     const authorityMint = web3.Keypair.generate();
+    signers.push(authorityMint);
 
     // derive item class pda
     const itemClass = getItemClassPda(authorityMint.publicKey);
@@ -57,6 +62,7 @@ export class Instruction extends SolKitInstruction {
           ),
       }
     );
+    ixns.push(createAuthorityMintAccountIx);
 
     // make it an SFT
     const initAuthorityMintIx = splToken.createInitializeMintInstruction(
@@ -65,6 +71,7 @@ export class Instruction extends SolKitInstruction {
       this.program.client.provider.publicKey!,
       this.program.client.provider.publicKey!
     );
+    ixns.push(initAuthorityMintIx);
 
     const destinationAta = splToken.getAssociatedTokenAddressSync(
       authorityMint.publicKey,
@@ -78,6 +85,7 @@ export class Instruction extends SolKitInstruction {
         this.program.client.provider.publicKey!,
         authorityMint.publicKey
       );
+    ixns.push(createAuthorityMintDestinationIx);
 
     const [metadata, _metadataBump] = web3.PublicKey.findProgramAddressSync(
       [
@@ -113,6 +121,7 @@ export class Instruction extends SolKitInstruction {
           },
         }
       );
+      ixns.push(createAuthorityMintMetadataIx);
 
     // mint 3 tokens to the deployer/authority
     const mintAuthorityTokensIx = splToken.createMintToInstruction(
@@ -121,6 +130,7 @@ export class Instruction extends SolKitInstruction {
       this.program.client.provider.publicKey!,
       3
     );
+    ixns.push(mintAuthorityTokensIx);
 
     // transfer minting authority to item class
     const transferAuthorityToItemClassIx =
@@ -130,65 +140,81 @@ export class Instruction extends SolKitInstruction {
         splToken.AuthorityType.MintTokens,
         itemClass
       );
+    ixns.push(transferAuthorityToItemClassIx);
+    
+    let merkleTree: web3.PublicKey | null = null;
+    let logWrapper: web3.PublicKey | null = null;
+    let accountCompression: web3.PublicKey | null = null;
+    
+    switch (args.mode.kind) {
+      case "MerkleTree":
+        // create merkle tree account
+        const tree = web3.Keypair.generate();
 
-    // create merkle tree account
-    const items = web3.Keypair.generate();
+        // hardcoded to match the contract code
+        const maxDepth = 16;
+        const maxBufferSize = 64;
 
-    const maxDepth = 16;
-    const maxBufferSize = 64;
+        const treeSpace = cmp.getConcurrentMerkleTreeAccountSize(
+          maxDepth,
+          maxBufferSize
+        );
 
-    const treeSpace = cmp.getConcurrentMerkleTreeAccountSize(
-      maxDepth,
-      maxBufferSize
-      //maxDepth // store max depth of tree in the canopy
-    );
+        const treeLamports =
+          await this.program.client.provider.connection.getMinimumBalanceForRentExemption(
+            treeSpace
+          );
 
-    const treeLamports =
-      await this.program.client.provider.connection.getMinimumBalanceForRentExemption(
-        treeSpace
-      );
+        const createAccountIx = await web3.SystemProgram.createAccount({
+          fromPubkey: this.program.client.provider.publicKey!,
+          newAccountPubkey: tree.publicKey,
+          lamports: treeLamports,
+          space: treeSpace,
+          programId: cmp.PROGRAM_ID,
+        });
+        ixns.push(createAccountIx);
 
-    const createMembersAccountIx = await web3.SystemProgram.createAccount({
-      fromPubkey: this.program.client.provider.publicKey!,
-      newAccountPubkey: items.publicKey,
-      lamports: treeLamports,
-      space: treeSpace,
-      programId: cmp.PROGRAM_ID,
-    });
+        merkleTree = tree.publicKey;
+        logWrapper = cmp.SPL_NOOP_PROGRAM_ID;
+        accountCompression = cmp.PROGRAM_ID;
+
+        signers.push(tree);
+        break;
+      case "Collection":
+        // client side check that collectionMint is truly a mint account
+        await splToken.getMint(this.program.client.provider.connection, args.mode.collectionMint)
+        break;
+      case "Pack":
+        break;
+      case "PresetOnly":
+        break;
+    };
 
     const ixArgs = {
       itemClassName: args.itemClassName,
-      outputMode: formatItemClassOutputMode(args.outputMode),
+      mode: formatItemClassModeSelection(args.mode),
     };
 
     const createItemClassIx = await this.program.client.methods
       .createItemClass(ixArgs)
       .accounts({
-        items: items.publicKey,
+        tree: merkleTree,
         itemClass: itemClass,
         itemClassAuthorityMint: authorityMint.publicKey,
         itemClassAuthorityMintAta: destinationAta,
         authority: this.program.client.provider.publicKey!,
         rent: web3.SYSVAR_RENT_PUBKEY,
-        accountCompression: cmp.PROGRAM_ID,
-        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         systemProgram: web3.SystemProgram.programId,
+        accountCompression: accountCompression,
+        logWrapper: logWrapper,
       })
       .instruction();
+    ixns.push(createItemClassIx);
 
     return [
       itemClass,
-      [items, authorityMint],
-      [
-        createMembersAccountIx,
-        createAuthorityMintAccountIx,
-        initAuthorityMintIx,
-        createAuthorityMintDestinationIx,
-        createAuthorityMintMetadataIx,
-        mintAuthorityTokensIx,
-        transferAuthorityToItemClassIx,
-        createItemClassIx,
-      ],
+      signers,
+      ixns,
     ];
   }
 
@@ -198,7 +224,12 @@ export class Instruction extends SolKitInstruction {
     const itemClassData = await this.program.client.account.itemClass.fetch(
       accounts.itemClass
     );
-    const itemClassItems = new web3.PublicKey(itemClassData.items);
+
+    const mode = parseItemClassMode(itemClassData);
+
+    if (mode.kind !== "MerkleTree") {
+      throw new Error(`invalid item class mode for addItemsToItemClass`);
+    }
 
     const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
     const authorityMintAta = splToken.getAssociatedTokenAddressSync(
@@ -215,7 +246,7 @@ export class Instruction extends SolKitInstruction {
           itemClass: accounts.itemClass,
           itemClassAuthorityMint: authorityMint,
           itemClassAuthorityMintAta: authorityMintAta,
-          items: itemClassItems,
+          itemClassMerkleTree: mode.tree,
           authority: this.program.client.provider.publicKey!,
           logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
           accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
@@ -518,26 +549,67 @@ export class Instruction extends SolKitInstruction {
       await this.program.client.account.itemClass.fetch(
         accounts.ingredientItemClass
       );
-    const ingredientItemClassItems = new web3.PublicKey(
-      ingredientItemClassData.items
-    );
+    
+    let ingredientMintMetadata: web3.PublicKey | null = null;
+    let ingredientItemClassVerifyAccount: web3.PublicKey | null = null;
+    let deterministicIngredient: web3.PublicKey | null = null;
+    let logWrapper: web3.PublicKey | null = null;
+    let accountCompression: web3.PublicKey | null = null;
+    const proofAsRemainingAccounts: web3.AccountMeta[] = [];
+
+    let ixArgs: any | null = null;
 
     const build = getBuildPda(accounts.itemClass, accounts.builder);
+    const buildData = await this.program.client.account.build.fetch(build);
+    
+    const mode = parseItemClassMode(ingredientItemClassData);
 
-    const proofAsRemainingAccounts = [];
-    for (const node of args.proof) {
-      const nodeAccount = {
-        pubkey: new web3.PublicKey(node),
-        isSigner: false,
-        isWritable: false,
-      };
-      proofAsRemainingAccounts.push(nodeAccount);
+    // check if ingredient is deterministic
+    const deterministicIngredientPda = getDeterministicIngredientPda(new web3.PublicKey(buildData.recipe), accounts.ingredientMint);
+    const deterministicIngredientData = await this.program.client.account.deterministicIngredient.fetchNullable(deterministicIngredientPda);
+    if (deterministicIngredientData !== null) {
+      deterministicIngredient = deterministicIngredientPda;
+    } else {
+      switch (mode.kind) {
+        case "MerkleTree":
+          logWrapper = cmp.SPL_NOOP_PROGRAM_ID;
+          accountCompression = cmp.PROGRAM_ID;
+          ingredientItemClassVerifyAccount = mode.tree;
+
+          for (const node of args.proof) {
+            const nodeAccount = {
+              pubkey: new web3.PublicKey(node),
+              isSigner: false,
+              isWritable: false,
+            };
+            proofAsRemainingAccounts.push(nodeAccount);
+          }
+
+          ixArgs = {
+            root: args.root,
+            leafIndex: args.leafIndex,
+          };
+
+          break;
+        case "Collection":
+          const [metadata, _metadataBump] = web3.PublicKey.findProgramAddressSync(
+            [
+              Buffer.from("metadata"),
+              mpl.PROGRAM_ID.toBuffer(),
+              accounts.ingredientMint.toBuffer(),
+            ],
+            mpl.PROGRAM_ID
+          );
+          ingredientMintMetadata = metadata;
+          ingredientItemClassVerifyAccount = mode.collectionMint;
+
+          break;
+        case "Pack":
+          break;
+        case "PresetOnly":
+          break;
+      }
     }
-
-    const ixArgs = {
-      root: args.root,
-      leafIndex: args.leafIndex,
-    };
 
     const ix = await this.program.client.methods
       .verifyIngredient(ixArgs)
@@ -545,12 +617,13 @@ export class Instruction extends SolKitInstruction {
         item: getItemPda(accounts.ingredientMint),
         ingredientMint: accounts.ingredientMint,
         ingredientItemClass: accounts.ingredientItemClass,
-        ingredientItemClassItems: ingredientItemClassItems,
+        deterministicIngredient: deterministicIngredient,
+        ingredientItemClassVerifyAccount: ingredientItemClassVerifyAccount,
         build: build,
         payer: accounts.payer,
         systemProgram: web3.SystemProgram.programId,
-        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
-        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        logWrapper: logWrapper,
+        accountCompression: accountCompression,
       })
       .remainingAccounts(proofAsRemainingAccounts)
       .instruction();
@@ -558,15 +631,15 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async verifyIngredientTest(
-    accounts: VerifyIngredientTestAccounts,
+  async verifyIngredientMerkleTreeTest(
+    accounts: VerifyIngredientMerkleTreeTestAccounts,
     args: VerifyIngredientArgs
   ): Promise<web3.TransactionInstruction> {
     const ingredientItemClassData =
       await this.program.client.account.itemClass.fetch(
         accounts.ingredientItemClass
       );
-    const ingredientItemClassItems = new web3.PublicKey(
+    const ingredientItemClassMerkleTree = new web3.PublicKey(
       ingredientItemClassData.items
     );
 
@@ -590,7 +663,7 @@ export class Instruction extends SolKitInstruction {
       .accounts({
         ingredientMint: accounts.ingredientMint,
         ingredientItemClass: accounts.ingredientItemClass,
-        ingredientItemClassItems: ingredientItemClassItems,
+        ingredientItemClassMerkleTree: ingredientItemClassMerkleTree,
         payer: accounts.payer,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
@@ -601,9 +674,10 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async completeBuildItem(
-    accounts: CompleteBuildItemAccounts,
-    args: CompleteBuildItemArgs
+
+  async completeBuild(
+    accounts: CompleteBuildAccounts,
+    args: CompleteBuildArgs
   ): Promise<web3.TransactionInstruction> {
     const buildData = await this.program.client.account.build.fetch(
       accounts.build
@@ -614,16 +688,66 @@ export class Instruction extends SolKitInstruction {
     const itemClassData = await this.program.client.account.itemClass.fetch(
       itemClass
     );
-    const itemClassItems = new web3.PublicKey(itemClassData.items);
 
-    const proofAsRemainingAccounts = [];
-    for (const node of args.proof) {
-      const nodeAccount = {
-        pubkey: new web3.PublicKey(node),
-        isSigner: false,
-        isWritable: false,
-      };
-      proofAsRemainingAccounts.push(nodeAccount);
+    let itemMint: web3.PublicKey | null = null;
+    let itemMintMetadata: web3.PublicKey | null = null;
+    let itemClassVerifyAccount: web3.PublicKey | null = null;
+    let pack: web3.PublicKey | null = null;
+    let logWrapper: web3.PublicKey | null = null;
+    let accountCompression: web3.PublicKey | null = null;
+    const proofAsRemainingAccounts: web3.AccountMeta[] = [];
+    let ixArgs = {
+      merkleTreeArgs: null,
+      packArgs: null,
+    };
+
+    const mode = parseItemClassMode(itemClassData);
+
+    switch (mode.kind) {
+      case "MerkleTree":
+        logWrapper = cmp.SPL_NOOP_PROGRAM_ID;
+        accountCompression = cmp.PROGRAM_ID;
+        itemMint = accounts.itemMint!;
+        itemClassVerifyAccount = mode.tree;
+
+        for (const node of args.merkleTreeArgs!.proof) {
+          const nodeAccount = {
+            pubkey: new web3.PublicKey(node),
+            isSigner: false,
+            isWritable: false,
+          };
+          proofAsRemainingAccounts.push(nodeAccount);
+        }
+
+        ixArgs.merkleTreeArgs = {
+            root: args.merkleTreeArgs!.root,
+            leafIndex: args.merkleTreeArgs!.leafIndex,
+          }
+
+        break;
+      case "Collection":
+        itemMint = accounts.itemMint!;
+        itemClassVerifyAccount = mode.collectionMint;
+
+        const [metadata, _metadataBump] = web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("metadata"),
+            mpl.PROGRAM_ID.toBuffer(),
+            itemMint.toBuffer(),
+          ],
+          mpl.PROGRAM_ID
+        );
+
+        itemMintMetadata = metadata;
+        break;
+      case "Pack":
+        pack = accounts.pack!;
+        ixArgs.packArgs = {
+          packContents: args.packArgs.packContents!
+        }
+        break;
+      case "PresetOnly":
+        break;
     }
 
     // if build permit is required create the pda
@@ -635,96 +759,22 @@ export class Instruction extends SolKitInstruction {
       );
     }
 
-    const ixArgs = {
-      root: args.root,
-      leafIndex: args.leafIndex,
-    };
-
     const ix = await this.program.client.methods
-      .completeBuildItem(ixArgs)
+      .completeBuild(ixArgs)
       .accounts({
-        itemMint: accounts.itemMint,
+        itemMint: itemMint,
+        itemMintMetadata: itemMintMetadata,
         itemClass: itemClass,
-        itemClassItems: itemClassItems,
+        itemClassVerifyAccount: itemClassVerifyAccount,
+        pack: pack,
         buildPermit: buildPermit,
         build: accounts.build,
         payer: accounts.payer,
         systemProgram: web3.SystemProgram.programId,
-        logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
-        accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+        logWrapper: logWrapper,
+        accountCompression: logWrapper,
       })
       .remainingAccounts(proofAsRemainingAccounts)
-      .instruction();
-
-    return ix;
-  }
-
-  async completeBuildPack(
-    accounts: CompleteBuildPackAccounts,
-    args: CompleteBuildPackArgs
-  ): Promise<web3.TransactionInstruction> {
-    const buildData = await this.program.client.account.build.fetch(
-      accounts.build
-    );
-
-    const itemClass = new web3.PublicKey(buildData.itemClass);
-
-    // if build permit is required create the pda
-    let buildPermit: web3.PublicKey | null = null;
-    if (buildData.buildPermitInUse) {
-      buildPermit = getBuildPermitPda(
-        new web3.PublicKey(buildData.builder),
-        itemClass
-      );
-    }
-
-    const ixArgs = {
-      packContents: args.packContents,
-      packContentsHashNonce: args.packContents.nonce,
-    };
-
-    const ix = await this.program.client.methods
-      .completeBuildPack(ixArgs)
-      .accounts({
-        pack: accounts.pack,
-        itemClass: itemClass,
-        buildPermit: buildPermit,
-        build: accounts.build,
-        payer: accounts.payer,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .instruction();
-
-    return ix;
-  }
-
-  async completeBuildPresetOnly(
-    accounts: CompleteBuildPresetOnlyAccounts
-  ): Promise<web3.TransactionInstruction> {
-    const buildData = await this.program.client.account.build.fetch(
-      accounts.build
-    );
-
-    const itemClass = new web3.PublicKey(buildData.itemClass);
-
-    // if build permit is required create the pda
-    let buildPermit: web3.PublicKey | null = null;
-    if (buildData.buildPermitInUse) {
-      buildPermit = getBuildPermitPda(
-        new web3.PublicKey(buildData.builder),
-        itemClass
-      );
-    }
-
-    const ix = await this.program.client.methods
-      .completeBuildPresetOnly()
-      .accounts({
-        itemClass: itemClass,
-        buildPermit: buildPermit,
-        build: accounts.build,
-        payer: accounts.payer,
-        systemProgram: web3.SystemProgram.programId,
-      })
       .instruction();
 
     return ix;
@@ -1455,7 +1505,7 @@ export class Instruction extends SolKitInstruction {
 
 export interface CreateItemClassArgs {
   itemClassName: string;
-  outputMode: ItemClassOutputMode;
+  mode: ItemClassModeSelection;
 }
 
 export interface RecipeArgs {
@@ -1532,7 +1582,7 @@ export interface VerifyIngredientArgs {
   proof: Buffer[];
 }
 
-export interface VerifyIngredientTestAccounts {
+export interface VerifyIngredientMerkleTreeTestAccounts {
   ingredientMint: web3.PublicKey;
   ingredientItemClass: web3.PublicKey;
   payer: web3.PublicKey;
@@ -1544,25 +1594,26 @@ export interface CompleteBuildItemAccounts {
   build: web3.PublicKey;
 }
 
-export interface CompleteBuildItemArgs {
+export interface CompleteBuildAccounts {
+  payer: web3.PublicKey;
+  build: web3.PublicKey;
+  pack?: web3.PublicKey;
+  itemMint?: web3.PublicKey;
+}
+
+export interface CompleteBuildArgs {
+  merkleTreeArgs?: CompleteBuildMerkleTreeArgs,
+  packArgs?: CompleteBuildPackArgs,
+}
+
+export interface CompleteBuildMerkleTreeArgs {
   root: Buffer;
   leafIndex: number;
   proof: Buffer[];
 }
 
-export interface CompleteBuildPackAccounts {
-  pack: web3.PublicKey;
-  payer: web3.PublicKey;
-  build: web3.PublicKey;
-}
-
 export interface CompleteBuildPackArgs {
   packContents: PackContents;
-}
-
-export interface CompleteBuildPresetOnlyAccounts {
-  payer: web3.PublicKey;
-  build: web3.PublicKey;
 }
 
 export interface ReceiveItemAccounts {

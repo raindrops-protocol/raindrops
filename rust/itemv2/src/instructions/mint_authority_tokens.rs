@@ -9,7 +9,6 @@ pub struct MintAuthorityTokens<'info> {
 
     #[account(
         constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
-        constraint = item_class.output_mode.is_item(),
         seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 

@@ -22,8 +22,9 @@ import {
   ITEMV2_ID,
   getRecipePda,
   getPackPda,
-  ItemClassOutputMode,
+  ItemClassMode,
   convertToPaymentStatus,
+  parseItemClassMode,
 } from "../state/itemv2";
 import { SendTransactionResult } from "@raindrop-studios/sol-kit/dist/src/transaction";
 
@@ -103,37 +104,20 @@ export class ItemProgramV2 extends Program.Program {
   }
 
   async verifyIngredientTest(
-    accounts: ItemInstruction.VerifyIngredientTestAccounts,
+    accounts: ItemInstruction.VerifyIngredientMerkleTreeTestAccounts,
     args: ItemInstruction.VerifyIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.verifyIngredientTest(accounts, args);
+    const ix = await this.instruction.verifyIngredientMerkleTreeTest(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async completeBuildItem(
-    accounts: ItemInstruction.CompleteBuildItemAccounts,
-    args: ItemInstruction.CompleteBuildItemArgs,
+  async completeBuild(
+    accounts: ItemInstruction.CompleteBuildAccounts,
+    args: ItemInstruction.CompleteBuildArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuildItem(accounts, args);
-    return await this.sendWithRetry([ix], [], options);
-  }
-
-  async completeBuildPack(
-    accounts: ItemInstruction.CompleteBuildPackAccounts,
-    args: ItemInstruction.CompleteBuildPackArgs,
-    options?: SendOptions
-  ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuildPack(accounts, args);
-    return await this.sendWithRetry([ix], [], options);
-  }
-
-  async completeBuildPresetOnly(
-    accounts: ItemInstruction.CompleteBuildPresetOnlyAccounts,
-    options?: SendOptions
-  ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.completeBuildPresetOnly(accounts);
+    const ix = await this.instruction.completeBuild(accounts, args);
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -292,30 +276,14 @@ export class ItemProgramV2 extends Program.Program {
       }
     }
 
-    let outputMode: ItemClassOutputMode = { kind: "Item" };
-    switch (Object.keys(itemClassData.outputMode)[0]) {
-      case "pack":
-        outputMode = {
-          kind: "Pack",
-          index: new BN((itemClassData.outputMode as any).pack.index),
-        };
-        break;
-      case "item":
-        break;
-      case "presetOnly":
-        outputMode = { kind: "PresetOnly" };
-        break;
-      default:
-        throw new Error(`unknown item class mode: ${itemClassData.outputMode}`);
-    }
+    const mode = parseItemClassMode(itemClassData);
 
     const data: ItemClass = {
       name: String(itemClassData.name),
       authorityMint: new web3.PublicKey(itemClassData.authorityMint),
-      items: new web3.PublicKey(itemClassData.items),
       recipeIndex: recipeIndex,
       recipes: recipes,
-      outputMode: outputMode,
+      mode: mode,
     };
 
     return data;
@@ -374,7 +342,7 @@ export class ItemProgramV2 extends Program.Program {
 
     const buildData: Build = {
       address: build,
-      recipeIndex: new BN(buildDataRaw.recipeIndex as string),
+      recipe: new web3.PublicKey(buildDataRaw.recipe),
       builder: new web3.PublicKey(buildDataRaw.builder),
       itemClass: new web3.PublicKey(buildDataRaw.itemClass),
       output: buildOutput,
@@ -491,14 +459,14 @@ export class ItemProgramV2 extends Program.Program {
   async getPacks(itemClass: web3.PublicKey): Promise<Pack[]> {
     const itemClassData = await this.getItemClass(itemClass);
 
-    if (itemClassData.outputMode.kind !== "Pack") {
+    if (itemClassData.mode.kind !== "Pack") {
       throw new Error(
         `ItemClass ${itemClass.toString()} is not configured for Packs`
       );
     }
 
     // get all pack pdas
-    const packIndex = itemClassData.outputMode.index.toNumber();
+    const packIndex = itemClassData.mode.index.toNumber();
     const packAddresses: web3.PublicKey[] = [];
     for (let i = 0; i < packIndex; i++) {
       packAddresses.push(getPackPda(itemClass, new BN(i)));

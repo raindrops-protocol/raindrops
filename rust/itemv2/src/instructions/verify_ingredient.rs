@@ -1,16 +1,16 @@
 use std::convert::TryInto;
 
 use anchor_lang::prelude::*;
-use anchor_spl::token;
+use anchor_spl::{metadata, token};
 use spl_account_compression::{
     cpi::{accounts::VerifyLeaf, verify_leaf},
     program::SplAccountCompression,
 };
 
 use crate::state::{
-    accounts::{Build, Item, ItemClass},
+    accounts::{is_collection_member, Build, DeterministicIngredient, Item, ItemClass},
     errors::ErrorCode,
-    ItemState, NoopProgram,
+    ItemClassMode, ItemState, NoopProgram,
 };
 
 #[derive(Accounts)]
@@ -23,13 +23,25 @@ pub struct VerifyIngredient<'info> {
 
     pub ingredient_mint: Box<Account<'info, token::Mint>>,
 
-    #[account(
-        constraint = ingredient_item_class.items.unwrap().eq(&ingredient_item_class_items.key()),
-        seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.authority_mint.as_ref()], bump)]
+    #[account(mut,
+        seeds = [b"metadata", mpl_token_metadata::ID.as_ref(), ingredient_mint.key().as_ref()],
+        seeds::program = mpl_token_metadata::ID,
+        bump
+    )]
+    pub ingredient_mint_metadata: Option<Account<'info, metadata::MetadataAccount>>,
+
+    #[account(seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.authority_mint.as_ref()], bump)]
     pub ingredient_item_class: Box<Account<'info, ItemClass>>,
 
-    /// CHECK: checked by spl-account-compression
-    pub ingredient_item_class_items: UncheckedAccount<'info>,
+    /// CHECK: depends on item class mode
+    #[account(constraint = ingredient_item_class.mode.is_verify_account(&ingredient_item_class_verify_account.key()) @ ErrorCode::InvalidVerifyAccount)]
+    pub ingredient_item_class_verify_account: Option<UncheckedAccount<'info>>,
+
+    #[account(
+        has_one = ingredient_mint,
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.recipe.as_ref(), ingredient_mint.key().as_ref()], bump
+    )]
+    pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
     #[account(mut, seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), build.builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
@@ -39,9 +51,9 @@ pub struct VerifyIngredient<'info> {
 
     pub system_program: Program<'info, System>,
 
-    pub log_wrapper: Program<'info, NoopProgram>,
+    pub log_wrapper: Option<Program<'info, NoopProgram>>,
 
-    pub account_compression: Program<'info, SplAccountCompression>,
+    pub account_compression: Option<Program<'info, SplAccountCompression>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -52,7 +64,7 @@ pub struct VerifyIngredientArgs {
 
 pub fn handler<'a, 'b, 'c, 'info>(
     ctx: Context<'a, 'b, 'c, 'info, VerifyIngredient<'info>>,
-    args: VerifyIngredientArgs,
+    args: Option<VerifyIngredientArgs>,
 ) -> Result<()> {
     // set the initial data if item pda has not been initialized until this instruction
     if !ctx.accounts.item.initialized {
@@ -68,26 +80,52 @@ pub fn handler<'a, 'b, 'c, 'info>(
         }
     }
 
-    // verify mint exists in the items tree
-    let verify_item_accounts = VerifyLeaf {
-        merkle_tree: ctx.accounts.ingredient_item_class_items.to_account_info(),
-    };
+    // deterministic ingredients don't need verification because its checked by the PDA seeds
+    if ctx.accounts.deterministic_ingredient.is_none() {
+        // if ingredient is not deterministic then we need to verify its part of the item class
+        match ctx.accounts.ingredient_item_class.mode {
+            ItemClassMode::MerkleTree { .. } => {
+                let verify_leaf_args = args.unwrap();
 
-    verify_leaf(
-        CpiContext::new(
-            ctx.accounts.account_compression.to_account_info(),
-            verify_item_accounts,
-        )
-        .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
-        args.root,
-        ctx.accounts
-            .ingredient_mint
-            .key()
-            .as_ref()
-            .try_into()
-            .unwrap(),
-        args.leaf_index,
-    )?;
+                // verify mint exists in the items tree
+                let verify_item_accounts = VerifyLeaf {
+                    merkle_tree: ctx
+                        .accounts
+                        .ingredient_item_class_verify_account
+                        .clone()
+                        .unwrap()
+                        .to_account_info(),
+                };
+
+                verify_leaf(
+                    CpiContext::new(
+                        ctx.accounts.account_compression.clone().unwrap().to_account_info(),
+                        verify_item_accounts,
+                    )
+                    .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
+                    verify_leaf_args.root,
+                    ctx.accounts
+                        .ingredient_mint
+                        .key()
+                        .as_ref()
+                        .try_into()
+                        .unwrap(),
+                    verify_leaf_args.leaf_index,
+                )?;
+            }
+            ItemClassMode::Collection { collection_mint } => {
+                is_collection_member(
+                    ctx.accounts
+                        .ingredient_mint_metadata
+                        .clone()
+                        .unwrap()
+                        .into_inner(),
+                    &collection_mint,
+                )?;
+            }
+            _ => {}
+        }
+    };
 
     // set the verified mint in the build data
     let build_account = &ctx.accounts.build.to_account_info();

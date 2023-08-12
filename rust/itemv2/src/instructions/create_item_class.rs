@@ -5,14 +5,14 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{accounts::ItemClass, ItemClassOutputMode, NoopProgram};
+use crate::state::{accounts::ItemClass, ItemClassMode, NoopProgram, ItemClassModeSelection};
 
 #[derive(Accounts)]
 #[instruction(args: CreateItemClassArgs)]
 pub struct CreateItemClass<'info> {
-    /// CHECK: initialized by spl-account-compression program
+    /// CHECK: verified by the item class mode
     #[account(zero)]
-    pub items: UncheckedAccount<'info>,
+    pub tree: Option<UncheckedAccount<'info>>,
 
     #[account(init,
         payer = authority, space = ItemClass::space(args.item_class_name),
@@ -32,53 +32,63 @@ pub struct CreateItemClass<'info> {
 
     pub rent: Sysvar<'info, Rent>,
 
-    pub account_compression: Program<'info, SplAccountCompression>,
-
-    pub log_wrapper: Program<'info, NoopProgram>,
-
     pub system_program: Program<'info, System>,
+
+    pub account_compression: Option<Program<'info, SplAccountCompression>>,
+
+    pub log_wrapper: Option<Program<'info, NoopProgram>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateItemClassArgs {
     pub item_class_name: String,
-    pub output_mode: ItemClassOutputMode,
+    pub mode: ItemClassModeSelection,
 }
 
 pub fn handler(ctx: Context<CreateItemClass>, args: CreateItemClassArgs) -> Result<()> {
-    let output_mode = match args.output_mode {
-        ItemClassOutputMode::Item => ItemClassOutputMode::Item,
-        ItemClassOutputMode::Pack { .. } => ItemClassOutputMode::Pack { index: 0 },
-        ItemClassOutputMode::PresetOnly => ItemClassOutputMode::PresetOnly,
-    };
+    let mut mode = ItemClassMode::PresetOnly;
+
+    match args.mode {
+        ItemClassModeSelection::Collection { collection_mint } => {
+            mode = ItemClassMode::Collection { collection_mint: collection_mint }
+        }
+        ItemClassModeSelection::MerkleTree => {
+            mode = ItemClassMode::MerkleTree { tree: ctx.accounts.tree.clone().unwrap().key() };
+
+            // initialize merkle tree
+            let init_empty_merkle_tree_accounts = Initialize {
+                merkle_tree: ctx.accounts.tree.clone().unwrap().to_account_info(),
+                authority: ctx.accounts.item_class.to_account_info(),
+                noop: ctx.accounts.log_wrapper.clone().unwrap().to_account_info(),
+            };
+
+            init_empty_merkle_tree(
+                CpiContext::new_with_signer(
+                    ctx.accounts.account_compression.clone().unwrap().to_account_info(),
+                    init_empty_merkle_tree_accounts,
+                    &[&[
+                        ItemClass::PREFIX.as_bytes(),
+                        ctx.accounts.item_class_authority_mint.key().as_ref(),
+                        &[*ctx.bumps.get("item_class").unwrap()],
+                    ]],
+                ),
+                16,
+                64,
+            )?;
+        }
+        ItemClassModeSelection::Pack => {
+            mode = ItemClassMode::Pack { index: 0 };
+        }
+        _ => {}
+    }
 
     // init item class
     ctx.accounts.item_class.set_inner(ItemClass {
         name: args.item_class_name,
         authority_mint: ctx.accounts.item_class_authority_mint.key(),
-        items: Some(ctx.accounts.items.key()),
         recipe_index: None,
-        output_mode,
+        mode: mode,
     });
 
-    // initialize merkle tree
-    let init_empty_merkle_tree_accounts = Initialize {
-        merkle_tree: ctx.accounts.items.to_account_info(),
-        authority: ctx.accounts.item_class.to_account_info(),
-        noop: ctx.accounts.log_wrapper.to_account_info(),
-    };
-
-    init_empty_merkle_tree(
-        CpiContext::new_with_signer(
-            ctx.accounts.account_compression.to_account_info(),
-            init_empty_merkle_tree_accounts,
-            &[&[
-                ItemClass::PREFIX.as_bytes(),
-                ctx.accounts.item_class_authority_mint.key().as_ref(),
-                &[*ctx.bumps.get("item_class").unwrap()],
-            ]],
-        ),
-        16,
-        64,
-    )
+    Ok(())
 }
