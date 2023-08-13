@@ -2595,7 +2595,7 @@ describe.only("itemv2", () => {
     await cleanBuild(itemProgram, build);
   });
 
-  it("build item class in preset only mode", async () => {
+  it("build item class in preset only mode with selection groups", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgramV2.getProgramWithConfig(

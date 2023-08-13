@@ -60,6 +60,9 @@ export function parseItemClassMode(itemClassData: any): ItemClassMode {
           collectionMint: new web3.PublicKey((itemClassData.mode as any).collection.collectionMint),
         }
         break;
+      case "presetOnly":
+        // this is the default selected above the switch func
+        break;
       default:
         throw new Error(`unknown item class mode: ${itemClassData.mode}`);
     }
