@@ -123,7 +123,8 @@ pub fn handler<'a, 'b, 'c, 'info>(
                     &collection_mint,
                 )?;
             }
-            _ => {}
+            // item class modes which are preset only and pack are not valid ingredients so we error
+            _ => return Err(ErrorCode::IncorrectIngredient.into())
         }
     };
 

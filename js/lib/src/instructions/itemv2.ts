@@ -274,9 +274,13 @@ export class Instruction extends SolKitInstruction {
       this.program.client.provider.publicKey!
     );
 
-    const packIndex = new BN((itemClassData.outputMode as any).pack.index);
+    const mode = parseItemClassMode(itemClassData);
 
-    const packAccount = getPackPda(accounts.itemClass, packIndex);
+    if (mode.kind !== "Pack") {
+      throw new Error(`Invalid Item Class mode: ${mode} for pack creation`);
+    }
+
+    const packAccount = getPackPda(accounts.itemClass, mode.index);
 
     const ix = await this.program.client.methods
       .createPack(args)
@@ -605,9 +609,9 @@ export class Instruction extends SolKitInstruction {
 
           break;
         case "Pack":
-          break;
+          throw new Error(`ItemClasses in Pack Mode cannot be Ingredients`)
         case "PresetOnly":
-          break;
+          throw new Error(`ItemClasses in PresetOnly Mode cannot be Ingredients`)
       }
     }
 
@@ -617,6 +621,7 @@ export class Instruction extends SolKitInstruction {
         item: getItemPda(accounts.ingredientMint),
         ingredientMint: accounts.ingredientMint,
         ingredientItemClass: accounts.ingredientItemClass,
+        ingredientMintMetadata: ingredientMintMetadata,
         deterministicIngredient: deterministicIngredient,
         ingredientItemClassVerifyAccount: ingredientItemClassVerifyAccount,
         build: build,
@@ -639,9 +644,12 @@ export class Instruction extends SolKitInstruction {
       await this.program.client.account.itemClass.fetch(
         accounts.ingredientItemClass
       );
-    const ingredientItemClassMerkleTree = new web3.PublicKey(
-      ingredientItemClassData.items
-    );
+    
+    const mode = parseItemClassMode(ingredientItemClassData);
+
+    if (mode.kind !== "MerkleTree") {
+      throw new Error(`Invalid ItemClass mode: ${mode} for Merkle Tree Verification Test`);
+    }
 
     const proofAsRemainingAccounts = [];
     for (const node of args.proof) {
@@ -659,11 +667,11 @@ export class Instruction extends SolKitInstruction {
     };
 
     const ix = await this.program.client.methods
-      .verifyIngredientTest(ixArgs)
+      .verifyIngredientMerkleTreeTest(ixArgs)
       .accounts({
         ingredientMint: accounts.ingredientMint,
         ingredientItemClass: accounts.ingredientItemClass,
-        ingredientItemClassMerkleTree: ingredientItemClassMerkleTree,
+        ingredientItemClassMerkleTree: mode.tree,
         payer: accounts.payer,
         logWrapper: cmp.SPL_NOOP_PROGRAM_ID,
         accountCompression: cmp.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
@@ -772,7 +780,7 @@ export class Instruction extends SolKitInstruction {
         payer: accounts.payer,
         systemProgram: web3.SystemProgram.programId,
         logWrapper: logWrapper,
-        accountCompression: logWrapper,
+        accountCompression: accountCompression,
       })
       .remainingAccounts(proofAsRemainingAccounts)
       .instruction();

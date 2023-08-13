@@ -96,7 +96,7 @@ export class ItemProgramV2 extends Program.Program {
 
   async verifyIngredient(
     accounts: ItemInstruction.VerifyIngredientAccounts,
-    args: ItemInstruction.VerifyIngredientArgs,
+    args?: ItemInstruction.VerifyIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
     const ix = await this.instruction.verifyIngredient(accounts, args);

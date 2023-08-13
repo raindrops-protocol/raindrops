@@ -21,7 +21,7 @@ pub struct CompleteBuild<'info> {
         seeds::program = mpl_token_metadata::ID,
         bump
     )]
-    pub item_mint_metadata: Option<Account<'info, metadata::MetadataAccount>>,
+    pub item_mint_metadata: Option<Box<Account<'info, metadata::MetadataAccount>>>,
 
     #[account(
         seeds = [ItemClass::PREFIX.as_bytes(), item_class.authority_mint.as_ref()], bump)]
