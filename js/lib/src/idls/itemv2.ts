@@ -1535,9 +1535,142 @@ export type Itemv2 = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "migrateBuildAccount",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrateItemClassAccount",
+      "accounts": [
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "oldBuild",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "output",
+            "type": {
+              "defined": "BuildOutput"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "BuildIngredientData"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
+          },
+          {
+            "name": "buildPermitInUse",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oldItemClass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "authorityMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "items",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "recipeIndex",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "outputMode",
+            "type": {
+              "defined": "OldItemClassOutputMode"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "itemClass",
       "type": {
@@ -2301,6 +2434,29 @@ export type Itemv2 = {
       }
     },
     {
+      "name": "OldItemClassOutputMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Item"
+          },
+          {
+            "name": "Pack",
+            "fields": [
+              {
+                "name": "index",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "PresetOnly"
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassMode",
       "type": {
         "kind": "enum",
@@ -2575,6 +2731,11 @@ export type Itemv2 = {
       "code": 6021,
       "name": "InvalidVerifyAccount",
       "msg": "Verify Account is Invalid"
+    },
+    {
+      "code": 6022,
+      "name": "MigrationError",
+      "msg": "Error Migrating Account"
     }
   ]
 };
@@ -4116,9 +4277,142 @@ export const IDL: Itemv2 = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "migrateBuildAccount",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrateItemClassAccount",
+      "accounts": [
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "oldBuild",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "output",
+            "type": {
+              "defined": "BuildOutput"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "BuildIngredientData"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
+          },
+          {
+            "name": "buildPermitInUse",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oldItemClass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "authorityMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "items",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "recipeIndex",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "outputMode",
+            "type": {
+              "defined": "OldItemClassOutputMode"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "itemClass",
       "type": {
@@ -4882,6 +5176,29 @@ export const IDL: Itemv2 = {
       }
     },
     {
+      "name": "OldItemClassOutputMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Item"
+          },
+          {
+            "name": "Pack",
+            "fields": [
+              {
+                "name": "index",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "PresetOnly"
+          }
+        ]
+      }
+    },
+    {
       "name": "ItemClassMode",
       "type": {
         "kind": "enum",
@@ -5156,6 +5473,11 @@ export const IDL: Itemv2 = {
       "code": 6021,
       "name": "InvalidVerifyAccount",
       "msg": "Verify Account is Invalid"
+    },
+    {
+      "code": 6022,
+      "name": "MigrationError",
+      "msg": "Error Migrating Account"
     }
   ]
 };

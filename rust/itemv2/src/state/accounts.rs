@@ -158,6 +158,7 @@ impl Recipe {
 // manages the lifecycle of the item class build process for a builder
 // seeds = ['build', item_class.key(), builder.key().as_ref()]
 #[account]
+#[derive(Debug)]
 pub struct Build {
     // points to the recipe used for this build
     pub recipe: Pubkey,
@@ -191,13 +192,12 @@ impl Build {
         32 + // builder
         32 + // item class
         BuildOutput::INIT_SPACE + // build output
-        (1 + 32) + // item mint
-        (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
+        BuildStatus::SPACE + // build status
         1 + // build permit in use
         4; // ingredients init
 
-    fn current_space(&self) -> usize {
+    pub fn current_space(&self) -> usize {
         let mut total_space = Build::INIT_SPACE;
 
         for ingredient in &self.ingredients {

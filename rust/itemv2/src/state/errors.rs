@@ -67,4 +67,7 @@ pub enum ErrorCode {
 
     #[msg("Verify Account is Invalid")]
     InvalidVerifyAccount,
+
+    #[msg("Error Migrating Account")]
+    MigrationError,
 }

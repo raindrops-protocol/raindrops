@@ -136,4 +136,12 @@ pub mod itemv2 {
     pub fn release_from_escrow_pnft(ctx: Context<ReleaseFromEscrowPNft>) -> Result<()> {
         release_from_escrow_pnft::handler(ctx)
     }
+
+    pub fn migrate_build_account(ctx: Context<MigrateBuildAccount>) -> Result<()> {
+        migrate_build_account::handler(ctx)
+    }
+
+    pub fn migrate_item_class_account(ctx: Context<MigrateItemClassAccount>) -> Result<()> {
+        migrate_item_class_account::handler(ctx)
+    }
 }

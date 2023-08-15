@@ -9,6 +9,7 @@ import {
 } from "../state/itemv2";
 import { fetch } from "cross-fetch";
 import IsoWebsocket from "isomorphic-ws";
+import { State } from "../main";
 
 export class Client {
   readonly baseUrl: string;
@@ -402,6 +403,27 @@ export class Client {
     return body.packConfig;
   }
 
+  async getDeterministicIngredientOutput(ingredientMint: anchor.web3.PublicKey): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
+    const params = new URLSearchParams({
+      ingredientMint: ingredientMint.toString(),
+    });
+
+    // return the current item data
+    const response = await fetch(`${this.baseUrl}/item?` + params, {
+      headers: createHeaders(this.rpcUrl, this.apiKey),
+    });
+
+    if (response.status === 400) {
+      return [null, null];
+    }
+
+    const body = await errors.handleResponse(response);
+
+    const output: State.ItemV2.DeterministicIngredientOutput[] = JSON.parse(body.output);
+
+    return output
+  }
+
   async startBuild(
     itemClass: anchor.web3.PublicKey,
     recipeIndex: anchor.BN,
@@ -616,17 +638,6 @@ export class Client {
       console.log("returnOrDestroyIngredientsTxSig: %s", body.txSig);
       done = body.done;
     }
-  }
-
-  async endBuild(build: anchor.web3.PublicKey): Promise<void> {
-    // apply build effects to the ingredients used
-    await this.applyBuildEffects(build);
-
-    // return or destroy the build ingredients in accordance with the effects
-    await this.returnOrDestroyIngredients(build);
-
-    // clean up
-    await this.cleanBuild(build);
   }
 
   // drive build to completion, these are all permissionless steps

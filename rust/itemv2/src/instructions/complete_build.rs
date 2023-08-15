@@ -104,12 +104,23 @@ pub fn handler<'a, 'b, 'c, 'info>(
 
             verify_leaf(
                 CpiContext::new(
-                    ctx.accounts.account_compression.clone().unwrap().to_account_info(),
+                    ctx.accounts
+                        .account_compression
+                        .clone()
+                        .unwrap()
+                        .to_account_info(),
                     verify_item_accounts,
                 )
                 .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
                 verify_merkle_tree_args.root,
-                ctx.accounts.item_mint.clone().unwrap().key().as_ref().try_into().unwrap(),
+                ctx.accounts
+                    .item_mint
+                    .clone()
+                    .unwrap()
+                    .key()
+                    .as_ref()
+                    .try_into()
+                    .unwrap(),
                 verify_merkle_tree_args.leaf_index,
             )?;
 

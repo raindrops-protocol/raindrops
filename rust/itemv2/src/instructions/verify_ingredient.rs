@@ -99,7 +99,11 @@ pub fn handler<'a, 'b, 'c, 'info>(
 
                 verify_leaf(
                     CpiContext::new(
-                        ctx.accounts.account_compression.clone().unwrap().to_account_info(),
+                        ctx.accounts
+                            .account_compression
+                            .clone()
+                            .unwrap()
+                            .to_account_info(),
                         verify_item_accounts,
                     )
                     .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
@@ -124,7 +128,7 @@ pub fn handler<'a, 'b, 'c, 'info>(
                 )?;
             }
             // item class modes which are preset only and pack are not valid ingredients so we error
-            _ => return Err(ErrorCode::IncorrectIngredient.into())
+            _ => return Err(ErrorCode::IncorrectIngredient.into()),
         }
     };
 

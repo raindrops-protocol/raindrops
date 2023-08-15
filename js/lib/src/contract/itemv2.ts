@@ -206,11 +206,28 @@ export class ItemProgramV2 extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async migrateBuildAccount(build: web3.PublicKey, recipe: web3.PublicKey, options?: SendOptions): Promise<SendTransactionResult> {
+    const ix = await this.instruction.migrateBuildAccount(
+      build, recipe
+    );
+    return await this.sendWithRetry([ix], [], options); 
+  }
+
+  async migrateItemClassAccount(itemClass: web3.PublicKey, options?: SendOptions): Promise<SendTransactionResult> {
+    const ix = await this.instruction.migrateItemClassAccount(
+      itemClass
+    );
+    return await this.sendWithRetry([ix], [], options); 
+  }
+
   async getItemClass(itemClass: web3.PublicKey): Promise<ItemClass | null> {
-    const itemClassData = await this.client.account.itemClass.fetch(itemClass);
-    if (!itemClassData) {
-      return null;
-    }
+    let itemClassData: any;
+    try {
+      itemClassData = await this.client.account.itemClass.fetch(itemClass);
+    } catch(_e) {
+      return null
+    } 
+    console.log(itemClassData)
 
     let recipeIndex: BN | null = null;
     if (itemClassData.recipeIndex !== null) {

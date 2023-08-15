@@ -167,6 +167,10 @@ pub enum BuildStatus {
     ItemReceived,
 }
 
+impl BuildStatus {
+    pub const SPACE: usize = 1 + 1;
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BuildEffect {
     pub degradation: Degradation,
@@ -310,7 +314,7 @@ impl ItemState {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Payment {
     pub treasury: Pubkey,
     pub amount: u64,
@@ -320,7 +324,7 @@ impl Payment {
     pub const SPACE: usize = 32 + 8;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum PaymentStatus {
     NotPaid,
     Escrowed,
@@ -331,7 +335,7 @@ impl PaymentStatus {
     pub const SPACE: usize = 1 + 1;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct PaymentState {
     pub status: PaymentStatus,
     pub payment_details: Payment,
@@ -387,7 +391,7 @@ impl PackContentsEntry {
     pub const SPACE: usize = 32 + 8;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BuildOutput {
     pub items: Vec<BuildOutputItem>,
 }

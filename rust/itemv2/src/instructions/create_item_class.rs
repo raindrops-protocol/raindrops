@@ -5,7 +5,7 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{accounts::ItemClass, ItemClassMode, NoopProgram, ItemClassModeSelection};
+use crate::state::{accounts::ItemClass, ItemClassMode, ItemClassModeSelection, NoopProgram};
 
 #[derive(Accounts)]
 #[instruction(args: CreateItemClassArgs)]
@@ -50,10 +50,14 @@ pub fn handler(ctx: Context<CreateItemClass>, args: CreateItemClassArgs) -> Resu
 
     match args.mode {
         ItemClassModeSelection::Collection { collection_mint } => {
-            mode = ItemClassMode::Collection { collection_mint: collection_mint }
+            mode = ItemClassMode::Collection {
+                collection_mint: collection_mint,
+            }
         }
         ItemClassModeSelection::MerkleTree => {
-            mode = ItemClassMode::MerkleTree { tree: ctx.accounts.tree.clone().unwrap().key() };
+            mode = ItemClassMode::MerkleTree {
+                tree: ctx.accounts.tree.clone().unwrap().key(),
+            };
 
             // initialize merkle tree
             let init_empty_merkle_tree_accounts = Initialize {
@@ -64,7 +68,11 @@ pub fn handler(ctx: Context<CreateItemClass>, args: CreateItemClassArgs) -> Resu
 
             init_empty_merkle_tree(
                 CpiContext::new_with_signer(
-                    ctx.accounts.account_compression.clone().unwrap().to_account_info(),
+                    ctx.accounts
+                        .account_compression
+                        .clone()
+                        .unwrap()
+                        .to_account_info(),
                     init_empty_merkle_tree_accounts,
                     &[&[
                         ItemClass::PREFIX.as_bytes(),

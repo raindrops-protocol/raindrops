@@ -1509,6 +1509,33 @@ export class Instruction extends SolKitInstruction {
 
     return ix;
   }
+
+  async migrateBuildAccount(build: web3.PublicKey, recipe: web3.PublicKey): Promise<web3.TransactionInstruction> {
+    const ix = await this.program.client.methods
+      .migrateBuildAccount()
+      .accounts({
+        build: build,
+        recipe: recipe,
+        payer: this.program.client.provider.publicKey!,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return ix
+  }
+
+  async migrateItemClassAccount(itemClass: web3.PublicKey): Promise<web3.TransactionInstruction> {
+    const ix = await this.program.client.methods
+      .migrateItemClassAccount()
+      .accounts({
+        itemClass: itemClass,
+        payer: this.program.client.provider.publicKey!,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .instruction();
+
+    return ix
+  }
 }
 
 export interface CreateItemClassArgs {
