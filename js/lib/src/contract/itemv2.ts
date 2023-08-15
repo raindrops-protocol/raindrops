@@ -227,7 +227,6 @@ export class ItemProgramV2 extends Program.Program {
     } catch(_e) {
       return null
     } 
-    console.log(itemClassData)
 
     let recipeIndex: BN | null = null;
     if (itemClassData.recipeIndex !== null) {
