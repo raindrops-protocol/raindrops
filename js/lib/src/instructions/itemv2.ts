@@ -547,7 +547,7 @@ export class Instruction extends SolKitInstruction {
 
   async verifyIngredient(
     accounts: VerifyIngredientAccounts,
-    args: VerifyIngredientArgs
+    args?: VerifyIngredientArgs
   ): Promise<web3.TransactionInstruction> {
     const ingredientItemClassData =
       await this.program.client.account.itemClass.fetch(

@@ -403,13 +403,15 @@ export class Client {
     return body.packConfig;
   }
 
-  async getDeterministicIngredientOutput(ingredientMint: anchor.web3.PublicKey): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
+  async getDeterministicIngredientOutput(deterministicIngredientMint: anchor.web3.PublicKey, recipe: anchor.web3.PublicKey): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
+
     const params = new URLSearchParams({
-      ingredientMint: ingredientMint.toString(),
+      deterministicIngredientMint: deterministicIngredientMint.toString(),
+      recipe: recipe.toString(),
     });
 
-    // return the current item data
-    const response = await fetch(`${this.baseUrl}/item?` + params, {
+    // return the deterministic ingredient outputs 
+    const response = await fetch(`${this.baseUrl}/deterministicIngredientOutput?` + params, {
       headers: createHeaders(this.rpcUrl, this.apiKey),
     });
 
