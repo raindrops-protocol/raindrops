@@ -323,14 +323,14 @@ export function getBuildPermitPda(
 }
 
 export function getDeterministicIngredientPda(
-  recipe: web3.PublicKey,
+  itemClass: web3.PublicKey,
   ingredientMint: web3.PublicKey
 ) {
   const [deterministicIngredient, _deterministicIngredientBump] =
     web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("deterministic_ingredient"),
-        recipe.toBuffer(),
+        itemClass.toBuffer(),
         ingredientMint.toBuffer(),
       ],
       ITEMV2_ID

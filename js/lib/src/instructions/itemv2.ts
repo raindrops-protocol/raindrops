@@ -347,11 +347,6 @@ export class Instruction extends SolKitInstruction {
 
     const buildDataRaw = await this.program.client.account.build.fetch(build);
 
-    const recipe = getRecipePda(
-      accounts.itemClass,
-      new BN(buildDataRaw.recipeIndex as any)
-    );
-
     // get deterministic ingredient pda if applicable
     let deterministicIngredient: web3.PublicKey | null = null;
     for (const rawIngredient of buildDataRaw.ingredients as any[]) {
@@ -360,7 +355,7 @@ export class Instruction extends SolKitInstruction {
       );
       if (match && Boolean(rawIngredient.isDeterministic)) {
         deterministicIngredient = getDeterministicIngredientPda(
-          recipe,
+          accounts.itemClass,
           accounts.ingredientMint
         );
       }
@@ -372,7 +367,6 @@ export class Instruction extends SolKitInstruction {
         accounts,
         build,
         item,
-        recipe,
         deterministicIngredient
       );
       ixns.push(...pNftIxns);
@@ -381,7 +375,6 @@ export class Instruction extends SolKitInstruction {
         accounts,
         build,
         item,
-        recipe,
         deterministicIngredient,
         args
       );
@@ -395,7 +388,6 @@ export class Instruction extends SolKitInstruction {
     accounts: AddIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey,
-    recipe: web3.PublicKey,
     deterministicIngredient: web3.PublicKey | null,
     args: AddIngredientArgs
   ): Promise<web3.TransactionInstruction> {
@@ -417,7 +409,6 @@ export class Instruction extends SolKitInstruction {
         ingredientSource: ingredientSource,
         ingredientDestination: ingredientDestination,
         deterministicIngredient: deterministicIngredient,
-        recipe: recipe,
         build: build,
         item: item,
         builder: accounts.builder,
@@ -437,7 +428,6 @@ export class Instruction extends SolKitInstruction {
     accounts: AddIngredientAccounts,
     build: web3.PublicKey,
     item: web3.PublicKey,
-    recipe: web3.PublicKey,
     deterministicIngredient: web3.PublicKey | null
   ): Promise<web3.TransactionInstruction[]> {
     const [ingredientMetadata, _ingredientMetadataBump] =
@@ -527,7 +517,6 @@ export class Instruction extends SolKitInstruction {
         ingredientSourceTokenRecord: ingredientSourceTokenRecord,
         ingredientDestination: ingredientDestination,
         ingredientDestinationTokenRecord: ingredientDestinationTokenRecord,
-        recipe: recipe,
         build: build,
         item: item,
         payer: accounts.payer,
@@ -1473,13 +1462,9 @@ export class Instruction extends SolKitInstruction {
     accounts: CreateDeterministicIngredientAccounts,
     args: CreateDeterministicIngredientArgs
   ): Promise<web3.TransactionInstruction> {
-    const recipeData = await this.program.client.account.recipe.fetch(
-      accounts.recipe
-    );
-    const itemClass = new web3.PublicKey(recipeData.itemClass);
 
     const itemClassData = await this.program.client.account.itemClass.fetch(
-      itemClass
+      accounts.itemClass
     );
     const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
     const authorityMintAta = splToken.getAssociatedTokenAddressSync(
@@ -1488,15 +1473,14 @@ export class Instruction extends SolKitInstruction {
     );
 
     const deterministicIngredient = getDeterministicIngredientPda(
-      accounts.recipe,
+      accounts.itemClass,
       accounts.ingredientMint
     );
 
     const ix = await this.program.client.methods
       .createDeterministicIngredient(args)
       .accounts({
-        recipe: accounts.recipe,
-        itemClass: itemClass,
+        itemClass: accounts.itemClass,
         ingredientMint: accounts.ingredientMint,
         deterministicIngredient: deterministicIngredient,
         itemClassAuthorityMint: authorityMint,
@@ -1725,9 +1709,10 @@ export interface CreateBuildPermitArgs {
 
 export interface CreateDeterministicIngredientAccounts {
   ingredientMint: web3.PublicKey;
-  recipe: web3.PublicKey;
+  itemClass: web3.PublicKey;
 }
 
 export interface CreateDeterministicIngredientArgs {
+  recipes: web3.PublicKey[];
   outputs: DeterministicIngredientOutput[];
 }

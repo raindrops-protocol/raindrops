@@ -4438,8 +4438,8 @@ async function createDeterministicIngredient(
 
   const createDeterministicIngredientResult =
     await itemProgram.createDeterministicIngredient(
-      { recipe: recipe, ingredientMint: ingredientMint },
-      { outputs: deterministicIngredientOutputs }
+      { itemClass: itemClass, ingredientMint: ingredientMint },
+      { outputs: deterministicIngredientOutputs, recipes: [recipe] }
     );
   console.log(
     "createDeterministicIngredientTxSig: %s",

@@ -430,10 +430,10 @@ impl BuildPermit {
     2; // remaining_builds
 }
 
-// seeds = ['deterministic_ingredient', recipe.key(), ingredient_mint.key().as_ref()]
+// seeds = ['deterministic_ingredient', item_class.key(), ingredient_mint.key().as_ref()]
 #[account]
 pub struct DeterministicIngredient {
-    pub recipe: Pubkey,
+    pub recipes: Vec<Pubkey>,
 
     pub ingredient_mint: Pubkey,
 
@@ -443,39 +443,11 @@ pub struct DeterministicIngredient {
 impl DeterministicIngredient {
     pub const PREFIX: &'static str = "deterministic_ingredient";
 
-    pub const INIT_SPACE: usize = 8 + // anchor
-    32 + // recipe
-    32 + // ingredient mint
-    4; // empty vector
-
-    pub fn current_space(&self) -> usize {
-        DeterministicIngredient::INIT_SPACE
-            + (self.outputs.len() * DeterministicIngredientOutput::SPACE)
-    }
-
-    pub fn set_outputs<'info>(
-        &mut self,
-        outputs: Vec<DeterministicIngredientOutput>,
-        deterministic_ingredient_account: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        for output in outputs {
-            self.outputs.push(output);
-        }
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(
-            diff,
-            deterministic_ingredient_account,
-            payer,
-            system_program,
-        )
+    pub fn space(recipe_count: usize, outputs_count: usize) -> usize {
+        8 + // anchor
+        4 + (recipe_count * 32) + // recipe vector pubkeys
+        32 + // ingredient mint
+        4 + (outputs_count * DeterministicIngredientOutput::SPACE)
     }
 }
 

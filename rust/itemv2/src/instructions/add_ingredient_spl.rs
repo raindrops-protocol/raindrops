@@ -17,7 +17,7 @@ pub struct AddIngredientSpl<'info> {
 
     #[account(
         has_one = ingredient_mint,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.recipe.as_ref(), ingredient_mint.key().as_ref()], bump
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.item_class.as_ref(), ingredient_mint.key().as_ref()], bump
     )]
     pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 

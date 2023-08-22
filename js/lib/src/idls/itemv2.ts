@@ -1250,11 +1250,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
@@ -1872,8 +1867,10 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipe",
-            "type": "publicKey"
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
           },
           {
             "name": "ingredientMint",
@@ -1980,6 +1977,12 @@ export type Itemv2 = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
           {
             "name": "outputs",
             "type": {
@@ -3992,11 +3995,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
@@ -4614,8 +4612,10 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipe",
-            "type": "publicKey"
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
           },
           {
             "name": "ingredientMint",
@@ -4722,6 +4722,12 @@ export const IDL: Itemv2 = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
           {
             "name": "outputs",
             "type": {

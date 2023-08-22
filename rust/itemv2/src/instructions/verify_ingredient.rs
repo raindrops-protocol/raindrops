@@ -39,7 +39,7 @@ pub struct VerifyIngredient<'info> {
 
     #[account(
         has_one = ingredient_mint,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.recipe.as_ref(), ingredient_mint.key().as_ref()], bump
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.item_class.as_ref(), ingredient_mint.key().as_ref()], bump
     )]
     pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
@@ -80,57 +80,70 @@ pub fn handler<'a, 'b, 'c, 'info>(
         }
     }
 
-    // deterministic ingredients don't need verification because its checked by the PDA seeds
-    if ctx.accounts.deterministic_ingredient.is_none() {
-        // if ingredient is not deterministic then we need to verify its part of the item class
-        match ctx.accounts.ingredient_item_class.mode {
-            ItemClassMode::MerkleTree { .. } => {
-                let verify_leaf_args = args.unwrap();
+    match &ctx.accounts.deterministic_ingredient {
+        Some(deterministic_ingredient) => {
+            // deterministic ingredients don't need verification because its checked by the PDA seeds
+            // check that this deterministic ingredient is allowed to be used in the recipe the build has chosen
+            require!(
+                deterministic_ingredient
+                    .recipes
+                    .clone()
+                    .into_iter()
+                    .any(|recipe| recipe.eq(&ctx.accounts.build.recipe)),
+                ErrorCode::IncorrectIngredient
+            );
+        }
+        None => {
+            // if ingredient is not deterministic then we need to verify its part of the item class
+            match ctx.accounts.ingredient_item_class.mode {
+                ItemClassMode::MerkleTree { .. } => {
+                    let verify_leaf_args = args.unwrap();
 
-                // verify mint exists in the items tree
-                let verify_item_accounts = VerifyLeaf {
-                    merkle_tree: ctx
-                        .accounts
-                        .ingredient_item_class_verify_account
-                        .clone()
-                        .unwrap()
-                        .to_account_info(),
-                };
-
-                verify_leaf(
-                    CpiContext::new(
-                        ctx.accounts
-                            .account_compression
+                    // verify mint exists in the items tree
+                    let verify_item_accounts = VerifyLeaf {
+                        merkle_tree: ctx
+                            .accounts
+                            .ingredient_item_class_verify_account
                             .clone()
                             .unwrap()
                             .to_account_info(),
-                        verify_item_accounts,
-                    )
-                    .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
-                    verify_leaf_args.root,
-                    ctx.accounts
-                        .ingredient_mint
-                        .key()
-                        .as_ref()
-                        .try_into()
-                        .unwrap(),
-                    verify_leaf_args.leaf_index,
-                )?;
+                    };
+
+                    verify_leaf(
+                        CpiContext::new(
+                            ctx.accounts
+                                .account_compression
+                                .clone()
+                                .unwrap()
+                                .to_account_info(),
+                            verify_item_accounts,
+                        )
+                        .with_remaining_accounts(ctx.remaining_accounts.to_vec()),
+                        verify_leaf_args.root,
+                        ctx.accounts
+                            .ingredient_mint
+                            .key()
+                            .as_ref()
+                            .try_into()
+                            .unwrap(),
+                        verify_leaf_args.leaf_index,
+                    )?;
+                }
+                ItemClassMode::Collection { collection_mint } => {
+                    is_collection_member(
+                        ctx.accounts
+                            .ingredient_mint_metadata
+                            .clone()
+                            .unwrap()
+                            .into_inner(),
+                        &collection_mint,
+                    )?;
+                }
+                // item class modes which are preset only and pack are not valid ingredients so we error
+                _ => return Err(ErrorCode::IncorrectIngredient.into()),
             }
-            ItemClassMode::Collection { collection_mint } => {
-                is_collection_member(
-                    ctx.accounts
-                        .ingredient_mint_metadata
-                        .clone()
-                        .unwrap()
-                        .into_inner(),
-                    &collection_mint,
-                )?;
-            }
-            // item class modes which are preset only and pack are not valid ingredients so we error
-            _ => return Err(ErrorCode::IncorrectIngredient.into()),
         }
-    };
+    }
 
     // set the verified mint in the build data
     let build_account = &ctx.accounts.build.to_account_info();
