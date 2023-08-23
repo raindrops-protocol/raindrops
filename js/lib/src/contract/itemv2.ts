@@ -555,10 +555,15 @@ export class ItemProgramV2 extends Program.Program {
         mint: new web3.PublicKey(output.mint),
         amount: new BN(output.amount),
       });
+    };
+
+    const recipes: web3.PublicKey[] = [];
+    for (let r of deterministicIngredientDataRaw.recipes) {
+      recipes.push(new web3.PublicKey(r));
     }
 
     const deterministicIngredientData: DeterministicIngredient = {
-      recipe: new web3.PublicKey(deterministicIngredientDataRaw.recipe),
+      recipes: recipes,
       ingredientMint: new web3.PublicKey(
         deterministicIngredientDataRaw.ingredientMint
       ),

@@ -403,11 +403,11 @@ export class Client {
     return body.packConfig;
   }
 
-  async getDeterministicIngredientOutput(deterministicIngredientMint: anchor.web3.PublicKey, recipe: anchor.web3.PublicKey): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
+  async getDeterministicIngredientOutput(deterministicIngredientMint: anchor.web3.PublicKey, itemClass: anchor.web3.PublicKey): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
 
     const params = new URLSearchParams({
       deterministicIngredientMint: deterministicIngredientMint.toString(),
-      recipe: recipe.toString(),
+      itemClass: itemClass.toString(),
     });
 
     // return the deterministic ingredient outputs 

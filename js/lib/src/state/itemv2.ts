@@ -241,7 +241,7 @@ export interface BuildPermit {
 }
 
 export interface DeterministicIngredient {
-  recipe: web3.PublicKey;
+  recipes: web3.PublicKey[];
   ingredientMint: web3.PublicKey;
   outputs: DeterministicIngredientOutput[];
 }
