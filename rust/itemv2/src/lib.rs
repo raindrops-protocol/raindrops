@@ -46,16 +46,16 @@ pub mod itemv2 {
 
     pub fn verify_ingredient<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, VerifyIngredient<'info>>,
-        args: VerifyIngredientArgs,
+        args: Option<VerifyIngredientArgs>,
     ) -> Result<()> {
         verify_ingredient::handler(ctx, args)
     }
 
-    pub fn verify_ingredient_test<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, VerifyIngredientTest<'info>>,
-        args: VerifyIngredientTestArgs,
+    pub fn verify_ingredient_merkle_tree_test<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, VerifyIngredientMerkleTreeTest<'info>>,
+        args: VerifyIngredientMerkleTreeTestArgs,
     ) -> Result<()> {
-        verify_ingredient_test::handler(ctx, args)
+        verify_ingredient_merkle_tree_test::handler(ctx, args)
     }
 
     pub fn receive_item_pnft(ctx: Context<ReceiveItemPNft>) -> Result<()> {
@@ -66,22 +66,11 @@ pub mod itemv2 {
         receive_item_spl::handler(ctx)
     }
 
-    pub fn complete_build_item<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, CompleteBuildItem<'info>>,
-        args: CompleteBuildItemArgs,
+    pub fn complete_build<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, CompleteBuild<'info>>,
+        args: CompleteBuildArgs,
     ) -> Result<()> {
-        complete_build_item::handler(ctx, args)
-    }
-
-    pub fn complete_build_pack<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, CompleteBuildPack<'info>>,
-        args: CompleteBuildPackArgs,
-    ) -> Result<()> {
-        complete_build_pack::handler(ctx, args)
-    }
-
-    pub fn complete_build_preset_only(ctx: Context<CompleteBuildPresetOnly>) -> Result<()> {
-        complete_build_preset_only::handler(ctx)
+        complete_build::handler(ctx, args)
     }
 
     pub fn apply_build_effect(ctx: Context<ApplyBuildEffect>) -> Result<()> {
@@ -146,5 +135,13 @@ pub mod itemv2 {
 
     pub fn release_from_escrow_pnft(ctx: Context<ReleaseFromEscrowPNft>) -> Result<()> {
         release_from_escrow_pnft::handler(ctx)
+    }
+
+    pub fn migrate_build_account(ctx: Context<MigrateBuildAccount>) -> Result<()> {
+        migrate_build_account::handler(ctx)
+    }
+
+    pub fn migrate_item_class_account(ctx: Context<MigrateItemClassAccount>) -> Result<()> {
+        migrate_item_class_account::handler(ctx)
     }
 }

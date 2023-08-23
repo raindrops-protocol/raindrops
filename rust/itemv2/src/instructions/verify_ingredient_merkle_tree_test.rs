@@ -7,19 +7,19 @@ use spl_account_compression::{
     program::SplAccountCompression,
 };
 
-use crate::state::{accounts::ItemClass, NoopProgram};
+use crate::state::{accounts::ItemClass, errors::ErrorCode, NoopProgram};
 
 #[derive(Accounts)]
-pub struct VerifyIngredientTest<'info> {
+pub struct VerifyIngredientMerkleTreeTest<'info> {
     pub ingredient_mint: Box<Account<'info, token::Mint>>,
 
     #[account(
-        constraint = ingredient_item_class.items.unwrap().eq(&ingredient_item_class_items.key()),
         seeds = [ItemClass::PREFIX.as_bytes(), ingredient_item_class.authority_mint.as_ref()], bump)]
     pub ingredient_item_class: Box<Account<'info, ItemClass>>,
 
     /// CHECK: checked by spl-account-compression
-    pub ingredient_item_class_items: UncheckedAccount<'info>,
+    #[account(constraint = ingredient_item_class.mode.is_verify_account(&ingredient_item_class_merkle_tree.key()) @ ErrorCode::InvalidVerifyAccount)]
+    pub ingredient_item_class_merkle_tree: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -30,18 +30,21 @@ pub struct VerifyIngredientTest<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct VerifyIngredientTestArgs {
+pub struct VerifyIngredientMerkleTreeTestArgs {
     pub root: [u8; 32],
     pub leaf_index: u32,
 }
 
 pub fn handler<'a, 'b, 'c, 'info>(
-    ctx: Context<'a, 'b, 'c, 'info, VerifyIngredientTest<'info>>,
-    args: VerifyIngredientTestArgs,
+    ctx: Context<'a, 'b, 'c, 'info, VerifyIngredientMerkleTreeTest<'info>>,
+    args: VerifyIngredientMerkleTreeTestArgs,
 ) -> Result<()> {
     // verify mint exists in the items tree
     let verify_item_accounts = VerifyLeaf {
-        merkle_tree: ctx.accounts.ingredient_item_class_items.to_account_info(),
+        merkle_tree: ctx
+            .accounts
+            .ingredient_item_class_merkle_tree
+            .to_account_info(),
     };
 
     verify_leaf(

@@ -6,9 +6,10 @@ export type Itemv2 = {
       "name": "createItemClass",
       "accounts": [
         {
-          "name": "items",
+          "name": "tree",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "itemClass",
@@ -36,19 +37,21 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "accountCompression",
+          "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "logWrapper",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         }
       ],
       "args": [
@@ -132,7 +135,7 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "items",
+          "name": "itemClassMerkleTree",
           "isMut": true,
           "isSigner": false
         },
@@ -306,11 +309,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -393,11 +391,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -456,14 +449,27 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "ingredientMintMetadata",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "ingredientItemClassItems",
+          "name": "ingredientItemClassVerifyAccount",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "deterministicIngredient",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "build",
@@ -483,25 +489,29 @@ export type Itemv2 = {
         {
           "name": "logWrapper",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "accountCompression",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         }
       ],
       "args": [
         {
           "name": "args",
           "type": {
-            "defined": "VerifyIngredientArgs"
+            "option": {
+              "defined": "VerifyIngredientArgs"
+            }
           }
         }
       ]
     },
     {
-      "name": "verifyIngredientTest",
+      "name": "verifyIngredientMerkleTreeTest",
       "accounts": [
         {
           "name": "ingredientMint",
@@ -514,7 +524,7 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "ingredientItemClassItems",
+          "name": "ingredientItemClassMerkleTree",
           "isMut": false,
           "isSigner": false
         },
@@ -538,7 +548,7 @@ export type Itemv2 = {
         {
           "name": "args",
           "type": {
-            "defined": "VerifyIngredientTestArgs"
+            "defined": "VerifyIngredientMerkleTreeTestArgs"
           }
         }
       ]
@@ -706,12 +716,19 @@ export type Itemv2 = {
       "args": []
     },
     {
-      "name": "completeBuildItem",
+      "name": "completeBuild",
       "accounts": [
         {
           "name": "itemMint",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "itemMintMetadata",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "itemClass",
@@ -719,9 +736,16 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "itemClassItems",
+          "name": "itemClassVerifyAccount",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "pack",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "buildPermit",
@@ -747,93 +771,24 @@ export type Itemv2 = {
         {
           "name": "logWrapper",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "accountCompression",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         }
       ],
       "args": [
         {
           "name": "args",
           "type": {
-            "defined": "CompleteBuildItemArgs"
+            "defined": "CompleteBuildArgs"
           }
         }
       ]
-    },
-    {
-      "name": "completeBuildPack",
-      "accounts": [
-        {
-          "name": "pack",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CompleteBuildPackArgs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "completeBuildPresetOnly",
-      "accounts": [
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": []
     },
     {
       "name": "applyBuildEffect",
@@ -1295,11 +1250,6 @@ export type Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
@@ -1580,11 +1530,110 @@ export type Itemv2 = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "migrateBuildAccount",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrateItemClassAccount",
+      "accounts": [
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
     {
-      "name": "itemClass",
+      "name": "oldBuild",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "output",
+            "type": {
+              "defined": "BuildOutput"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "BuildIngredientData"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
+          },
+          {
+            "name": "buildPermitInUse",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oldItemClass",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1611,7 +1660,35 @@ export type Itemv2 = {
           {
             "name": "outputMode",
             "type": {
-              "defined": "ItemClassOutputMode"
+              "defined": "OldItemClassOutputMode"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "itemClass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "authorityMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "recipeIndex",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": "ItemClassMode"
             }
           }
         ]
@@ -1693,8 +1770,8 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipeIndex",
-            "type": "u64"
+            "name": "recipe",
+            "type": "publicKey"
           },
           {
             "name": "builder",
@@ -1790,8 +1867,10 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipe",
-            "type": "publicKey"
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
           },
           {
             "name": "ingredientMint",
@@ -1823,7 +1902,31 @@ export type Itemv2 = {
       }
     },
     {
-      "name": "CompleteBuildItemArgs",
+      "name": "CompleteBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merkleTreeArgs",
+            "type": {
+              "option": {
+                "defined": "CompleteBuildMerkleTreeArgs"
+              }
+            }
+          },
+          {
+            "name": "packArgs",
+            "type": {
+              "option": {
+                "defined": "CompleteBuildPackArgs"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompleteBuildMerkleTreeArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1875,6 +1978,12 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
             "name": "outputs",
             "type": {
               "vec": {
@@ -1895,9 +2004,9 @@ export type Itemv2 = {
             "type": "string"
           },
           {
-            "name": "outputMode",
+            "name": "mode",
             "type": {
-              "defined": "ItemClassOutputMode"
+              "defined": "ItemClassModeSelection"
             }
           }
         ]
@@ -1990,10 +2099,6 @@ export type Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipeIndex",
-            "type": "u64"
-          },
-          {
             "name": "recipeOutputSelection",
             "type": {
               "vec": {
@@ -2005,7 +2110,7 @@ export type Itemv2 = {
       }
     },
     {
-      "name": "VerifyIngredientTestArgs",
+      "name": "VerifyIngredientMerkleTreeTestArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2332,7 +2437,7 @@ export type Itemv2 = {
       }
     },
     {
-      "name": "ItemClassOutputMode",
+      "name": "OldItemClassOutputMode",
       "type": {
         "kind": "enum",
         "variants": [
@@ -2347,6 +2452,70 @@ export type Itemv2 = {
                 "type": "u64"
               }
             ]
+          },
+          {
+            "name": "PresetOnly"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemClassMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "MerkleTree",
+            "fields": [
+              {
+                "name": "tree",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "Collection",
+            "fields": [
+              {
+                "name": "collection_mint",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "Pack",
+            "fields": [
+              {
+                "name": "index",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "PresetOnly"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemClassModeSelection",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "MerkleTree"
+          },
+          {
+            "name": "Collection",
+            "fields": [
+              {
+                "name": "collection_mint",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "Pack"
           },
           {
             "name": "PresetOnly"
@@ -2518,8 +2687,8 @@ export type Itemv2 = {
     },
     {
       "code": 6012,
-      "name": "InvalidItemClassOutputMode",
-      "msg": "Invalid ItemClassOutputMode"
+      "name": "InvalidItemClassMode",
+      "msg": "Invalid ItemClassMode"
     },
     {
       "code": 6013,
@@ -2560,6 +2729,16 @@ export type Itemv2 = {
       "code": 6020,
       "name": "InvalidPaymentStatus",
       "msg": "Payment Status is Invalid for this IX"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidVerifyAccount",
+      "msg": "Verify Account is Invalid"
+    },
+    {
+      "code": 6022,
+      "name": "MigrationError",
+      "msg": "Error Migrating Account"
     }
   ]
 };
@@ -2572,9 +2751,10 @@ export const IDL: Itemv2 = {
       "name": "createItemClass",
       "accounts": [
         {
-          "name": "items",
+          "name": "tree",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "itemClass",
@@ -2602,19 +2782,21 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "accountCompression",
+          "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "accountCompression",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "logWrapper",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         }
       ],
       "args": [
@@ -2698,7 +2880,7 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "items",
+          "name": "itemClassMerkleTree",
           "isMut": true,
           "isSigner": false
         },
@@ -2872,11 +3054,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -2959,11 +3136,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "build",
           "isMut": true,
           "isSigner": false
@@ -3022,14 +3194,27 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
+          "name": "ingredientMintMetadata",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "ingredientItemClass",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "ingredientItemClassItems",
+          "name": "ingredientItemClassVerifyAccount",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "deterministicIngredient",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "build",
@@ -3049,25 +3234,29 @@ export const IDL: Itemv2 = {
         {
           "name": "logWrapper",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "accountCompression",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         }
       ],
       "args": [
         {
           "name": "args",
           "type": {
-            "defined": "VerifyIngredientArgs"
+            "option": {
+              "defined": "VerifyIngredientArgs"
+            }
           }
         }
       ]
     },
     {
-      "name": "verifyIngredientTest",
+      "name": "verifyIngredientMerkleTreeTest",
       "accounts": [
         {
           "name": "ingredientMint",
@@ -3080,7 +3269,7 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "ingredientItemClassItems",
+          "name": "ingredientItemClassMerkleTree",
           "isMut": false,
           "isSigner": false
         },
@@ -3104,7 +3293,7 @@ export const IDL: Itemv2 = {
         {
           "name": "args",
           "type": {
-            "defined": "VerifyIngredientTestArgs"
+            "defined": "VerifyIngredientMerkleTreeTestArgs"
           }
         }
       ]
@@ -3272,12 +3461,19 @@ export const IDL: Itemv2 = {
       "args": []
     },
     {
-      "name": "completeBuildItem",
+      "name": "completeBuild",
       "accounts": [
         {
           "name": "itemMint",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "itemMintMetadata",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "itemClass",
@@ -3285,9 +3481,16 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "itemClassItems",
+          "name": "itemClassVerifyAccount",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "pack",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "buildPermit",
@@ -3313,93 +3516,24 @@ export const IDL: Itemv2 = {
         {
           "name": "logWrapper",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
           "name": "accountCompression",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         }
       ],
       "args": [
         {
           "name": "args",
           "type": {
-            "defined": "CompleteBuildItemArgs"
+            "defined": "CompleteBuildArgs"
           }
         }
       ]
-    },
-    {
-      "name": "completeBuildPack",
-      "accounts": [
-        {
-          "name": "pack",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "CompleteBuildPackArgs"
-          }
-        }
-      ]
-    },
-    {
-      "name": "completeBuildPresetOnly",
-      "accounts": [
-        {
-          "name": "itemClass",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "buildPermit",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
-          "name": "build",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": []
     },
     {
       "name": "applyBuildEffect",
@@ -3861,11 +3995,6 @@ export const IDL: Itemv2 = {
           "isSigner": false
         },
         {
-          "name": "recipe",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "itemClass",
           "isMut": true,
           "isSigner": false
@@ -4146,11 +4275,110 @@ export const IDL: Itemv2 = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "migrateBuildAccount",
+      "accounts": [
+        {
+          "name": "build",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "recipe",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrateItemClassAccount",
+      "accounts": [
+        {
+          "name": "itemClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
     {
-      "name": "itemClass",
+      "name": "oldBuild",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipeIndex",
+            "type": "u64"
+          },
+          {
+            "name": "builder",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "output",
+            "type": {
+              "defined": "BuildOutput"
+            }
+          },
+          {
+            "name": "payment",
+            "type": {
+              "option": {
+                "defined": "PaymentState"
+              }
+            }
+          },
+          {
+            "name": "ingredients",
+            "type": {
+              "vec": {
+                "defined": "BuildIngredientData"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "BuildStatus"
+            }
+          },
+          {
+            "name": "buildPermitInUse",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oldItemClass",
       "type": {
         "kind": "struct",
         "fields": [
@@ -4177,7 +4405,35 @@ export const IDL: Itemv2 = {
           {
             "name": "outputMode",
             "type": {
-              "defined": "ItemClassOutputMode"
+              "defined": "OldItemClassOutputMode"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "itemClass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "authorityMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "recipeIndex",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": "ItemClassMode"
             }
           }
         ]
@@ -4259,8 +4515,8 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipeIndex",
-            "type": "u64"
+            "name": "recipe",
+            "type": "publicKey"
           },
           {
             "name": "builder",
@@ -4356,8 +4612,10 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipe",
-            "type": "publicKey"
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
           },
           {
             "name": "ingredientMint",
@@ -4389,7 +4647,31 @@ export const IDL: Itemv2 = {
       }
     },
     {
-      "name": "CompleteBuildItemArgs",
+      "name": "CompleteBuildArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merkleTreeArgs",
+            "type": {
+              "option": {
+                "defined": "CompleteBuildMerkleTreeArgs"
+              }
+            }
+          },
+          {
+            "name": "packArgs",
+            "type": {
+              "option": {
+                "defined": "CompleteBuildPackArgs"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompleteBuildMerkleTreeArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -4441,6 +4723,12 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
+            "name": "recipes",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
             "name": "outputs",
             "type": {
               "vec": {
@@ -4461,9 +4749,9 @@ export const IDL: Itemv2 = {
             "type": "string"
           },
           {
-            "name": "outputMode",
+            "name": "mode",
             "type": {
-              "defined": "ItemClassOutputMode"
+              "defined": "ItemClassModeSelection"
             }
           }
         ]
@@ -4556,10 +4844,6 @@ export const IDL: Itemv2 = {
         "kind": "struct",
         "fields": [
           {
-            "name": "recipeIndex",
-            "type": "u64"
-          },
-          {
             "name": "recipeOutputSelection",
             "type": {
               "vec": {
@@ -4571,7 +4855,7 @@ export const IDL: Itemv2 = {
       }
     },
     {
-      "name": "VerifyIngredientTestArgs",
+      "name": "VerifyIngredientMerkleTreeTestArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -4898,7 +5182,7 @@ export const IDL: Itemv2 = {
       }
     },
     {
-      "name": "ItemClassOutputMode",
+      "name": "OldItemClassOutputMode",
       "type": {
         "kind": "enum",
         "variants": [
@@ -4913,6 +5197,70 @@ export const IDL: Itemv2 = {
                 "type": "u64"
               }
             ]
+          },
+          {
+            "name": "PresetOnly"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemClassMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "MerkleTree",
+            "fields": [
+              {
+                "name": "tree",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "Collection",
+            "fields": [
+              {
+                "name": "collection_mint",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "Pack",
+            "fields": [
+              {
+                "name": "index",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "PresetOnly"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemClassModeSelection",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "MerkleTree"
+          },
+          {
+            "name": "Collection",
+            "fields": [
+              {
+                "name": "collection_mint",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "Pack"
           },
           {
             "name": "PresetOnly"
@@ -5084,8 +5432,8 @@ export const IDL: Itemv2 = {
     },
     {
       "code": 6012,
-      "name": "InvalidItemClassOutputMode",
-      "msg": "Invalid ItemClassOutputMode"
+      "name": "InvalidItemClassMode",
+      "msg": "Invalid ItemClassMode"
     },
     {
       "code": 6013,
@@ -5126,6 +5474,16 @@ export const IDL: Itemv2 = {
       "code": 6020,
       "name": "InvalidPaymentStatus",
       "msg": "Payment Status is Invalid for this IX"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidVerifyAccount",
+      "msg": "Verify Account is Invalid"
+    },
+    {
+      "code": 6022,
+      "name": "MigrationError",
+      "msg": "Error Migrating Account"
     }
   ]
 };

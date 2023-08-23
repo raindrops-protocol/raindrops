@@ -9,26 +9,65 @@ export const ITEMV2_ID = new web3.PublicKey(
 export interface ItemClass {
   name: string;
   authorityMint: web3.PublicKey;
-  items: web3.PublicKey | null;
   recipeIndex: BN | null;
   recipes: Recipe[];
-  outputMode: ItemClassOutputMode;
+  mode: ItemClassMode;
 }
 
-export type ItemClassOutputMode =
-  | { kind: "Item" }
+export type ItemClassModeSelection =
+  | { kind: "MerkleTree";  }
+  | { kind: "Collection"; collectionMint: web3.PublicKey }
+  | { kind: "Pack"; }
+  | { kind: "PresetOnly" };
+
+export type ItemClassMode =
+  | { kind: "MerkleTree"; tree: web3.PublicKey  }
+  | { kind: "Collection"; collectionMint: web3.PublicKey  }
   | { kind: "Pack"; index: BN }
   | { kind: "PresetOnly" };
 
-export function formatItemClassOutputMode(mode: ItemClassOutputMode): any {
+export function formatItemClassModeSelection(mode: ItemClassModeSelection): any {
   switch (mode.kind) {
-    case "Item":
-      return { item: {} };
+    case "MerkleTree":
+      return { merkleTree: {} };
+    case "Collection":
+      return { collection: { collectionMint: mode.collectionMint } };
     case "Pack":
-      return { pack: { index: mode.index } };
+      return { pack: {} };
     case "PresetOnly":
       return { presetOnly: {} };
   }
+}
+
+export function parseItemClassMode(itemClassData: any): ItemClassMode {
+  let mode: ItemClassMode = { kind: "PresetOnly" };
+    switch (Object.keys(itemClassData.mode)[0]) {
+      case "pack":
+        mode = {
+          kind: "Pack",
+          index: new BN((itemClassData.mode as any).pack.index),
+        };
+        break;
+      case "merkleTree":
+        mode = {
+          kind: "MerkleTree",
+          tree: new web3.PublicKey((itemClassData.mode as any).merkleTree.tree),
+        }
+        break;
+      case "collection":
+        mode = {
+          kind: "Collection",
+          collectionMint: new web3.PublicKey((itemClassData.mode as any).collection.collectionMint),
+        }
+        break;
+      case "presetOnly":
+        // this is the default selected above the switch func
+        break;
+      default:
+        throw new Error(`unknown item class mode: ${itemClassData.mode}`);
+    }
+  
+  return mode
 }
 
 export interface Recipe {
@@ -76,7 +115,7 @@ export interface ItemState {
 
 export interface Build {
   address: web3.PublicKey;
-  recipeIndex: BN;
+  recipe: web3.PublicKey;
   builder: web3.PublicKey;
   itemClass: web3.PublicKey;
   output: BuildOutput;
@@ -202,7 +241,7 @@ export interface BuildPermit {
 }
 
 export interface DeterministicIngredient {
-  recipe: web3.PublicKey;
+  recipes: web3.PublicKey[];
   ingredientMint: web3.PublicKey;
   outputs: DeterministicIngredientOutput[];
 }
@@ -284,14 +323,14 @@ export function getBuildPermitPda(
 }
 
 export function getDeterministicIngredientPda(
-  recipe: web3.PublicKey,
+  itemClass: web3.PublicKey,
   ingredientMint: web3.PublicKey
 ) {
   const [deterministicIngredient, _deterministicIngredientBump] =
     web3.PublicKey.findProgramAddressSync(
       [
         Buffer.from("deterministic_ingredient"),
-        recipe.toBuffer(),
+        itemClass.toBuffer(),
         ingredientMint.toBuffer(),
       ],
       ITEMV2_ID

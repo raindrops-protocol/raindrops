@@ -4,13 +4,14 @@ use anchor_lang::{
     prelude::*,
     system_program::{transfer, Transfer},
 };
+use anchor_spl::metadata;
 
 use crate::state::PaymentStatus;
 
 use super::{
     errors::ErrorCode, BuildIngredientData, BuildOutput, BuildStatus,
-    DeterministicIngredientOutput, IngredientMint, ItemClassOutputMode, ItemState,
-    OutputSelectionGroup, Payment, PaymentState, RecipeIngredientData,
+    DeterministicIngredientOutput, IngredientMint, ItemClassMode, ItemState, OutputSelectionGroup,
+    Payment, PaymentState, RecipeIngredientData,
 };
 
 // seeds = ['item_class', authority_mint.key().as_ref()]
@@ -21,13 +22,11 @@ pub struct ItemClass {
     // token owners have authority over the item class
     pub authority_mint: Pubkey,
 
-    // merkle tree containing all item addresses belonging to this item class
-    pub items: Option<Pubkey>,
-
+    // if none, there aren't any recipes associated with this item class
     pub recipe_index: Option<u64>,
 
-    // defines the behavior when the item class is the target of a build output
-    pub output_mode: ItemClassOutputMode,
+    // item class membership mode
+    pub mode: ItemClassMode,
 }
 
 impl ItemClass {
@@ -37,9 +36,8 @@ impl ItemClass {
         8 + // anchor
         4 + name.len() + // name size
         32 + // authority mint
-        (1 + 32) + // optional items merkle tree
         (1 + 8) + // recipe_index
-        ItemClassOutputMode::SPACE // output mode
+        ItemClassMode::SPACE // membership mode
     }
 
     pub fn get_next_recipe_index(&self) -> u64 {
@@ -160,9 +158,10 @@ impl Recipe {
 // manages the lifecycle of the item class build process for a builder
 // seeds = ['build', item_class.key(), builder.key().as_ref()]
 #[account]
+#[derive(Debug)]
 pub struct Build {
     // points to the recipe used for this build
-    pub recipe_index: u64,
+    pub recipe: Pubkey,
 
     pub builder: Pubkey,
 
@@ -189,17 +188,16 @@ impl Build {
     pub const PREFIX: &'static str = "build";
     pub const PAYMENT_ESCROW_PREFIX: &'static str = "build_payment_escrow";
     pub const INIT_SPACE: usize = 8 + // anchor
-        8 + // recipe_index
+        32 + // recipe
         32 + // builder
         32 + // item class
         BuildOutput::INIT_SPACE + // build output
-        (1 + 32) + // item mint
-        (1 + 1) + // status
         (1 + PaymentState::SPACE) + // payment
+        BuildStatus::SPACE + // build status
         1 + // build permit in use
         4; // ingredients init
 
-    fn current_space(&self) -> usize {
+    pub fn current_space(&self) -> usize {
         let mut total_space = Build::INIT_SPACE;
 
         for ingredient in &self.ingredients {
@@ -432,10 +430,10 @@ impl BuildPermit {
     2; // remaining_builds
 }
 
-// seeds = ['deterministic_ingredient', recipe.key(), ingredient_mint.key().as_ref()]
+// seeds = ['deterministic_ingredient', item_class.key(), ingredient_mint.key().as_ref()]
 #[account]
 pub struct DeterministicIngredient {
-    pub recipe: Pubkey,
+    pub recipes: Vec<Pubkey>,
 
     pub ingredient_mint: Pubkey,
 
@@ -445,39 +443,11 @@ pub struct DeterministicIngredient {
 impl DeterministicIngredient {
     pub const PREFIX: &'static str = "deterministic_ingredient";
 
-    pub const INIT_SPACE: usize = 8 + // anchor
-    32 + // recipe
-    32 + // ingredient mint
-    4; // empty vector
-
-    pub fn current_space(&self) -> usize {
-        DeterministicIngredient::INIT_SPACE
-            + (self.outputs.len() * DeterministicIngredientOutput::SPACE)
-    }
-
-    pub fn set_outputs<'info>(
-        &mut self,
-        outputs: Vec<DeterministicIngredientOutput>,
-        deterministic_ingredient_account: &AccountInfo<'info>,
-        payer: Signer<'info>,
-        system_program: Program<'info, System>,
-    ) -> Result<()> {
-        let old_space = self.current_space();
-
-        for output in outputs {
-            self.outputs.push(output);
-        }
-
-        let new_space = self.current_space();
-
-        let diff: i64 = new_space as i64 - old_space as i64;
-
-        reallocate(
-            diff,
-            deterministic_ingredient_account,
-            payer,
-            system_program,
-        )
+    pub fn space(recipe_count: usize, outputs_count: usize) -> usize {
+        8 + // anchor
+        4 + (recipe_count * 32) + // recipe vector pubkeys
+        32 + // ingredient mint
+        4 + (outputs_count * DeterministicIngredientOutput::SPACE)
     }
 }
 
@@ -523,4 +493,19 @@ pub fn reallocate<'info>(
 
         Ok(())
     }
+}
+
+pub fn is_collection_member(
+    ingredient_mint_metadata: metadata::MetadataAccount,
+    collection_mint: &Pubkey,
+) -> Result<()> {
+    let collection_data = ingredient_mint_metadata.collection.clone().unwrap();
+
+    require!(collection_data.verified, ErrorCode::IncorrectIngredient);
+    require!(
+        collection_data.key.eq(collection_mint),
+        ErrorCode::IncorrectIngredient
+    );
+
+    Ok(())
 }
