@@ -1494,7 +1494,19 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async migrateBuildAccount(build: web3.PublicKey, recipe: web3.PublicKey): Promise<web3.TransactionInstruction> {
+  async migrateBuildAccount(build: web3.PublicKey, recipe: web3.PublicKey): Promise<web3.TransactionInstruction[]> {
+    const ixns: web3.TransactionInstruction[] = [];
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 1000000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
+    ixns.push(increaseCUIx, addPriorityFeeIx)
+
     const ix = await this.program.client.methods
       .migrateBuildAccount()
       .accounts({
@@ -1505,7 +1517,9 @@ export class Instruction extends SolKitInstruction {
       })
       .instruction();
 
-    return ix
+    ixns.push(ix);
+    
+    return ixns
   }
 
   async migrateItemClassAccount(itemClass: web3.PublicKey): Promise<web3.TransactionInstruction> {

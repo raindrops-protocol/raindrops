@@ -207,10 +207,10 @@ export class ItemProgramV2 extends Program.Program {
   }
 
   async migrateBuildAccount(build: web3.PublicKey, recipe: web3.PublicKey, options?: SendOptions): Promise<SendTransactionResult> {
-    const ix = await this.instruction.migrateBuildAccount(
+    const ixns = await this.instruction.migrateBuildAccount(
       build, recipe
     );
-    return await this.sendWithRetry([ix], [], options); 
+    return await this.sendWithRetry(ixns, [], options); 
   }
 
   async migrateItemClassAccount(itemClass: web3.PublicKey, options?: SendOptions): Promise<SendTransactionResult> {

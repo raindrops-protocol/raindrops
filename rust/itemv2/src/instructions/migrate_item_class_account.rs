@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{reallocate, ItemClass},
     errors::ErrorCode,
-    ItemClassMode,
+    ItemClassMode, is_signer,
 };
 
 #[derive(Accounts)]
@@ -12,7 +12,7 @@ pub struct MigrateItemClassAccount<'info> {
     #[account(mut)]
     pub item_class: UncheckedAccount<'info>,
 
-    #[account(mut)]
+    #[account(mut, constraint = is_signer(&payer.key()))]
     pub payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,

@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{reallocate, Build, Recipe},
     errors::ErrorCode,
-    BuildIngredientData, BuildOutput, BuildStatus, PaymentState,
+    BuildIngredientData, BuildOutput, BuildStatus, PaymentState, is_signer,
 };
 
 #[derive(Accounts)]
@@ -14,7 +14,7 @@ pub struct MigrateBuildAccount<'info> {
 
     pub recipe: Account<'info, Recipe>,
 
-    #[account(mut)]
+    #[account(mut, constraint = is_signer(&payer.key()))]
     pub payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
