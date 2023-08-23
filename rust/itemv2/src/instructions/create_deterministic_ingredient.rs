@@ -2,25 +2,21 @@ use anchor_lang::prelude::*;
 use anchor_spl::token;
 
 use crate::state::{
-    accounts::{DeterministicIngredient, ItemClass, Recipe},
+    accounts::{DeterministicIngredient, ItemClass},
     DeterministicIngredientOutput,
 };
 
 #[derive(Accounts)]
+#[instruction(args: CreateDeterministicIngredientArgs)]
 pub struct CreateDeterministicIngredient<'info> {
     pub ingredient_mint: Account<'info, token::Mint>,
 
     // init_if_needed allows you to update the pda with new data if necessary
     #[account(init_if_needed,
         payer = authority,
-        space = DeterministicIngredient::INIT_SPACE,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), recipe.key().as_ref(), ingredient_mint.key().as_ref()], bump)]
+        space = DeterministicIngredient::space(args.recipes.len(), args.outputs.len()),
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), item_class.key().as_ref(), ingredient_mint.key().as_ref()], bump)]
     pub deterministic_ingredient: Account<'info, DeterministicIngredient>,
-
-    #[account(
-        has_one = item_class,
-        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
-    pub recipe: Account<'info, Recipe>,
 
     #[account(mut,
         constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
@@ -45,6 +41,7 @@ pub struct CreateDeterministicIngredient<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateDeterministicIngredientArgs {
+    pub recipes: Vec<Pubkey>,
     pub outputs: Vec<DeterministicIngredientOutput>,
 }
 
@@ -55,17 +52,10 @@ pub fn handler(
     ctx.accounts
         .deterministic_ingredient
         .set_inner(DeterministicIngredient {
-            recipe: ctx.accounts.recipe.key(),
+            recipes: args.recipes,
             ingredient_mint: ctx.accounts.ingredient_mint.key(),
-            outputs: vec![],
+            outputs: args.outputs,
         });
 
-    // set outputs
-    let deterministic_ingredient_account = &ctx.accounts.deterministic_ingredient.to_account_info();
-    ctx.accounts.deterministic_ingredient.set_outputs(
-        args.outputs,
-        deterministic_ingredient_account,
-        ctx.accounts.authority.clone(),
-        ctx.accounts.system_program.clone(),
-    )
+    Ok(())
 }

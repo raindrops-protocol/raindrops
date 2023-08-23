@@ -9,6 +9,7 @@ import {
 } from "../state/itemv2";
 import { fetch } from "cross-fetch";
 import IsoWebsocket from "isomorphic-ws";
+import { State } from "../main";
 
 export class Client {
   readonly baseUrl: string;
@@ -204,7 +205,6 @@ export class Client {
 
   async continueBuild(
     itemClass: anchor.web3.PublicKey,
-    ingredientArgs: IngredientArg[],
     builder: anchor.web3.PublicKey
   ) {
     const params = new URLSearchParams({
@@ -221,50 +221,18 @@ export class Client {
 
     const buildData: Build = JSON.parse(body.buildData);
     const build = new anchor.web3.PublicKey(body.build);
+    console.log("continuing build: %s", JSON.stringify(buildData));
 
     // if build status is still in progress, check the ingredients we have and add them
     let itemMint: anchor.web3.PublicKey;
     if (buildData.status === BuildStatus.InProgress) {
-      // get the matching recipe for this build
-      const buildableRecipes = await this.checkIngredients(
-        itemClass,
-        ingredientArgs
-      );
-      const recipe = buildableRecipes.find(
-        (recipe) => recipe.recipeIndex === buildData.recipeIndex
-      );
-
-      // filter out already added ingredients
-      const missingIngredients = getMissingIngredients(
-        recipe.ingredients,
-        buildData
-      );
-
-      // add the remaining ingredients
-      for (const ingredient of missingIngredients) {
-        await this.verifyIngredient(
-          this.provider.publicKey,
-          itemClass,
-          ingredient.itemMint,
-          ingredient.itemClass
-        );
-
-        await this.addIngredient(
-          this.provider.publicKey,
-          itemClass,
-          ingredient
-        );
+      // if there are any escrowed ingredients return them to the builder
+      if (buildData.ingredients.length > 0) {
+        console.log("in progress build with escrowed ingredients detected");
+        await this.returnIncompleteBuildIngredients(build);
       }
 
-      // if payment is not paid do that now
-      if (buildData.payment !== null) {
-        if (!buildData.payment.paid) {
-          console.log(build.toString());
-          await this.addPayment(build);
-        }
-      }
-
-      itemMint = await this.driveBuild(build);
+      await this.cleanBuild(build);
     } else {
       itemMint = await this.driveBuild(build);
     }
@@ -434,6 +402,36 @@ export class Client {
     return body.packConfig;
   }
 
+  async getDeterministicIngredientOutput(
+    deterministicIngredientMint: anchor.web3.PublicKey,
+    itemClass: anchor.web3.PublicKey
+  ): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
+    const params = new URLSearchParams({
+      deterministicIngredientMint: deterministicIngredientMint.toString(),
+      itemClass: itemClass.toString(),
+    });
+
+    // return the deterministic ingredient outputs
+    const response = await fetch(
+      `${this.baseUrl}/deterministicIngredientOutput?` + params,
+      {
+        headers: createHeaders(this.rpcUrl, this.apiKey),
+      }
+    );
+
+    if (response.status === 400) {
+      return [null, null];
+    }
+
+    const body = await errors.handleResponse(response);
+
+    const output: State.ItemV2.DeterministicIngredientOutput[] = JSON.parse(
+      body.output
+    );
+
+    return output;
+  }
+
   async startBuild(
     itemClass: anchor.web3.PublicKey,
     recipeIndex: anchor.BN,
@@ -481,22 +479,46 @@ export class Client {
   }
 
   // TODO: we only support native sol right now
-  async addPayment(build: anchor.web3.PublicKey): Promise<void> {
-    console.log("adding payment to build: %s", build.toString());
+  async escrowPayment(build: anchor.web3.PublicKey): Promise<void> {
+    console.log("escrowing payment to build: %s", build.toString());
     const params = new URLSearchParams({
       build: build.toString(),
-      builder: this.provider.publicKey.toString(),
     });
 
     try {
-      const response = await fetch(`${this.baseUrl}/addPayment?` + params, {
+      const response = await fetch(`${this.baseUrl}/escrowPayment?` + params, {
         headers: createHeaders(this.rpcUrl, this.apiKey),
       });
 
       const body = await errors.handleResponse(response);
 
       const txSig = await this.send(body.tx);
-      console.log("addPaymentTxSig: %s", txSig);
+      console.log("escrowPaymentTxSig: %s", txSig);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // TODO: we only support native sol right now
+  async transferPayment(build: anchor.web3.PublicKey): Promise<void> {
+    console.log("transfering payment from build escrow: %s", build.toString());
+    const params = new URLSearchParams({
+      build: build.toString(),
+      payer: this.provider.publicKey.toString(),
+    });
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/transferPayment?` + params,
+        {
+          headers: createHeaders(this.rpcUrl, this.apiKey),
+        }
+      );
+
+      const body = await errors.handleResponse(response);
+
+      const txSig = await this.send(body.tx);
+      console.log("transferPaymentTxSig: %s", txSig);
     } catch (e) {
       console.error(e);
     }
@@ -516,7 +538,11 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    console.log("completeBuildTxSig: %s", body.result.txSig);
+    console.log("completeBuild body: %s", body);
+
+    if (body.result === undefined) {
+      return undefined;
+    }
 
     // return pack pda if its defined
     if (body.result.pack) {
@@ -616,6 +642,7 @@ export class Client {
 
       // if done signal is returned, exit
       if (body.done) {
+        console.log("all build ingredients handled");
         return;
       }
 
@@ -624,26 +651,12 @@ export class Client {
     }
   }
 
-  async endBuild(build: anchor.web3.PublicKey): Promise<void> {
-    // apply build effects to the ingredients used
-    await this.applyBuildEffects(build);
-
-    // return or destroy the build ingredients in accordance with the effects
-    await this.returnOrDestroyIngredients(build);
-
-    // clean up
-    await this.cleanBuild(build);
-  }
-
   // drive build to completion, these are all permissionless steps
-  async driveBuild(
-    build: anchor.web3.PublicKey
-  ): Promise<anchor.web3.PublicKey> {
+  async driveBuild(build: anchor.web3.PublicKey): Promise<any> {
     // complete build
     await this.completeBuild(build);
 
-    // receive item
-    const itemMint = await this.receiveItem(build);
+    const result = await this.receiveItem(build);
 
     // apply build effects to the ingredients used
     await this.applyBuildEffects(build);
@@ -654,7 +667,26 @@ export class Client {
     // clean up
     await this.cleanBuild(build);
 
-    return itemMint;
+    return result;
+  }
+
+  async returnIncompleteBuildIngredients(
+    build: anchor.web3.PublicKey
+  ): Promise<string> {
+    const params = new URLSearchParams({
+      build: build.toString(),
+    });
+
+    const response = await fetch(
+      `${this.baseUrl}/returnIncompleteBuildIngredients?` + params,
+      {
+        headers: createHeaders(this.rpcUrl, this.apiKey),
+      }
+    );
+
+    const body = await errors.handleResponse(response);
+
+    return body.txSigs;
   }
 
   // sign and send a transaction received from the items api

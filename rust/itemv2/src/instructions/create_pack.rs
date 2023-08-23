@@ -1,4 +1,7 @@
-use crate::state::accounts::{ItemClass, Pack};
+use crate::state::{
+    accounts::{ItemClass, Pack},
+    errors::ErrorCode,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
@@ -8,12 +11,12 @@ pub struct CreatePack<'info> {
     #[account(init,
         payer = authority,
         space = Pack::SPACE,
-        seeds = [Pack::PREFIX.as_bytes(), item_class.key().as_ref(), &item_class.output_mode.get_index().unwrap().to_le_bytes()], bump)]
+        seeds = [Pack::PREFIX.as_bytes(), item_class.key().as_ref(), &item_class.mode.get_index().unwrap().to_le_bytes()], bump)]
     pub pack: Account<'info, Pack>,
 
     #[account(mut,
         constraint = item_class.authority_mint.eq(&item_class_authority_mint.key()),
-        constraint = item_class.output_mode.is_pack(),
+        constraint = item_class.mode.is_pack() @ ErrorCode::InvalidItemClassMode,
         seeds = [ItemClass::PREFIX.as_bytes(), item_class_authority_mint.key().as_ref()], bump)]
     pub item_class: Account<'info, ItemClass>,
 
@@ -43,9 +46,9 @@ pub fn handler(ctx: Context<CreatePack>, args: CreatePackArgs) -> Result<()> {
     ctx.accounts.pack.set_inner(Pack {
         contents_hash: args.contents_hash,
         item_class: ctx.accounts.item_class.key(),
-        id: ctx.accounts.item_class.output_mode.get_index().unwrap(),
+        id: ctx.accounts.item_class.mode.get_index().unwrap(),
     });
 
     // increment pack index
-    ctx.accounts.item_class.output_mode.increment_index()
+    ctx.accounts.item_class.mode.increment_index()
 }

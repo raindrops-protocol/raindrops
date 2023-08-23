@@ -6,9 +6,9 @@ use anchor_spl::{associated_token, token};
 use mpl_token_metadata::instruction::{builders::Transfer, InstructionBuilder, TransferArgs};
 
 use crate::state::{
-    accounts::{Build, DeterministicIngredient, Item, ItemClass, Recipe},
+    accounts::{Build, DeterministicIngredient, ItemClass},
     errors::ErrorCode,
-    AuthRulesProgram, BuildStatus, ItemState, TokenMetadataProgram,
+    AuthRulesProgram, BuildStatus, TokenMetadataProgram,
 };
 
 #[derive(Accounts)]
@@ -21,8 +21,7 @@ pub struct AddIngredientPNft<'info> {
 
     #[account(
         has_one = ingredient_mint,
-        has_one = recipe,
-        seeds = [DeterministicIngredient::PREFIX.as_bytes(), recipe.key().as_ref(), ingredient_mint.key().as_ref()], bump
+        seeds = [DeterministicIngredient::PREFIX.as_bytes(), build.item_class.as_ref(), ingredient_mint.key().as_ref()], bump
     )]
     pub deterministic_ingredient: Option<Account<'info, DeterministicIngredient>>,
 
@@ -54,22 +53,10 @@ pub struct AddIngredientPNft<'info> {
     #[account(mut)]
     pub ingredient_destination_token_record: UncheckedAccount<'info>,
 
-    #[account(
-        constraint = recipe.item_class.eq(&build.item_class),
-        constraint = recipe.recipe_index == build.recipe_index,
-        seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), recipe.item_class.key().as_ref()], bump)]
-    pub recipe: Box<Account<'info, Recipe>>,
-
     #[account(mut,
         has_one = builder,
         seeds = [Build::PREFIX.as_bytes(), build.item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
-
-    #[account(init_if_needed,
-        payer = payer,
-        space = Item::SPACE,
-        seeds = [Item::PREFIX.as_bytes(), ingredient_mint.key().as_ref()], bump)]
-    pub item: Account<'info, Item>,
 
     #[account(mut)]
     pub builder: SystemAccount<'info>,
@@ -116,20 +103,6 @@ pub fn handler(ctx: Context<AddIngredientPNft>) -> Result<()> {
             ctx.accounts.ingredient_mint.key(),
         )
         .unwrap();
-
-    // set the initial data if item pda has not been initialized until this instruction
-    if !ctx.accounts.item.initialized {
-        ctx.accounts.item.set_inner(Item {
-            initialized: true,
-            item_mint: ctx.accounts.ingredient_mint.key(),
-            item_state: ItemState::new(),
-        })
-    } else {
-        // check that the item is not on cooldown
-        if ctx.accounts.item.item_state.on_cooldown() {
-            return Err(ErrorCode::ItemOnCooldown.into());
-        }
-    };
 
     // add deterministic outputs to build outputs
     if build_ingredient.is_deterministic {

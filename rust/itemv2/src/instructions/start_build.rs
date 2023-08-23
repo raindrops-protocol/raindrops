@@ -6,7 +6,7 @@ use crate::state::{
     accounts::{Build, BuildPermit, ItemClass, Recipe},
     errors::ErrorCode,
     BuildIngredientData, BuildOutput, BuildStatus, OutputSelectionArgs, OutputSelectionGroup,
-    PaymentState,
+    PaymentState, PaymentStatus,
 };
 
 #[derive(Accounts)]
@@ -18,7 +18,7 @@ pub struct StartBuild<'info> {
         seeds = [Build::PREFIX.as_bytes(), item_class.key().as_ref(), builder.key().as_ref()], bump)]
     pub build: Account<'info, Build>,
 
-    #[account(seeds = [Recipe::PREFIX.as_bytes(), &args.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
+    #[account(seeds = [Recipe::PREFIX.as_bytes(), &recipe.recipe_index.to_le_bytes(), item_class.key().as_ref()], bump)]
     pub recipe: Account<'info, Recipe>,
 
     #[account(mut, seeds = [ItemClass::PREFIX.as_bytes(), item_class.authority_mint.as_ref()], bump)]
@@ -40,7 +40,6 @@ pub struct StartBuild<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct StartBuildArgs {
-    pub recipe_index: u64,
     pub recipe_output_selection: Vec<OutputSelectionArgs>,
 }
 
@@ -69,13 +68,13 @@ pub fn handler(ctx: Context<StartBuild>, args: StartBuildArgs) -> Result<()> {
             .payment
             .as_ref()
             .map(|payment| PaymentState {
-                paid: false,
+                status: PaymentStatus::NotPaid,
                 payment_details: payment.clone(),
             });
 
     // set build data
     ctx.accounts.build.set_inner(Build {
-        recipe_index: args.recipe_index,
+        recipe: ctx.accounts.recipe.key(),
         builder: ctx.accounts.builder.key(),
         item_class: ctx.accounts.item_class.key(),
         output: BuildOutput::new(),

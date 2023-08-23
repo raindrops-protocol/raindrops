@@ -71,8 +71,8 @@ pub mod raindrops_staking {
 
     use super::*;
 
-    pub fn begin_artifact_stake_warmup<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, BeginArtifactStakeWarmup<'info>>,
+    pub fn begin_artifact_stake_warmup<'info>(
+        ctx: Context<'_, '_, '_, 'info, BeginArtifactStakeWarmup<'info>>,
         args: BeginArtifactStakeWarmupArgs,
     ) -> Result<()> {
         let namespace = &ctx.accounts.namespace;
@@ -148,8 +148,8 @@ pub mod raindrops_staking {
         Err(error!(ErrorCode::StakingMintNotWhitelisted))
     }
 
-    pub fn end_artifact_stake_warmup<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, EndArtifactStakeWarmup<'info>>,
+    pub fn end_artifact_stake_warmup<'info>(
+        ctx: Context<'_, '_, '_, 'info, EndArtifactStakeWarmup<'info>>,
         args: EndArtifactStakeWarmupArgs,
     ) -> Result<()> {
         let artifact_unchecked = &mut ctx.accounts.artifact;
@@ -268,8 +268,8 @@ pub mod raindrops_staking {
         Ok(())
     }
 
-    pub fn begin_artifact_stake_cooldown<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, BeginArtifactStakeCooldown<'info>>,
+    pub fn begin_artifact_stake_cooldown<'info>(
+        ctx: Context<'_, '_, '_, 'info, BeginArtifactStakeCooldown<'info>>,
         args: BeginArtifactStakeCooldownArgs,
     ) -> Result<()> {
         let artifact_unchecked = &mut ctx.accounts.artifact;
@@ -380,8 +380,8 @@ pub mod raindrops_staking {
         Ok(())
     }
 
-    pub fn end_artifact_stake_cooldown<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, EndArtifactStakeCooldown<'info>>,
+    pub fn end_artifact_stake_cooldown<'info>(
+        ctx: Context<'_, '_, '_, 'info, EndArtifactStakeCooldown<'info>>,
         args: EndArtifactStakeCooldownArgs,
     ) -> Result<()> {
         let artifact_unchecked = &mut ctx.accounts.artifact;

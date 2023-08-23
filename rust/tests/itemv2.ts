@@ -152,17 +152,18 @@ describe("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgram.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    const escrowPaymentResult = await itemProgram.escrowPayment(
+      escrowPaymentAccounts
+    );
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -184,7 +185,7 @@ describe("itemv2", () => {
     );
 
     // verify test ingredient
-    const verifyIngredientTestAccounts: Instructions.ItemV2.VerifyIngredientTestAccounts =
+    const verifyIngredientTestAccounts: Instructions.ItemV2.VerifyIngredientMerkleTreeTestAccounts =
       {
         ingredientMint: pNftItemClass.mints[0],
         ingredientItemClass: pNftItemClass.itemClass,
@@ -306,17 +307,18 @@ describe("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgram.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    const escrowPaymentResult = await itemProgram.escrowPayment(
+      escrowPaymentAccounts
+    );
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -517,17 +519,18 @@ describe("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgram.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    const escrowPaymentResult = await itemProgram.escrowPayment(
+      escrowPaymentAccounts
+    );
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -686,17 +689,18 @@ describe("itemv2", () => {
         new anchor.BN(1)
       );
 
-      const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+      const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
         build: build,
-        builder: payer.publicKey,
-        treasury: payer.publicKey,
+        builder: itemProgram.client.provider.publicKey!,
       };
 
-      const addPaymentResult = await itemProgram.addPayment(addPaymentAccounts);
-      console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+      const escrowPaymentResult = await itemProgram.escrowPayment(
+        escrowPaymentAccounts
+      );
+      console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
       // complete build and receive the item
-      await completeBuildItemAndReceiveItem(
+      await completeBuildMerkleTreeAndReceiveItem(
         connection,
         outputItemClass.tree,
         i,
@@ -861,19 +865,18 @@ describe("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: payer.publicKey,
-      treasury: payer.publicKey,
+      builder: builderItemProgramV2.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await builderItemProgramV2.addPayment(
-      addPaymentAccounts
+    const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+      escrowPaymentAccounts
     );
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -915,7 +918,7 @@ describe("itemv2", () => {
 
     let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
       itemClassName: "testing",
-      outputMode: { kind: "Item" },
+      mode: { kind: "MerkleTree" },
     };
 
     let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -1116,13 +1119,13 @@ describe("itemv2", () => {
     );
 
     // add build payment ix
-    const addBuildPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: builder.publicKey,
-      treasury: payer.publicKey,
+      builder: itemProgramBuilder.client.provider.publicKey!,
     };
-    const addBuildPaymentIx = await itemProgramBuilder.instruction.addPayment(
-      addBuildPaymentAccounts
+
+    const escrowPaymentIx = await itemProgramBuilder.instruction.escrowPayment(
+      escrowPaymentAccounts
     );
 
     // create approve instructions for each ingredient
@@ -1149,7 +1152,7 @@ describe("itemv2", () => {
       approveClaymakerIx,
       approveSardIx,
       approveClayIx,
-      addBuildPaymentIx
+      escrowPaymentIx
     );
     const delegateTxSig = await itemProgramBuilder.client.provider
       .sendAndConfirm!(tx, undefined, { skipPreflight: true });
@@ -1185,7 +1188,7 @@ describe("itemv2", () => {
     );
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -1320,16 +1323,15 @@ describe("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: builder.publicKey,
-      treasury: payer.publicKey,
+      builder: builderItemProgramV2.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await builderItemProgramV2.addPayment(
-      addPaymentAccounts
+    const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+      escrowPaymentAccounts
     );
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildPackAndReceiveItems(
@@ -1454,16 +1456,15 @@ describe("itemv2", () => {
     );
 
     // add payment to build
-    const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+    const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
       build: build,
-      builder: builder.publicKey,
-      treasury: payer.publicKey,
+      builder: builderItemProgramV2.client.provider.publicKey!,
     };
 
-    const addPaymentResult = await builderItemProgramV2.addPayment(
-      addPaymentAccounts
+    const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+      escrowPaymentAccounts
     );
-    console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+    console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
     // complete build and receive the item
     await completeBuildPackAndReceiveItems(
@@ -1603,16 +1604,15 @@ describe("itemv2", () => {
       );
 
       // add payment to build
-      const addPaymentAccounts: Instructions.ItemV2.AddPaymentAccounts = {
+      const escrowPaymentAccounts: Instructions.ItemV2.EscrowPaymentAccounts = {
         build: build,
-        builder: builder.publicKey,
-        treasury: payer.publicKey,
+        builder: builderItemProgramV2.client.provider.publicKey!,
       };
 
-      const addPaymentResult = await builderItemProgramV2.addPayment(
-        addPaymentAccounts
+      const escrowPaymentResult = await builderItemProgramV2.escrowPayment(
+        escrowPaymentAccounts
       );
-      console.log("addPaymentTxSig: %s", addPaymentResult.txid);
+      console.log("escrowPaymentTxSig: %s", escrowPaymentResult.txid);
 
       // complete build and receive the item
       await completeBuildPackAndReceiveItems(
@@ -1741,7 +1741,7 @@ describe("itemv2", () => {
     );
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -1899,7 +1899,7 @@ describe("itemv2", () => {
     );
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -1959,7 +1959,7 @@ describe("itemv2", () => {
     );
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       1,
@@ -2079,7 +2079,7 @@ describe("itemv2", () => {
     );
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -2240,7 +2240,7 @@ describe("itemv2", () => {
     );
 
     // complete build and receive the item
-    await completeBuildItemAndReceiveItem(
+    await completeBuildMerkleTreeAndReceiveItem(
       connection,
       outputItemClass.tree,
       0,
@@ -2595,7 +2595,7 @@ describe("itemv2", () => {
     await cleanBuild(itemProgram, build);
   });
 
-  it("build item class in preset only mode", async () => {
+  it("build item class in preset only mode with selection groups", async () => {
     const payer = await newPayer(connection);
 
     const itemProgram = await ItemProgramV2.getProgramWithConfig(
@@ -2744,6 +2744,246 @@ describe("itemv2", () => {
 
     await cleanBuild(itemProgram, build);
   });
+
+  it("handle verified build items that aren't escrowed", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
+
+    // nft ingredient
+    const nftItemClass = await createItemClass(payer, connection, 2, false, {
+      buildEnabled: false,
+      payment: null,
+      ingredientArgs: [],
+      buildPermitRequired: false,
+      selectableOutputs: [],
+    });
+
+    // output pNft
+    const outputItemClass = await createItemClass(payer, connection, 1, true, {
+      buildEnabled: true,
+      payment: {
+        treasury: payer.publicKey,
+        amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+      },
+      ingredientArgs: [
+        {
+          itemClass: nftItemClass.itemClass,
+          requiredAmount: new BN(1),
+          buildEffect: {
+            degradation: { rate: new anchor.BN(100000) }, // single use
+            cooldown: null,
+          },
+          isDeterministic: false,
+        },
+      ],
+      buildPermitRequired: false,
+      selectableOutputs: [],
+    });
+
+    // transfer output mints to their item class
+    for (let mint of outputItemClass.mints) {
+      await transferPNft(payer, connection, mint, outputItemClass.itemClass);
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.ItemV2.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.ItemV2.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    await assertFreshBuild(
+      itemProgram,
+      build,
+      payer.publicKey,
+      outputItemClass.itemClass
+    );
+
+    for (let i = 0; i < nftItemClass.mints.length; i++) {
+      // verify build ingredient
+      const verifyIngredientAccounts: Instructions.ItemV2.VerifyIngredientAccounts =
+        {
+          ingredientMint: nftItemClass.mints[i],
+          ingredientItemClass: nftItemClass.itemClass,
+          itemClass: outputItemClass.itemClass,
+          builder: itemProgram.client.provider.publicKey,
+          payer: itemProgram.client.provider.publicKey,
+        };
+
+      // get proof for mint
+      const proof = nftItemClass.tree.getProof(i);
+
+      const verifyIngredientArgs: Instructions.ItemV2.VerifyIngredientArgs = {
+        root: proof.root,
+        leafIndex: proof.leafIndex,
+        proof: proof.proof,
+      };
+
+      const verifyIngredientResult = await itemProgram.verifyIngredient(
+        verifyIngredientAccounts,
+        verifyIngredientArgs
+      );
+      console.log("verifyIngredientTxSig: %s", verifyIngredientResult.txid);
+    }
+
+    const buildData = await itemProgram.getBuild(build);
+    console.log(JSON.stringify(buildData));
+
+    const closeBuildResutl = await itemProgram.closeBuild({
+      build: build,
+      payer: itemProgram.client.provider.publicKey!,
+    });
+    console.log("closeBuildTxSig: %s", closeBuildResutl.txid);
+  });
+
+  it("build item class in collection verify mode", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
+
+    // ingredient 1, nft
+    const nftItemClass = await createItemClassCollectionMode(
+      payer,
+      connection,
+      1,
+      true
+    );
+
+    // output nft
+    const outputItemClass = await createItemClassCollectionMode(
+      payer,
+      connection,
+      1,
+      true,
+      {
+        buildEnabled: true,
+        payment: null,
+        ingredientArgs: [
+          {
+            itemClass: nftItemClass.itemClass,
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degradation: null,
+              cooldown: null,
+            },
+            isDeterministic: false,
+          },
+        ],
+        buildPermitRequired: false,
+        selectableOutputs: [],
+      }
+    );
+
+    // transfer nfts to the output item class
+    for (let mint of outputItemClass.mints) {
+      const source = splToken.getAssociatedTokenAddressSync(
+        mint,
+        payer.publicKey
+      );
+      const destination = await splToken.getOrCreateAssociatedTokenAccount(
+        connection,
+        payer,
+        mint,
+        outputItemClass.itemClass,
+        true,
+        "processed"
+      );
+      await splToken.transfer(
+        connection,
+        payer,
+        source,
+        destination.address,
+        payer.publicKey,
+        1
+      );
+    }
+
+    // start the build process
+    const startBuildAccounts: Instructions.ItemV2.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.ItemV2.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    const [build, _buildBump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("build"),
+        outputItemClass.itemClass.toBuffer(),
+        itemProgram.client.provider.publicKey!.toBuffer(),
+      ],
+      itemProgram.id
+    );
+
+    // add ingredient to build using collection verification
+    await addIngredientCollection(
+      itemProgram,
+      outputItemClass.itemClass,
+      nftItemClass.mints[0],
+      nftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // complete build and receive the item
+    await completeBuildCollectionAndReceiveItem(
+      connection,
+      build,
+      outputItemClass.mints[0]
+    );
+
+    await cleanBuild(itemProgram, build);
+  });
 });
 
 async function newPayer(
@@ -2783,7 +3023,7 @@ async function createItemClass(
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
     itemClassName: "testing",
-    outputMode: { kind: "Item" },
+    mode: { kind: "MerkleTree" },
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -2964,7 +3204,7 @@ async function createItemClassPack(
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
     itemClassName: "testing",
-    outputMode: { kind: "Pack", index: new BN(0) },
+    mode: { kind: "Pack" },
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -3303,7 +3543,7 @@ async function createItemClassPresetOnly(
 
   let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
     itemClassName: "testing",
-    outputMode: { kind: "PresetOnly" },
+    mode: { kind: "PresetOnly" },
   };
 
   let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
@@ -3332,6 +3572,71 @@ async function createItemClassPresetOnly(
   }
 
   return { itemClass };
+}
+
+async function createItemClassCollectionMode(
+  payer: anchor.web3.Keypair,
+  connection: anchor.web3.Connection,
+  itemCount: number,
+  isPNft: boolean,
+  recipeArgs?: Instructions.ItemV2.RecipeArgs
+): Promise<ItemClassCollectionContainer> {
+  const client = new metaplex.Metaplex(connection, {}).use(
+    metaplex.keypairIdentity(payer)
+  );
+
+  const collectionMint = await createCollectionNft(payer, connection);
+
+  const mints: anchor.web3.PublicKey[] = [];
+  for (let i = 0; i < itemCount; i++) {
+    const ingredientMintOutput = await client.nfts().create({
+      tokenStandard: mpl.TokenStandard.NonFungible as number,
+      uri: "https://foo.com/bar.json",
+      name: "NFT1",
+      sellerFeeBasisPoints: 500,
+      symbol: "N",
+      collection: collectionMint,
+      collectionAuthority: payer,
+    });
+    console.log("createNftTxSig: %s", ingredientMintOutput.response.signature);
+    mints.push(ingredientMintOutput.mintAddress);
+  }
+
+  const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(payer), {
+      commitment: "confirmed",
+    }),
+    idl: Idls.ItemV2IDL,
+  });
+
+  let createItemClassArgs: Instructions.ItemV2.CreateItemClassArgs = {
+    itemClassName: "testing",
+    mode: { kind: "Collection", collectionMint },
+  };
+
+  let [itemClass, createItemClassResult] = await itemProgram.createItemClass(
+    createItemClassArgs
+  );
+  console.log("createItemClassTxSig: %s", createItemClassResult.txid);
+
+  if (recipeArgs) {
+    const createRecipeAccounts: Instructions.ItemV2.CreateRecipeAccounts = {
+      itemClass: itemClass,
+    };
+
+    const createRecipeArgs: Instructions.ItemV2.CreateRecipeArgs = {
+      args: recipeArgs,
+    };
+
+    const createRecipeResult = await itemProgram.createRecipe(
+      createRecipeAccounts,
+      createRecipeArgs
+    );
+    console.log("createRecipeTxSig: %s", createRecipeResult.txid);
+  }
+
+  return { itemClass, mints };
 }
 
 async function transferPNft(
@@ -3663,6 +3968,47 @@ async function addIngredient(
   console.log("addIngredientTxSig: %s", addIngredientResult.txid);
 }
 
+async function addIngredientCollection(
+  itemProgram: ItemProgramV2,
+  outputItemClass: anchor.web3.PublicKey,
+  ingredientMint: anchor.web3.PublicKey,
+  ingredientItemClass: anchor.web3.PublicKey,
+  ingredientAmount: anchor.BN
+) {
+  // verify build ingredient
+  const verifyIngredientAccounts: Instructions.ItemV2.VerifyIngredientAccounts =
+    {
+      ingredientMint: ingredientMint,
+      ingredientItemClass: ingredientItemClass,
+      itemClass: outputItemClass,
+      builder: itemProgram.client.provider.publicKey,
+      payer: itemProgram.client.provider.publicKey,
+    };
+
+  const verifyIngredientResult = await itemProgram.verifyIngredient(
+    verifyIngredientAccounts
+  );
+  console.log("verifyIngredientTxSig: %s", verifyIngredientResult.txid);
+
+  const addIngredientAccounts: Instructions.ItemV2.AddIngredientAccounts = {
+    itemClass: outputItemClass,
+    ingredientMint: ingredientMint,
+    ingredientItemClass: ingredientItemClass,
+    builder: itemProgram.client.provider.publicKey,
+    payer: itemProgram.client.provider.publicKey,
+  };
+
+  const addIngredientArgs: Instructions.ItemV2.AddIngredientArgs = {
+    amount: ingredientAmount,
+  };
+
+  const addIngredientResult = await itemProgram.addIngredient(
+    addIngredientAccounts,
+    addIngredientArgs
+  );
+  console.log("addIngredientTxSig: %s", addIngredientResult.txid);
+}
+
 async function addIngredientPermissionless(
   itemProgram: ItemProgramV2,
   builder: anchor.web3.PublicKey,
@@ -3716,7 +4062,7 @@ async function addIngredientPermissionless(
   console.log("addIngredientPermissionlessTxSig: %s", addIngredientResult.txid);
 }
 
-async function completeBuildItemAndReceiveItem(
+async function completeBuildMerkleTreeAndReceiveItem(
   connection: anchor.web3.Connection,
   tree: cmp.MerkleTree,
   leafIndex: number,
@@ -3734,22 +4080,23 @@ async function completeBuildItemAndReceiveItem(
   });
 
   // complete the build process
-  const completeBuildItemAccounts: Instructions.ItemV2.CompleteBuildItemAccounts =
-    {
-      itemMint: outputItemMints[leafIndex],
-      payer: itemProgram.client.provider.publicKey,
-      build: build,
-    };
+  const completeBuildItemAccounts: Instructions.ItemV2.CompleteBuildAccounts = {
+    itemMint: outputItemMints[leafIndex],
+    payer: itemProgram.client.provider.publicKey,
+    build: build,
+  };
 
   const proof = tree.getProof(leafIndex);
 
-  const completeBuildItemArgs: Instructions.ItemV2.CompleteBuildItemArgs = {
-    root: proof.root,
-    leafIndex: proof.leafIndex,
-    proof: proof.proof,
+  const completeBuildItemArgs: Instructions.ItemV2.CompleteBuildArgs = {
+    merkleTreeArgs: {
+      root: proof.root,
+      leafIndex: proof.leafIndex,
+      proof: proof.proof,
+    },
   };
 
-  const completeBuildResult = await itemProgram.completeBuildItem(
+  const completeBuildResult = await itemProgram.completeBuild(
     completeBuildItemAccounts,
     completeBuildItemArgs
   );
@@ -3784,18 +4131,19 @@ async function completeBuildPackAndReceiveItems(
   });
 
   // complete the build process
-  const completeBuildPackAccounts: Instructions.ItemV2.CompleteBuildPackAccounts =
-    {
-      pack: pack,
-      payer: itemProgram.client.provider.publicKey,
-      build: build,
-    };
-
-  const completeBuildPackArgs: Instructions.ItemV2.CompleteBuildPackArgs = {
-    packContents: packContents,
+  const completeBuildPackAccounts: Instructions.ItemV2.CompleteBuildAccounts = {
+    pack: pack,
+    payer: itemProgram.client.provider.publicKey,
+    build: build,
   };
 
-  const completeBuildResult = await itemProgram.completeBuildPack(
+  const completeBuildPackArgs: Instructions.ItemV2.CompleteBuildArgs = {
+    packArgs: {
+      packContents: packContents,
+    },
+  };
+
+  const completeBuildResult = await itemProgram.completeBuild(
     completeBuildPackAccounts,
     completeBuildPackArgs
   );
@@ -3828,18 +4176,62 @@ async function completeBuildPresetOnlyAndReceiveItem(
   });
 
   // complete the build process
-  const completeBuildItemAccounts: Instructions.ItemV2.CompleteBuildPresetOnlyAccounts =
-    {
-      payer: itemProgram.client.provider.publicKey,
-      build: build,
-    };
+  const completeBuildAccounts: Instructions.ItemV2.CompleteBuildAccounts = {
+    payer: itemProgram.client.provider.publicKey,
+    build: build,
+  };
 
-  const completeBuildResult = await itemProgram.completeBuildPresetOnly(
-    completeBuildItemAccounts
+  const completeBuildArgs: Instructions.ItemV2.CompleteBuildArgs = {};
+
+  const completeBuildResult = await itemProgram.completeBuild(
+    completeBuildAccounts,
+    completeBuildArgs
   );
   console.log("completeBuildPresetOnlyTxSig: %s", completeBuildResult.txid);
 
   // send items to builder
+  const receiveItemAccounts: Instructions.ItemV2.ReceiveItemAccounts = {
+    build: build,
+    payer: itemProgram.client.provider.publicKey,
+  };
+
+  const receiveItemResults = await itemProgram.receiveItem(receiveItemAccounts);
+  for (let result of receiveItemResults) {
+    console.log("receiveItemTxSig: %s", result.txid);
+  }
+}
+
+async function completeBuildCollectionAndReceiveItem(
+  connection: anchor.web3.Connection,
+  build: anchor.web3.PublicKey,
+  outputItemMint: anchor.web3.PublicKey
+) {
+  const signer = await initSigner(TEST_SIGNER_FILE_PATH, connection);
+
+  const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
+    asyncSigning: false,
+    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(signer), {
+      commitment: "confirmed",
+    }),
+    idl: Idls.ItemV2IDL,
+  });
+
+  // complete the build process
+  const completeBuildItemAccounts: Instructions.ItemV2.CompleteBuildAccounts = {
+    itemMint: outputItemMint,
+    payer: itemProgram.client.provider.publicKey,
+    build: build,
+  };
+
+  const completeBuildItemArgs: Instructions.ItemV2.CompleteBuildArgs = {};
+
+  const completeBuildResult = await itemProgram.completeBuild(
+    completeBuildItemAccounts,
+    completeBuildItemArgs
+  );
+  console.log("completeBuildItemTxSig: %s", completeBuildResult.txid);
+
+  // send item to builder
   const receiveItemAccounts: Instructions.ItemV2.ReceiveItemAccounts = {
     build: build,
     payer: itemProgram.client.provider.publicKey,
@@ -3856,7 +4248,7 @@ async function cleanBuild(
   build: anchor.web3.PublicKey
 ) {
   // get all build ingredient mints/item classes
-  const buildData = await itemProgram.client.account.build.fetch(build);
+  const buildData = await itemProgram.getBuild(build);
   // [item_class, mint pubkeys]
   const buildIngredientMints: [
     anchor.web3.PublicKey,
@@ -3935,6 +4327,20 @@ async function cleanBuild(
         );
       }
     }
+  }
+
+  if (buildData.payment !== null) {
+    const transferPaymentAccounts: Instructions.ItemV2.TransferPaymentAccounts =
+      {
+        build: build,
+        destination: buildData.payment.paymentDetails.treasury,
+        payer: itemProgram.client.provider.publicKey!,
+      };
+
+    const transferPaymentResult = await itemProgram.transferPayment(
+      transferPaymentAccounts
+    );
+    console.log("transferPaymentTxSig: %s", transferPaymentResult.txid);
   }
 
   const closeBuildAccounts: Instructions.ItemV2.CloseBuildAccounts = {
@@ -4032,8 +4438,8 @@ async function createDeterministicIngredient(
 
   const createDeterministicIngredientResult =
     await itemProgram.createDeterministicIngredient(
-      { recipe: recipe, ingredientMint: ingredientMint },
-      { outputs: deterministicIngredientOutputs }
+      { itemClass: itemClass, ingredientMint: ingredientMint },
+      { outputs: deterministicIngredientOutputs, recipes: [recipe] }
     );
   console.log(
     "createDeterministicIngredientTxSig: %s",
@@ -4187,6 +4593,11 @@ interface ItemClassPresetOnlyContainer {
   itemClass: anchor.web3.PublicKey;
 }
 
+interface ItemClassCollectionContainer {
+  itemClass: anchor.web3.PublicKey;
+  mints: anchor.web3.PublicKey[];
+}
+
 async function assertFreshBuild(
   itemProgram: ItemProgramV2,
   build: anchor.web3.PublicKey,
@@ -4196,7 +4607,9 @@ async function assertFreshBuild(
   const buildData = await itemProgram.getBuild(build);
   assert.isTrue(buildData.builder.equals(builder));
   assert.isTrue(buildData.itemClass.equals(itemClass));
-  assert.isFalse(buildData.payment.paid);
+  assert.isTrue(
+    buildData.payment.status === State.ItemV2.PaymentStatus.NotPaid
+  );
   for (let ingredient of buildData.ingredients) {
     assert.isTrue(ingredient.currentAmount.eq(new anchor.BN(0)));
     assert.equal(ingredient.mints.length, 0);

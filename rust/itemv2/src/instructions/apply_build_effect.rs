@@ -10,7 +10,6 @@ use crate::state::{
 #[derive(Accounts)]
 pub struct ApplyBuildEffect<'info> {
     #[account(mut,
-        has_one = item_mint,
         seeds = [Item::PREFIX.as_bytes(), item_mint.key().as_ref()], bump)]
     pub item: Account<'info, Item>,
 
@@ -22,6 +21,8 @@ pub struct ApplyBuildEffect<'info> {
 
     #[account(mut)]
     pub payer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 pub fn handler(ctx: Context<ApplyBuildEffect>) -> Result<()> {

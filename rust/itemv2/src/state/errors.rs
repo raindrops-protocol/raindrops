@@ -38,8 +38,8 @@ pub enum ErrorCode {
     #[msg("Must make build payment")]
     BuildNotPaid,
 
-    #[msg("Invalid ItemClassOutputMode")]
-    InvalidItemClassOutputMode,
+    #[msg("Invalid ItemClassMode")]
+    InvalidItemClassMode,
 
     #[msg("Invalid Build Output")]
     InvalidBuildOutput,
@@ -61,4 +61,13 @@ pub enum ErrorCode {
 
     #[msg("Invalid Output Selection")]
     InvalidOutputSelection,
+
+    #[msg("Payment Status is Invalid for this IX")]
+    InvalidPaymentStatus,
+
+    #[msg("Verify Account is Invalid")]
+    InvalidVerifyAccount,
+
+    #[msg("Error Migrating Account")]
+    MigrationError,
 }

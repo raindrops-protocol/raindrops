@@ -163,8 +163,7 @@ pub fn handler(ctx: Context<ReturnIngredientPNft>) -> Result<()> {
     if ctx.accounts.item.item_state.no_state() {
         ctx.accounts
             .item
-            .close(ctx.accounts.payer.to_account_info())
-            .unwrap();
+            .close(ctx.accounts.payer.to_account_info())?;
     };
 
     Ok(())

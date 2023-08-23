@@ -3,8 +3,8 @@ use anchor_lang::{prelude::*, require, solana_program::hash};
 use arrayref::array_ref;
 use raindrops_item::{utils::assert_derivation_with_bump, Item, ItemClass};
 
-pub fn assert_is_proper_class<'info>(
-    artifact_class: &UncheckedAccount<'info>,
+pub fn assert_is_proper_class(
+    artifact_class: &UncheckedAccount<'_>,
     mint: &Pubkey,
     index: u64,
 ) -> Result<ArtifactClass> {
@@ -88,8 +88,8 @@ pub fn assert_is_proper_class<'info>(
     Ok(class_deserialized)
 }
 
-pub fn assert_is_proper_instance<'info>(
-    artifact: &UncheckedAccount<'info>,
+pub fn assert_is_proper_instance(
+    artifact: &UncheckedAccount<'_>,
     artifact_class: &Pubkey,
     mint: &Pubkey,
     index: u64,

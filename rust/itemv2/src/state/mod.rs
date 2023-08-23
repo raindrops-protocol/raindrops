@@ -8,42 +8,72 @@ pub mod accounts;
 pub mod errors;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
-pub enum ItemClassOutputMode {
-    Item,
+pub enum ItemClassMode {
+    MerkleTree { tree: Pubkey },
+    Collection { collection_mint: Pubkey },
     Pack { index: u64 },
     PresetOnly,
 }
 
-impl ItemClassOutputMode {
-    pub const SPACE: usize = 1 + 8;
+impl ItemClassMode {
+    pub const SPACE: usize = 1 + 32;
+
+    pub fn init_index(&mut self) -> Result<()> {
+        if let ItemClassMode::Pack { index } = self {
+            *index = 0;
+            Ok(())
+        } else {
+            Err(errors::ErrorCode::InvalidItemClassMode.into())
+        }
+    }
 
     pub fn get_index(&self) -> Result<u64> {
         match self {
-            ItemClassOutputMode::Pack { index } => Ok(*index),
-            _ => Err(errors::ErrorCode::InvalidItemClassOutputMode.into()),
+            ItemClassMode::Pack { index } => Ok(*index),
+            _ => Err(errors::ErrorCode::InvalidItemClassMode.into()),
         }
     }
 
     pub fn increment_index(&mut self) -> Result<()> {
-        if let ItemClassOutputMode::Pack { index } = self {
+        if let ItemClassMode::Pack { index } = self {
             *index += 1;
             Ok(())
         } else {
-            Err(errors::ErrorCode::InvalidItemClassOutputMode.into())
+            Err(errors::ErrorCode::InvalidItemClassMode.into())
         }
     }
 
     pub fn is_pack(&self) -> bool {
-        matches!(self, ItemClassOutputMode::Pack { .. })
+        matches!(self, ItemClassMode::Pack { .. })
     }
 
-    pub fn is_item(&self) -> bool {
-        matches!(self, ItemClassOutputMode::Item)
+    pub fn is_merkle_tree(&self) -> bool {
+        matches!(self, ItemClassMode::MerkleTree { .. })
+    }
+
+    pub fn is_collection(&self) -> bool {
+        matches!(self, ItemClassMode::Collection { .. })
     }
 
     pub fn is_preset_only(&self) -> bool {
-        matches!(self, ItemClassOutputMode::PresetOnly)
+        matches!(self, ItemClassMode::PresetOnly)
     }
+
+    pub fn is_verify_account(&self, verify_account: &Pubkey) -> bool {
+        match &self {
+            ItemClassMode::MerkleTree { tree } => tree.eq(verify_account),
+            ItemClassMode::Collection { collection_mint } => collection_mint.eq(verify_account),
+            _ => true,
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ItemClassModeSelection {
+    MerkleTree,
+    Collection { collection_mint: Pubkey },
+    Pack,
+    PresetOnly,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
@@ -135,6 +165,10 @@ pub enum BuildStatus {
     InProgress,
     Complete,
     ItemReceived,
+}
+
+impl BuildStatus {
+    pub const SPACE: usize = 1 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -280,7 +314,7 @@ impl ItemState {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Payment {
     pub treasury: Pubkey,
     pub amount: u64,
@@ -290,16 +324,27 @@ impl Payment {
     pub const SPACE: usize = 32 + 8;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+pub enum PaymentStatus {
+    NotPaid,
+    Escrowed,
+    SentToTreasury,
+}
+
+impl PaymentStatus {
+    pub const SPACE: usize = 1 + 1;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct PaymentState {
-    pub paid: bool,
+    pub status: PaymentStatus,
     pub payment_details: Payment,
 }
 
 impl From<Payment> for PaymentState {
     fn from(value: Payment) -> Self {
         PaymentState {
-            paid: false,
+            status: PaymentStatus::NotPaid,
             payment_details: value,
         }
     }
@@ -346,7 +391,7 @@ impl PackContentsEntry {
     pub const SPACE: usize = 32 + 8;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct BuildOutput {
     pub items: Vec<BuildOutputItem>,
 }
