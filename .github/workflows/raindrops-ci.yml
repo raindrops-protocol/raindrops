@@ -40,7 +40,7 @@ jobs:
         run: sudo apt-mark hold grub-efi-amd64-signed && sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
 
       - name: Install Anchor 0.28.0
-        run: npm i -g @project-serum/anchor-cli@0.28.0
+        run: npm i -g @coral-xyz/anchor-cli@0.28.0
 
       - name: Set Environment
         run: echo "/home/runner/.cargo/bin" >> $GITHUB_PATH && echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
