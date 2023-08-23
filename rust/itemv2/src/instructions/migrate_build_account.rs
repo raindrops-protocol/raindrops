@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::state::{
     accounts::{reallocate, Build, Recipe},
     errors::ErrorCode,
-    BuildIngredientData, BuildOutput, BuildStatus, PaymentState, is_signer,
+    is_signer, BuildIngredientData, BuildOutput, BuildStatus, PaymentState,
 };
 
 #[derive(Accounts)]

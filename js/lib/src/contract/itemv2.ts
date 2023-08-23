@@ -108,7 +108,10 @@ export class ItemProgramV2 extends Program.Program {
     args: ItemInstruction.VerifyIngredientArgs,
     options?: SendOptions
   ): Promise<Transaction.SendTransactionResult> {
-    const ix = await this.instruction.verifyIngredientMerkleTreeTest(accounts, args);
+    const ix = await this.instruction.verifyIngredientMerkleTreeTest(
+      accounts,
+      args
+    );
     return await this.sendWithRetry([ix], [], options);
   }
 
@@ -176,7 +179,7 @@ export class ItemProgramV2 extends Program.Program {
     const ix = await this.instruction.escrowPayment(accounts);
     return await this.sendWithRetry([ix], [], options);
   }
-  
+
   async transferPayment(
     accounts: ItemInstruction.TransferPaymentAccounts,
     options?: SendOptions
@@ -206,27 +209,30 @@ export class ItemProgramV2 extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
-  async migrateBuildAccount(build: web3.PublicKey, recipe: web3.PublicKey, options?: SendOptions): Promise<SendTransactionResult> {
-    const ixns = await this.instruction.migrateBuildAccount(
-      build, recipe
-    );
-    return await this.sendWithRetry(ixns, [], options); 
+  async migrateBuildAccount(
+    build: web3.PublicKey,
+    recipe: web3.PublicKey,
+    options?: SendOptions
+  ): Promise<SendTransactionResult> {
+    const ixns = await this.instruction.migrateBuildAccount(build, recipe);
+    return await this.sendWithRetry(ixns, [], options);
   }
 
-  async migrateItemClassAccount(itemClass: web3.PublicKey, options?: SendOptions): Promise<SendTransactionResult> {
-    const ix = await this.instruction.migrateItemClassAccount(
-      itemClass
-    );
-    return await this.sendWithRetry([ix], [], options); 
+  async migrateItemClassAccount(
+    itemClass: web3.PublicKey,
+    options?: SendOptions
+  ): Promise<SendTransactionResult> {
+    const ix = await this.instruction.migrateItemClassAccount(itemClass);
+    return await this.sendWithRetry([ix], [], options);
   }
 
   async getItemClass(itemClass: web3.PublicKey): Promise<ItemClass | null> {
     let itemClassData: any;
     try {
       itemClassData = await this.client.account.itemClass.fetch(itemClass);
-    } catch(_e) {
-      return null
-    } 
+    } catch (_e) {
+      return null;
+    }
 
     let recipeIndex: BN | null = null;
     if (itemClassData.recipeIndex !== null) {
@@ -555,7 +561,7 @@ export class ItemProgramV2 extends Program.Program {
         mint: new web3.PublicKey(output.mint),
         amount: new BN(output.amount),
       });
-    };
+    }
 
     const recipes: web3.PublicKey[] = [];
     for (let r of deterministicIngredientDataRaw.recipes) {

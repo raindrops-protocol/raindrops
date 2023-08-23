@@ -121,7 +121,7 @@ export class Instruction extends SolKitInstruction {
           },
         }
       );
-      ixns.push(createAuthorityMintMetadataIx);
+    ixns.push(createAuthorityMintMetadataIx);
 
     // mint 3 tokens to the deployer/authority
     const mintAuthorityTokensIx = splToken.createMintToInstruction(
@@ -141,11 +141,11 @@ export class Instruction extends SolKitInstruction {
         itemClass
       );
     ixns.push(transferAuthorityToItemClassIx);
-    
+
     let merkleTree: web3.PublicKey | null = null;
     let logWrapper: web3.PublicKey | null = null;
     let accountCompression: web3.PublicKey | null = null;
-    
+
     switch (args.mode.kind) {
       case "MerkleTree":
         // create merkle tree account
@@ -182,13 +182,16 @@ export class Instruction extends SolKitInstruction {
         break;
       case "Collection":
         // client side check that collectionMint is truly a mint account
-        await splToken.getMint(this.program.client.provider.connection, args.mode.collectionMint)
+        await splToken.getMint(
+          this.program.client.provider.connection,
+          args.mode.collectionMint
+        );
         break;
       case "Pack":
         break;
       case "PresetOnly":
         break;
-    };
+    }
 
     const ixArgs = {
       itemClassName: args.itemClassName,
@@ -211,11 +214,7 @@ export class Instruction extends SolKitInstruction {
       .instruction();
     ixns.push(createItemClassIx);
 
-    return [
-      itemClass,
-      signers,
-      ixns,
-    ];
+    return [itemClass, signers, ixns];
   }
 
   async addItemsToItemClass(
@@ -542,7 +541,7 @@ export class Instruction extends SolKitInstruction {
       await this.program.client.account.itemClass.fetch(
         accounts.ingredientItemClass
       );
-    
+
     let ingredientMintMetadata: web3.PublicKey | null = null;
     let ingredientItemClassVerifyAccount: web3.PublicKey | null = null;
     let deterministicIngredient: web3.PublicKey | null = null;
@@ -554,12 +553,18 @@ export class Instruction extends SolKitInstruction {
 
     const build = getBuildPda(accounts.itemClass, accounts.builder);
     const buildData = await this.program.client.account.build.fetch(build);
-    
+
     const mode = parseItemClassMode(ingredientItemClassData);
 
     // check if ingredient is deterministic
-    const deterministicIngredientPda = getDeterministicIngredientPda(new web3.PublicKey(buildData.recipe), accounts.ingredientMint);
-    const deterministicIngredientData = await this.program.client.account.deterministicIngredient.fetchNullable(deterministicIngredientPda);
+    const deterministicIngredientPda = getDeterministicIngredientPda(
+      new web3.PublicKey(buildData.recipe),
+      accounts.ingredientMint
+    );
+    const deterministicIngredientData =
+      await this.program.client.account.deterministicIngredient.fetchNullable(
+        deterministicIngredientPda
+      );
     if (deterministicIngredientData !== null) {
       deterministicIngredient = deterministicIngredientPda;
     } else {
@@ -585,22 +590,25 @@ export class Instruction extends SolKitInstruction {
 
           break;
         case "Collection":
-          const [metadata, _metadataBump] = web3.PublicKey.findProgramAddressSync(
-            [
-              Buffer.from("metadata"),
-              mpl.PROGRAM_ID.toBuffer(),
-              accounts.ingredientMint.toBuffer(),
-            ],
-            mpl.PROGRAM_ID
-          );
+          const [metadata, _metadataBump] =
+            web3.PublicKey.findProgramAddressSync(
+              [
+                Buffer.from("metadata"),
+                mpl.PROGRAM_ID.toBuffer(),
+                accounts.ingredientMint.toBuffer(),
+              ],
+              mpl.PROGRAM_ID
+            );
           ingredientMintMetadata = metadata;
           ingredientItemClassVerifyAccount = mode.collectionMint;
 
           break;
         case "Pack":
-          throw new Error(`ItemClasses in Pack Mode cannot be Ingredients`)
+          throw new Error(`ItemClasses in Pack Mode cannot be Ingredients`);
         case "PresetOnly":
-          throw new Error(`ItemClasses in PresetOnly Mode cannot be Ingredients`)
+          throw new Error(
+            `ItemClasses in PresetOnly Mode cannot be Ingredients`
+          );
       }
     }
 
@@ -633,11 +641,13 @@ export class Instruction extends SolKitInstruction {
       await this.program.client.account.itemClass.fetch(
         accounts.ingredientItemClass
       );
-    
+
     const mode = parseItemClassMode(ingredientItemClassData);
 
     if (mode.kind !== "MerkleTree") {
-      throw new Error(`Invalid ItemClass mode: ${mode} for Merkle Tree Verification Test`);
+      throw new Error(
+        `Invalid ItemClass mode: ${mode} for Merkle Tree Verification Test`
+      );
     }
 
     const proofAsRemainingAccounts = [];
@@ -670,7 +680,6 @@ export class Instruction extends SolKitInstruction {
 
     return ix;
   }
-
 
   async completeBuild(
     accounts: CompleteBuildAccounts,
@@ -717,9 +726,9 @@ export class Instruction extends SolKitInstruction {
         }
 
         ixArgs.merkleTreeArgs = {
-            root: args.merkleTreeArgs!.root,
-            leafIndex: args.merkleTreeArgs!.leafIndex,
-          }
+          root: args.merkleTreeArgs!.root,
+          leafIndex: args.merkleTreeArgs!.leafIndex,
+        };
 
         break;
       case "Collection":
@@ -740,8 +749,8 @@ export class Instruction extends SolKitInstruction {
       case "Pack":
         pack = accounts.pack!;
         ixArgs.packArgs = {
-          packContents: args.packArgs.packContents!
-        }
+          packContents: args.packArgs.packContents!,
+        };
         break;
       case "PresetOnly":
         break;
@@ -1391,7 +1400,7 @@ export class Instruction extends SolKitInstruction {
   }
 
   async escrowPayment(
-    accounts: EscrowPaymentAccounts, 
+    accounts: EscrowPaymentAccounts
   ): Promise<web3.TransactionInstruction> {
     const buildPaymentEscrow = getBuildPaymentEscrowPda(accounts.build);
 
@@ -1408,7 +1417,7 @@ export class Instruction extends SolKitInstruction {
   }
 
   async transferPayment(
-    accounts: TransferPaymentAccounts, 
+    accounts: TransferPaymentAccounts
   ): Promise<web3.TransactionInstruction> {
     const buildPaymentEscrow = getBuildPaymentEscrowPda(accounts.build);
 
@@ -1462,7 +1471,6 @@ export class Instruction extends SolKitInstruction {
     accounts: CreateDeterministicIngredientAccounts,
     args: CreateDeterministicIngredientArgs
   ): Promise<web3.TransactionInstruction> {
-
     const itemClassData = await this.program.client.account.itemClass.fetch(
       accounts.itemClass
     );
@@ -1494,7 +1502,10 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
-  async migrateBuildAccount(build: web3.PublicKey, recipe: web3.PublicKey): Promise<web3.TransactionInstruction[]> {
+  async migrateBuildAccount(
+    build: web3.PublicKey,
+    recipe: web3.PublicKey
+  ): Promise<web3.TransactionInstruction[]> {
     const ixns: web3.TransactionInstruction[] = [];
 
     const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
@@ -1505,7 +1516,7 @@ export class Instruction extends SolKitInstruction {
       microLamports: 5000,
     });
 
-    ixns.push(increaseCUIx, addPriorityFeeIx)
+    ixns.push(increaseCUIx, addPriorityFeeIx);
 
     const ix = await this.program.client.methods
       .migrateBuildAccount()
@@ -1518,11 +1529,13 @@ export class Instruction extends SolKitInstruction {
       .instruction();
 
     ixns.push(ix);
-    
-    return ixns
+
+    return ixns;
   }
 
-  async migrateItemClassAccount(itemClass: web3.PublicKey): Promise<web3.TransactionInstruction> {
+  async migrateItemClassAccount(
+    itemClass: web3.PublicKey
+  ): Promise<web3.TransactionInstruction> {
     const ix = await this.program.client.methods
       .migrateItemClassAccount()
       .accounts({
@@ -1532,7 +1545,7 @@ export class Instruction extends SolKitInstruction {
       })
       .instruction();
 
-    return ix
+    return ix;
   }
 }
 
@@ -1635,8 +1648,8 @@ export interface CompleteBuildAccounts {
 }
 
 export interface CompleteBuildArgs {
-  merkleTreeArgs?: CompleteBuildMerkleTreeArgs,
-  packArgs?: CompleteBuildPackArgs,
+  merkleTreeArgs?: CompleteBuildMerkleTreeArgs;
+  packArgs?: CompleteBuildPackArgs;
 }
 
 export interface CompleteBuildMerkleTreeArgs {

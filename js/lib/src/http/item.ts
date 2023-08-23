@@ -226,7 +226,6 @@ export class Client {
     // if build status is still in progress, check the ingredients we have and add them
     let itemMint: anchor.web3.PublicKey;
     if (buildData.status === BuildStatus.InProgress) {
-
       // if there are any escrowed ingredients return them to the builder
       if (buildData.ingredients.length > 0) {
         console.log("in progress build with escrowed ingredients detected");
@@ -403,17 +402,22 @@ export class Client {
     return body.packConfig;
   }
 
-  async getDeterministicIngredientOutput(deterministicIngredientMint: anchor.web3.PublicKey, itemClass: anchor.web3.PublicKey): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
-
+  async getDeterministicIngredientOutput(
+    deterministicIngredientMint: anchor.web3.PublicKey,
+    itemClass: anchor.web3.PublicKey
+  ): Promise<State.ItemV2.DeterministicIngredientOutput[]> {
     const params = new URLSearchParams({
       deterministicIngredientMint: deterministicIngredientMint.toString(),
       itemClass: itemClass.toString(),
     });
 
-    // return the deterministic ingredient outputs 
-    const response = await fetch(`${this.baseUrl}/deterministicIngredientOutput?` + params, {
-      headers: createHeaders(this.rpcUrl, this.apiKey),
-    });
+    // return the deterministic ingredient outputs
+    const response = await fetch(
+      `${this.baseUrl}/deterministicIngredientOutput?` + params,
+      {
+        headers: createHeaders(this.rpcUrl, this.apiKey),
+      }
+    );
 
     if (response.status === 400) {
       return [null, null];
@@ -421,9 +425,11 @@ export class Client {
 
     const body = await errors.handleResponse(response);
 
-    const output: State.ItemV2.DeterministicIngredientOutput[] = JSON.parse(body.output);
+    const output: State.ItemV2.DeterministicIngredientOutput[] = JSON.parse(
+      body.output
+    );
 
-    return output
+    return output;
   }
 
   async startBuild(
@@ -500,14 +506,17 @@ export class Client {
       build: build.toString(),
       payer: this.provider.publicKey.toString(),
     });
-  
+
     try {
-      const response = await fetch(`${this.baseUrl}/transferPayment?` + params, {
-        headers: createHeaders(this.rpcUrl, this.apiKey),
-      });
-  
+      const response = await fetch(
+        `${this.baseUrl}/transferPayment?` + params,
+        {
+          headers: createHeaders(this.rpcUrl, this.apiKey),
+        }
+      );
+
       const body = await errors.handleResponse(response);
-  
+
       const txSig = await this.send(body.tx);
       console.log("transferPaymentTxSig: %s", txSig);
     } catch (e) {
@@ -532,7 +541,7 @@ export class Client {
     console.log("completeBuild body: %s", body);
 
     if (body.result === undefined) {
-      return undefined
+      return undefined;
     }
 
     // return pack pda if its defined
@@ -633,7 +642,7 @@ export class Client {
 
       // if done signal is returned, exit
       if (body.done) {
-        console.log("all build ingredients handled")
+        console.log("all build ingredients handled");
         return;
       }
 
@@ -643,9 +652,7 @@ export class Client {
   }
 
   // drive build to completion, these are all permissionless steps
-  async driveBuild(
-    build: anchor.web3.PublicKey
-  ): Promise<any> {
+  async driveBuild(build: anchor.web3.PublicKey): Promise<any> {
     // complete build
     await this.completeBuild(build);
 
@@ -663,18 +670,23 @@ export class Client {
     return result;
   }
 
-  async returnIncompleteBuildIngredients(build: anchor.web3.PublicKey): Promise<string> {
+  async returnIncompleteBuildIngredients(
+    build: anchor.web3.PublicKey
+  ): Promise<string> {
     const params = new URLSearchParams({
       build: build.toString(),
     });
 
-    const response = await fetch(`${this.baseUrl}/returnIncompleteBuildIngredients?` + params, {
-      headers: createHeaders(this.rpcUrl, this.apiKey),
-    });
+    const response = await fetch(
+      `${this.baseUrl}/returnIncompleteBuildIngredients?` + params,
+      {
+        headers: createHeaders(this.rpcUrl, this.apiKey),
+      }
+    );
 
     const body = await errors.handleResponse(response);
 
-    return body.txSigs
+    return body.txSigs;
   }
 
   // sign and send a transaction received from the items api

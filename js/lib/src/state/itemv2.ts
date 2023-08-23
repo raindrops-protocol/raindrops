@@ -15,18 +15,20 @@ export interface ItemClass {
 }
 
 export type ItemClassModeSelection =
-  | { kind: "MerkleTree";  }
+  | { kind: "MerkleTree" }
   | { kind: "Collection"; collectionMint: web3.PublicKey }
-  | { kind: "Pack"; }
+  | { kind: "Pack" }
   | { kind: "PresetOnly" };
 
 export type ItemClassMode =
-  | { kind: "MerkleTree"; tree: web3.PublicKey  }
-  | { kind: "Collection"; collectionMint: web3.PublicKey  }
+  | { kind: "MerkleTree"; tree: web3.PublicKey }
+  | { kind: "Collection"; collectionMint: web3.PublicKey }
   | { kind: "Pack"; index: BN }
   | { kind: "PresetOnly" };
 
-export function formatItemClassModeSelection(mode: ItemClassModeSelection): any {
+export function formatItemClassModeSelection(
+  mode: ItemClassModeSelection
+): any {
   switch (mode.kind) {
     case "MerkleTree":
       return { merkleTree: {} };
@@ -41,33 +43,35 @@ export function formatItemClassModeSelection(mode: ItemClassModeSelection): any 
 
 export function parseItemClassMode(itemClassData: any): ItemClassMode {
   let mode: ItemClassMode = { kind: "PresetOnly" };
-    switch (Object.keys(itemClassData.mode)[0]) {
-      case "pack":
-        mode = {
-          kind: "Pack",
-          index: new BN((itemClassData.mode as any).pack.index),
-        };
-        break;
-      case "merkleTree":
-        mode = {
-          kind: "MerkleTree",
-          tree: new web3.PublicKey((itemClassData.mode as any).merkleTree.tree),
-        }
-        break;
-      case "collection":
-        mode = {
-          kind: "Collection",
-          collectionMint: new web3.PublicKey((itemClassData.mode as any).collection.collectionMint),
-        }
-        break;
-      case "presetOnly":
-        // this is the default selected above the switch func
-        break;
-      default:
-        throw new Error(`unknown item class mode: ${itemClassData.mode}`);
-    }
-  
-  return mode
+  switch (Object.keys(itemClassData.mode)[0]) {
+    case "pack":
+      mode = {
+        kind: "Pack",
+        index: new BN((itemClassData.mode as any).pack.index),
+      };
+      break;
+    case "merkleTree":
+      mode = {
+        kind: "MerkleTree",
+        tree: new web3.PublicKey((itemClassData.mode as any).merkleTree.tree),
+      };
+      break;
+    case "collection":
+      mode = {
+        kind: "Collection",
+        collectionMint: new web3.PublicKey(
+          (itemClassData.mode as any).collection.collectionMint
+        ),
+      };
+      break;
+    case "presetOnly":
+      // this is the default selected above the switch func
+      break;
+    default:
+      throw new Error(`unknown item class mode: ${itemClassData.mode}`);
+  }
+
+  return mode;
 }
 
 export interface Recipe {
@@ -342,12 +346,9 @@ export function getDeterministicIngredientPda(
 export function getBuildPaymentEscrowPda(build: web3.PublicKey) {
   const [buildPaymentEscrow, _buildPaymentEscrow] =
     web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("build_payment_escrow"),
-        build.toBuffer(),
-      ],
+      [Buffer.from("build_payment_escrow"), build.toBuffer()],
       ITEMV2_ID
     );
 
-  return buildPaymentEscrow; 
+  return buildPaymentEscrow;
 }
