@@ -564,7 +564,7 @@ export class ItemProgramV2 extends Program.Program {
     }
 
     const recipes: web3.PublicKey[] = [];
-    for (let r of deterministicIngredientDataRaw.recipes) {
+    for (const r of deterministicIngredientDataRaw.recipes) {
       recipes.push(new web3.PublicKey(r));
     }
 

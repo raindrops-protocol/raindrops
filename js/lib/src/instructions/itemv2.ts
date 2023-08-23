@@ -147,7 +147,7 @@ export class Instruction extends SolKitInstruction {
     let accountCompression: web3.PublicKey | null = null;
 
     switch (args.mode.kind) {
-      case "MerkleTree":
+      case "MerkleTree": {
         // create merkle tree account
         const tree = web3.Keypair.generate();
 
@@ -180,6 +180,7 @@ export class Instruction extends SolKitInstruction {
 
         signers.push(tree);
         break;
+      }
       case "Collection":
         // client side check that collectionMint is truly a mint account
         await splToken.getMint(
@@ -589,7 +590,7 @@ export class Instruction extends SolKitInstruction {
           };
 
           break;
-        case "Collection":
+        case "Collection": {
           const [metadata, _metadataBump] =
             web3.PublicKey.findProgramAddressSync(
               [
@@ -603,6 +604,7 @@ export class Instruction extends SolKitInstruction {
           ingredientItemClassVerifyAccount = mode.collectionMint;
 
           break;
+        }
         case "Pack":
           throw new Error(`ItemClasses in Pack Mode cannot be Ingredients`);
         case "PresetOnly":
@@ -702,7 +704,7 @@ export class Instruction extends SolKitInstruction {
     let logWrapper: web3.PublicKey | null = null;
     let accountCompression: web3.PublicKey | null = null;
     const proofAsRemainingAccounts: web3.AccountMeta[] = [];
-    let ixArgs = {
+    const ixArgs = {
       merkleTreeArgs: null,
       packArgs: null,
     };
@@ -731,7 +733,7 @@ export class Instruction extends SolKitInstruction {
         };
 
         break;
-      case "Collection":
+      case "Collection": {
         itemMint = accounts.itemMint!;
         itemClassVerifyAccount = mode.collectionMint;
 
@@ -746,6 +748,7 @@ export class Instruction extends SolKitInstruction {
 
         itemMintMetadata = metadata;
         break;
+      }
       case "Pack":
         pack = accounts.pack!;
         ixArgs.packArgs = {
