@@ -2888,7 +2888,7 @@ describe("itemv2", () => {
       payer,
       connection,
       1,
-      true
+      false
     );
 
     // output nft
@@ -2896,7 +2896,7 @@ describe("itemv2", () => {
       payer,
       connection,
       1,
-      true,
+      false,
       {
         buildEnabled: true,
         payment: null,
@@ -2984,6 +2984,115 @@ describe("itemv2", () => {
 
     await cleanBuild(itemProgram, build);
   });
+
+  it("release from escrow", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
+
+    // spl token item class
+    const splItemClass = await createItemClassCollectionMode(
+      payer,
+      connection,
+      2,
+      false,
+      {
+        buildEnabled: true,
+        payment: null,
+        ingredientArgs: [],
+        buildPermitRequired: false,
+        selectableOutputs: [],
+      }
+    );
+
+    // transfer spl tokens to the output item class
+    for (let mint of splItemClass.mints) {
+      const source = splToken.getAssociatedTokenAddressSync(
+        mint,
+        payer.publicKey
+      );
+      const destination = await splToken.getOrCreateAssociatedTokenAccount(
+        connection,
+        payer,
+        mint,
+        splItemClass.itemClass,
+        true,
+        "processed"
+      );
+      await splToken.transfer(
+        connection,
+        payer,
+        source,
+        destination.address,
+        payer.publicKey,
+        1
+      );
+    }
+
+    // release transferred nfts from escrow
+    for (let mint of splItemClass.mints) {
+      const result = await itemProgram.releaseFromEscrow(
+        {
+          itemClass: splItemClass.itemClass,
+          itemClassauthority: payer.publicKey,
+          destinationAuthority: payer.publicKey,
+          itemMint: mint,
+        },
+        { amount: new anchor.BN(1) }
+      );
+      console.log("releaseFromEscrowTxSig: %s", result.txid);
+    }
+
+    // pNft token item class
+    const pNftItemClass = await createItemClassCollectionMode(
+      payer,
+      connection,
+      2,
+      true,
+      {
+        buildEnabled: true,
+        payment: null,
+        ingredientArgs: [],
+        buildPermitRequired: false,
+        selectableOutputs: [],
+      }
+    );
+
+    // transfer pNfts to the output item class
+    for (let mint of pNftItemClass.mints) {
+      await transferPNft(
+        payer,
+        itemProgram.client.provider.connection,
+        mint,
+        pNftItemClass.itemClass
+      );
+    }
+
+    // release transferred nfts from escrow
+    for (let mint of pNftItemClass.mints) {
+      const result = await itemProgram.releaseFromEscrow(
+        {
+          itemClass: pNftItemClass.itemClass,
+          itemClassauthority: payer.publicKey,
+          destinationAuthority: payer.publicKey,
+          itemMint: mint,
+        },
+        { amount: new anchor.BN(1) }
+      );
+      console.log("releaseFromEscrowTxSig: %s", result.txid);
+    }
+  });
 });
 
 async function newPayer(
@@ -3049,7 +3158,9 @@ async function createItemClass(
         connection
       );
 
-      const ruleSetPda = await createRuleSet(payer, connection);
+      const ruleSetPda = new anchor.web3.PublicKey(
+        "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+      );
 
       ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.ProgrammableNonFungible as number,
@@ -3228,7 +3339,9 @@ async function createItemClassPack(
         connection
       );
 
-      const ruleSetPda = await createRuleSet(payer, connection);
+      const ruleSetPda = new anchor.web3.PublicKey(
+        "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+      );
 
       const ingredientMintOutput = await client.nfts().create({
         tokenStandard: mpl.TokenStandard.ProgrammableNonFungible as number,
@@ -3589,17 +3702,107 @@ async function createItemClassCollectionMode(
 
   const mints: anchor.web3.PublicKey[] = [];
   for (let i = 0; i < itemCount; i++) {
-    const ingredientMintOutput = await client.nfts().create({
-      tokenStandard: mpl.TokenStandard.NonFungible as number,
-      uri: "https://foo.com/bar.json",
-      name: "NFT1",
-      sellerFeeBasisPoints: 500,
-      symbol: "N",
-      collection: collectionMint,
-      collectionAuthority: payer,
-    });
-    console.log("createNftTxSig: %s", ingredientMintOutput.response.signature);
-    mints.push(ingredientMintOutput.mintAddress);
+    let ingredientMintOutput;
+    if (isPNft) {
+      const ingredientCollectionNft = await createCollectionPNft(
+        payer,
+        connection
+      );
+
+      const ruleSetPda = new anchor.web3.PublicKey(
+        "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+      );
+
+      ingredientMintOutput = await client.nfts().create({
+        tokenStandard: mpl.TokenStandard.ProgrammableNonFungible as number,
+        uri: "https://foo.com/bar.json",
+        name: "pNFT1",
+        sellerFeeBasisPoints: 500,
+        symbol: "PN",
+        ruleSet: ruleSetPda,
+        collection: ingredientCollectionNft,
+      });
+      console.log(
+        "createPNftTxSig: %s",
+        ingredientMintOutput.response.signature
+      );
+
+      const ata = splToken.getAssociatedTokenAddressSync(
+        ingredientCollectionNft,
+        payer.publicKey
+      );
+
+      const [collectionMetadata, _collectionMetadataBump] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("metadata"),
+            mpl.PROGRAM_ID.toBuffer(),
+            ingredientCollectionNft.toBuffer(),
+          ],
+          mpl.PROGRAM_ID
+        );
+
+      const [tokenRecord, _tokenRecordBump] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("metadata"),
+            mpl.PROGRAM_ID.toBuffer(),
+            ingredientCollectionNft.toBuffer(),
+            Buffer.from("token_record"),
+            ata.toBuffer(),
+          ],
+          mpl.PROGRAM_ID
+        );
+
+      const [collectionME, _collectionMEBump] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("metadata"),
+            mpl.PROGRAM_ID.toBuffer(),
+            ingredientCollectionNft.toBuffer(),
+            Buffer.from("edition"),
+          ],
+          mpl.PROGRAM_ID
+        );
+
+      const verifyIx = mpl.createVerifyInstruction(
+        {
+          authority: payer.publicKey,
+          delegateRecord: tokenRecord,
+          metadata: ingredientMintOutput.metadataAddress,
+          collectionMint: ingredientCollectionNft,
+          collectionMetadata: collectionMetadata,
+          collectionMasterEdition: collectionME,
+          sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        },
+        {
+          verificationArgs: mpl.VerificationArgs.CollectionV1,
+        }
+      );
+      const verifyTxSig = await connection.sendTransaction(
+        new anchor.web3.Transaction().add(verifyIx),
+        [payer],
+        { skipPreflight: false }
+      );
+      console.log("verifyTxSig: %s", verifyTxSig);
+      await connection.confirmTransaction(verifyTxSig);
+      mints.push(ingredientMintOutput.mintAddress);
+    } else {
+      ingredientMintOutput = await client.nfts().create({
+        tokenStandard: mpl.TokenStandard.NonFungible as number,
+        uri: "https://foo.com/bar.json",
+        name: "NFT1",
+        sellerFeeBasisPoints: 500,
+        symbol: "N",
+        collection: collectionMint,
+        collectionAuthority: payer,
+      });
+      console.log(
+        "createNftTxSig: %s",
+        ingredientMintOutput.response.signature
+      );
+      mints.push(ingredientMintOutput.mintAddress);
+    }
   }
 
   const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
@@ -3645,9 +3848,8 @@ async function transferPNft(
   nftMint: anchor.web3.PublicKey,
   receiver: anchor.web3.PublicKey
 ) {
-  const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
-    owner.publicKey,
-    "AllRuleSet"
+  const ruleSetPda = new anchor.web3.PublicKey(
+    "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
   );
 
   const client = new metaplex.Metaplex(connection, {}).use(
@@ -3795,124 +3997,6 @@ async function createCollectionPNft(
   });
 
   return result.mintAddress;
-}
-
-async function createRuleSet(
-  payer: anchor.web3.Keypair,
-  connection: anchor.web3.Connection
-): Promise<anchor.web3.PublicKey> {
-  const itemProgram = await ItemProgramV2.getProgramWithConfig(ItemProgramV2, {
-    asyncSigning: false,
-    provider: new anchor.AnchorProvider(connection, new anchor.Wallet(payer), {
-      commitment: "confirmed",
-    }),
-    idl: Idls.ItemV2IDL,
-  });
-  // use an allow all ruleset
-  const ruleSetData = {
-    libVersion: 1,
-    ruleSetName: "AllRuleSet",
-    owner: Array.from(payer.publicKey.toBytes()),
-    operations: {
-      "Delegate:Transfer": {
-        All: {
-          rules: [],
-        },
-      },
-      "Transfer:Owner": {
-        All: {
-          rules: [
-            {
-              Any: {
-                rules: [
-                  {
-                    ProgramOwnedList: {
-                      programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
-                      field: "Source",
-                    },
-                  },
-                  {
-                    ProgramOwnedList: {
-                      programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
-                      field: "Destination",
-                    },
-                  },
-                  {
-                    ProgramOwnedList: {
-                      programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
-                      field: "Authority",
-                    },
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      },
-      "Transfer:TransferDelegate": {
-        All: {
-          rules: [
-            {
-              Any: {
-                rules: [
-                  {
-                    ProgramOwnedList: {
-                      programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
-                      field: "Source",
-                    },
-                  },
-                  {
-                    ProgramOwnedList: {
-                      programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
-                      field: "Destination",
-                    },
-                  },
-                  {
-                    ProgramOwnedList: {
-                      programs: [Array.from(itemProgram.PROGRAM_ID.toBytes())],
-                      field: "Authority",
-                    },
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      },
-    },
-  };
-
-  const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
-    itemProgram.client.provider.publicKey!,
-    "AllRuleSet"
-  );
-
-  const createAuthRulesAccounts: mplAuth.CreateOrUpdateInstructionAccounts = {
-    payer: itemProgram.client.provider.publicKey!,
-    ruleSetPda: ruleSetPda,
-  };
-
-  const createAuthRulesArgs: mplAuth.CreateOrUpdateInstructionArgs = {
-    createOrUpdateArgs: {
-      __kind: "V1",
-      serializedRuleSet: encode(ruleSetData),
-    },
-  };
-
-  const createAuthRulesetIx = await mplAuth.createCreateOrUpdateInstruction(
-    createAuthRulesAccounts,
-    createAuthRulesArgs
-  );
-  const createAuthRulesetTx = new anchor.web3.Transaction().add(
-    createAuthRulesetIx
-  );
-  const createAuthRulesetTxSig = await itemProgram.client.provider
-    .sendAndConfirm!(createAuthRulesetTx, undefined, {
-    commitment: "confirmed",
-  });
-  console.log("createAuthRulesetTxSig: %s", createAuthRulesetTxSig);
-
-  return ruleSetPda;
 }
 
 async function addIngredient(
@@ -4528,9 +4612,8 @@ async function createDelegateAuthorityPNftIx(
       mpl.PROGRAM_ID
     );
 
-  const [ruleSetPda, _ruleSetBump] = await mplAuth.findRuleSetPDA(
-    authority.publicKey,
-    "AllRuleSet"
+  const ruleSetPda = new anchor.web3.PublicKey(
+    "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
   );
 
   // delegate clay ix
