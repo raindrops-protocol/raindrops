@@ -1505,6 +1505,187 @@ export class Instruction extends SolKitInstruction {
     return ix;
   }
 
+  async releaseFromEscrow(
+    accounts: ReleaseFromEscrowAccounts,
+    args: ReleaseFromEscrowArgs
+  ): Promise<web3.TransactionInstruction[]> {
+    const tokenStandard = await Utils.Item.getTokenStandard(
+      this.program.client.provider.connection,
+      accounts.itemMint
+    );
+
+    const ixns: web3.TransactionInstruction[] = [];
+    if (tokenStandard === Utils.Item.TokenStandard.ProgrammableNft) {
+      const pNftIx = await this.releaseFromEscrowPNft(accounts);
+      ixns.push(...pNftIx);
+    } else {
+      const ix = await this.releaseFromEscrowSpl(accounts, args);
+      ixns.push(ix);
+    }
+
+    return ixns;
+  }
+
+  async releaseFromEscrowPNft(
+    accounts: ReleaseFromEscrowAccounts
+  ): Promise<web3.TransactionInstruction[]> {
+    const itemSource = splToken.getAssociatedTokenAddressSync(
+      accounts.itemMint,
+      accounts.itemClass,
+      true
+    );
+
+    const itemDestination = splToken.getAssociatedTokenAddressSync(
+      accounts.itemMint,
+      accounts.destinationAuthority,
+      true
+    );
+
+    const [itemMetadata, _itemMetadataBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.itemMint.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemME, _itemMEBump] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        mpl.PROGRAM_ID.toBuffer(),
+        accounts.itemMint.toBuffer(),
+        Buffer.from("edition"),
+      ],
+      mpl.PROGRAM_ID
+    );
+
+    const [itemSourceTokenRecord, _itemSourceTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.itemMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemSource.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const [itemDestinationTokenRecord, _itemDestinationTokenRecordBump] =
+      web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          mpl.PROGRAM_ID.toBuffer(),
+          accounts.itemMint.toBuffer(),
+          Buffer.from("token_record"),
+          itemDestination.toBuffer(),
+        ],
+        mpl.PROGRAM_ID
+      );
+
+    const itemMetadataData = await mpl.Metadata.fromAccountAddress(
+      this.program.client.provider.connection,
+      itemMetadata
+    );
+
+    const itemClassData = await this.program.client.account.itemClass.fetch(
+      accounts.itemClass
+    );
+
+    const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
+    const authorityMintAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint,
+      accounts.itemClassauthority
+    );
+
+    // double CU and fee
+
+    const increaseCUIx = web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400000,
+    });
+
+    const addPriorityFeeIx = web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
+    const ix = await this.program.client.methods
+      .releaseFromEscrowPnft()
+      .accounts({
+        itemMint: accounts.itemMint,
+        itemMetadata: itemMetadata,
+        itemEdition: itemME,
+        authRules: itemMetadataData.programmableConfig.ruleSet,
+        itemSource: itemSource,
+        itemSourceTokenRecord: itemSourceTokenRecord,
+        itemDestination: itemDestination,
+        itemDestinationTokenRecord: itemDestinationTokenRecord,
+        destinationAuthority: accounts.destinationAuthority,
+        itemClass: accounts.itemClass,
+        itemClassAuthorityMint: authorityMint,
+        itemClassAuthorityMintAta: authorityMintAta,
+        authority: accounts.itemClassauthority,
+        instructions: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenMetadata: mpl.PROGRAM_ID,
+        authRulesProgram: MPL_AUTH_RULES_PROGRAM_ID,
+      })
+      .instruction();
+
+    return [increaseCUIx, addPriorityFeeIx, ix];
+  }
+
+  async releaseFromEscrowSpl(
+    accounts: ReleaseFromEscrowAccounts,
+    args: ReleaseFromEscrowArgs
+  ): Promise<web3.TransactionInstruction> {
+    const itemSource = splToken.getAssociatedTokenAddressSync(
+      accounts.itemMint,
+      accounts.itemClass,
+      true
+    );
+
+    const itemDestination = splToken.getAssociatedTokenAddressSync(
+      accounts.itemMint,
+      accounts.destinationAuthority,
+      true
+    );
+
+    const itemClassData = await this.program.client.account.itemClass.fetch(
+      accounts.itemClass
+    );
+
+    const authorityMint = new web3.PublicKey(itemClassData.authorityMint);
+    const authorityMintAta = splToken.getAssociatedTokenAddressSync(
+      authorityMint,
+      accounts.itemClassauthority
+    );
+
+    const ix = await this.program.client.methods
+      .releaseFromEscrowSpl(args)
+      .accounts({
+        itemMint: accounts.itemMint,
+        itemSource: itemSource,
+        itemDestination: itemDestination,
+        destinationAuthority: accounts.destinationAuthority,
+        itemClass: accounts.itemClass,
+        itemClassAuthorityMint: authorityMint,
+        itemClassAuthorityMintAta: authorityMintAta,
+        authority: accounts.itemClassauthority,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: web3.SystemProgram.programId,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    return ix;
+  }
+
   async migrateBuildAccount(
     build: web3.PublicKey,
     recipe: web3.PublicKey
@@ -1745,4 +1926,15 @@ export interface CreateDeterministicIngredientAccounts {
 export interface CreateDeterministicIngredientArgs {
   recipes: web3.PublicKey[];
   outputs: DeterministicIngredientOutput[];
+}
+
+export interface ReleaseFromEscrowAccounts {
+  itemClass: web3.PublicKey;
+  itemMint: web3.PublicKey;
+  itemClassauthority: web3.PublicKey;
+  destinationAuthority: web3.PublicKey;
+}
+
+export interface ReleaseFromEscrowArgs {
+  amount: BN;
 }

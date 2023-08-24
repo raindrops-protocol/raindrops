@@ -209,6 +209,15 @@ export class ItemProgramV2 extends Program.Program {
     return await this.sendWithRetry([ix], [], options);
   }
 
+  async releaseFromEscrow(
+    accounts: ItemInstruction.ReleaseFromEscrowAccounts,
+    args: ItemInstruction.ReleaseFromEscrowArgs,
+    options?: SendOptions
+  ): Promise<SendTransactionResult> {
+    const ixns = await this.instruction.releaseFromEscrow(accounts, args);
+    return await this.sendWithRetry(ixns, [], options);
+  }
+
   async migrateBuildAccount(
     build: web3.PublicKey,
     recipe: web3.PublicKey,
