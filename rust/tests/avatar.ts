@@ -75,19 +75,67 @@ describe.only("avatar", () => {
       [avatarClassAuthority.publicKey]
     );
 
-    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [ 
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "aura", status: { mutable: true, attributeType: "Optional" } },
-      { id: 2, name: "background", status: { mutable: true, attributeType: "Optional" } },
-      { id: 3, name: "clothing", status: { mutable: true, attributeType: "Optional" } },
-      { id: 4, name: "eyes", status: { mutable: true, attributeType: "Optional" } },
-      { id: 5, name: "eyewear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 6, name: "hair", status: { mutable: true, attributeType: "Optional" } },
-      { id: 7, name: "hands", status: { mutable: true, attributeType: "Optional" } },
-      { id: 8, name: "headgear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 9, name: "legendary", status: { mutable: true, attributeType: "Optional" } },
-      { id: 10, name: "mouth", status: { mutable: true, attributeType: "Optional" } },
-      { id: 11, name: "origin", status: { mutable: true, attributeType: "Optional" } },
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "aura",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 2,
+        name: "background",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 3,
+        name: "clothing",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 4,
+        name: "eyes",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 5,
+        name: "eyewear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 6,
+        name: "hair",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 7,
+        name: "hands",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 8,
+        name: "headgear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 9,
+        name: "legendary",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 10,
+        name: "mouth",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 11,
+        name: "origin",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata: AvatarRpc.VariantMetadata[] = [
@@ -403,8 +451,12 @@ describe.only("avatar", () => {
       [avatarClassAuthority.publicKey]
     );
 
-    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [ 
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [
@@ -544,11 +596,12 @@ describe.only("avatar", () => {
       avatar: avatar,
     };
 
-    const updateTargetTraitVariant = new AvatarRpc.UpdateTargetSelectionTraitVariant(
-      "vfoo1234",
-      "lol123gf",
-      AvatarRpc.traitPDA(avatarClass, traitMint)
-    );
+    const updateTargetTraitVariant =
+      new AvatarRpc.UpdateTargetSelectionTraitVariant(
+        "vfoo1234",
+        "lol123gf",
+        AvatarRpc.traitPDA(avatarClass, traitMint)
+      );
 
     const beginUpdateTraitVariantArgs: AvatarRpc.BeginUpdateArgs = {
       updateTarget: updateTargetTraitVariant,
@@ -575,10 +628,8 @@ describe.only("avatar", () => {
       avatar: avatar,
     };
 
-    const updateTargetClassVariant = new AvatarRpc.UpdateTargetSelectionClassVariant(
-      "gender12",
-      "gendero1"
-    );
+    const updateTargetClassVariant =
+      new AvatarRpc.UpdateTargetSelectionClassVariant("gender12", "gendero1");
 
     const beginUpdateClassVariantArgs: AvatarRpc.BeginUpdateArgs = {
       updateTarget: updateTargetClassVariant,
@@ -614,7 +665,9 @@ describe.only("avatar", () => {
       updateTraitVariantArgs
     );
     const updateTraitVariantTxSig =
-      await nftHolderClient.provider.sendAndConfirm(updateTraitVariantTx, [], { skipPreflight: false });
+      await nftHolderClient.provider.sendAndConfirm(updateTraitVariantTx, [], {
+        skipPreflight: false,
+      });
     console.log("updateTraitVariantTxSig: %s", updateTraitVariantTxSig);
 
     // do the class variant update, no payment required this time
@@ -632,7 +685,9 @@ describe.only("avatar", () => {
       updateClassVariantArgs
     );
     const updateClassVariantTxSig =
-      await nftHolderClient.provider.sendAndConfirm(updateClassVariantTx, [], { skipPreflight: false });
+      await nftHolderClient.provider.sendAndConfirm(updateClassVariantTx, [], {
+        skipPreflight: false,
+      });
     console.log("updateClassVariantTxSig: %s", updateClassVariantTxSig);
 
     // check avatar data
@@ -663,7 +718,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [
@@ -829,7 +888,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [
@@ -1098,7 +1161,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [
@@ -1354,7 +1421,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [
@@ -1593,7 +1664,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [
@@ -1835,8 +1910,16 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "head", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "head",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
     const variantMetadata = [];
 
@@ -2023,7 +2106,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [
@@ -2163,7 +2250,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const paymentMint = await createPaymentMint(avatarClassAuthorityClient, [
@@ -2405,7 +2496,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -2584,7 +2679,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -2744,7 +2843,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -2917,7 +3020,7 @@ describe.only("avatar", () => {
 
     const beginUpdateRemoveTraitArgs: AvatarRpc.BeginUpdateArgs = {
       updateTarget: new AvatarRpc.UpdateTargetSelectionRemoveTrait(
-        traitAccount,
+        traitAccount
       ),
     };
 
@@ -2938,7 +3041,7 @@ describe.only("avatar", () => {
     const payForRemoveTraitArgs: AvatarRpc.PayForUpdateArgs = {
       amount: new anchor.BN(100000),
       updateTarget: new AvatarRpc.UpdateTargetSelectionRemoveTrait(
-        traitAccount,
+        traitAccount
       ),
     };
 
@@ -2983,7 +3086,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -3137,7 +3244,7 @@ describe.only("avatar", () => {
 
     const beginUpdateRemoveTraitArgs: AvatarRpc.BeginUpdateArgs = {
       updateTarget: new AvatarRpc.UpdateTargetSelectionRemoveTrait(
-        traitAccount,
+        traitAccount
       ),
     };
 
@@ -3161,7 +3268,7 @@ describe.only("avatar", () => {
     const payForRemoveTraitArgs: AvatarRpc.PayForUpdateArgs = {
       amount: new anchor.BN(1),
       updateTarget: new AvatarRpc.UpdateTargetSelectionRemoveTrait(
-        traitAccount,
+        traitAccount
       ),
       verifyPaymentMintArgs: {
         proof: proof2.proof,
@@ -3211,8 +3318,16 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "head", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "head",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
     const variantMetadata = [];
 
@@ -3406,7 +3521,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "head", status: { mutable: false, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "head",
+        status: { mutable: false, attributeType: "Optional" },
+      },
     ];
     const variantMetadata = [];
 
@@ -3483,7 +3602,11 @@ describe.only("avatar", () => {
       equipTraitAccounts
     );
     const equipTraitTxSig =
-      await avatarClassAuthorityClient.provider.sendAndConfirm(equipTraitTx, undefined, { skipPreflight: false});
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        equipTraitTx,
+        undefined,
+        { skipPreflight: false }
+      );
     console.log("equipTraitTxSig: %s", equipTraitTxSig);
 
     const removeTraitAccounts: AvatarRpc.RemoveTraitsAuthorityAccounts = {
@@ -3513,18 +3636,66 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "aura", status: { mutable: true, attributeType: "Optional" } },
-      { id: 2, name: "background", status: { mutable: true, attributeType: "Optional" } },
-      { id: 3, name: "clothing", status: { mutable: true, attributeType: "Optional" } },
-      { id: 4, name: "eyes", status: { mutable: true, attributeType: "Optional" } },
-      { id: 5, name: "eyewear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 6, name: "hair", status: { mutable: true, attributeType: "Optional" } },
-      { id: 7, name: "hands", status: { mutable: true, attributeType: "Optional" } },
-      { id: 8, name: "headgear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 9, name: "legendary", status: { mutable: true, attributeType: "Optional" } },
-      { id: 10, name: "mouth", status: { mutable: true, attributeType: "Optional" } },
-      { id: 11, name: "origin", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "aura",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 2,
+        name: "background",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 3,
+        name: "clothing",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 4,
+        name: "eyes",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 5,
+        name: "eyewear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 6,
+        name: "hair",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 7,
+        name: "hands",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 8,
+        name: "headgear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 9,
+        name: "legendary",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 10,
+        name: "mouth",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 11,
+        name: "origin",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [];
@@ -3673,18 +3844,66 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "aura", status: { mutable: true, attributeType: "Optional" } },
-      { id: 2, name: "background", status: { mutable: true, attributeType: "Optional" } },
-      { id: 3, name: "clothing", status: { mutable: true, attributeType: "Optional" } },
-      { id: 4, name: "eyes", status: { mutable: true, attributeType: "Optional" } },
-      { id: 5, name: "eyewear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 6, name: "hair", status: { mutable: true, attributeType: "Optional" } },
-      { id: 7, name: "hands", status: { mutable: true, attributeType: "Optional" } },
-      { id: 8, name: "headgear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 9, name: "legendary", status: { mutable: true, attributeType: "Optional" } },
-      { id: 10, name: "mouth", status: { mutable: true, attributeType: "Optional" } },
-      { id: 11, name: "origin", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "aura",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 2,
+        name: "background",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 3,
+        name: "clothing",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 4,
+        name: "eyes",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 5,
+        name: "eyewear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 6,
+        name: "hair",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 7,
+        name: "hands",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 8,
+        name: "headgear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 9,
+        name: "legendary",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 10,
+        name: "mouth",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 11,
+        name: "origin",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [];
@@ -3803,18 +4022,66 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "aura", status: { mutable: true, attributeType: "Optional" } },
-      { id: 2, name: "background", status: { mutable: true, attributeType: "Optional" } },
-      { id: 3, name: "clothing", status: { mutable: true, attributeType: "Optional" } },
-      { id: 4, name: "eyes", status: { mutable: true, attributeType: "Optional" } },
-      { id: 5, name: "eyewear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 6, name: "hair", status: { mutable: true, attributeType: "Optional" } },
-      { id: 7, name: "hands", status: { mutable: true, attributeType: "Optional" } },
-      { id: 8, name: "headgear", status: { mutable: true, attributeType: "Optional" } },
-      { id: 9, name: "legendary", status: { mutable: true, attributeType: "Optional" } },
-      { id: 10, name: "mouth", status: { mutable: true, attributeType: "Optional" } },
-      { id: 11, name: "origin", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "aura",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 2,
+        name: "background",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 3,
+        name: "clothing",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 4,
+        name: "eyes",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 5,
+        name: "eyewear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 6,
+        name: "hair",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 7,
+        name: "hands",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 8,
+        name: "headgear",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 9,
+        name: "legendary",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 10,
+        name: "mouth",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 11,
+        name: "origin",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [];
@@ -3932,8 +4199,16 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "body", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "body",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -4118,8 +4393,16 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "body", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "body",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -4276,7 +4559,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -4381,7 +4668,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -4483,7 +4774,11 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Essential" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Essential" },
+      },
     ];
 
     const variantMetadata = [];
@@ -4582,10 +4877,14 @@ describe.only("avatar", () => {
       traitMint: traitMints[0],
     };
 
-    const removeTraitTx = await nftHolderClient.removeTrait(removeTraitAccounts);
-    await assertRejects(nftHolderClient.provider.sendAndConfirm(
-      removeTraitTx, [] , { skipPreflight: false }
-    ));
+    const removeTraitTx = await nftHolderClient.removeTrait(
+      removeTraitAccounts
+    );
+    await assertRejects(
+      nftHolderClient.provider.sendAndConfirm(removeTraitTx, [], {
+        skipPreflight: false,
+      })
+    );
 
     // must run swap trait because its an essential slot
     const swapTraitAccounts: AvatarRpc.SwapTraitAccounts = {
@@ -4597,11 +4896,13 @@ describe.only("avatar", () => {
 
     const swapTraitTx = await nftHolderClient.swapTrait(swapTraitAccounts);
     const swapTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
-      swapTraitTx, [], { skipPreflight: false }
+      swapTraitTx,
+      [],
+      { skipPreflight: false }
     );
     console.log("swapTraitTxSig: %s", swapTraitTxSig);
   });
-  it.only("trait swap on an optional slot", async () => {
+  it("trait swap on an optional slot", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
@@ -4615,8 +4916,16 @@ describe.only("avatar", () => {
     );
 
     const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
-      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Optional" } },
-      { id: 1, name: "accessories2", status: { mutable: true, attributeType: "Optional" } },
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "accessories2",
+        status: { mutable: true, attributeType: "Optional" },
+      },
     ];
 
     const variantMetadata = [];
@@ -4718,7 +5027,270 @@ describe.only("avatar", () => {
 
     const swapTraitTx = await nftHolderClient.swapTrait(swapTraitAccounts);
     const swapTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
-      swapTraitTx, [], { skipPreflight: false }
+      swapTraitTx,
+      [],
+      { skipPreflight: false }
+    );
+    console.log("swapTraitTxSig: %s", swapTraitTxSig);
+  });
+  it("fail trait swap on essential and optional slots, equip replaces the optional only and this is not allowed", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "accessories2",
+        status: { mutable: true, attributeType: "Essential" },
+      },
+    ];
+
+    const variantMetadata = [];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: variantMetadata,
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    const traitArgs: any[] = [
+      { name: "redHat", attributes: [0, 1] },
+      { name: "blueHat", attributes: [0] },
+    ];
+
+    const traitMints: anchor.web3.PublicKey[] = [];
+    for (let arg of traitArgs) {
+      const traitMint = await createTraitSft(
+        connection,
+        arg.name,
+        avatarClassAuthority,
+        [nftHolder.publicKey]
+      );
+
+      await createTrait(
+        arg.name,
+        traitMint,
+        arg.attributes,
+        { enabled: true },
+        avatarClass,
+        avatarClassAuthorityClient
+      );
+
+      traitMints.push(traitMint);
+    }
+
+    // equip trait
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    const equipTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipTraitTx
+    );
+    console.log("equipTraitTxSig: %s", equipTraitTxSig);
+
+    // swap trait
+    const swapTraitAccounts: AvatarRpc.SwapTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      equipTraitMint: traitMints[1],
+      removeTraitMint: traitMints[0],
+    };
+
+    const swapTraitTx = await nftHolderClient.swapTrait(swapTraitAccounts);
+    await assertRejects(
+      nftHolderClient.provider.sendAndConfirm(swapTraitTx, [], {
+        skipPreflight: false,
+      })
+    );
+  });
+  it("trait swap on essential and optional slots, equip replaces the essential only", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Essential" },
+      },
+      {
+        id: 1,
+        name: "accessories2",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+    ];
+
+    const variantMetadata = [];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: variantMetadata,
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    const traitArgs: any[] = [
+      { name: "redHat", attributes: [0, 1] },
+      { name: "blueHat", attributes: [0] },
+    ];
+
+    const traitMints: anchor.web3.PublicKey[] = [];
+    for (let arg of traitArgs) {
+      const traitMint = await createTraitSft(
+        connection,
+        arg.name,
+        avatarClassAuthority,
+        [nftHolder.publicKey]
+      );
+
+      await createTrait(
+        arg.name,
+        traitMint,
+        arg.attributes,
+        { enabled: true },
+        avatarClass,
+        avatarClassAuthorityClient
+      );
+
+      traitMints.push(traitMint);
+    }
+
+    // equip trait
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    const equipTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipTraitTx
+    );
+    console.log("equipTraitTxSig: %s", equipTraitTxSig);
+
+    // swap trait
+    const swapTraitAccounts: AvatarRpc.SwapTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      equipTraitMint: traitMints[1],
+      removeTraitMint: traitMints[0],
+    };
+
+    const swapTraitTx = await nftHolderClient.swapTrait(swapTraitAccounts);
+    const swapTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      swapTraitTx,
+      [],
+      { skipPreflight: false }
     );
     console.log("swapTraitTxSig: %s", swapTraitTxSig);
   });
