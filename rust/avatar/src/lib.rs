@@ -167,4 +167,8 @@ pub mod raindrops_avatar {
     ) -> Result<()> {
         instructions::verify_payment_mint_test::handler(ctx, args)
     }
+
+    pub fn migrate_avatar_class_account(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
+        migrate_avatar_class_account::handler(ctx)
+    }
 }

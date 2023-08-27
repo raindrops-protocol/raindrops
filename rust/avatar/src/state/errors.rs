@@ -55,4 +55,7 @@ pub enum ErrorCode {
 
     #[msg("Missing Essential Attribute Relacement")]
     MissingEssentialAttribute,
+
+    #[msg("Migration Error")]
+    MigrationError,
 }

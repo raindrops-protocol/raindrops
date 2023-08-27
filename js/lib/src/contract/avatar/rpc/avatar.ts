@@ -1835,6 +1835,27 @@ export class AvatarClient {
     return tx;
   }
 
+  async migrateAvatarClassAccount(
+    avatarClass: anchor.web3.PublicKey
+  ): Promise<anchor.web3.Transaction> {
+    const authority = new anchor.web3.PublicKey(
+      "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
+    );
+
+    const tx = await this.program.methods
+      .migrateAvatarClassAccount()
+      .accounts({
+        avatarClass: avatarClass,
+        authority: authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .transaction();
+
+    await this.setPayer(tx, authority);
+
+    return tx;
+  }
+
   async getAvatar(
     avatar: anchor.web3.PublicKey,
     getInProgressUpdates?: boolean
@@ -1904,7 +1925,7 @@ export class AvatarClient {
   async getAvatarClass(
     avatarClassAddress: anchor.web3.PublicKey
   ): Promise<AvatarClass> {
-    const avatarClassData = await this.program.account.avatarClass.fetch(
+    const avatarClassData: any = await this.program.account.avatarClass.fetch(
       avatarClassAddress
     );
 

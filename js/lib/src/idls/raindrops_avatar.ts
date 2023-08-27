@@ -1472,9 +1472,70 @@ export type RaindropsAvatar = {
           }
         }
       ]
+    },
+    {
+      "name": "migrateAvatarClassAccount",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "oldAvatarClass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "traitIndex",
+            "type": "u16"
+          },
+          {
+            "name": "paymentIndex",
+            "type": "u64"
+          },
+          {
+            "name": "attributeMetadata",
+            "type": {
+              "vec": {
+                "defined": "OldAttributeMetadata"
+              }
+            }
+          },
+          {
+            "name": "variantMetadata",
+            "type": {
+              "vec": {
+                "defined": "VariantMetadata"
+              }
+            }
+          },
+          {
+            "name": "globalRenderingConfigUri",
+            "type": "string"
+          }
+        ]
+      }
+    },
     {
       "name": "avatarClass",
       "type": {
@@ -1943,6 +2004,40 @@ export type RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "OldAttributeMetadata",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u16"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "OldAttributeStatus"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "OldAttributeStatus",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mutable",
+            "type": "bool"
           }
         ]
       }
@@ -2633,6 +2728,11 @@ export type RaindropsAvatar = {
       "code": 6017,
       "name": "MissingEssentialAttribute",
       "msg": "Missing Essential Attribute Relacement"
+    },
+    {
+      "code": 6018,
+      "name": "MigrationError",
+      "msg": "Migration Error"
     }
   ]
 };
@@ -4111,9 +4211,70 @@ export const IDL: RaindropsAvatar = {
           }
         }
       ]
+    },
+    {
+      "name": "migrateAvatarClassAccount",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "oldAvatarClass",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "traitIndex",
+            "type": "u16"
+          },
+          {
+            "name": "paymentIndex",
+            "type": "u64"
+          },
+          {
+            "name": "attributeMetadata",
+            "type": {
+              "vec": {
+                "defined": "OldAttributeMetadata"
+              }
+            }
+          },
+          {
+            "name": "variantMetadata",
+            "type": {
+              "vec": {
+                "defined": "VariantMetadata"
+              }
+            }
+          },
+          {
+            "name": "globalRenderingConfigUri",
+            "type": "string"
+          }
+        ]
+      }
+    },
     {
       "name": "avatarClass",
       "type": {
@@ -4582,6 +4743,40 @@ export const IDL: RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "OldAttributeMetadata",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u16"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "OldAttributeStatus"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "OldAttributeStatus",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mutable",
+            "type": "bool"
           }
         ]
       }
@@ -5272,6 +5467,11 @@ export const IDL: RaindropsAvatar = {
       "code": 6017,
       "name": "MissingEssentialAttribute",
       "msg": "Missing Essential Attribute Relacement"
+    },
+    {
+      "code": 6018,
+      "name": "MigrationError",
+      "msg": "Migration Error"
     }
   ]
 };
