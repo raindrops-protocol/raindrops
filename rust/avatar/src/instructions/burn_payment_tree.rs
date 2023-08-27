@@ -14,7 +14,6 @@ pub struct BurnPaymentTree<'info> {
     pub update_state: Account<'info, UpdateState>,
 
     #[account(
-        constraint = update_state.current_payment_details.as_ref().unwrap().payment_method.eq(&payment_method.key()),
         seeds = [PaymentMethod::PREFIX.as_bytes(), payment_method.avatar_class.key().as_ref(), &payment_method.index.to_le_bytes()], bump)]
     pub payment_method: Account<'info, PaymentMethod>,
 
@@ -46,13 +45,11 @@ pub struct BurnPaymentTreeArgs {
 }
 
 pub fn handler(ctx: Context<BurnPaymentTree>, args: BurnPaymentTreeArgs) -> Result<()> {
-    // increment current amount in the payment state
+    // update the payment state according to how much will be burned
     ctx.accounts
         .update_state
-        .current_payment_details
-        .as_mut()
-        .unwrap()
-        .amount += args.amount;
+        .target
+        .update_payment_state(&ctx.accounts.payment_method.key(), args.amount)?;
 
     match ctx.accounts.payment_method.asset_class {
         PaymentAssetClass::NonFungible { mints: _ } => match ctx.accounts.payment_method.action {

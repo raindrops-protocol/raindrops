@@ -19,6 +19,11 @@ pub struct EquipTrait<'info> {
         seeds = [Avatar::PREFIX.as_bytes(), avatar_class.key().as_ref(), avatar.mint.key().as_ref()], bump)]
     pub avatar: Box<Account<'info, Avatar>>,
 
+    #[account(
+        constraint = avatar_mint_ata.amount == 1,
+        associated_token::mint = avatar.mint, associated_token::authority = avatar_owner)]
+    pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
+
     #[account(mut,
         has_one = avatar,
         seeds = [UpdateState::PREFIX.as_bytes(), avatar.key().as_ref(), update_state.target.hash().as_ref()], bump)]
@@ -41,6 +46,9 @@ pub struct EquipTrait<'info> {
 
     #[account(mut, associated_token::mint = trait_account.trait_mint, associated_token::authority = avatar)]
     pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
+
+    #[account(mut)]
+    pub avatar_owner: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -97,20 +105,12 @@ pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
         1,
     )?;
 
-    // verify update state
-    match &ctx.accounts.trait_account.equip_payment_details {
-        Some(payment_details) => {
-            let update_state = &ctx.accounts.update_state;
+    require!(
+        ctx.accounts.update_state.target.is_paid(),
+        ErrorCode::PaymentNotPaid
+    );
 
-            // check the payment has been paid
-            payment_details.is_paid(&ctx.accounts.update_state).unwrap();
-
-            // close state account
-            update_state.close(ctx.accounts.payer.to_account_info())
-        }
-        None => ctx
-            .accounts
-            .update_state
-            .close(ctx.accounts.payer.to_account_info()),
-    }
+    ctx.accounts
+        .update_state
+        .close(ctx.accounts.avatar_owner.to_account_info())
 }

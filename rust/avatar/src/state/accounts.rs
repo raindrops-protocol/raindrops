@@ -6,7 +6,8 @@ use crate::utils::reallocate;
 
 use super::data::{
     exists_in_trait_gate, AttributeMetadata, PaymentAction, PaymentAssetClass, PaymentDetails,
-    TraitData, TraitGate, TraitStatus, UpdateTarget, VariantMetadata, VariantOption,
+    TraitData, TraitGate, TraitStatus, UpdateTarget, UpdateTargetSelection,
+    VariantMetadata, VariantOption,
 };
 
 // seeds = [b'avatar_class', mint.key().as_ref()]
@@ -225,7 +226,7 @@ impl Avatar {
     }
 
     // returns true if the trait_address is used in any trait gates
-    pub fn is_required_by_trait_gate(&self, trait_address: Pubkey) -> bool {
+    pub fn is_required_by_trait_gate(&self, trait_address: &Pubkey) -> bool {
         // check if trait is used by any other trait variants
         let required_by_trait_variant = self
             .traits
@@ -424,19 +425,15 @@ impl PaymentMethod {
 pub struct UpdateState {
     pub initialized: bool,
     pub avatar: Pubkey,
-    pub current_payment_details: Option<PaymentDetails>,
-    pub required_payment_details: Option<PaymentDetails>,
     pub target: UpdateTarget,
 }
 
 impl UpdateState {
     pub const PREFIX: &'static str = "update_state";
-    pub fn space(update_target: &UpdateTarget) -> usize {
+    pub fn space(update_target: &UpdateTargetSelection) -> usize {
         8 + // anchor
         1 + // initialized
         32 + // avatar
-        (1 + PaymentDetails::SPACE) + // current payment details, optional
-        (1 + PaymentDetails::SPACE) + // required payment details, optional
         update_target.space() // update target
     }
 }
@@ -583,7 +580,9 @@ impl anchor_lang::Id for NoopProgram {
 mod tests {
     use std::{assert_eq, vec};
 
-    use crate::state::data::{AttributeStatus, Operator::And, TraitGate, VariantStatus};
+    use crate::state::data::{
+        AttributeStatus, AttributeType, Operator::And, TraitGate, VariantStatus,
+    };
 
     use super::*;
 
@@ -593,22 +592,34 @@ mod tests {
         attribute_metadata.push(AttributeMetadata {
             id: 1,
             name: "head".to_string(),
-            status: AttributeStatus { mutable: true },
+            status: AttributeStatus {
+                mutable: true,
+                attribute_type: AttributeType::Optional,
+            },
         });
         attribute_metadata.push(AttributeMetadata {
             id: 2,
             name: "body".to_string(),
-            status: AttributeStatus { mutable: true },
+            status: AttributeStatus {
+                mutable: true,
+                attribute_type: AttributeType::Optional,
+            },
         });
         attribute_metadata.push(AttributeMetadata {
             id: 3,
             name: "hand".to_string(),
-            status: AttributeStatus { mutable: false },
+            status: AttributeStatus {
+                mutable: false,
+                attribute_type: AttributeType::Optional,
+            },
         });
         attribute_metadata.push(AttributeMetadata {
             id: 4,
             name: "background".to_string(),
-            status: AttributeStatus { mutable: false },
+            status: AttributeStatus {
+                mutable: false,
+                attribute_type: AttributeType::Optional,
+            },
         });
         let avatar_class: AvatarClass = AvatarClass {
             mint: Pubkey::new_unique(),
@@ -814,16 +825,16 @@ mod tests {
             traits,
             variants,
         };
-        let trait_1_not_required = avatar.is_required_by_trait_gate(trait1);
+        let trait_1_not_required = avatar.is_required_by_trait_gate(&trait1);
         assert!(!trait_1_not_required);
 
-        let trait_2_required = avatar.is_required_by_trait_gate(trait2);
+        let trait_2_required = avatar.is_required_by_trait_gate(&trait2);
         assert!(trait_2_required);
 
-        let trait_3_not_required = avatar.is_required_by_trait_gate(trait3);
+        let trait_3_not_required = avatar.is_required_by_trait_gate(&trait3);
         assert!(!trait_3_not_required);
 
-        let trait_4_required = avatar.is_required_by_trait_gate(trait4);
+        let trait_4_required = avatar.is_required_by_trait_gate(&trait4);
         assert!(trait_4_required);
     }
 }

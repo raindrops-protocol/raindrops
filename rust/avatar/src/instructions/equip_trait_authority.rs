@@ -3,9 +3,10 @@ use anchor_spl::token;
 
 use crate::state::{
     accounts::{Avatar, AvatarClass, Trait},
-    data::TraitData,
     errors::ErrorCode,
 };
+
+use crate::utils::validate_attribute_availability;
 
 #[derive(Accounts)]
 pub struct EquipTraitAuthority<'info> {
@@ -50,6 +51,7 @@ pub fn handler(ctx: Context<EquipTraitAuthority>) -> Result<()> {
     let valid = validate_attribute_availability(
         &ctx.accounts.trait_account.attribute_ids,
         &ctx.accounts.avatar.traits,
+        &ctx.accounts.avatar_class.attribute_metadata,
     );
     require!(valid, ErrorCode::InvalidAttributeId);
 
@@ -79,21 +81,4 @@ pub fn handler(ctx: Context<EquipTraitAuthority>) -> Result<()> {
         ),
         1,
     )
-}
-
-fn validate_attribute_availability(
-    required_attribute_ids: &Vec<u16>,
-    equipped_avatar_traits: &[TraitData],
-) -> bool {
-    for id in required_attribute_ids {
-        // check that the required attribute ids are not occupied
-        let occupied = equipped_avatar_traits
-            .iter()
-            .any(|equipped_avatar_trait| equipped_avatar_trait.attribute_ids.contains(id));
-        if occupied {
-            return false;
-        }
-    }
-
-    true
 }

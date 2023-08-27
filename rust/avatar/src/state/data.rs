@@ -2,11 +2,10 @@ use anchor_lang::{
     prelude::*,
     solana_program::hash::{hash, Hash},
 };
-use anchor_spl::associated_token::get_associated_token_address;
 
 use crate::utils::reallocate;
 
-use super::{accounts::UpdateState, errors::ErrorCode};
+use super::errors::ErrorCode;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct AttributeMetadata {
@@ -19,7 +18,7 @@ impl AttributeMetadata {
     pub fn space(&self) -> usize {
         2 + // id
         (4 + self.name.len()) + // name
-        AttributeStatus::SPACE // mutable
+        AttributeStatus::SPACE // attribute status
     }
 }
 
@@ -126,28 +125,15 @@ pub struct PaymentDetails {
 impl PaymentDetails {
     pub const SPACE: usize = 32 + // payment_method
     8; // amount
+}
 
-    pub fn is_paid(&self, update_variant_state: &UpdateState) -> Result<()> {
-        // return an error if payment_state is not set
-        // this is because if payment details is present then payment is required
-        let payment_state = update_variant_state
-            .current_payment_details
-            .as_ref()
-            .unwrap();
-
-        // check the payment_method is defined in update_variant_state
-        require!(
-            payment_state.payment_method.eq(&self.payment_method.key()),
-            ErrorCode::InvalidPaymentMethod
-        );
-
-        // check the payment is sufficient
-        require!(
-            payment_state.amount >= self.amount,
-            ErrorCode::PaymentNotPaid
-        );
-
-        Ok(())
+impl From<PaymentDetails> for PaymentState {
+    fn from(details: PaymentDetails) -> Self {
+        PaymentState {
+            payment_method: details.payment_method,
+            current_amount: 0,
+            required_amount: details.amount,
+        }
     }
 }
 
@@ -288,7 +274,7 @@ impl PaymentAction {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub enum UpdateTarget {
+pub enum UpdateTargetSelection {
     ClassVariant {
         variant_id: String,
         option_id: String,
@@ -303,28 +289,45 @@ pub enum UpdateTarget {
     },
     RemoveTrait {
         trait_account: Pubkey,
-        trait_destination_authority: Pubkey,
+    },
+    SwapTrait {
+        equip_trait_account: Pubkey,
+        remove_trait_account: Pubkey,
     },
 }
 
-impl UpdateTarget {
+impl UpdateTargetSelection {
+    // this space calc is really based on UpdateTarget, not the UpdateTargetSelection struct
+    // UpdateTargetSelection is just used by the caller of the instruction to select the appropriate variant
     pub fn space(&self) -> usize {
         let enum_bytes = 1;
         match &self {
             Self::ClassVariant {
                 variant_id,
                 option_id,
-            } => enum_bytes + (4 + variant_id.len()) + (4 + option_id.len()),
+                ..
+            } => {
+                enum_bytes
+                    + (4 + variant_id.len())
+                    + (4 + option_id.len())
+                    + (1 + PaymentState::SPACE)
+            }
             Self::TraitVariant {
                 variant_id,
                 option_id,
-                trait_account: _,
-            } => enum_bytes + (4 + variant_id.len()) + (4 + option_id.len()) + 32, // trait account
-            Self::EquipTrait { trait_account: _ } => enum_bytes + 32,
-            Self::RemoveTrait {
-                trait_account: _,
-                trait_destination_authority: _,
-            } => enum_bytes + 32 + 32,
+                ..
+            } => {
+                enum_bytes
+                    + (4 + variant_id.len())
+                    + (4 + option_id.len())
+                    + 32
+                    + (1 + PaymentState::SPACE)
+            }
+            Self::EquipTrait { .. } => enum_bytes + 32 + (1 + PaymentState::SPACE),
+            Self::RemoveTrait { .. } => enum_bytes + 32 + 32 + (1 + PaymentState::SPACE),
+            Self::SwapTrait { .. } => {
+                enum_bytes + 32 + 32 + 32 + (1 + PaymentState::SPACE) + (1 + PaymentState::SPACE)
+            }
         }
     }
 
@@ -334,31 +337,180 @@ impl UpdateTarget {
             Self::ClassVariant {
                 variant_id,
                 option_id,
+                ..
             } => hash(format!("{variant_id}{option_id}").as_bytes()),
             Self::TraitVariant {
                 variant_id,
                 option_id,
                 trait_account,
+                ..
             } => hash(format!("{variant_id}{option_id}{trait_account}").as_bytes()),
-            Self::EquipTrait { trait_account } => hash(format!("{trait_account}").as_bytes()),
-            Self::RemoveTrait {
+            Self::EquipTrait { trait_account, .. } => hash(format!("{trait_account}").as_bytes()),
+            Self::RemoveTrait { trait_account, .. } => hash(format!("{trait_account}").as_bytes()),
+            Self::SwapTrait {
+                equip_trait_account,
+                remove_trait_account,
+                ..
+            } => hash(format!("{equip_trait_account}{remove_trait_account}").as_bytes()),
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub enum UpdateTarget {
+    ClassVariant {
+        variant_id: String,
+        option_id: String,
+        payment_state: Option<PaymentState>,
+    },
+    TraitVariant {
+        variant_id: String,
+        option_id: String,
+        trait_account: Pubkey,
+        payment_state: Option<PaymentState>,
+    },
+    EquipTrait {
+        trait_account: Pubkey,
+        payment_state: Option<PaymentState>,
+    },
+    RemoveTrait {
+        trait_account: Pubkey,
+        payment_state: Option<PaymentState>,
+    },
+    SwapTrait {
+        equip_trait_account: Pubkey,
+        remove_trait_account: Pubkey,
+        equip_payment_state: Option<PaymentState>,
+        remove_payment_state: Option<PaymentState>,
+    },
+}
+
+impl UpdateTarget {
+    // update the payment state
+    // for an atomic trait swap where both traits have the same payment method this will first
+    // check the payment state of the equip trait, if that required_amount has already been fulfilled it will check the
+    // payment state of the removed trait and update that one
+    // if the payment state already meets the requirements for the update or the payment method does not match this will error
+    pub fn update_payment_state(&mut self, payment_method: &Pubkey, amount: u64) -> Result<()> {
+        match self {
+            Self::ClassVariant { payment_state, .. }
+            | Self::TraitVariant { payment_state, .. }
+            | Self::EquipTrait { payment_state, .. }
+            | Self::RemoveTrait { payment_state, .. } => match payment_state {
+                Some(state) => {
+                    if state.payment_method.eq(payment_method)
+                        && state.current_amount < state.required_amount
+                    {
+                        state.current_amount += amount;
+                        return Ok(());
+                    }
+                }
+                None => return Err(ErrorCode::InvalidPaymentMethod.into()),
+            },
+            Self::SwapTrait {
+                equip_payment_state,
+                remove_payment_state,
+                ..
+            } => {
+                match equip_payment_state {
+                    Some(state) => {
+                        if state.payment_method.eq(payment_method)
+                            && state.current_amount < state.required_amount
+                        {
+                            state.current_amount += amount;
+                            return Ok(());
+                        }
+                    }
+                    None => return Err(ErrorCode::InvalidPaymentMethod.into()),
+                }
+
+                match remove_payment_state {
+                    Some(state) => {
+                        if state.payment_method.eq(payment_method)
+                            && state.current_amount < state.required_amount
+                        {
+                            state.current_amount += amount;
+                            return Ok(());
+                        }
+                    }
+                    None => return Err(ErrorCode::InvalidPaymentMethod.into()),
+                }
+            }
+        };
+
+        Err(ErrorCode::InvalidPaymentMethod.into())
+    }
+
+    // hash the update target so we can use it as an account seed
+    pub fn hash(&self) -> Hash {
+        match &self {
+            Self::ClassVariant {
+                variant_id,
+                option_id,
+                ..
+            } => hash(format!("{variant_id}{option_id}").as_bytes()),
+            Self::TraitVariant {
+                variant_id,
+                option_id,
                 trait_account,
-                trait_destination_authority: _,
-            } => hash(format!("{trait_account}").as_bytes()),
+                ..
+            } => hash(format!("{variant_id}{option_id}{trait_account}").as_bytes()),
+            Self::EquipTrait { trait_account, .. } => hash(format!("{trait_account}").as_bytes()),
+            Self::RemoveTrait { trait_account, .. } => hash(format!("{trait_account}").as_bytes()),
+            Self::SwapTrait {
+                equip_trait_account,
+                remove_trait_account,
+                ..
+            } => hash(format!("{equip_trait_account}{remove_trait_account}").as_bytes()),
         }
     }
 
-    pub fn get_remove_trait_destination(&self, trait_mint: &Pubkey) -> Result<Pubkey> {
+    pub fn is_paid(&self) -> bool {
         match &self {
-            Self::RemoveTrait {
-                trait_account: _,
-                trait_destination_authority,
-            } => Ok(get_associated_token_address(
-                trait_destination_authority,
-                trait_mint,
-            )),
-            _ => Err(ErrorCode::InvalidUpdateTarget.into()),
+            Self::ClassVariant { payment_state, .. }
+            | Self::TraitVariant { payment_state, .. }
+            | Self::EquipTrait { payment_state, .. }
+            | Self::RemoveTrait { payment_state, .. } => match payment_state {
+                Some(state) => state.is_paid(),
+                None => true,
+            },
+            Self::SwapTrait {
+                equip_payment_state,
+                remove_payment_state,
+                ..
+            } => {
+                let equip_payment_is_paid = match equip_payment_state {
+                    Some(state) => state.is_paid(),
+                    None => true,
+                };
+
+                let remove_payment_is_paid = match remove_payment_state {
+                    Some(state) => state.is_paid(),
+                    None => true,
+                };
+
+                equip_payment_is_paid && remove_payment_is_paid
+            }
         }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct PaymentState {
+    pub payment_method: Pubkey,
+    pub current_amount: u64,
+    pub required_amount: u64,
+}
+
+impl PaymentState {
+    pub const SPACE: usize = 32 + 8;
+
+    pub fn is_payment_method(&self, payment_method: &Pubkey) -> bool {
+        self.payment_method.eq(payment_method)
+    }
+
+    pub fn is_paid(&self) -> bool {
+        self.current_amount >= self.required_amount
     }
 }
 
@@ -373,11 +525,23 @@ impl VariantStatus {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct AttributeStatus {
+    pub attribute_type: AttributeType,
     pub mutable: bool,
 }
 
 impl AttributeStatus {
-    pub const SPACE: usize = 1;
+    pub const SPACE: usize = 1 + // mutable flag
+    AttributeType::SPACE; // attribute type
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+pub enum AttributeType {
+    Optional,
+    Essential,
+}
+
+impl AttributeType {
+    pub const SPACE: usize = 1 + 1;
 }
 
 #[cfg(test)]

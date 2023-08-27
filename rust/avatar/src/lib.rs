@@ -97,6 +97,13 @@ pub mod raindrops_avatar {
         instructions::begin_trait_update::handler(ctx, args)
     }
 
+    pub fn begin_trait_swap_update(
+        ctx: Context<BeginTraitSwapUpdate>,
+        args: BeginTraitSwapUpdateArgs,
+    ) -> Result<()> {
+        instructions::begin_trait_swap_update::handler(ctx, args)
+    }
+
     pub fn cancel_update(ctx: Context<CancelUpdate>, args: CancelUpdateArgs) -> Result<()> {
         instructions::cancel_update::handler(ctx, args)
     }

@@ -256,6 +256,11 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -277,6 +282,11 @@ export type RaindropsAvatar = {
         },
         {
           "name": "avatarTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarOwner",
           "isMut": true,
           "isSigner": false
         },
@@ -363,6 +373,11 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -379,6 +394,11 @@ export type RaindropsAvatar = {
         },
         {
           "name": "avatarTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarOwner",
           "isMut": true,
           "isSigner": false
         },
@@ -480,6 +500,11 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -489,6 +514,11 @@ export type RaindropsAvatar = {
           "isMut": false,
           "isSigner": false,
           "isOptional": true
+        },
+        {
+          "name": "avatarOwner",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "payer",
@@ -783,6 +813,84 @@ export type RaindropsAvatar = {
       ]
     },
     {
+      "name": "beginTraitSwapUpdate",
+      "accounts": [
+        {
+          "name": "updateState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "removeTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatar",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "traitMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "BeginTraitSwapUpdateArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "cancelUpdate",
       "accounts": [
         {
@@ -839,6 +947,11 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -848,6 +961,11 @@ export type RaindropsAvatar = {
           "isMut": false,
           "isSigner": false,
           "isOptional": true
+        },
+        {
+          "name": "avatarOwner",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "payer",
@@ -1456,22 +1574,6 @@ export type RaindropsAvatar = {
             "type": "publicKey"
           },
           {
-            "name": "currentPaymentDetails",
-            "type": {
-              "option": {
-                "defined": "PaymentDetails"
-              }
-            }
-          },
-          {
-            "name": "requiredPaymentDetails",
-            "type": {
-              "option": {
-                "defined": "PaymentDetails"
-              }
-            }
-          },
-          {
             "name": "target",
             "type": {
               "defined": "UpdateTarget"
@@ -1547,6 +1649,20 @@ export type RaindropsAvatar = {
       }
     },
     {
+      "name": "BeginTraitSwapUpdateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "updateTarget",
+            "type": {
+              "defined": "UpdateTargetSelection"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "BeginTraitUpdateArgs",
       "type": {
         "kind": "struct",
@@ -1554,7 +1670,7 @@ export type RaindropsAvatar = {
           {
             "name": "updateTarget",
             "type": {
-              "defined": "UpdateTarget"
+              "defined": "UpdateTargetSelection"
             }
           }
         ]
@@ -1568,7 +1684,7 @@ export type RaindropsAvatar = {
           {
             "name": "updateTarget",
             "type": {
-              "defined": "UpdateTarget"
+              "defined": "UpdateTargetSelection"
             }
           }
         ]
@@ -2029,6 +2145,26 @@ export type RaindropsAvatar = {
       }
     },
     {
+      "name": "PaymentState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paymentMethod",
+            "type": "publicKey"
+          },
+          {
+            "name": "currentAmount",
+            "type": "u64"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "VariantStatus",
       "type": {
         "kind": "struct",
@@ -2045,6 +2181,12 @@ export type RaindropsAvatar = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "attributeType",
+            "type": {
+              "defined": "AttributeType"
+            }
+          },
           {
             "name": "mutable",
             "type": "bool"
@@ -2110,7 +2252,7 @@ export type RaindropsAvatar = {
       }
     },
     {
-      "name": "UpdateTarget",
+      "name": "UpdateTargetSelection",
       "type": {
         "kind": "enum",
         "variants": [
@@ -2159,12 +2301,152 @@ export type RaindropsAvatar = {
               {
                 "name": "trait_account",
                 "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "SwapTrait",
+            "fields": [
+              {
+                "name": "equip_trait_account",
+                "type": "publicKey"
               },
               {
-                "name": "trait_destination_authority",
+                "name": "remove_trait_account",
                 "type": "publicKey"
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateTarget",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ClassVariant",
+            "fields": [
+              {
+                "name": "variant_id",
+                "type": "string"
+              },
+              {
+                "name": "option_id",
+                "type": "string"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "TraitVariant",
+            "fields": [
+              {
+                "name": "variant_id",
+                "type": "string"
+              },
+              {
+                "name": "option_id",
+                "type": "string"
+              },
+              {
+                "name": "trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "EquipTrait",
+            "fields": [
+              {
+                "name": "trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "RemoveTrait",
+            "fields": [
+              {
+                "name": "trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "SwapTrait",
+            "fields": [
+              {
+                "name": "equip_trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "remove_trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "equip_payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              },
+              {
+                "name": "remove_payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "AttributeType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Optional"
+          },
+          {
+            "name": "Essential"
           }
         ]
       }
@@ -2255,6 +2537,11 @@ export type RaindropsAvatar = {
       "code": 6016,
       "name": "TokenDelegateNotAllowed",
       "msg": "Token Account Delegate Not Allowed"
+    },
+    {
+      "code": 6017,
+      "name": "MissingEssentialAttribute",
+      "msg": "Missing Essential Attribute Relacement"
     }
   ]
 };
@@ -2517,6 +2804,11 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -2538,6 +2830,11 @@ export const IDL: RaindropsAvatar = {
         },
         {
           "name": "avatarTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarOwner",
           "isMut": true,
           "isSigner": false
         },
@@ -2624,6 +2921,11 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -2640,6 +2942,11 @@ export const IDL: RaindropsAvatar = {
         },
         {
           "name": "avatarTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarOwner",
           "isMut": true,
           "isSigner": false
         },
@@ -2741,6 +3048,11 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -2750,6 +3062,11 @@ export const IDL: RaindropsAvatar = {
           "isMut": false,
           "isSigner": false,
           "isOptional": true
+        },
+        {
+          "name": "avatarOwner",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "payer",
@@ -3044,6 +3361,84 @@ export const IDL: RaindropsAvatar = {
       ]
     },
     {
+      "name": "beginTraitSwapUpdate",
+      "accounts": [
+        {
+          "name": "updateState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "removeTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatar",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "traitMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "BeginTraitSwapUpdateArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "cancelUpdate",
       "accounts": [
         {
@@ -3100,6 +3495,11 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "updateState",
           "isMut": true,
           "isSigner": false
@@ -3109,6 +3509,11 @@ export const IDL: RaindropsAvatar = {
           "isMut": false,
           "isSigner": false,
           "isOptional": true
+        },
+        {
+          "name": "avatarOwner",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "payer",
@@ -3717,22 +4122,6 @@ export const IDL: RaindropsAvatar = {
             "type": "publicKey"
           },
           {
-            "name": "currentPaymentDetails",
-            "type": {
-              "option": {
-                "defined": "PaymentDetails"
-              }
-            }
-          },
-          {
-            "name": "requiredPaymentDetails",
-            "type": {
-              "option": {
-                "defined": "PaymentDetails"
-              }
-            }
-          },
-          {
             "name": "target",
             "type": {
               "defined": "UpdateTarget"
@@ -3808,6 +4197,20 @@ export const IDL: RaindropsAvatar = {
       }
     },
     {
+      "name": "BeginTraitSwapUpdateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "updateTarget",
+            "type": {
+              "defined": "UpdateTargetSelection"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "BeginTraitUpdateArgs",
       "type": {
         "kind": "struct",
@@ -3815,7 +4218,7 @@ export const IDL: RaindropsAvatar = {
           {
             "name": "updateTarget",
             "type": {
-              "defined": "UpdateTarget"
+              "defined": "UpdateTargetSelection"
             }
           }
         ]
@@ -3829,7 +4232,7 @@ export const IDL: RaindropsAvatar = {
           {
             "name": "updateTarget",
             "type": {
-              "defined": "UpdateTarget"
+              "defined": "UpdateTargetSelection"
             }
           }
         ]
@@ -4290,6 +4693,26 @@ export const IDL: RaindropsAvatar = {
       }
     },
     {
+      "name": "PaymentState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paymentMethod",
+            "type": "publicKey"
+          },
+          {
+            "name": "currentAmount",
+            "type": "u64"
+          },
+          {
+            "name": "requiredAmount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "VariantStatus",
       "type": {
         "kind": "struct",
@@ -4306,6 +4729,12 @@ export const IDL: RaindropsAvatar = {
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "attributeType",
+            "type": {
+              "defined": "AttributeType"
+            }
+          },
           {
             "name": "mutable",
             "type": "bool"
@@ -4371,7 +4800,7 @@ export const IDL: RaindropsAvatar = {
       }
     },
     {
-      "name": "UpdateTarget",
+      "name": "UpdateTargetSelection",
       "type": {
         "kind": "enum",
         "variants": [
@@ -4420,12 +4849,152 @@ export const IDL: RaindropsAvatar = {
               {
                 "name": "trait_account",
                 "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "SwapTrait",
+            "fields": [
+              {
+                "name": "equip_trait_account",
+                "type": "publicKey"
               },
               {
-                "name": "trait_destination_authority",
+                "name": "remove_trait_account",
                 "type": "publicKey"
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateTarget",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ClassVariant",
+            "fields": [
+              {
+                "name": "variant_id",
+                "type": "string"
+              },
+              {
+                "name": "option_id",
+                "type": "string"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "TraitVariant",
+            "fields": [
+              {
+                "name": "variant_id",
+                "type": "string"
+              },
+              {
+                "name": "option_id",
+                "type": "string"
+              },
+              {
+                "name": "trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "EquipTrait",
+            "fields": [
+              {
+                "name": "trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "RemoveTrait",
+            "fields": [
+              {
+                "name": "trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "SwapTrait",
+            "fields": [
+              {
+                "name": "equip_trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "remove_trait_account",
+                "type": "publicKey"
+              },
+              {
+                "name": "equip_payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              },
+              {
+                "name": "remove_payment_state",
+                "type": {
+                  "option": {
+                    "defined": "PaymentState"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "AttributeType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Optional"
+          },
+          {
+            "name": "Essential"
           }
         ]
       }
@@ -4516,6 +5085,11 @@ export const IDL: RaindropsAvatar = {
       "code": 6016,
       "name": "TokenDelegateNotAllowed",
       "msg": "Token Account Delegate Not Allowed"
+    },
+    {
+      "code": 6017,
+      "name": "MissingEssentialAttribute",
+      "msg": "Missing Essential Attribute Relacement"
     }
   ]
 };
