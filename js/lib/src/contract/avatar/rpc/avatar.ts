@@ -128,7 +128,7 @@ export class AvatarClient {
     );
 
     const formattedAttributeMetadata: any[] = [];
-    for (let am of args.attributeMetadata) {
+    for (const am of args.attributeMetadata) {
       formattedAttributeMetadata.push({
         name: am.name,
         id: am.id,
