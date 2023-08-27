@@ -51,6 +51,10 @@ pub mod raindrops_avatar {
         instructions::remove_trait_authority::handler(ctx)
     }
 
+    pub fn swap_trait(ctx: Context<SwapTrait>) -> Result<()> {
+        instructions::swap_trait::handler(ctx)
+    }
+
     pub fn update_trait_variant(ctx: Context<UpdateVariant>) -> Result<()> {
         instructions::update_variant::handler(ctx)
     }

@@ -67,6 +67,7 @@ pub fn reallocate<'info>(
     }
 
     if transfer_amount > 0 {
+        msg!("transfering lamports to account");
         // if transfer amount is more than 0 we need to transfer lamports to the account
         let transfer_accounts = Transfer {
             from: payer.to_account_info(),
@@ -78,6 +79,7 @@ pub fn reallocate<'info>(
             transfer_amount.try_into().unwrap(),
         )
     } else {
+        msg!("transfering lamports to payer");
         // if transfer amount is less than 0 this means we need to return lamports to the payer
         let transfer_to_payer_amount = transfer_amount.unsigned_abs();
 

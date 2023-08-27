@@ -4469,6 +4469,138 @@ describe.only("avatar", () => {
     const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
     assertRejects(nftHolderClient.provider.sendAndConfirm(equipTraitTx));
   });
+  it.only("do a trait swap on an essential slot", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      { id: 0, name: "accessories", status: { mutable: true, attributeType: "Essential" } },
+    ];
+
+    const variantMetadata = [];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: variantMetadata,
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    const traitArgs: any[] = [
+      { name: "redHat", attributes: [0] },
+      { name: "blueHat", attributes: [0] },
+    ];
+
+    const traitMints: anchor.web3.PublicKey[] = [];
+    for (let arg of traitArgs) {
+      const traitMint = await createTraitSft(
+        connection,
+        arg.name,
+        avatarClassAuthority,
+        [nftHolder.publicKey]
+      );
+
+      await createTrait(
+        arg.name,
+        traitMint,
+        arg.attributes,
+        { enabled: true },
+        avatarClass,
+        avatarClassAuthorityClient
+      );
+
+      traitMints.push(traitMint);
+    }
+
+    // equip trait
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    const equipTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipTraitTx
+    );
+    console.log("equipTraitTxSig: %s", equipTraitTxSig);
+
+    // try to remove trait, will fail because the slot is marked as essential
+    const removeTraitAccounts: AvatarRpc.RemoveTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const removeTraitTx = await nftHolderClient.removeTrait(removeTraitAccounts);
+    await assertRejects(nftHolderClient.provider.sendAndConfirm(
+      removeTraitTx, [] , { skipPreflight: false }
+    ));
+
+    // must run swap trait because its an essential slot
+    const swapTraitAccounts: AvatarRpc.SwapTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      equipTraitMint: traitMints[1],
+      removeTraitMint: traitMints[0],
+    };
+
+    const swapTraitTx = await nftHolderClient.swapTrait(swapTraitAccounts);
+    const swapTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      swapTraitTx, [], { skipPreflight: false }
+    );
+    console.log("swapTraitTxSig: %s", swapTraitTxSig);
+  });
 });
 
 async function createSftAvatarClass(

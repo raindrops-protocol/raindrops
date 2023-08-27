@@ -109,6 +109,13 @@ export interface RemoveTraitAccounts {
   traitMint: anchor.web3.PublicKey;
 }
 
+export interface SwapTraitAccounts {
+  avatar: anchor.web3.PublicKey;
+  payer: anchor.web3.PublicKey;
+  equipTraitMint: anchor.web3.PublicKey;
+  removeTraitMint: anchor.web3.PublicKey;
+}
+
 export interface EquipTraitsAuthorityAccounts {
   avatar: anchor.web3.PublicKey;
   authority: anchor.web3.PublicKey;

@@ -22,14 +22,12 @@ pub struct BeginTraitSwapUpdate<'info> {
 
     #[account(
         has_one = avatar_class,
-        has_one = trait_mint,
-        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_mint.key().as_ref()], bump)]
+        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), equip_trait_mint.key().as_ref()], bump)]
     pub equip_trait_account: Account<'info, Trait>,
 
     #[account(
         has_one = avatar_class,
-        has_one = trait_mint,
-        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_mint.key().as_ref()], bump)]
+        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), remove_trait_mint.key().as_ref()], bump)]
     pub remove_trait_account: Account<'info, Trait>,
 
     #[account(
@@ -42,14 +40,23 @@ pub struct BeginTraitSwapUpdate<'info> {
         associated_token::mint = avatar.mint, associated_token::authority = authority)]
     pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
 
-    pub trait_mint: Box<Account<'info, token::Mint>>,
+    pub equip_trait_mint: Box<Account<'info, token::Mint>>,
+
+    pub remove_trait_mint: Box<Account<'info, token::Mint>>,
 
     // we create this here so the updater pays the rent
     #[account(init_if_needed,
         payer = authority,
-        associated_token::mint = trait_mint,
+        associated_token::mint = equip_trait_mint,
         associated_token::authority = avatar)]
-    pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
+    pub avatar_equip_trait_ata: Box<Account<'info, token::TokenAccount>>,
+
+    // we create this here so the updater pays the rent
+    #[account(init_if_needed,
+        payer = authority,
+        associated_token::mint = remove_trait_mint,
+        associated_token::authority = authority)]
+    pub avatar_authority_remove_trait_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut)]
     pub authority: Signer<'info>,

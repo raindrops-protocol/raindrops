@@ -200,6 +200,40 @@ impl Avatar {
         reallocate(diff, avatar, payer, system_program).unwrap();
     }
 
+    pub fn remove_trait_data(&mut self, trait_address: Pubkey) {
+        self.traits
+            .retain(|trait_data| trait_data.trait_address.ne(&trait_address))
+    }
+
+    pub fn add_trait_data(
+        &mut self,
+        trait_address: Pubkey,
+        trait_id: u16,
+        attribute_ids: Vec<u16>,
+        variant_metadata: &[VariantMetadata],
+    ) {
+        self.traits.push(TraitData::new(
+            attribute_ids,
+            trait_id,
+            trait_address,
+            variant_metadata,
+        ))
+    }
+
+    pub fn reallocate<'info>(
+        &mut self,
+        old_space: i64,
+        avatar: &AccountInfo<'info>,
+        payer: Signer<'info>,
+        system_program: Program<'info, System>,
+    ) {
+        let new_space = self.current_space();
+
+        let diff: i64 = new_space as i64 - old_space as i64;
+
+        reallocate(diff, avatar, payer, system_program).unwrap();
+    }
+
     // return a vector of equipped trait addresses
     pub fn get_traits(&self) -> Vec<Pubkey> {
         self.traits
@@ -270,26 +304,6 @@ impl Avatar {
 
         // add new variant selection
         self.variants.push(variant_selection);
-    }
-
-    fn remove_trait_data(&mut self, trait_address: Pubkey) {
-        self.traits
-            .retain(|trait_data| trait_data.trait_address.ne(&trait_address))
-    }
-
-    fn add_trait_data(
-        &mut self,
-        trait_address: Pubkey,
-        trait_id: u16,
-        attribute_ids: Vec<u16>,
-        variant_metadata: &[VariantMetadata],
-    ) {
-        self.traits.push(TraitData::new(
-            attribute_ids,
-            trait_id,
-            trait_address,
-            variant_metadata,
-        ))
     }
 }
 

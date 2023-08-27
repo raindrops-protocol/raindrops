@@ -83,7 +83,7 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
     let remove_trait_enabled = ctx.accounts.remove_trait_account.is_enabled();
     require!(remove_trait_enabled, ErrorCode::TraitDisabled);
 
-    // validate that each essential attribute which is remove is replaced by an incoming trait
+    // validate that each essential attribute which will be removed is replaced by an equip operation
     validate_essential_attribute_updates(
         &ctx.accounts.avatar_class.attribute_metadata,
         &ctx.accounts.equip_trait_account.attribute_ids,
@@ -92,14 +92,13 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
 
     // first we do the remove trait actions so we can properly check the properties of the trait being equipped later on
 
+    // save the current data size before modifying the account to reallocate properly later
+    let old_space = ctx.accounts.avatar.current_space();
+
     // remove trait data
-    let avatar_account_info = ctx.accounts.avatar.to_account_info();
-    ctx.accounts.avatar.remove_trait(
-        ctx.accounts.remove_trait_account.key(),
-        &avatar_account_info,
-        ctx.accounts.payer.clone(),
-        ctx.accounts.system_program.clone(),
-    );
+    ctx.accounts
+        .avatar
+        .remove_trait_data(ctx.accounts.remove_trait_account.key());
 
     // transfer trait to authority
     let transfer_accounts = token::Transfer {
@@ -163,14 +162,11 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
     require!(!has_conflicts, ErrorCode::TraitConflict);
 
     // create trait data for newly equipped trait
-    ctx.accounts.avatar.add_trait(
+    ctx.accounts.avatar.add_trait_data(
         ctx.accounts.equip_trait_account.key(),
         ctx.accounts.equip_trait_account.id,
         ctx.accounts.equip_trait_account.attribute_ids.clone(),
         &ctx.accounts.equip_trait_account.variant_metadata,
-        &avatar_account_info,
-        ctx.accounts.payer.clone(),
-        ctx.accounts.system_program.clone(),
     );
 
     // transfer trait token to avatar
@@ -187,6 +183,15 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
         ),
         1,
     )?;
+
+    // now that avatar account data has been modified, reallocate the account data
+    let avatar_account_info = ctx.accounts.avatar.to_account_info();
+    ctx.accounts.avatar.reallocate(
+        old_space as i64,
+        &avatar_account_info,
+        ctx.accounts.payer.clone(),
+        ctx.accounts.system_program.clone(),
+    );
 
     require!(
         ctx.accounts.update_state.target.is_paid(),

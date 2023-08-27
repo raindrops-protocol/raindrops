@@ -88,6 +88,9 @@ import {
   UpdateTargetSelection,
   UpdateTargetSelectionEquipTrait,
   UpdateTargetSelectionRemoveTrait,
+  SwapTraitAccounts,
+  UpdateTargetSelectionSwapTrait,
+  UpdateTargetSwapTrait,
 } from "./state";
 import {
   AVATAR_RAIN_VAULT_DEVNET,
@@ -650,6 +653,117 @@ export class AvatarClient {
     return tx;
   }
 
+  async swapTrait(
+    accounts: SwapTraitAccounts
+  ): Promise<anchor.web3.Transaction> {
+    const avatarData = await this.getAvatar(accounts.avatar);
+
+    const equipTrait = traitPDA(
+      avatarData.avatarClass,
+      accounts.equipTraitMint
+    );
+    const removeTrait = traitPDA(
+      avatarData.avatarClass,
+      accounts.removeTraitMint
+    );
+
+    const equipTraitConflicts = traitConflictsPDA(
+      avatarData.avatarClass,
+      equipTrait
+    );
+
+    // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
+    const beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
+    const equipTraitData = await this.getTrait(equipTrait);
+    const removeTraitData = await this.getTrait(removeTrait);
+
+    // check if update state pda already exists
+    const target = new UpdateTargetSelectionSwapTrait(equipTrait, removeTrait);
+    const updateState = updateStatePDA(accounts.avatar, target);
+    const updateStateData = await this.getUpdateState(updateState);
+
+    if (
+      equipTraitData.equipPaymentDetails === null &&
+      removeTraitData.removePaymentDetails === null &&
+      updateStateData === null
+    ) {
+      const beginTraitUpdateAccounts: BeginUpdateAccounts = {
+        avatar: accounts.avatar,
+      };
+
+      const beginTraitUpdateArgs: BeginUpdateArgs = {
+        updateTarget: target,
+      };
+
+      const beginTraitUpdateTx = await this.beginUpdate(
+        beginTraitUpdateAccounts,
+        beginTraitUpdateArgs
+      );
+      beginUpdateIxns.push(...beginTraitUpdateTx.instructions);
+    }
+
+    const avatarEquipTraitAta = splToken.getAssociatedTokenAddressSync(
+      accounts.equipTraitMint,
+      accounts.avatar,
+      true
+    );
+
+    const avatarRemoveTraitAta = splToken.getAssociatedTokenAddressSync(
+      accounts.removeTraitMint,
+      accounts.avatar,
+      true
+    );
+
+    const avatarAuthority = await this.getNftHolder(
+      this.provider.connection,
+      avatarData.mint
+    );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
+
+    const equipTraitSource = splToken.getAssociatedTokenAddressSync(
+      accounts.equipTraitMint,
+      avatarAuthority
+    );
+
+    const removeTraitDestination = splToken.getAssociatedTokenAddressSync(
+      accounts.removeTraitMint,
+      avatarAuthority
+    );
+
+    const tx = new anchor.web3.Transaction();
+
+    const swapTraitIx = await this.program.methods
+      .swapTrait()
+      .accounts({
+        avatarClass: avatarData.avatarClass,
+        avatar: accounts.avatar,
+        avatarMintAta: avatarAuthorityAta,
+        updateState: updateState,
+        equipTraitAccount: equipTrait,
+        removeTraitAccount: removeTrait,
+        equipTraitConflicts: equipTraitConflicts,
+        equipTraitSource: equipTraitSource,
+        removeTraitDestination: removeTraitDestination,
+        avatarEquipTraitAta: avatarEquipTraitAta,
+        avatarRemoveTraitAta: avatarRemoveTraitAta,
+        payer: accounts.payer,
+        avatarAuthority: avatarAuthority,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .instruction();
+    if (beginUpdateIxns.length > 0) {
+      tx.add(...beginUpdateIxns);
+    }
+    tx.add(swapTraitIx);
+    await this.setPayer(tx, accounts.payer);
+
+    return tx;
+  }
+
   async updateVariant(
     accounts: UpdateVariantAccounts,
     args: UpdateVariantArgs
@@ -851,6 +965,7 @@ export class AvatarClient {
 
     let traitData: Trait | null = null;
     let isTraitUpdate = false;
+    let isSwapUdate = false;
     if (args.updateTarget instanceof UpdateTargetSelectionTraitVariant) {
       const updateTarget =
         args.updateTarget as UpdateTargetSelectionTraitVariant;
@@ -876,6 +991,17 @@ export class AvatarClient {
       const updateTargetRemoveTrait =
         args.updateTarget as UpdateTargetRemoveTrait;
       traitData = await this.getTrait(updateTargetRemoveTrait.traitAccount);
+    }
+
+    let equipTrait: Trait | null = null;
+    let removeTrait: Trait | null = null;
+    if (args.updateTarget instanceof UpdateTargetSelectionSwapTrait) {
+      isSwapUdate = true;
+      const updateTargetSwapTrait = args.updateTarget as UpdateTargetSwapTrait;
+      equipTrait = await this.getTrait(updateTargetSwapTrait.equipTraitAccount);
+      removeTrait = await this.getTrait(
+        updateTargetSwapTrait.removeTraitAccount
+      );
     }
 
     const ixArgs = {
@@ -905,6 +1031,34 @@ export class AvatarClient {
           authority: avatarAuthority,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .transaction();
+    } else if (isSwapUdate) {
+      tx = await this.program.methods
+        .beginTraitSwapUpdate(ixArgs)
+        .accounts({
+          updateState: updateState,
+          avatarClass: avatarData.avatarClass,
+          equipTraitAccount: equipTrait.traitAddress,
+          removeTraitAccount: removeTrait.traitAddress,
+          avatar: accounts.avatar,
+          avatarMintAta: avatarAuthorityAta,
+          equipTraitMint: equipTrait.traitMint,
+          removeTraitMint: removeTrait.traitMint,
+          avatarEquipTraitAta: splToken.getAssociatedTokenAddressSync(
+            equipTrait.traitMint,
+            avatarData.address,
+            true
+          ),
+          avatarAuthorityRemoveTraitAta: splToken.getAssociatedTokenAddressSync(
+            removeTrait.traitMint,
+            avatarAuthority
+          ),
+          authority: avatarAuthority,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
         })
         .transaction();
     } else {

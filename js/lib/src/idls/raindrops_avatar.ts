@@ -487,6 +487,87 @@ export type RaindropsAvatar = {
       "args": []
     },
     {
+      "name": "swapTrait",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatar",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "updateState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "removeTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitConflicts",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "removeTraitDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarEquipTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarRemoveTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarAuthority",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateTraitVariant",
       "accounts": [
         {
@@ -846,12 +927,22 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "traitMint",
+          "name": "equipTraitMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "avatarTraitAta",
+          "name": "removeTraitMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarEquipTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarAuthorityRemoveTraitAta",
           "isMut": true,
           "isSigner": false
         },
@@ -3035,6 +3126,87 @@ export const IDL: RaindropsAvatar = {
       "args": []
     },
     {
+      "name": "swapTrait",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatar",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "updateState",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "removeTraitAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitConflicts",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "equipTraitSource",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "removeTraitDestination",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarEquipTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarRemoveTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarAuthority",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateTraitVariant",
       "accounts": [
         {
@@ -3394,12 +3566,22 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "traitMint",
+          "name": "equipTraitMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "avatarTraitAta",
+          "name": "removeTraitMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "avatarEquipTraitAta",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarAuthorityRemoveTraitAta",
           "isMut": true,
           "isSigner": false
         },
