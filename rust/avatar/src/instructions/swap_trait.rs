@@ -70,6 +70,11 @@ pub struct SwapTrait<'info> {
 }
 
 pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
+
     // verify equip trait is enabled
     let equip_trait_enabled = ctx.accounts.equip_trait_account.is_enabled();
     require!(equip_trait_enabled, ErrorCode::TraitDisabled);

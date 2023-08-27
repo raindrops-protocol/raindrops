@@ -59,6 +59,11 @@ pub struct EquipTrait<'info> {
 }
 
 pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
+
     // verify trait is enabled
     let trait_enabled = ctx.accounts.trait_account.is_enabled();
     require!(trait_enabled, ErrorCode::TraitDisabled);

@@ -54,6 +54,11 @@ pub struct RemoveTrait<'info> {
 }
 
 pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
+
     // check trait attributes are mutable
     let mutable = ctx
         .accounts

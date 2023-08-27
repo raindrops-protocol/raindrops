@@ -42,6 +42,11 @@ pub struct UpdateVariant<'info> {
 }
 
 pub fn handler(ctx: Context<UpdateVariant>) -> Result<()> {
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
+
     match &ctx.accounts.update_state.target {
         UpdateTarget::ClassVariant {
             variant_id,

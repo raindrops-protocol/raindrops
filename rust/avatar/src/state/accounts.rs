@@ -6,8 +6,8 @@ use crate::utils::reallocate;
 
 use super::data::{
     exists_in_trait_gate, AttributeMetadata, PaymentAction, PaymentAssetClass, PaymentDetails,
-    TraitData, TraitGate, TraitStatus, UpdateTarget, UpdateTargetSelection,
-    VariantMetadata, VariantOption,
+    TraitData, TraitGate, TraitStatus, UpdateTarget, UpdateTargetSelection, VariantMetadata,
+    VariantOption,
 };
 
 // seeds = [b'avatar_class', mint.key().as_ref()]
