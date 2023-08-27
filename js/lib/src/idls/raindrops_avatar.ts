@@ -286,7 +286,7 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },
@@ -398,7 +398,7 @@ export type RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },
@@ -516,7 +516,7 @@ export type RaindropsAvatar = {
           "isOptional": true
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },
@@ -963,7 +963,7 @@ export type RaindropsAvatar = {
           "isOptional": true
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },
@@ -2834,7 +2834,7 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },
@@ -2946,7 +2946,7 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },
@@ -3064,7 +3064,7 @@ export const IDL: RaindropsAvatar = {
           "isOptional": true
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },
@@ -3511,7 +3511,7 @@ export const IDL: RaindropsAvatar = {
           "isOptional": true
         },
         {
-          "name": "avatarOwner",
+          "name": "avatarAuthority",
           "isMut": true,
           "isSigner": false
         },

@@ -19,7 +19,7 @@ pub struct UpdateVariant<'info> {
 
     #[account(
         constraint = avatar_mint_ata.amount == 1,
-        associated_token::mint = avatar.mint, associated_token::authority = avatar_owner)]
+        associated_token::mint = avatar.mint, associated_token::authority = avatar_authority)]
     pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut,
@@ -33,7 +33,7 @@ pub struct UpdateVariant<'info> {
     pub trait_account: Option<Account<'info, Trait>>,
 
     #[account(mut)]
-    pub avatar_owner: SystemAccount<'info>,
+    pub avatar_authority: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -118,5 +118,5 @@ pub fn handler(ctx: Context<UpdateVariant>) -> Result<()> {
 
     ctx.accounts
         .update_state
-        .close(ctx.accounts.avatar_owner.to_account_info())
+        .close(ctx.accounts.avatar_authority.to_account_info())
 }

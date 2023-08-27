@@ -39,7 +39,30 @@ export interface AttributeMetadata {
 }
 
 export interface AttributeStatus {
+  attributeType: AttributeType;
   mutable: boolean;
+}
+
+export type AttributeType = "Optional" | "Essential";
+
+export function formatAttributeType(attributeType: AttributeType): any {
+  switch (attributeType) {
+    case "Optional":
+      return { optional: {} };
+    case "Essential":
+      return { essential: {} };
+  }
+}
+
+export function parseAttributeType(attributeType: any): AttributeType {
+  switch (Object.keys(attributeType)[0]) {
+    case "optional":
+      return "Optional";
+    case "essential":
+      return "Essential";
+    default:
+      throw new Error(`Unknown AttributeType: ${attributeType}`);
+  }
 }
 
 export interface CreateAvatarAccounts {
@@ -104,7 +127,7 @@ export interface UpdateVariantAccounts {
 }
 
 export interface UpdateVariantArgs {
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
 }
 
 export interface UpdateTraitVariantMetadataAccounts {
@@ -142,7 +165,7 @@ export interface BeginUpdateAccounts {
 }
 
 export interface BeginUpdateArgs {
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
 }
 
 export interface CancelUpdateAccounts {
@@ -150,7 +173,7 @@ export interface CancelUpdateAccounts {
 }
 
 export interface CancelUpdateArgs {
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
 }
 
 export interface PayForUpdateAccounts {
@@ -161,7 +184,7 @@ export interface PayForUpdateAccounts {
 
 export interface PayForUpdateArgs {
   amount: anchor.BN;
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
   verifyPaymentMintArgs?: VerifyPaymentMintArgs;
 }
 
@@ -174,7 +197,7 @@ export interface TransferPaymentAccounts {
 
 export interface TransferPaymentArgs {
   amount: anchor.BN;
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
 }
 
 export interface BurnPaymentAccounts {
@@ -186,7 +209,7 @@ export interface BurnPaymentAccounts {
 
 export interface BurnPaymentArgs {
   amount: anchor.BN;
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
 }
 
 export interface AddPaymentMintToPaymentMethodAccounts {
@@ -204,7 +227,7 @@ export interface BurnPaymentTreeAccounts {
 
 export interface BurnPaymentTreeArgs {
   amount: anchor.BN;
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
 }
 
 export interface TransferPaymentTreeAccounts {
@@ -216,7 +239,7 @@ export interface TransferPaymentTreeAccounts {
 
 export interface TransferPaymentTreeArgs {
   amount: anchor.BN;
-  updateTarget: UpdateTarget;
+  updateTarget: UpdateTargetSelection;
 }
 
 export interface UpdateClassVariantAuthorityAccounts {
@@ -333,6 +356,26 @@ export interface PaymentDetailsExpanded {
   paymentMethodAddress: anchor.web3.PublicKey;
   paymentMethodData: PaymentMethod;
   amount: anchor.BN;
+}
+
+export class PaymentState {
+  readonly paymentMethod: anchor.web3.PublicKey;
+  readonly currentAmount: anchor.BN;
+  readonly requiredAmount: anchor.BN;
+
+  constructor(
+    paymentMethod: anchor.web3.PublicKey,
+    currentAmount: anchor.BN,
+    requiredAmount: anchor.BN
+  ) {
+    this.paymentMethod = paymentMethod;
+    this.currentAmount = currentAmount;
+    this.requiredAmount = requiredAmount;
+  }
+
+  isPaid(): boolean {
+    return this.currentAmount.gte(this.requiredAmount);
+  }
 }
 
 export interface TraitGate {
@@ -567,43 +610,47 @@ export class PaymentMethod {
 export class UpdateState {
   initialized: boolean;
   avatar: anchor.web3.PublicKey;
-  currentPaymentDetails: PaymentDetails | null;
-  requiredPaymentDetails: PaymentDetails | null;
   target: UpdateTarget;
 
   constructor(
     initialized: boolean,
     avatar: anchor.web3.PublicKey,
-    currentPaymentDetails: PaymentDetails | null,
-    requiredPaymentDetails: PaymentDetails | null,
     target: UpdateTarget
   ) {
     this.initialized = initialized;
     this.avatar = avatar;
-    this.currentPaymentDetails = currentPaymentDetails;
-    this.requiredPaymentDetails = requiredPaymentDetails;
     this.target = target;
   }
 
-  // returns true if updateState has been sufficiently paid
   isPaid(): boolean {
-    // if no payment is required then return as paid
-    if (this.requiredPaymentDetails === null) {
-      return true;
-    }
-
-    return this.currentPaymentDetails.amount.gte(
-      this.requiredPaymentDetails.amount
-    );
-  }
-
-  // returns remaining balance for the update
-  remainingBalance(): anchor.BN {
-    const remaining = this.requiredPaymentDetails.amount.sub(
-      this.currentPaymentDetails.amount
-    );
-    if (remaining.lt(new anchor.BN(0))) {
-      return new anchor.BN(0);
+    switch (this.target.kind) {
+      case "classVariant":
+        return (this.target as UpdateTargetClassVariant).paymentState
+          ? (this.target as UpdateTargetClassVariant).paymentState.isPaid()
+          : true;
+      case "traitVariant":
+        return (this.target as UpdateTargetTraitVariant).paymentState
+          ? (this.target as UpdateTargetTraitVariant).paymentState.isPaid()
+          : true;
+      case "equipTrait":
+        return (this.target as UpdateTargetEquipTrait).paymentState
+          ? (this.target as UpdateTargetEquipTrait).paymentState.isPaid()
+          : true;
+      case "removeTrait":
+        return (this.target as UpdateTargetRemoveTrait).paymentState
+          ? (this.target as UpdateTargetRemoveTrait).paymentState.isPaid()
+          : true;
+      case "swapTrait":
+        return (
+          ((this.target as UpdateTargetSwapTrait).equipPaymentState
+            ? (this.target as UpdateTargetSwapTrait).equipPaymentState.isPaid()
+            : true) &&
+          ((this.target as UpdateTargetSwapTrait).removePaymentState
+            ? (this.target as UpdateTargetSwapTrait).removePaymentState.isPaid()
+            : true)
+        );
+      default:
+        throw new Error(`Unknown target kind: ${this.target.kind}`);
     }
   }
 }
@@ -617,38 +664,88 @@ export type UpdateTarget =
   | UpdateTargetClassVariant
   | UpdateTargetTraitVariant
   | UpdateTargetEquipTrait
-  | UpdateTargetRemoveTrait;
+  | UpdateTargetRemoveTrait
+  | UpdateTargetSwapTrait;
 
 export function parseUpdateTarget(data: any): UpdateTarget {
   if ("classVariant" in data) {
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.classVariant.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.classVariant.paymentState.paymentMethod),
+        new anchor.BN(data.classVariant.paymentState.currentAmount),
+        new anchor.BN(data.classVariant.paymentState.requiredAmount)
+      );
+    }
     return new UpdateTargetClassVariant(
       data.classVariant.variantId,
-      data.classVariant.optionId
+      data.classVariant.optionId,
+      paymentState
     );
   }
 
   if ("traitVariant" in data) {
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.traitVariant.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.traitVariant.paymentState.paymentMethod),
+        new anchor.BN(data.traitVariant.paymentState.currentAmount),
+        new anchor.BN(data.traitVariant.paymentState.requiredAmount)
+      );
+    }
     return new UpdateTargetTraitVariant(
       data.traitVariant.variantId,
       data.traitVariant.optionId,
-      data.traitVariant.traitAccount
+      data.traitVariant.traitAccount,
+      paymentState
     );
   }
 
   if ("equipTrait" in data) {
-    return new UpdateTargetEquipTrait(data.equipTrait.traitAccount);
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.equipTrait.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.equipTrait.paymentState.paymentMethod),
+        new anchor.BN(data.equipTrait.paymentState.currentAmount),
+        new anchor.BN(data.equipTrait.paymentState.requiredAmount)
+      );
+    }
+    return new UpdateTargetEquipTrait(
+      data.equipTrait.traitAccount,
+      paymentState
+    );
   }
 
   if ("removeTrait" in data) {
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.removeTrait.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.removeTrait.paymentState.paymentMethod),
+        new anchor.BN(data.removeTrait.paymentState.currentAmount),
+        new anchor.BN(data.removeTrait.paymentState.requiredAmount)
+      );
+    }
     return new UpdateTargetRemoveTrait(
       data.removeTrait.traitAccount,
-      data.removeTrait.traitDestinationAuthority
+      paymentState
+    );
+  }
+
+  if ("swapTrait" in data) {
+    return new UpdateTargetSwapTrait(
+      data.swapTrait.traitAccount,
+      data.swapTrait.traitDestinationAuthority
     );
   }
 }
 
-export function hashUpdateTarget(updateTarget: UpdateTarget): Buffer {
-  if (updateTarget instanceof UpdateTargetClassVariant) {
+export function hashUpdateTarget(
+  updateTarget: UpdateTarget | UpdateTargetSelection
+): Buffer {
+  if (
+    updateTarget instanceof UpdateTargetClassVariant ||
+    updateTarget instanceof UpdateTargetSelectionClassVariant
+  ) {
     const digest = sha256.digest(
       `${updateTarget.variantId}${updateTarget.optionId}`
     );
@@ -656,7 +753,10 @@ export function hashUpdateTarget(updateTarget: UpdateTarget): Buffer {
     return buf;
   }
 
-  if (updateTarget instanceof UpdateTargetTraitVariant) {
+  if (
+    updateTarget instanceof UpdateTargetTraitVariant ||
+    updateTarget instanceof UpdateTargetSelectionTraitVariant
+  ) {
     const digest = sha256.digest(
       `${updateTarget.variantId}${
         updateTarget.optionId
@@ -666,14 +766,31 @@ export function hashUpdateTarget(updateTarget: UpdateTarget): Buffer {
     return buf;
   }
 
-  if (updateTarget instanceof UpdateTargetEquipTrait) {
+  if (
+    updateTarget instanceof UpdateTargetEquipTrait ||
+    updateTarget instanceof UpdateTargetSelectionEquipTrait
+  ) {
     const digest = sha256.digest(`${updateTarget.traitAccount.toString()}`);
     const buf = Buffer.from(digest);
     return buf;
   }
 
-  if (updateTarget instanceof UpdateTargetRemoveTrait) {
+  if (
+    updateTarget instanceof UpdateTargetRemoveTrait ||
+    updateTarget instanceof UpdateTargetSelectionRemoveTrait
+  ) {
     const digest = sha256.digest(`${updateTarget.traitAccount.toString()}`);
+    const buf = Buffer.from(digest);
+    return buf;
+  }
+
+  if (
+    updateTarget instanceof UpdateTargetSwapTrait ||
+    updateTarget instanceof UpdateTargetSelectionSwapTrait
+  ) {
+    const digest = sha256.digest(
+      `${updateTarget.equipTraitAccount.toString()}${updateTarget.removeTraitAccount.toString()}`
+    );
     const buf = Buffer.from(digest);
     return buf;
   }
@@ -682,6 +799,178 @@ export function hashUpdateTarget(updateTarget: UpdateTarget): Buffer {
 }
 
 export class UpdateTargetTraitVariant {
+  readonly kind: string;
+  readonly variantId: string;
+  readonly optionId: string;
+  readonly trait: anchor.web3.PublicKey;
+  readonly paymentState: PaymentState | null;
+
+  constructor(
+    variantId: string,
+    optionId: string,
+    trait: anchor.web3.PublicKey,
+    paymentState?: PaymentState
+  ) {
+    this.kind = "traitVariant";
+    this.variantId = variantId;
+    this.optionId = optionId;
+    this.trait = new anchor.web3.PublicKey(trait);
+    if (paymentState) {
+      this.paymentState = paymentState;
+    } else {
+      this.paymentState = null;
+    }
+  }
+
+  format(): any {
+    return {
+      traitVariant: {
+        variantId: this.variantId,
+        optionId: this.optionId,
+        traitAccount: this.trait,
+      },
+    };
+  }
+}
+
+export class UpdateTargetClassVariant {
+  readonly kind: string;
+  readonly variantId: string;
+  readonly optionId: string;
+  readonly paymentState: PaymentState | null;
+
+  constructor(
+    variantId: string,
+    optionId: string,
+    paymentState?: PaymentState
+  ) {
+    this.kind = "classVariant";
+    this.variantId = variantId;
+    this.optionId = optionId;
+
+    if (paymentState) {
+      this.paymentState = paymentState;
+    } else {
+      this.paymentState = null;
+    }
+  }
+
+  format(): any {
+    return {
+      classVariant: {
+        variantId: this.variantId,
+        optionId: this.optionId,
+        paymentState: this.paymentState,
+      },
+    };
+  }
+}
+
+export class UpdateTargetEquipTrait {
+  readonly kind: string;
+  readonly traitAccount: anchor.web3.PublicKey;
+  readonly paymentState: PaymentState | null;
+
+  constructor(
+    traitAccount: anchor.web3.PublicKey,
+    paymentState?: PaymentState
+  ) {
+    this.kind = "equipTrait";
+    this.traitAccount = new anchor.web3.PublicKey(traitAccount);
+    if (paymentState) {
+      this.paymentState = paymentState;
+    } else {
+      this.paymentState = null;
+    }
+  }
+
+  format(): any {
+    return {
+      equipTrait: {
+        traitAccount: this.traitAccount,
+        paymentState: this.paymentState,
+      },
+    };
+  }
+}
+
+export class UpdateTargetRemoveTrait {
+  readonly kind: string;
+  readonly traitAccount: anchor.web3.PublicKey;
+  readonly paymentState: PaymentState | null;
+
+  constructor(
+    traitAccount: anchor.web3.PublicKey,
+    paymentState?: PaymentState
+  ) {
+    this.kind = "removeTrait";
+    this.traitAccount = new anchor.web3.PublicKey(traitAccount);
+    if (paymentState) {
+      this.paymentState = paymentState;
+    } else {
+      this.paymentState = null;
+    }
+  }
+
+  format(): any {
+    return {
+      removeTrait: {
+        traitAccount: this.traitAccount,
+        paymentState: this.paymentState,
+      },
+    };
+  }
+}
+
+export class UpdateTargetSwapTrait {
+  readonly kind: string;
+  readonly equipTraitAccount: anchor.web3.PublicKey;
+  readonly removeTraitAccount: anchor.web3.PublicKey;
+  readonly equipPaymentState: PaymentState | null;
+  readonly removePaymentState: PaymentState | null;
+
+  constructor(
+    equiptraitAccount: anchor.web3.PublicKey,
+    removetraitAccount: anchor.web3.PublicKey,
+    equipPaymentState?: PaymentState,
+    removePaymentState?: PaymentState
+  ) {
+    this.kind = "swapTrait";
+    this.equipTraitAccount = new anchor.web3.PublicKey(equiptraitAccount);
+    this.removeTraitAccount = new anchor.web3.PublicKey(removetraitAccount);
+    if (equipPaymentState) {
+      this.equipPaymentState = equipPaymentState;
+    } else {
+      this.equipPaymentState = null;
+    }
+
+    if (removePaymentState) {
+      this.removePaymentState = removePaymentState;
+    } else {
+      this.removePaymentState = null;
+    }
+  }
+
+  format(): any {
+    return {
+      swapTrait: {
+        equipTraitAccount: this.equipTraitAccount,
+        removeTraitAccount: this.removeTraitAccount,
+        equipPaymentState: this.equipPaymentState,
+        removePaymentState: this.removePaymentState,
+      },
+    };
+  }
+}
+
+export type UpdateTargetSelection =
+  | UpdateTargetSelectionClassVariant
+  | UpdateTargetSelectionTraitVariant
+  | UpdateTargetSelectionEquipTrait
+  | UpdateTargetSelectionRemoveTrait
+  | UpdateTargetSelectionSwapTrait;
+
+export class UpdateTargetSelectionTraitVariant {
   readonly kind: string;
   readonly variantId: string;
   readonly optionId: string;
@@ -709,7 +998,7 @@ export class UpdateTargetTraitVariant {
   }
 }
 
-export class UpdateTargetClassVariant {
+export class UpdateTargetSelectionClassVariant {
   readonly kind: string;
   readonly variantId: string;
   readonly optionId: string;
@@ -727,11 +1016,14 @@ export class UpdateTargetClassVariant {
   }
 }
 
-export class UpdateTargetEquipTrait {
+export class UpdateTargetSelectionEquipTrait {
   readonly kind: string;
   readonly traitAccount: anchor.web3.PublicKey;
 
-  constructor(traitAccount: anchor.web3.PublicKey) {
+  constructor(
+    traitAccount: anchor.web3.PublicKey,
+    paymentState?: PaymentState
+  ) {
     this.kind = "equipTrait";
     this.traitAccount = new anchor.web3.PublicKey(traitAccount);
   }
@@ -743,27 +1035,43 @@ export class UpdateTargetEquipTrait {
   }
 }
 
-export class UpdateTargetRemoveTrait {
+export class UpdateTargetSelectionRemoveTrait {
   readonly kind: string;
   readonly traitAccount: anchor.web3.PublicKey;
-  readonly traitDestinationAuthority: anchor.web3.PublicKey;
 
-  constructor(
-    traitAccount: anchor.web3.PublicKey,
-    traitDestinationAuthority: anchor.web3.PublicKey
-  ) {
+  constructor(traitAccount: anchor.web3.PublicKey) {
     this.kind = "removeTrait";
     this.traitAccount = new anchor.web3.PublicKey(traitAccount);
-    this.traitDestinationAuthority = new anchor.web3.PublicKey(
-      traitDestinationAuthority
-    );
   }
 
   format(): any {
     return {
       removeTrait: {
         traitAccount: this.traitAccount,
-        traitDestinationAuthority: this.traitDestinationAuthority,
+      },
+    };
+  }
+}
+
+export class UpdateTargetSelectionSwapTrait {
+  readonly kind: string;
+  readonly equipTraitAccount: anchor.web3.PublicKey;
+  readonly removeTraitAccount: anchor.web3.PublicKey;
+
+  constructor(
+    equiptraitAccount: anchor.web3.PublicKey,
+    removetraitAccount: anchor.web3.PublicKey
+  ) {
+    this.kind = "swapTrait";
+    this.equipTraitAccount = new anchor.web3.PublicKey(equiptraitAccount);
+    this.removeTraitAccount = new anchor.web3.PublicKey(removetraitAccount);
+  }
+
+  format(): any {
+    return {
+      swapTrait: {
+        equipTraitAccount: this.equipTraitAccount,
+        removeTraitAccount: this.removeTraitAccount,
       },
     };
   }

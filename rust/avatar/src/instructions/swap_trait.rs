@@ -21,7 +21,7 @@ pub struct SwapTrait<'info> {
 
     #[account(
         constraint = avatar_mint_ata.amount == 1,
-        associated_token::mint = avatar.mint, associated_token::authority = avatar_owner)]
+        associated_token::mint = avatar.mint, associated_token::authority = avatar_authority)]
     pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut,
@@ -49,7 +49,7 @@ pub struct SwapTrait<'info> {
     #[account(mut, constraint = equip_trait_source.mint.eq(&equip_trait_account.trait_mint.key()))]
     pub equip_trait_source: Box<Account<'info, token::TokenAccount>>,
 
-    #[account(mut, associated_token::mint = remove_trait_account.trait_mint, associated_token::authority = avatar_owner)]
+    #[account(mut, associated_token::mint = remove_trait_account.trait_mint, associated_token::authority = avatar_authority)]
     pub remove_trait_destination: Account<'info, token::TokenAccount>,
 
     #[account(mut, associated_token::mint = equip_trait_account.trait_mint, associated_token::authority = avatar)]
@@ -59,7 +59,7 @@ pub struct SwapTrait<'info> {
     pub avatar_remove_trait_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut)]
-    pub avatar_owner: SystemAccount<'info>,
+    pub avatar_authority: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -129,7 +129,7 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
     if ctx.accounts.avatar_remove_trait_ata.amount == 0 {
         let close_ata_accounts = token::CloseAccount {
             account: ctx.accounts.avatar_remove_trait_ata.to_account_info(),
-            destination: ctx.accounts.avatar_owner.to_account_info(),
+            destination: ctx.accounts.avatar_authority.to_account_info(),
             authority: ctx.accounts.avatar.to_account_info(),
         };
 
@@ -195,5 +195,5 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
 
     ctx.accounts
         .update_state
-        .close(ctx.accounts.avatar_owner.to_account_info())
+        .close(ctx.accounts.avatar_authority.to_account_info())
 }

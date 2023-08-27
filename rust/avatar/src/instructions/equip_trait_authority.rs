@@ -1,12 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::state::{
-    accounts::{Avatar, AvatarClass, Trait},
-    errors::ErrorCode,
-};
-
-use crate::utils::validate_attribute_availability;
+use crate::state::accounts::{Avatar, AvatarClass, Trait};
 
 #[derive(Accounts)]
 pub struct EquipTraitAuthority<'info> {
@@ -47,14 +42,6 @@ pub struct EquipTraitAuthority<'info> {
 }
 
 pub fn handler(ctx: Context<EquipTraitAuthority>) -> Result<()> {
-    // verify all attributes the trait_account requires are available
-    let valid = validate_attribute_availability(
-        &ctx.accounts.trait_account.attribute_ids,
-        &ctx.accounts.avatar.traits,
-        &ctx.accounts.avatar_class.attribute_metadata,
-    );
-    require!(valid, ErrorCode::InvalidAttributeId);
-
     // create trait data for newly equipped trait
     let avatar_account_info = ctx.accounts.avatar.to_account_info();
     ctx.accounts.avatar.add_trait(

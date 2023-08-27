@@ -57,8 +57,8 @@ import {
   UpdateTargetClassVariant,
   UpdateVariantAccounts,
   UpdateTargetTraitVariant,
+  UpdateTargetSelectionTraitVariant,
   UPDATE_STATE_PREFIX,
-  PaymentDetails,
   PayForUpdateAccounts,
   FungiblePaymentAssetClass,
   BurnPaymentAction,
@@ -82,6 +82,12 @@ import {
   AddTraitConflictsAccounts,
   AddTraitConflictsArgs,
   TraitConflicts,
+  formatAttributeType,
+  AttributeMetadata,
+  parseAttributeType,
+  UpdateTargetSelection,
+  UpdateTargetSelectionEquipTrait,
+  UpdateTargetSelectionRemoveTrait,
 } from "./state";
 import {
   AVATAR_RAIN_VAULT_DEVNET,
@@ -118,8 +124,26 @@ export class AvatarClient {
       accounts.authority
     );
 
+    const formattedAttributeMetadata: any[] = [];
+    for (let am of args.attributeMetadata) {
+      formattedAttributeMetadata.push({
+        name: am.name,
+        id: am.id,
+        status: {
+          attributeType: formatAttributeType(am.status.attributeType),
+          mutable: am.status.mutable,
+        },
+      });
+    }
+
+    const ixArgs = {
+      attributeMetadata: formattedAttributeMetadata,
+      variantMetadata: args.variantMetadata,
+      globalRenderingConfigUri: args.globalRenderingConfigUri,
+    };
+
     const tx = await this.program.methods
-      .createAvatarClass(args)
+      .createAvatarClass(ixArgs)
       .accounts({
         avatarClass: avatarClass,
         avatarClassMint: accounts.avatarClassMint,
@@ -262,7 +286,7 @@ export class AvatarClient {
     const traitData = await this.getTrait(trait);
 
     // check if update state pda already exists
-    const target = new UpdateTargetEquipTrait(trait);
+    const target = new UpdateTargetSelectionEquipTrait(trait);
     const updateState = updateStatePDA(accounts.avatar, target);
     const updateStateData = await this.getUpdateState(updateState);
 
@@ -292,6 +316,10 @@ export class AvatarClient {
       this.provider.connection,
       avatarData.mint
     );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
 
     const traitSource = splToken.getAssociatedTokenAddressSync(
       accounts.traitMint,
@@ -310,6 +338,8 @@ export class AvatarClient {
         avatarTraitAta: avatarTraitAta,
         traitConflicts: traitConflicts,
         payer: accounts.payer,
+        avatarMintAta: avatarAuthorityAta,
+        avatarAuthority: avatarAuthority,
         updateState: updateState,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -487,6 +517,10 @@ export class AvatarClient {
       this.provider.connection,
       avatarData.mint
     );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
 
     const trait = traitPDA(avatarData.avatarClass, accounts.traitMint);
     // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
@@ -494,7 +528,7 @@ export class AvatarClient {
     const traitData = await this.getTrait(trait);
 
     // check if update state pda already exists
-    const target = new UpdateTargetRemoveTrait(trait, avatarAuthority);
+    const target = new UpdateTargetSelectionRemoveTrait(trait);
     const updateState = updateStatePDA(accounts.avatar, target);
     const updateStateData = await this.getUpdateState(updateState);
 
@@ -545,6 +579,8 @@ export class AvatarClient {
         updateState: updateState,
         traitAccount: trait,
         traitDestination: traitDestination,
+        avatarMintAta: avatarAuthorityAta,
+        avatarAuthority: avatarAuthority,
         payer: accounts.payer,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -629,6 +665,15 @@ export class AvatarClient {
       traitAccount = updateStateData.target.trait;
     }
 
+    const avatarAuthority = await this.getNftHolder(
+      this.provider.connection,
+      avatarData.mint
+    );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
+
     const tx = await this.program.methods
       .updateVariant()
       .accounts({
@@ -637,6 +682,8 @@ export class AvatarClient {
         updateState: updateState,
         traitAccount: traitAccount,
         payer: accounts.payer,
+        avatarMintAta: avatarAuthorityAta,
+        avatarAuthority: avatarAuthority,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .transaction();
@@ -804,8 +851,9 @@ export class AvatarClient {
 
     let traitData: Trait | null = null;
     let isTraitUpdate = false;
-    if (args.updateTarget instanceof UpdateTargetTraitVariant) {
-      const updateTarget = args.updateTarget as UpdateTargetTraitVariant;
+    if (args.updateTarget instanceof UpdateTargetSelectionTraitVariant) {
+      const updateTarget =
+        args.updateTarget as UpdateTargetSelectionTraitVariant;
       traitData = await this.getTrait(updateTarget.trait);
       if (
         !traitData.isValidVariant(updateTarget.variantId, updateTarget.optionId)
@@ -816,14 +864,14 @@ export class AvatarClient {
       }
     }
 
-    if (args.updateTarget instanceof UpdateTargetEquipTrait) {
+    if (args.updateTarget instanceof UpdateTargetSelectionEquipTrait) {
       isTraitUpdate = true;
       const updateTargetEquipTrait =
         args.updateTarget as UpdateTargetEquipTrait;
       traitData = await this.getTrait(updateTargetEquipTrait.traitAccount);
     }
 
-    if (args.updateTarget instanceof UpdateTargetRemoveTrait) {
+    if (args.updateTarget instanceof UpdateTargetSelectionRemoveTrait) {
       isTraitUpdate = true;
       const updateTargetRemoveTrait =
         args.updateTarget as UpdateTargetRemoveTrait;
@@ -1734,11 +1782,23 @@ export class AvatarClient {
       variantMetadata.push(vm);
     }
 
+    const attributeMetadata: AttributeMetadata[] = [];
+    for (const amRaw of avatarClassData.attributeMetadata) {
+      attributeMetadata.push({
+        name: amRaw.name,
+        id: amRaw.id,
+        status: {
+          mutable: amRaw.status.mutable,
+          attributeType: parseAttributeType(amRaw.status.attributeType),
+        },
+      });
+    }
+
     const avatarClass = new AvatarClass(
       avatarClassData.mint,
       avatarClassData.traitIndex,
       new anchor.BN(avatarClassData.paymentIndex),
-      avatarClassData.attributeMetadata,
+      attributeMetadata,
       variantMetadata,
       avatarClassData.globalRenderingConfigUri
     );
@@ -1833,27 +1893,9 @@ export class AvatarClient {
       return null;
     }
 
-    let currentPaymentDetails: PaymentDetails | null = null;
-    if (updateStateRaw.currentPaymentDetails !== null) {
-      currentPaymentDetails = {
-        paymentMethod: updateStateRaw.currentPaymentDetails.paymentMethod,
-        amount: new anchor.BN(updateStateRaw.currentPaymentDetails.amount),
-      };
-    }
-
-    let requiredPaymentDetails: PaymentDetails | null = null;
-    if (updateStateRaw.requiredPaymentDetails !== null) {
-      requiredPaymentDetails = {
-        paymentMethod: updateStateRaw.requiredPaymentDetails.paymentMethod,
-        amount: new anchor.BN(updateStateRaw.requiredPaymentDetails.amount),
-      };
-    }
-
     return new UpdateState(
       updateStateRaw.initialized,
       updateStateRaw.avatar,
-      currentPaymentDetails,
-      requiredPaymentDetails,
       parseUpdateTarget(updateStateRaw.target)
     );
   }
@@ -2160,7 +2202,7 @@ export function paymentMethodPDA(
 
 export function updateStatePDA(
   avatar: anchor.web3.PublicKey,
-  updateTarget: UpdateTarget
+  updateTarget: UpdateTarget | UpdateTargetSelection
 ): anchor.web3.PublicKey {
   const hash = hashUpdateTarget(updateTarget);
   return anchor.web3.PublicKey.findProgramAddressSync(

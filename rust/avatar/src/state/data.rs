@@ -503,7 +503,7 @@ pub struct PaymentState {
 }
 
 impl PaymentState {
-    pub const SPACE: usize = 32 + 8;
+    pub const SPACE: usize = 32 + 8 + 8;
 
     pub fn is_payment_method(&self, payment_method: &Pubkey) -> bool {
         self.payment_method.eq(payment_method)
