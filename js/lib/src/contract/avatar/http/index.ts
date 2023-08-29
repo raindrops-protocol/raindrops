@@ -204,29 +204,27 @@ export class AvatarClient {
   }
 
   async beginUpdate(
-    avatar: anchor.web3.PublicKey,
-    updates: BeginUpdateRequest[]
+    beginUpdateRequest: BeginUpdateRequest
   ): Promise<string> {
     // create beginUpdate txn
     const response = await fetch(`${this.baseUrl}/beginUpdate`, {
       method: "POST",
       headers: createHeaders(this.apiKey),
       body: JSON.stringify({
-        avatar: avatar,
-        updates: updates,
+        beginUpdateRequest: beginUpdateRequest,
       }),
     });
 
     // sign and reserialize all txns
     const body = await handleResponse(response);
-    const beginUpdateRestResponse: BeginUpdateRestResponse[] = JSON.parse(
-      body.response
+    const beginUpdateRestResponse: BeginUpdateTransactions = JSON.parse(
+      body.transactions
     );
-    for (const res of beginUpdateRestResponse) {
+    for (let base64Tx of beginUpdateRestResponse.txns) {
       // sign the tx
-      const tx = anchor.web3.Transaction.from(Buffer.from(res.tx, "base64"));
+      const tx = anchor.web3.Transaction.from(Buffer.from(base64Tx[0], "base64"));
       const signedTx = await this.provider.wallet.signTransaction(tx);
-      res.tx = signedTx.serialize().toString("base64");
+      base64Tx[0] = signedTx.serialize().toString("base64");
     }
 
     // open websocket connection
@@ -245,7 +243,7 @@ export class AvatarClient {
     const request: AvatarRequest = {
       metadata: {
         requestType: "update",
-        avatar: avatar,
+        avatar: beginUpdateRequest.avatar,
       },
       data: beginUpdateRestResponse,
     };
@@ -564,14 +562,48 @@ interface AvatarRequestMetadata {
 }
 
 export interface BeginUpdateRequest {
-  paymentData: [anchor.web3.PublicKey, string][];
-  updateTarget: AvatarRpc.UpdateTarget;
+  avatar: anchor.web3.PublicKey;
+  updates: [AvatarUpdate, PaymentData | undefined][];
 }
+
+export type AvatarUpdate = TraitUpdate | VariantUpdate;
+
+export class TraitUpdate {
+  readonly type: String;
+  readonly trait: anchor.web3.PublicKey;
+  readonly action: TraitUpdateAction;
+
+  constructor(trait: anchor.web3.PublicKey, action: TraitUpdateAction) {
+    this.trait = trait;
+    this.action = action;
+    this.type = 'TraitUpdate';
+  }
+}
+
+export class VariantUpdate {
+  readonly type: String;
+  readonly variantId: string;
+  readonly optionId: string;
+  readonly trait?: anchor.web3.PublicKey;
+
+  constructor(variantId: string, optionId: string, trait?: anchor.web3.PublicKey, paymentData?: PaymentData) {
+    this.variantId = variantId; 
+    this.optionId = optionId;
+    this.trait = trait;
+    this.type = 'VariantUpdate'
+  }
+}
+
+export interface PaymentData {
+  mint: anchor.web3.PublicKey;
+  amount: string;
+}
+
+export type TraitUpdateAction = "Equip" | "Remove";
 
 // what we expect returned from the rest api
 // this is then used to send our request to our avatar transformer via the websocket api
-export interface BeginUpdateRestResponse {
-  tx: string;
-  paymentData: [anchor.web3.PublicKey, anchor.BN][];
-  updateTarget: AvatarRpc.UpdateTarget;
+export interface BeginUpdateTransactions {
+  avatar: anchor.web3.PublicKey;
+  txns: [string, AvatarRpc.UpdateTargetSelection, PaymentData[]][];
 }
