@@ -586,7 +586,7 @@ export class VariantUpdate {
   readonly optionId: string;
   readonly trait?: anchor.web3.PublicKey;
 
-  constructor(variantId: string, optionId: string, trait?: anchor.web3.PublicKey, paymentData?: PaymentData) {
+  constructor(variantId: string, optionId: string, trait?: anchor.web3.PublicKey) {
     this.variantId = variantId; 
     this.optionId = optionId;
     this.trait = trait;
