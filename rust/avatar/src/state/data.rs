@@ -7,7 +7,7 @@ use crate::utils::reallocate;
 
 use super::errors::ErrorCode;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct AttributeMetadata {
     pub id: u16,
     pub name: String,
@@ -22,7 +22,7 @@ impl AttributeMetadata {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct VariantMetadata {
     pub name: String,
     pub id: String,

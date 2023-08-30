@@ -12,6 +12,7 @@ use super::data::{
 
 // seeds = [b'avatar_class', mint.key().as_ref()]
 #[account]
+#[derive(Debug)]
 pub struct AvatarClass {
     pub mint: Pubkey,
     pub trait_index: u16,
@@ -41,6 +42,7 @@ impl AvatarClass {
         8 + // anchor
         32 + // avatar_class mint
         2 + // trait index
+        8 + // payment index
         AvatarClass::attribute_metadata_space(&self.attribute_metadata) + // attribute metadata
         AvatarClass::variant_metadata_space(&self.variant_metadata) + // variant metadata
         (4 + self.global_rendering_config_uri.len()) // global rendering config uri

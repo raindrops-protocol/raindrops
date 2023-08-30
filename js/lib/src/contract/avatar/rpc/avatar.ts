@@ -91,6 +91,8 @@ import {
   SwapTraitAccounts,
   UpdateTargetSelectionSwapTrait,
   UpdateTargetSwapTrait,
+  MigrateAvatarClassAccountAccounts,
+  MigrateAvatarClassAccountArgs,
 } from "./state";
 import {
   AVATAR_RAIN_VAULT_DEVNET,
@@ -1835,17 +1837,32 @@ export class AvatarClient {
     return tx;
   }
 
-  async migrateAvatarClassAccount(
-    avatarClass: anchor.web3.PublicKey
-  ): Promise<anchor.web3.Transaction> {
+  async migrateAvatarClassAccount(accounts: MigrateAvatarClassAccountAccounts, args: MigrateAvatarClassAccountArgs): Promise<anchor.web3.Transaction> {
     const authority = new anchor.web3.PublicKey(
       "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
     );
 
+    const formattedAttributeMetadata: any[] = [];
+    for (const am of args.attributeMetadata) {
+      formattedAttributeMetadata.push({
+        name: am.name,
+        id: am.id,
+        status: {
+          attributeType: formatAttributeType(am.status.attributeType),
+          mutable: am.status.mutable,
+        },
+      });
+    }
+
+    const ixArgs = {
+      newAttributeMetadata: formattedAttributeMetadata,
+      globalRenderingConfigUri: args.globalRenderingConfigUri,
+    };
+
     const tx = await this.program.methods
-      .migrateAvatarClassAccount()
+      .migrateAvatarClassAccount(ixArgs)
       .accounts({
-        avatarClass: avatarClass,
+        avatarClass: accounts.avatarClass,
         authority: authority,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -1854,6 +1871,13 @@ export class AvatarClient {
     await this.setPayer(tx, authority);
 
     return tx;
+  }
+
+  async getAvatarClassPreMigration(avatarClass: anchor.web3.PublicKey): Promise<any> {
+    const accountInfo = await this.provider.connection.getAccountInfo(avatarClass);
+    const coder = new anchor.BorshAccountsCoder(Idls.AvatarIDL)
+    const oldAvatarClassData = coder.decodeUnchecked("oldAvatarClass", accountInfo.data);
+    return oldAvatarClassData
   }
 
   async getAvatar(

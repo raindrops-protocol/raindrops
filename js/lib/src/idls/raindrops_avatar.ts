@@ -1492,7 +1492,14 @@ export type RaindropsAvatar = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MigrateAvatarClassAccountArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2004,6 +2011,26 @@ export type RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigrateAvatarClassAccountArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newAttributeMetadata",
+            "type": {
+              "vec": {
+                "defined": "AttributeMetadata"
+              }
+            }
+          },
+          {
+            "name": "globalRenderingConfigUri",
+            "type": "string"
           }
         ]
       }
@@ -4231,7 +4258,14 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MigrateAvatarClassAccountArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -4743,6 +4777,26 @@ export const IDL: RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigrateAvatarClassAccountArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newAttributeMetadata",
+            "type": {
+              "vec": {
+                "defined": "AttributeMetadata"
+              }
+            }
+          },
+          {
+            "name": "globalRenderingConfigUri",
+            "type": "string"
           }
         ]
       }

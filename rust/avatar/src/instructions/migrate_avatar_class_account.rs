@@ -18,7 +18,13 @@ pub struct MigrateAvatarClassAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct MigrateAvatarClassAccountArgs {
+    pub new_attribute_metadata: Vec<AttributeMetadata>,
+    pub global_rendering_config_uri: String,
+}
+
+pub fn handler(ctx: Context<MigrateAvatarClassAccount>, args: MigrateAvatarClassAccountArgs) -> Result<()> {
     msg!(
         "migrating avatar_class account: {}",
         &ctx.accounts.avatar_class.key()
@@ -34,46 +40,31 @@ pub fn handler(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
         old_mint,
         old_trait_index,
         old_payment_index,
-        old_attribute_metadata,
-        old_variant_metadata,
-        old_global_rendering_config_uri,
+        //old_attribute_metadata,
+        //old_variant_metadata,
+        //old_global_rendering_config_uri,
     ) = {
         let b = &avatar_class_account_info.try_borrow_mut_data().unwrap();
-        let avatar_class_account: OldAvatarClass =
-            AnchorDeserialize::deserialize(&mut &b[8..]).unwrap();
+        msg!("borrowed data");
 
         (
-            avatar_class_account.mint,
-            avatar_class_account.trait_index,
-            avatar_class_account.payment_index,
-            avatar_class_account.attribute_metadata.clone(),
-            avatar_class_account.variant_metadata.clone(),
-            avatar_class_account.global_rendering_config_uri,
+            Pubkey::new(&b[8..40]),
+            u16::from_le_bytes(b[40..42].try_into().unwrap()),
+            u64::from_le_bytes(b[42..50].try_into().unwrap()),
         )
     };
-
-    // create the new attribute metadata with the updated status to make every slot optional for existing avatar classes
-    let mut attribute_metadata: Vec<AttributeMetadata> = vec![];
-    for old_am in old_attribute_metadata {
-        attribute_metadata.push(AttributeMetadata {
-            id: old_am.id,
-            name: old_am.name,
-            status: AttributeStatus {
-                mutable: old_am.status.mutable,
-                attribute_type: AttributeType::Optional,
-            },
-        });
-    }
+    msg!("old data extracted: {} {} {}", old_mint, old_trait_index, old_payment_index);
 
     // Create new avatar_class data using fetched old data
     let new_avatar_class_data: AvatarClass = AvatarClass {
         mint: old_mint,
         trait_index: old_trait_index,
         payment_index: old_payment_index,
-        attribute_metadata: attribute_metadata,
-        variant_metadata: old_variant_metadata,
-        global_rendering_config_uri: old_global_rendering_config_uri.clone(),
+        attribute_metadata: args.new_attribute_metadata,
+        variant_metadata: vec![],
+        global_rendering_config_uri: args.global_rendering_config_uri.clone()
     };
+    msg!("new avatar class data created: {:?}", new_avatar_class_data);
 
     // Serialize the new_avatar_class_data
     let new_avatar_class_data_vec = new_avatar_class_data.try_to_vec().unwrap();
@@ -87,6 +78,7 @@ pub fn handler(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
         avatar_class_account_data[8..8 + new_avatar_class_data_vec.len()]
             .copy_from_slice(&new_avatar_class_data_vec);
     }
+    msg!("new avatar class data written to account");
 
     // get the new space of the account
     let new_space = new_avatar_class_data.current_space();
@@ -103,14 +95,17 @@ pub fn handler(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
         ctx.accounts.authority.clone(),
         ctx.accounts.system_program.clone(),
     )?;
+    msg!("account size reallocated");
 
     // deserialize new account
     let new_account_data: Account<'_, AvatarClass> =
         Account::try_from(&ctx.accounts.avatar_class.to_account_info()).unwrap();
 
+    msg!("new account deserialized");
+
     // simple check to make sure the new account data is correct
     require!(
-        new_account_data.global_rendering_config_uri == old_global_rendering_config_uri,
+        new_account_data.global_rendering_config_uri == args.global_rendering_config_uri,
         ErrorCode::MigrationError
     );
 

@@ -300,6 +300,16 @@ export interface AddTraitConflictsArgs {
   attributeIds?: number[];
 }
 
+export interface MigrateAvatarClassAccountAccounts {
+  avatarClass: anchor.web3.PublicKey;
+}
+
+export interface MigrateAvatarClassAccountArgs {
+  attributeMetadata: AttributeMetadata[];
+  variantMetadata: VariantMetadata[];
+  globalRenderingConfigUri: string;
+}
+
 export interface Attribute {
   id: number;
   trait: anchor.web3.PublicKey | null;
