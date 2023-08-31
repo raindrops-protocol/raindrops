@@ -761,16 +761,20 @@ export function parseUpdateTarget(data: any): UpdateTarget {
     let equipPaymentState: PaymentState | undefined = undefined;
     if (data.swapTrait.equipPaymentState) {
       equipPaymentState = new PaymentState(
-        new anchor.web3.PublicKey(data.swapTrait.equipPaymentState.paymentMethod),
+        new anchor.web3.PublicKey(
+          data.swapTrait.equipPaymentState.paymentMethod
+        ),
         new anchor.BN(data.swapTrait.equipPaymentState.currentAmount),
         new anchor.BN(data.swapTrait.equipPaymentState.requiredAmount)
       );
-    };
+    }
 
     let removePaymentState: PaymentState | undefined = undefined;
     if (data.swapTrait.removePaymentState) {
       removePaymentState = new PaymentState(
-        new anchor.web3.PublicKey(data.swapTrait.removePaymentState.paymentMethod),
+        new anchor.web3.PublicKey(
+          data.swapTrait.removePaymentState.paymentMethod
+        ),
         new anchor.BN(data.swapTrait.removePaymentState.currentAmount),
         new anchor.BN(data.swapTrait.removePaymentState.requiredAmount)
       );
@@ -779,7 +783,7 @@ export function parseUpdateTarget(data: any): UpdateTarget {
       data.swapTrait.equipTraitAccount,
       data.swapTrait.removeTraitAccount,
       equipPaymentState,
-      removePaymentState,
+      removePaymentState
     );
   }
 }
@@ -851,7 +855,7 @@ export function parseUpdateTargetByKind(data: any): UpdateTarget {
   if ("swapTrait" === data.kind) {
     return new UpdateTargetSwapTrait(
       new anchor.web3.PublicKey(data.equipTraitAccount),
-      new anchor.web3.PublicKey(data.removeTraitAccount),
+      new anchor.web3.PublicKey(data.removeTraitAccount)
     );
   }
 }

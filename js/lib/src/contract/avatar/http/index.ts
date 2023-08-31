@@ -203,9 +203,7 @@ export class AvatarClient {
     console.log("removeTraitTxSig: %s", txSig);
   }
 
-  async beginUpdate(
-    beginUpdateRequest: BeginUpdateRequest
-  ): Promise<string> {
+  async beginUpdate(beginUpdateRequest: BeginUpdateRequest): Promise<string> {
     // create beginUpdate txn
     const response = await fetch(`${this.baseUrl}/beginUpdate`, {
       method: "POST",
@@ -220,9 +218,11 @@ export class AvatarClient {
     const beginUpdateRestResponse: BeginUpdateTransactions = JSON.parse(
       body.transactions
     );
-    for (let base64Tx of beginUpdateRestResponse.txns) {
+    for (const base64Tx of beginUpdateRestResponse.txns) {
       // sign the tx
-      const tx = anchor.web3.Transaction.from(Buffer.from(base64Tx[0], "base64"));
+      const tx = anchor.web3.Transaction.from(
+        Buffer.from(base64Tx[0], "base64")
+      );
       const signedTx = await this.provider.wallet.signTransaction(tx);
       base64Tx[0] = signedTx.serialize().toString("base64");
     }
@@ -576,7 +576,7 @@ export class TraitUpdate {
   constructor(trait: anchor.web3.PublicKey, action: TraitUpdateAction) {
     this.trait = trait;
     this.action = action;
-    this.type = 'TraitUpdate';
+    this.type = "TraitUpdate";
   }
 }
 
@@ -586,11 +586,15 @@ export class VariantUpdate {
   readonly optionId: string;
   readonly trait?: anchor.web3.PublicKey;
 
-  constructor(variantId: string, optionId: string, trait?: anchor.web3.PublicKey) {
-    this.variantId = variantId; 
+  constructor(
+    variantId: string,
+    optionId: string,
+    trait?: anchor.web3.PublicKey
+  ) {
+    this.variantId = variantId;
     this.optionId = optionId;
     this.trait = trait;
-    this.type = 'VariantUpdate'
+    this.type = "VariantUpdate";
   }
 }
 

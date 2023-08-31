@@ -879,14 +879,16 @@ export class AvatarClient {
       name: args.attributeMetadata.name,
       id: args.attributeMetadata.id,
       status: {
-        attributeType: formatAttributeType(args.attributeMetadata.status.attributeType),
+        attributeType: formatAttributeType(
+          args.attributeMetadata.status.attributeType
+        ),
         mutable: args.attributeMetadata.status.mutable,
       },
-    }
+    };
 
     const ixArgs = {
       attributeMetadata: formattedAttributeMetadata,
-    }
+    };
 
     const tx = await this.program.methods
       .updateAttributeMetadata(ixArgs)
@@ -1878,7 +1880,10 @@ export class AvatarClient {
     return tx;
   }
 
-  async migrateAvatarClassAccount(accounts: MigrateAvatarClassAccountAccounts, args: MigrateAvatarClassAccountArgs): Promise<anchor.web3.Transaction> {
+  async migrateAvatarClassAccount(
+    accounts: MigrateAvatarClassAccountAccounts,
+    args: MigrateAvatarClassAccountArgs
+  ): Promise<anchor.web3.Transaction> {
     const authority = new anchor.web3.PublicKey(
       "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
     );
@@ -1914,11 +1919,18 @@ export class AvatarClient {
     return tx;
   }
 
-  async getAvatarClassPreMigration(avatarClass: anchor.web3.PublicKey): Promise<any> {
-    const accountInfo = await this.provider.connection.getAccountInfo(avatarClass);
-    const coder = new anchor.BorshAccountsCoder(Idls.AvatarIDL)
-    const oldAvatarClassData = coder.decodeUnchecked("oldAvatarClass", accountInfo.data);
-    return oldAvatarClassData
+  async getAvatarClassPreMigration(
+    avatarClass: anchor.web3.PublicKey
+  ): Promise<any> {
+    const accountInfo = await this.provider.connection.getAccountInfo(
+      avatarClass
+    );
+    const coder = new anchor.BorshAccountsCoder(Idls.AvatarIDL);
+    const oldAvatarClassData = coder.decodeUnchecked(
+      "oldAvatarClass",
+      accountInfo.data
+    );
+    return oldAvatarClassData;
   }
 
   async getAvatar(
