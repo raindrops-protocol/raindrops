@@ -93,6 +93,8 @@ import {
   UpdateTargetSwapTrait,
   MigrateAvatarClassAccountAccounts,
   MigrateAvatarClassAccountArgs,
+  UpdateAttributeMetadataAccounts,
+  UpdateAttributeMetadataArgs,
 } from "./state";
 import {
   AVATAR_RAIN_VAULT_DEVNET,
@@ -849,6 +851,45 @@ export class AvatarClient {
 
     const tx = await this.program.methods
       .updateClassVariantMetadata(args)
+      .accounts({
+        avatarClass: accounts.avatarClass,
+        avatarClassMintAta: avatarClassMintAta,
+        authority: accounts.authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .transaction();
+
+    await this.setPayer(tx, accounts.authority);
+
+    return tx;
+  }
+
+  async updateAttributeMetadata(
+    accounts: UpdateAttributeMetadataAccounts,
+    args: UpdateAttributeMetadataArgs
+  ) {
+    const avatarClassData = await this.getAvatarClass(accounts.avatarClass);
+
+    const avatarClassMintAta = splToken.getAssociatedTokenAddressSync(
+      avatarClassData.mint,
+      accounts.authority
+    );
+
+    const formattedAttributeMetadata: any = {
+      name: args.attributeMetadata.name,
+      id: args.attributeMetadata.id,
+      status: {
+        attributeType: formatAttributeType(args.attributeMetadata.status.attributeType),
+        mutable: args.attributeMetadata.status.mutable,
+      },
+    }
+
+    const ixArgs = {
+      attributeMetadata: formattedAttributeMetadata,
+    }
+
+    const tx = await this.program.methods
+      .updateAttributeMetadata(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,

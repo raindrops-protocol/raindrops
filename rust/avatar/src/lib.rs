@@ -87,6 +87,13 @@ pub mod raindrops_avatar {
         instructions::update_class_variant_metadata::handler(ctx, args)
     }
 
+    pub fn update_attribute_metadata(
+        ctx: Context<UpdateAttributeMetadata>,
+        args: UpdateAttributeMetadataArgs,
+    ) -> Result<()> {
+        instructions::update_attribute_metadata::handler(ctx, args)
+    }
+
     pub fn begin_variant_update(
         ctx: Context<BeginVariantUpdate>,
         args: BeginVariantUpdateArgs,

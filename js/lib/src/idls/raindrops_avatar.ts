@@ -767,6 +767,39 @@ export type RaindropsAvatar = {
       ]
     },
     {
+      "name": "updateAttributeMetadata",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarClassMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "UpdateAttributeMetadataArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "beginVariantUpdate",
       "accounts": [
         {
@@ -2089,6 +2122,20 @@ export type RaindropsAvatar = {
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateAttributeMetadataArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "attributeMetadata",
+            "type": {
+              "defined": "AttributeMetadata"
+            }
           }
         ]
       }
@@ -3533,6 +3580,39 @@ export const IDL: RaindropsAvatar = {
       ]
     },
     {
+      "name": "updateAttributeMetadata",
+      "accounts": [
+        {
+          "name": "avatarClass",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "avatarClassMintAta",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "UpdateAttributeMetadataArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "beginVariantUpdate",
       "accounts": [
         {
@@ -4855,6 +4935,20 @@ export const IDL: RaindropsAvatar = {
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateAttributeMetadataArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "attributeMetadata",
+            "type": {
+              "defined": "AttributeMetadata"
+            }
           }
         ]
       }

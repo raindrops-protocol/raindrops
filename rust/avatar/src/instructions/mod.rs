@@ -25,6 +25,7 @@ pub mod update_trait_variant_metadata;
 pub mod update_variant;
 pub mod verify_payment_mint;
 pub mod verify_payment_mint_test;
+pub mod update_attribute_metadata;
 
 pub use add_payment_mint_to_payment_method::*;
 pub use add_trait_conflicts::*;
@@ -53,3 +54,4 @@ pub use update_trait_variant_metadata::*;
 pub use update_variant::*;
 pub use verify_payment_mint::*;
 pub use verify_payment_mint_test::*;
+pub use update_attribute_metadata::*;

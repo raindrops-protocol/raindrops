@@ -156,6 +156,15 @@ export interface UpdateClassVariantMetadataArgs {
   variantMetadata: VariantMetadata;
 }
 
+export interface UpdateAttributeMetadataAccounts {
+  avatarClass: anchor.web3.PublicKey;
+  authority: anchor.web3.PublicKey;
+}
+
+export interface UpdateAttributeMetadataArgs {
+  attributeMetadata: AttributeMetadata;
+}
+
 export interface CreatePaymentMethodAccounts {
   avatarClass: anchor.web3.PublicKey;
   authority: anchor.web3.PublicKey;
@@ -749,9 +758,100 @@ export function parseUpdateTarget(data: any): UpdateTarget {
   }
 
   if ("swapTrait" in data) {
+    let equipPaymentState: PaymentState | undefined = undefined;
+    if (data.swapTrait.equipPaymentState) {
+      equipPaymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.swapTrait.equipPaymentState.paymentMethod),
+        new anchor.BN(data.swapTrait.equipPaymentState.currentAmount),
+        new anchor.BN(data.swapTrait.equipPaymentState.requiredAmount)
+      );
+    };
+
+    let removePaymentState: PaymentState | undefined = undefined;
+    if (data.swapTrait.removePaymentState) {
+      removePaymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.swapTrait.removePaymentState.paymentMethod),
+        new anchor.BN(data.swapTrait.removePaymentState.currentAmount),
+        new anchor.BN(data.swapTrait.removePaymentState.requiredAmount)
+      );
+    }
     return new UpdateTargetSwapTrait(
-      data.swapTrait.traitAccount,
-      data.swapTrait.traitDestinationAuthority
+      data.swapTrait.equipTraitAccount,
+      data.swapTrait.removeTraitAccount,
+      equipPaymentState,
+      removePaymentState,
+    );
+  }
+}
+
+export function parseUpdateTargetByKind(data: any): UpdateTarget {
+  if ("classVariant" === data.kind) {
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.paymentState.paymentMethod),
+        new anchor.BN(data.paymentState.currentAmount),
+        new anchor.BN(data.paymentState.requiredAmount)
+      );
+    }
+    return new UpdateTargetClassVariant(
+      data.variantId,
+      data.optionId,
+      paymentState
+    );
+  }
+
+  if ("traitVariant" === data.kind) {
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.traitVariant.paymentState.paymentMethod),
+        new anchor.BN(data.traitVariant.paymentState.currentAmount),
+        new anchor.BN(data.traitVariant.paymentState.requiredAmount)
+      );
+    }
+    return new UpdateTargetTraitVariant(
+      data.variantId,
+      data.optionId,
+      new anchor.web3.PublicKey(data.trait),
+      paymentState
+    );
+  }
+
+  if ("equipTrait" === data.kind) {
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.equipTrait.paymentState.paymentMethod),
+        new anchor.BN(data.equipTrait.paymentState.currentAmount),
+        new anchor.BN(data.equipTrait.paymentState.requiredAmount)
+      );
+    }
+    return new UpdateTargetEquipTrait(
+      new anchor.web3.PublicKey(data.traitAccount),
+      paymentState
+    );
+  }
+
+  if ("removeTrait" === data.kind) {
+    let paymentState: PaymentState | undefined = undefined;
+    if (data.paymentState) {
+      paymentState = new PaymentState(
+        new anchor.web3.PublicKey(data.paymentState.paymentMethod),
+        new anchor.BN(data.paymentState.currentAmount),
+        new anchor.BN(data.paymentState.requiredAmount)
+      );
+    }
+    return new UpdateTargetRemoveTrait(
+      new anchor.web3.PublicKey(data.traitAccount),
+      paymentState
+    );
+  }
+
+  if ("swapTrait" === data.kind) {
+    return new UpdateTargetSwapTrait(
+      new anchor.web3.PublicKey(data.equipTraitAccount),
+      new anchor.web3.PublicKey(data.removeTraitAccount),
     );
   }
 }

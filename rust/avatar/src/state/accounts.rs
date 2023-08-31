@@ -89,6 +89,24 @@ impl AvatarClass {
             .clone()
     }
 
+    pub fn update_attribute_metadata<'info>(
+        &mut self,
+        new_attribute_metadata: AttributeMetadata,
+        avatar_class: &AccountInfo<'info>,
+        payer: Signer<'info>,
+        system_program: Program<'info, System>,
+    ) {
+        let old_space = self.current_space();
+
+        self.replace_attribute_metadata(new_attribute_metadata);
+
+        let new_space = self.current_space();
+
+        let diff: i64 = new_space as i64 - old_space as i64;
+
+        reallocate(diff, avatar_class, payer, system_program).unwrap();
+    }
+
     pub fn update_variant_metadata<'info>(
         &mut self,
         new_variant_metadata: VariantMetadata,
@@ -112,6 +130,13 @@ impl AvatarClass {
             .retain(|vm| vm.id != new_variant_metadata.id);
 
         self.variant_metadata.push(new_variant_metadata);
+    }
+
+    fn replace_attribute_metadata(&mut self, new_attribute_metadata: AttributeMetadata) {
+        self.attribute_metadata
+            .retain(|am| am.id != new_attribute_metadata.id);
+
+        self.attribute_metadata.push(new_attribute_metadata);
     }
 }
 
