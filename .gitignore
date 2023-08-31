@@ -43,3 +43,4 @@ yarn-error.log*
 .turbo
 test-signer.json
 render-config.json
+raindrops-deployer.json
