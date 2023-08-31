@@ -24,7 +24,10 @@ pub struct MigrateAvatarClassAccountArgs {
     pub global_rendering_config_uri: String,
 }
 
-pub fn handler(ctx: Context<MigrateAvatarClassAccount>, args: MigrateAvatarClassAccountArgs) -> Result<()> {
+pub fn handler(
+    ctx: Context<MigrateAvatarClassAccount>,
+    args: MigrateAvatarClassAccountArgs,
+) -> Result<()> {
     msg!(
         "migrating avatar_class account: {}",
         &ctx.accounts.avatar_class.key()
@@ -53,7 +56,12 @@ pub fn handler(ctx: Context<MigrateAvatarClassAccount>, args: MigrateAvatarClass
             u64::from_le_bytes(b[42..50].try_into().unwrap()),
         )
     };
-    msg!("old data extracted: {} {} {}", old_mint, old_trait_index, old_payment_index);
+    msg!(
+        "old data extracted: {} {} {}",
+        old_mint,
+        old_trait_index,
+        old_payment_index
+    );
 
     // Create new avatar_class data using fetched old data
     let new_avatar_class_data: AvatarClass = AvatarClass {
@@ -62,7 +70,7 @@ pub fn handler(ctx: Context<MigrateAvatarClassAccount>, args: MigrateAvatarClass
         payment_index: old_payment_index,
         attribute_metadata: args.new_attribute_metadata,
         variant_metadata: vec![],
-        global_rendering_config_uri: args.global_rendering_config_uri.clone()
+        global_rendering_config_uri: args.global_rendering_config_uri.clone(),
     };
     msg!("new avatar class data created: {:?}", new_avatar_class_data);
 
