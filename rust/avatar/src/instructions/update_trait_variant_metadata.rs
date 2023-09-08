@@ -3,7 +3,7 @@ use anchor_spl::token;
 
 use crate::state::{
     accounts::{AvatarClass, Trait},
-    data::VariantMetadata,
+    data::{VariantMetadata, VariantOption},
 };
 
 #[derive(Accounts)]
@@ -30,7 +30,8 @@ pub struct UpdateTraitVariantMetadata<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct UpdateTraitVariantMetadataArgs {
-    pub variant_metadata: VariantMetadata,
+    pub variant_metadata: Option<VariantMetadata>,
+    pub variant_option: Option<VariantOption>,
 }
 
 pub fn handler(
@@ -38,11 +39,24 @@ pub fn handler(
     args: UpdateTraitVariantMetadataArgs,
 ) -> Result<()> {
     let trait_account = &ctx.accounts.trait_account.to_account_info();
-    ctx.accounts.trait_account.update_variant_metadata(
-        args.variant_metadata,
-        trait_account,
-        ctx.accounts.authority.clone(),
-        ctx.accounts.system_program.clone(),
-    );
+
+    if let Some(variant_metadata) = args.variant_metadata {
+        ctx.accounts.trait_account.update_variant_metadata(
+            variant_metadata,
+            trait_account,
+            ctx.accounts.authority.clone(),
+            ctx.accounts.system_program.clone(),
+        );
+    };
+
+    if let Some(variant_option) = args.variant_option {
+        ctx.accounts.trait_account.update_variant_option(
+            variant_option,
+            trait_account,
+            ctx.accounts.authority.clone(),
+            ctx.accounts.system_program.clone(),
+        );
+    };
+
     Ok(())
 }

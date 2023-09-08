@@ -15,7 +15,7 @@ import * as cmp from "@solana/spl-account-compression";
 import * as metaplex from "@metaplex-foundation/js";
 import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 
-describe("avatar", () => {
+describe.only("avatar", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -3992,6 +3992,7 @@ describe("avatar", () => {
             },
           ],
         },
+        variantOption: null,
       };
 
     const updateTraitVariantMetadataTx =
@@ -5294,6 +5295,176 @@ describe("avatar", () => {
     );
     console.log("swapTraitTxSig: %s", swapTraitTxSig);
   });
+  it.skip("pay for an avatar update with native sol", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      {
+        id: 0,
+        name: "accessories",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+    ];
+
+    const variantMetadata = [];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: variantMetadata,
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    // create payment method of native sol
+    const wSolMint = new anchor.web3.PublicKey("So11111111111111111111111111111111111111112");
+
+    const treasury = anchor.web3.Keypair.generate();
+
+    const createPaymentMethodAccounts: AvatarRpc.CreatePaymentMethodAccounts = {
+      avatarClass: avatarClass,
+      authority: avatarClassAuthority.publicKey,
+    };
+    const createPaymentMethodArgs: AvatarRpc.CreatePaymentMethodArgs = {
+      assetClass: new AvatarRpc.FungiblePaymentAssetClass(wSolMint),
+      action: new AvatarRpc.TransferPaymentAction(treasury.publicKey)
+    };
+
+    const [createPaymentMethodTx, paymentMethodAddr] =
+      await avatarClassAuthorityClient.createPaymentMethod(
+        createPaymentMethodAccounts,
+        createPaymentMethodArgs
+      );
+    const createPaymentMethodTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createPaymentMethodTx
+      );
+    console.log("createPaymentMethodTxSig: %s", createPaymentMethodTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    const traitArgs: any[] = [
+      { name: "redHat", attributes: [0] },
+    ];
+
+    const traitMints: anchor.web3.PublicKey[] = [];
+    for (let arg of traitArgs) {
+      const traitMint = await createTraitSft(
+        connection,
+        arg.name,
+        avatarClassAuthority,
+        [nftHolder.publicKey]
+      );
+
+      await createTrait(
+        arg.name,
+        traitMint,
+        arg.attributes,
+        { enabled: true },
+        avatarClass,
+        avatarClassAuthorityClient,
+        [],
+        {amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL), paymentMethod: paymentMethodAddr},
+        {amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL), paymentMethod: paymentMethodAddr}
+      );
+
+      traitMints.push(traitMint);
+    };
+
+    // begin equip update
+    const beginUpdateAccounts: AvatarRpc.BeginUpdateAccounts = {
+      avatar: avatar,
+    };
+
+    const updateTarget = new AvatarRpc.UpdateTargetSelectionEquipTrait(
+      AvatarRpc.traitPDA(avatarClass, traitMints[0]),
+    );
+
+    const beginUpdateArgs: AvatarRpc.BeginUpdateArgs = {
+      updateTarget: updateTarget,
+    };
+
+    const beginUpdateTx = await nftHolderClient.beginUpdate(
+      beginUpdateAccounts,
+      beginUpdateArgs
+    );
+    const beginUpdateTxSig = await nftHolderClient.provider.sendAndConfirm(
+      beginUpdateTx,
+      [],
+      { commitment: "confirmed" }
+    );
+    console.log("beginUpdateTxSig: %s", beginUpdateTxSig);
+
+    const payForUpdateAccounts: AvatarRpc.PayForUpdateAccounts = {
+      avatar: avatar,
+      authority: nftHolderClient.provider.publicKey,
+    };
+    const payForUpdateArgs: AvatarRpc.PayForUpdateArgs = {
+      amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+      updateTarget: updateTarget,
+    };
+
+    const txns = await nftHolderClient.payForUpdate(
+      payForUpdateAccounts,
+      payForUpdateArgs
+    );
+    assert.isTrue(txns.length === 1);
+
+    const payForUpdateTxSig = await nftHolderClient.provider.sendAndConfirm(
+      txns[0],
+      [],
+      { commitment: "confirmed", skipPreflight: true }
+    );
+    console.log("payForUpdateTxSig: %s", payForUpdateTxSig);
+  })
 });
 
 async function createSftAvatarClass(

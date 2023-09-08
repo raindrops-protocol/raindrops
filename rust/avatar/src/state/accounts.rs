@@ -420,6 +420,40 @@ impl Trait {
         reallocate(diff, trait_account, payer, system_program).unwrap();
     }
 
+    pub fn update_variant_option<'info>(
+        &mut self,
+        new_variant_option: VariantOption,
+        trait_account: &AccountInfo<'info>,
+        payer: Signer<'info>,
+        system_program: Program<'info, System>,
+    ) {
+        let old_space = self.current_space();
+
+        self.replace_or_add_variant_option(new_variant_option);
+
+        let new_space = self.current_space();
+
+        let diff: i64 = new_space as i64 - old_space as i64;
+
+        reallocate(diff, trait_account, payer, system_program).unwrap();
+    }
+
+    fn replace_or_add_variant_option(&mut self, new_variant_option: VariantOption) {
+        let variant_metadata = self
+            .variant_metadata
+            .iter_mut()
+            .find(|vm| vm.id == new_variant_option.variant_id)
+            .unwrap();
+        match variant_metadata
+            .options
+            .iter_mut()
+            .find(|o| o.option_id == new_variant_option.option_id)
+        {
+            Some(option) => *option = new_variant_option,
+            None => variant_metadata.options.push(new_variant_option),
+        }
+    }
+
     pub fn is_enabled(&self) -> bool {
         self.status.enabled
     }

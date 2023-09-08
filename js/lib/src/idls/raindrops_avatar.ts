@@ -2194,7 +2194,17 @@ export type RaindropsAvatar = {
           {
             "name": "variantMetadata",
             "type": {
-              "defined": "VariantMetadata"
+              "option": {
+                "defined": "VariantMetadata"
+              }
+            }
+          },
+          {
+            "name": "variantOption",
+            "type": {
+              "option": {
+                "defined": "VariantOption"
+              }
             }
           }
         ]
@@ -5007,7 +5017,17 @@ export const IDL: RaindropsAvatar = {
           {
             "name": "variantMetadata",
             "type": {
-              "defined": "VariantMetadata"
+              "option": {
+                "defined": "VariantMetadata"
+              }
+            }
+          },
+          {
+            "name": "variantOption",
+            "type": {
+              "option": {
+                "defined": "VariantOption"
+              }
             }
           }
         ]

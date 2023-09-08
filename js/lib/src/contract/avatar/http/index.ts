@@ -563,7 +563,7 @@ interface AvatarRequestMetadata {
 
 export interface BeginUpdateRequest {
   avatar: anchor.web3.PublicKey;
-  updates: [AvatarUpdate, PaymentData | undefined][];
+  updates: [AvatarUpdate, PaymentData[]][];
 }
 
 export type AvatarUpdate = TraitUpdate | VariantUpdate;

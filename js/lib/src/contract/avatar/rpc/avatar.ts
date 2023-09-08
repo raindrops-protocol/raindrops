@@ -95,6 +95,7 @@ import {
   MigrateAvatarClassAccountArgs,
   UpdateAttributeMetadataAccounts,
   UpdateAttributeMetadataArgs,
+  PaymentDetails,
 } from "./state";
 import {
   AVATAR_RAIN_VAULT_DEVNET,
@@ -822,8 +823,13 @@ export class AvatarClient {
       accounts.authority
     );
 
+    const ixArgs = {
+      variantMetadata: args.variantMetadata ? args.variantMetadata : null,
+      variantOption: args.variantOption ? args.variantOption : null, 
+    };
+
     const tx = await this.program.methods
-      .updateTraitVariantMetadata(args)
+      .updateTraitVariantMetadata(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,
@@ -1189,8 +1195,7 @@ export class AvatarClient {
     }
 
     // get payment method data
-    let paymentMethodData: PaymentMethod;
-    let paymentMethodAddress: anchor.web3.PublicKey;
+    let paymentMethods: [PaymentMethod, anchor.web3.PublicKey][] = [];
     switch (updateStateData.target.constructor) {
       case UpdateTargetClassVariant: {
         const updateTargetClassVariant =
@@ -1213,10 +1218,9 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethodData = await this.getPaymentMethod(
+        paymentMethods.push([await this.getPaymentMethod(
           classPaymentDetails.paymentMethod
-        );
-        paymentMethodAddress = classPaymentDetails.paymentMethod;
+        ), classPaymentDetails.paymentMethod]);
         break;
       }
       case UpdateTargetTraitVariant: {
@@ -1244,10 +1248,9 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethodData = await this.getPaymentMethod(
+        paymentMethods.push([await this.getPaymentMethod(
           traitPaymentDetails.paymentMethod
-        );
-        paymentMethodAddress = traitPaymentDetails.paymentMethod;
+        ), traitPaymentDetails.paymentMethod]);
         break;
       }
       case UpdateTargetEquipTrait: {
@@ -1262,10 +1265,8 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethodData =
-          traitDataEquipTrait.equipPaymentDetails.paymentMethodData;
-        paymentMethodAddress =
-          traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress;
+        paymentMethods.push([traitDataEquipTrait.equipPaymentDetails.paymentMethodData
+        , traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress]);
         break;
       }
       case UpdateTargetRemoveTrait: {
@@ -1281,116 +1282,159 @@ export class AvatarClient {
           return txns;
         }
 
-        paymentMethodData =
-          traitDataRemoveTrait.removePaymentDetails.paymentMethodData;
-        paymentMethodAddress =
-          traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress;
+        paymentMethods.push([traitDataRemoveTrait.removePaymentDetails.paymentMethodData
+          , traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress]);
+        break;
+      }
+      case UpdateTargetSwapTrait: {
+        const updateTargetSwapTrait =
+          updateStateData.target as UpdateTargetSwapTrait;
+        const removeTraitData = await this.getTrait(
+          updateTargetSwapTrait.removeTraitAccount
+        );
+        const equipTraitData = await this.getTrait(
+          updateTargetSwapTrait.equipTraitAccount
+        );
+
+
+        if (removeTraitData.removePaymentDetails === null && equipTraitData.equipPaymentDetails === null) {
+          console.log(
+            `both payment details are null for swap: ${JSON.stringify(updateTargetSwapTrait)}`
+          );
+          return txns;
+        }
+
+        // grab remove trait data payment details
+        if (removeTraitData.removePaymentDetails !== null) {
+          paymentMethods.push([removeTraitData.removePaymentDetails.paymentMethodData
+            , removeTraitData.removePaymentDetails.paymentMethodAddress]);
+            paymentMethods.push([removeTraitData.removePaymentDetails.paymentMethodData
+              , removeTraitData.removePaymentDetails.paymentMethodAddress]);
+        };
+
+        // grab equip trait data payment details
+        if (equipTraitData.removePaymentDetails !== null) {
+          paymentMethods.push([equipTraitData.equipPaymentDetails.paymentMethodData
+            , equipTraitData.equipPaymentDetails.paymentMethodAddress]);
+            paymentMethods.push([equipTraitData.equipPaymentDetails.paymentMethodData
+              , equipTraitData.equipPaymentDetails.paymentMethodAddress]);
+        };
+        
+
         break;
       }
       default:
         throw new Error(`update target unsupported: ${updateStateData.target}`);
     }
 
-    console.log("paymentMethodData: %s", JSON.stringify(paymentMethodData));
-    console.log("paymentMethodAddr: %s", paymentMethodAddress.toString());
+    for (let paymentMethod of paymentMethods) {
+      const [paymentMethodData, paymentMethodAddress] = paymentMethod;
+      console.log("paymentMethodData: %s", JSON.stringify(paymentMethodData));
+      console.log("paymentMethodAddr: %s", paymentMethodAddress.toString());
 
-    // if fungible
-    if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
-      if (paymentMethodData.action instanceof BurnPaymentAction) {
-        const burnAccounts: BurnPaymentAccounts = {
-          avatar: updateStateData.avatar,
-          authority: accounts.authority,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: paymentMethodData.assetClass.mint,
-        };
-        const tx = await this.burnPayment(burnAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
-      }
-      if (paymentMethodData.action instanceof TransferPaymentAction) {
-        const transferAccounts: TransferPaymentAccounts = {
-          avatar: updateStateData.avatar,
-          authority: accounts.authority,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: paymentMethodData.assetClass.mint,
-        };
+      // if fungible
+      if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
+        if (paymentMethodData.action instanceof BurnPaymentAction) {
+          const burnAccounts: BurnPaymentAccounts = {
+            avatar: updateStateData.avatar,
+            authority: accounts.authority,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: paymentMethodData.assetClass.mint,
+          };
+          const tx = await this.burnPayment(burnAccounts, {
+            amount: args.amount,
+            updateTarget: args.updateTarget,
+          });
+          txns.push(tx);
+        }
+        if (paymentMethodData.action instanceof TransferPaymentAction) {
+          const transferAccounts: TransferPaymentAccounts = {
+            avatar: updateStateData.avatar,
+            authority: accounts.authority,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: paymentMethodData.assetClass.mint,
+          };
 
-        const tx = await this.transferPayment(transferAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
-      }
-    }
-
-    // if non fungible
-    if (paymentMethodData.assetClass instanceof NonFungiblePaymentAssetClass) {
-      if (!accounts.paymentMint) {
-        throw new Error(
-          `paymentMint argument required if payForUpdate on a Non Fungible Asset Class`
-        );
+          const tx = await this.transferPayment(transferAccounts, {
+            amount: args.amount,
+            updateTarget: args.updateTarget,
+          });
+          txns.push(tx);
+        }
       }
 
-      // skip creating this tx if its already verified
-      const verified = await this.getVerifiedPaymentMint(
-        verifiedPaymentMintPDA(paymentMethodAddress, accounts.paymentMint!)
-      );
-      if (!verified) {
-        if (!args.verifyPaymentMintArgs) {
+      // if non fungible
+      if (
+        paymentMethodData.assetClass instanceof NonFungiblePaymentAssetClass
+      ) {
+        if (!accounts.paymentMint) {
           throw new Error(
-            `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
+            `paymentMint argument required if payForUpdate on a Non Fungible Asset Class`
           );
         }
 
-        // create the verify mint transaction, must be ran before actionTree transactions
-        const verifyPaymentMintAccounts: VerifyPaymentMintAccounts = {
-          payer: accounts.authority,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: accounts.paymentMint!,
-        };
-
-        const verifyPaymentMintArgs: VerifyPaymentMintArgs = {
-          root: args.verifyPaymentMintArgs.root,
-          leafIndex: args.verifyPaymentMintArgs.leafIndex,
-          proof: args.verifyPaymentMintArgs.proof,
-        };
-
-        const verifyTx = await this.verifyPaymentMint(
-          verifyPaymentMintAccounts,
-          verifyPaymentMintArgs
+        // skip creating this tx if its already verified
+        const verified = await this.getVerifiedPaymentMint(
+          verifiedPaymentMintPDA(paymentMethodAddress, accounts.paymentMint!)
         );
-        txns.push(verifyTx);
-      }
+        if (!verified) {
+          if (!args.verifyPaymentMintArgs) {
+            throw new Error(
+              `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
+            );
+          }
 
-      if (paymentMethodData.action instanceof BurnPaymentAction) {
-        const burnPaymentTreeAccounts: BurnPaymentTreeAccounts = {
-          avatar: updateStateData.avatar,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: accounts.paymentMint!,
-          authority: accounts.authority,
-        };
-        const tx = await this.burnPaymentTree(burnPaymentTreeAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
-      }
+          // create the verify mint transaction, must be ran before actionTree transactions
+          const verifyPaymentMintAccounts: VerifyPaymentMintAccounts = {
+            payer: accounts.authority,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: accounts.paymentMint!,
+          };
 
-      if (paymentMethodData.action instanceof TransferPaymentAction) {
-        const transferPaymentTreeAccounts: TransferPaymentTreeAccounts = {
-          avatar: updateStateData.avatar,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: accounts.paymentMint!,
-          authority: accounts.authority,
-        };
+          const verifyPaymentMintArgs: VerifyPaymentMintArgs = {
+            root: args.verifyPaymentMintArgs.root,
+            leafIndex: args.verifyPaymentMintArgs.leafIndex,
+            proof: args.verifyPaymentMintArgs.proof,
+          };
 
-        const tx = await this.transferPaymentTree(transferPaymentTreeAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
+          const verifyTx = await this.verifyPaymentMint(
+            verifyPaymentMintAccounts,
+            verifyPaymentMintArgs
+          );
+          txns.push(verifyTx);
+        }
+
+        if (paymentMethodData.action instanceof BurnPaymentAction) {
+          const burnPaymentTreeAccounts: BurnPaymentTreeAccounts = {
+            avatar: updateStateData.avatar,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: accounts.paymentMint!,
+            authority: accounts.authority,
+          };
+          const tx = await this.burnPaymentTree(burnPaymentTreeAccounts, {
+            amount: args.amount,
+            updateTarget: args.updateTarget,
+          });
+          txns.push(tx);
+        }
+
+        if (paymentMethodData.action instanceof TransferPaymentAction) {
+          const transferPaymentTreeAccounts: TransferPaymentTreeAccounts = {
+            avatar: updateStateData.avatar,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: accounts.paymentMint!,
+            authority: accounts.authority,
+          };
+
+          const tx = await this.transferPaymentTree(
+            transferPaymentTreeAccounts,
+            {
+              amount: args.amount,
+              updateTarget: args.updateTarget,
+            }
+          );
+          txns.push(tx);
+        }
       }
     }
 
@@ -2073,10 +2117,18 @@ export class AvatarClient {
           };
         }
 
+        let paymentDetails: PaymentDetails | null = null;
+        if (optRaw.paymentDetails) {
+          paymentDetails = {
+            paymentMethod: new anchor.web3.PublicKey(optRaw.paymentDetails.paymentMethod),
+            amount: new anchor.BN(optRaw.paymentDetails.amount, "hex"),
+          }
+        }
+
         options.push({
           variantId: optRaw.variantId,
           optionId: optRaw.optionId,
-          paymentDetails: optRaw.paymentDetails,
+          paymentDetails: paymentDetails,
           traitGate: tg,
         });
       }
@@ -2101,7 +2153,7 @@ export class AvatarClient {
       equipPaymentDetailsExpanded = {
         paymentMethodAddress: equipPaymentMethodAddr,
         paymentMethodData: equipPaymentMethodData,
-        amount: traitData.equipPaymentDetails.amount,
+        amount: new anchor.BN(traitData.equipPaymentDetails.amount, "hex"),
       };
     }
     let removePaymentDetailsExpanded: PaymentDetailsExpanded | null = null;
@@ -2115,7 +2167,7 @@ export class AvatarClient {
       removePaymentDetailsExpanded = {
         paymentMethodAddress: removePaymentMethodAddr,
         paymentMethodData: removePaymentMethodData,
-        amount: traitData.removePaymentDetails.amount,
+        amount: new anchor.BN(traitData.removePaymentDetails.amount, "hex"),
       };
     }
 

@@ -144,7 +144,8 @@ export interface UpdateTraitVariantMetadataAccounts {
 }
 
 export interface UpdateTraitVariantMetadataArgs {
-  variantMetadata: VariantMetadata;
+  variantMetadata: VariantMetadata | null;
+  variantOption: VariantOption | null;
 }
 
 export interface UpdateClassVariantMetadataAccounts {
@@ -699,8 +700,8 @@ export function parseUpdateTarget(data: any): UpdateTarget {
     if (data.classVariant.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.classVariant.paymentState.paymentMethod),
-        new anchor.BN(data.classVariant.paymentState.currentAmount),
-        new anchor.BN(data.classVariant.paymentState.requiredAmount)
+        new anchor.BN(data.classVariant.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.classVariant.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetClassVariant(
@@ -715,8 +716,8 @@ export function parseUpdateTarget(data: any): UpdateTarget {
     if (data.traitVariant.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.traitVariant.paymentState.paymentMethod),
-        new anchor.BN(data.traitVariant.paymentState.currentAmount),
-        new anchor.BN(data.traitVariant.paymentState.requiredAmount)
+        new anchor.BN(data.traitVariant.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.traitVariant.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetTraitVariant(
@@ -732,8 +733,8 @@ export function parseUpdateTarget(data: any): UpdateTarget {
     if (data.equipTrait.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.equipTrait.paymentState.paymentMethod),
-        new anchor.BN(data.equipTrait.paymentState.currentAmount),
-        new anchor.BN(data.equipTrait.paymentState.requiredAmount)
+        new anchor.BN(data.equipTrait.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.equipTrait.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetEquipTrait(
@@ -747,8 +748,8 @@ export function parseUpdateTarget(data: any): UpdateTarget {
     if (data.removeTrait.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.removeTrait.paymentState.paymentMethod),
-        new anchor.BN(data.removeTrait.paymentState.currentAmount),
-        new anchor.BN(data.removeTrait.paymentState.requiredAmount)
+        new anchor.BN(data.removeTrait.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.removeTrait.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetRemoveTrait(
@@ -764,8 +765,8 @@ export function parseUpdateTarget(data: any): UpdateTarget {
         new anchor.web3.PublicKey(
           data.swapTrait.equipPaymentState.paymentMethod
         ),
-        new anchor.BN(data.swapTrait.equipPaymentState.currentAmount),
-        new anchor.BN(data.swapTrait.equipPaymentState.requiredAmount)
+        new anchor.BN(data.swapTrait.equipPaymentState.currentAmount, "hex"),
+        new anchor.BN(data.swapTrait.equipPaymentState.requiredAmount, "hex")
       );
     }
 
@@ -775,8 +776,8 @@ export function parseUpdateTarget(data: any): UpdateTarget {
         new anchor.web3.PublicKey(
           data.swapTrait.removePaymentState.paymentMethod
         ),
-        new anchor.BN(data.swapTrait.removePaymentState.currentAmount),
-        new anchor.BN(data.swapTrait.removePaymentState.requiredAmount)
+        new anchor.BN(data.swapTrait.removePaymentState.currentAmount, "hex"),
+        new anchor.BN(data.swapTrait.removePaymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetSwapTrait(
@@ -794,8 +795,8 @@ export function parseUpdateTargetByKind(data: any): UpdateTarget {
     if (data.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.paymentState.paymentMethod),
-        new anchor.BN(data.paymentState.currentAmount),
-        new anchor.BN(data.paymentState.requiredAmount)
+        new anchor.BN(data.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetClassVariant(
@@ -810,8 +811,8 @@ export function parseUpdateTargetByKind(data: any): UpdateTarget {
     if (data.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.traitVariant.paymentState.paymentMethod),
-        new anchor.BN(data.traitVariant.paymentState.currentAmount),
-        new anchor.BN(data.traitVariant.paymentState.requiredAmount)
+        new anchor.BN(data.traitVariant.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.traitVariant.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetTraitVariant(
@@ -827,8 +828,8 @@ export function parseUpdateTargetByKind(data: any): UpdateTarget {
     if (data.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.equipTrait.paymentState.paymentMethod),
-        new anchor.BN(data.equipTrait.paymentState.currentAmount),
-        new anchor.BN(data.equipTrait.paymentState.requiredAmount)
+        new anchor.BN(data.equipTrait.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.equipTrait.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetEquipTrait(
@@ -842,8 +843,8 @@ export function parseUpdateTargetByKind(data: any): UpdateTarget {
     if (data.paymentState) {
       paymentState = new PaymentState(
         new anchor.web3.PublicKey(data.paymentState.paymentMethod),
-        new anchor.BN(data.paymentState.currentAmount),
-        new anchor.BN(data.paymentState.requiredAmount)
+        new anchor.BN(data.paymentState.currentAmount, "hex"),
+        new anchor.BN(data.paymentState.requiredAmount, "hex")
       );
     }
     return new UpdateTargetRemoveTrait(
@@ -1141,10 +1142,7 @@ export class UpdateTargetSelectionEquipTrait {
   readonly kind: string;
   readonly traitAccount: anchor.web3.PublicKey;
 
-  constructor(
-    traitAccount: anchor.web3.PublicKey,
-    paymentState?: PaymentState
-  ) {
+  constructor(traitAccount: anchor.web3.PublicKey) {
     this.kind = "equipTrait";
     this.traitAccount = new anchor.web3.PublicKey(traitAccount);
   }
