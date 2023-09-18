@@ -73,11 +73,11 @@ pub mod raindrops_avatar {
         instructions::update_class_variant_authority::handler(ctx, args)
     }
 
-    pub fn update_trait_variant_metadata(
-        ctx: Context<UpdateTraitVariantMetadata>,
-        args: UpdateTraitVariantMetadataArgs,
+    pub fn update_trait(
+        ctx: Context<UpdateTrait>,
+        args: UpdateTraitArgs,
     ) -> Result<()> {
-        instructions::update_trait_variant_metadata::handler(ctx, args)
+        instructions::update_trait::handler(ctx, args)
     }
 
     pub fn update_class_variant_metadata(

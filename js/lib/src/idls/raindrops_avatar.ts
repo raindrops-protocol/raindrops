@@ -696,7 +696,7 @@ export type RaindropsAvatar = {
       ]
     },
     {
-      "name": "updateTraitVariantMetadata",
+      "name": "updateTrait",
       "accounts": [
         {
           "name": "avatarClass",
@@ -728,7 +728,7 @@ export type RaindropsAvatar = {
         {
           "name": "args",
           "type": {
-            "defined": "UpdateTraitVariantMetadataArgs"
+            "defined": "UpdateTraitArgs"
           }
         }
       ]
@@ -2187,7 +2187,7 @@ export type RaindropsAvatar = {
       }
     },
     {
-      "name": "UpdateTraitVariantMetadataArgs",
+      "name": "UpdateTraitArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2204,6 +2204,22 @@ export type RaindropsAvatar = {
             "type": {
               "option": {
                 "defined": "VariantOption"
+              }
+            }
+          },
+          {
+            "name": "equipPaymentDetails",
+            "type": {
+              "option": {
+                "defined": "PaymentDetails"
+              }
+            }
+          },
+          {
+            "name": "removePaymentDetails",
+            "type": {
+              "option": {
+                "defined": "PaymentDetails"
               }
             }
           }
@@ -3519,7 +3535,7 @@ export const IDL: RaindropsAvatar = {
       ]
     },
     {
-      "name": "updateTraitVariantMetadata",
+      "name": "updateTrait",
       "accounts": [
         {
           "name": "avatarClass",
@@ -3551,7 +3567,7 @@ export const IDL: RaindropsAvatar = {
         {
           "name": "args",
           "type": {
-            "defined": "UpdateTraitVariantMetadataArgs"
+            "defined": "UpdateTraitArgs"
           }
         }
       ]
@@ -5010,7 +5026,7 @@ export const IDL: RaindropsAvatar = {
       }
     },
     {
-      "name": "UpdateTraitVariantMetadataArgs",
+      "name": "UpdateTraitArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -5027,6 +5043,22 @@ export const IDL: RaindropsAvatar = {
             "type": {
               "option": {
                 "defined": "VariantOption"
+              }
+            }
+          },
+          {
+            "name": "equipPaymentDetails",
+            "type": {
+              "option": {
+                "defined": "PaymentDetails"
+              }
+            }
+          },
+          {
+            "name": "removePaymentDetails",
+            "type": {
+              "option": {
+                "defined": "PaymentDetails"
               }
             }
           }

@@ -137,15 +137,17 @@ export interface UpdateVariantArgs {
   updateTarget: UpdateTargetSelection;
 }
 
-export interface UpdateTraitVariantMetadataAccounts {
+export interface UpdateTraitAccounts {
   avatarClass: anchor.web3.PublicKey;
   authority: anchor.web3.PublicKey;
   traitMint: anchor.web3.PublicKey;
 }
 
-export interface UpdateTraitVariantMetadataArgs {
-  variantMetadata: VariantMetadata | null;
-  variantOption: VariantOption | null;
+export interface UpdateTraitArgs {
+  variantMetadata?: VariantMetadata;
+  variantOption?: VariantOption;
+  equipPaymentDetails?: PaymentDetails;
+  removePaymentDetails?: PaymentDetails;
 }
 
 export interface UpdateClassVariantMetadataAccounts {

@@ -3969,13 +3969,13 @@ describe.only("avatar", () => {
       avatarClassAuthorityClient
     );
 
-    const updateTraitVariantMetadataAccounts: AvatarRpc.UpdateTraitVariantMetadataAccounts =
+    const updateTraitAccounts: AvatarRpc.UpdateTraitAccounts =
       {
         avatarClass: avatarClass,
         authority: avatarClassAuthority.publicKey,
         traitMint: hatTraitMint,
       };
-    const updateTraitVariantMetadataArgs: AvatarRpc.UpdateTraitVariantMetadataArgs =
+    const updateTraitArgs: AvatarRpc.UpdateTraitArgs =
       {
         variantMetadata: {
           name: "bluesomething",
@@ -3992,21 +3992,20 @@ describe.only("avatar", () => {
             },
           ],
         },
-        variantOption: null,
       };
 
-    const updateTraitVariantMetadataTx =
-      await avatarClassAuthorityClient.updateTraitVariantMetadata(
-        updateTraitVariantMetadataAccounts,
-        updateTraitVariantMetadataArgs
+    const updateTraitTx =
+      await avatarClassAuthorityClient.updateTrait(
+        updateTraitAccounts,
+        updateTraitArgs
       );
-    const updateTraitVariantMetadataTxSig =
+    const updateTraitTxSig =
       await avatarClassAuthorityClient.provider.sendAndConfirm(
-        updateTraitVariantMetadataTx
+        updateTraitTx
       );
     console.log(
-      "updateTraitVariantMetadataTxSig: %s",
-      updateTraitVariantMetadataTxSig
+      "updateTraitTxSig: %s",
+      updateTraitTxSig
     );
   });
   it("update class variant metadata", async () => {

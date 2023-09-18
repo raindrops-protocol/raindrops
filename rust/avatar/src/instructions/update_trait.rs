@@ -3,12 +3,12 @@ use anchor_spl::token;
 
 use crate::state::{
     accounts::{AvatarClass, Trait},
-    data::{VariantMetadata, VariantOption},
+    data::{VariantMetadata, VariantOption, PaymentDetails},
 };
 
 #[derive(Accounts)]
-#[instruction(args: UpdateTraitVariantMetadataArgs)]
-pub struct UpdateTraitVariantMetadata<'info> {
+#[instruction(args: UpdateTraitArgs)]
+pub struct UpdateTrait<'info> {
     #[account(seeds = [AvatarClass::PREFIX.as_bytes(), avatar_class.mint.key().as_ref()], bump)]
     pub avatar_class: Account<'info, AvatarClass>,
 
@@ -29,14 +29,16 @@ pub struct UpdateTraitVariantMetadata<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct UpdateTraitVariantMetadataArgs {
+pub struct UpdateTraitArgs {
     pub variant_metadata: Option<VariantMetadata>,
     pub variant_option: Option<VariantOption>,
+    pub equip_payment_details: Option<PaymentDetails>,
+    pub remove_payment_details: Option<PaymentDetails>,
 }
 
 pub fn handler(
-    ctx: Context<UpdateTraitVariantMetadata>,
-    args: UpdateTraitVariantMetadataArgs,
+    ctx: Context<UpdateTrait>,
+    args: UpdateTraitArgs,
 ) -> Result<()> {
     let trait_account = &ctx.accounts.trait_account.to_account_info();
 
@@ -57,6 +59,14 @@ pub fn handler(
             ctx.accounts.system_program.clone(),
         );
     };
+
+    if let Some(equip_payment_details) = args.equip_payment_details {
+        ctx.accounts.trait_account.equip_payment_details = Some(equip_payment_details);
+    }
+
+    if let Some(remove_payment_details) = args.remove_payment_details {
+        ctx.accounts.trait_account.remove_payment_details = Some(remove_payment_details);
+    }
 
     Ok(())
 }

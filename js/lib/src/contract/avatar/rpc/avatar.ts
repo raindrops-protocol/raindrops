@@ -23,8 +23,8 @@ import {
   VariantMetadata,
   VariantOption,
   TraitData,
-  UpdateTraitVariantMetadataAccounts,
-  UpdateTraitVariantMetadataArgs,
+  UpdateTraitAccounts,
+  UpdateTraitArgs,
   UpdateClassVariantMetadataAccounts,
   UpdateClassVariantMetadataArgs,
   BootTraitsAccounts,
@@ -812,9 +812,9 @@ export class AvatarClient {
     return tx;
   }
 
-  async updateTraitVariantMetadata(
-    accounts: UpdateTraitVariantMetadataAccounts,
-    args: UpdateTraitVariantMetadataArgs
+  async updateTrait(
+    accounts: UpdateTraitAccounts,
+    args: UpdateTraitArgs
   ) {
     const avatarClassData = await this.getAvatarClass(accounts.avatarClass);
 
@@ -826,10 +826,12 @@ export class AvatarClient {
     const ixArgs = {
       variantMetadata: args.variantMetadata ? args.variantMetadata : null,
       variantOption: args.variantOption ? args.variantOption : null, 
+      equipPaymentDetails: args.equipPaymentDetails ? args.equipPaymentDetails : null,
+      removePaymentDetails: args.removePaymentDetails ? args.removePaymentDetails : null,
     };
 
     const tx = await this.program.methods
-      .updateTraitVariantMetadata(ixArgs)
+      .updateTrait(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,
