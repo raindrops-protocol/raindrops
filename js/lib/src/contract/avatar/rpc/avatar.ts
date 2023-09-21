@@ -1331,8 +1331,6 @@ export class AvatarClient {
 
     for (let paymentMethod of paymentMethods) {
       const [paymentMethodData, paymentMethodAddress] = paymentMethod;
-      console.log("paymentMethodData: %s", JSON.stringify(paymentMethodData));
-      console.log("paymentMethodAddr: %s", paymentMethodAddress.toString());
 
       // if fungible
       if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
@@ -1469,6 +1467,7 @@ export class AvatarClient {
       accounts.paymentMint,
       avatarAuthority
     );
+
     const paymentDestination = splToken.getAssociatedTokenAddressSync(
       accounts.paymentMint,
       (paymentMethodData.action as TransferPaymentAction).treasury
@@ -1997,10 +1996,21 @@ export class AvatarClient {
           };
         }
 
+        let paymentDetails: PaymentDetails | null = null;
+        if (vsRaw.paymentDetails) {
+          const amount = new anchor.BN(vsRaw.paymentDetails.amount);
+          const uiAmount = await this.getUIPaymentAmount(vsRaw.paymentDetails.paymentMethod, amount);
+          paymentDetails = {
+            paymentMethod: vsRaw.paymentDetails.paymentMethod,
+            amount: amount,
+            uiAmount: uiAmount,
+          }
+        }
+
         vs.push({
           variantId: vsRaw.variantId,
           optionId: vsRaw.optionId,
-          paymentDetails: vsRaw.paymentDetails,
+          paymentDetails: paymentDetails, 
           traitGate: tg,
         });
       }
@@ -2021,10 +2031,21 @@ export class AvatarClient {
         };
       }
 
+      let paymentDetails: PaymentDetails | null = null;
+      if (variant.paymentDetails) {
+        const amount = new anchor.BN(variant.paymentDetails.amount);
+        const uiAmount = await this.getUIPaymentAmount(variant.paymentDetails.paymentMethod, amount);
+        paymentDetails = {
+          paymentMethod: variant.paymentDetails.paymentMethod,
+          amount: amount,
+          uiAmount: uiAmount,
+        }
+      }
+
       variants.push({
         variantId: variant.variantId,
         optionId: variant.optionId,
-        paymentDetails: variant.paymentDetails,
+        paymentDetails: paymentDetails,
         traitGate: tg,
       });
     }
@@ -2064,10 +2085,21 @@ export class AvatarClient {
           };
         }
 
+        let paymentDetails: PaymentDetails | null = null;
+        if (optRaw.paymentDetails) {
+          const amount = new anchor.BN(optRaw.paymentDetails.amount);
+          const uiAmount = await this.getUIPaymentAmount(optRaw.paymentDetails.paymentMethod, amount);
+          paymentDetails = {
+            paymentMethod: optRaw.paymentDetails.paymentMethod,
+            amount: amount,
+            uiAmount: uiAmount,
+          }
+        }
+
         options.push({
           variantId: optRaw.variantId,
           optionId: optRaw.optionId,
-          paymentDetails: optRaw.paymentDetails,
+          paymentDetails: paymentDetails,
           traitGate: tg,
         });
       }
@@ -2121,9 +2153,12 @@ export class AvatarClient {
 
         let paymentDetails: PaymentDetails | null = null;
         if (optRaw.paymentDetails) {
+          const amount = new anchor.BN(optRaw.paymentDetails.amount);
+          const uiAmount = await this.getUIPaymentAmount(optRaw.paymentDetails.paymentMethod, amount);
           paymentDetails = {
             paymentMethod: new anchor.web3.PublicKey(optRaw.paymentDetails.paymentMethod),
-            amount: new anchor.BN(optRaw.paymentDetails.amount, "hex"),
+            amount: amount,
+            uiAmount: uiAmount,
           }
         }
 
@@ -2145,17 +2180,20 @@ export class AvatarClient {
 
     // get expanded payment details
     let equipPaymentDetailsExpanded: PaymentDetailsExpanded | null = null;
-    if (traitData.equipPaymentDetails !== null) {
+    if (traitData.equipPaymentDetails) {
       const equipPaymentMethodAddr = new anchor.web3.PublicKey(
         traitData.equipPaymentDetails.paymentMethod
       );
       const equipPaymentMethodData = await this.getPaymentMethod(
         equipPaymentMethodAddr
       );
+      const amount = new anchor.BN(traitData.equipPaymentDetails.amount);
+      const uiAmount = await this.getUIPaymentAmount(traitData.equipPaymentDetails.paymentMethod, amount);
       equipPaymentDetailsExpanded = {
         paymentMethodAddress: equipPaymentMethodAddr,
         paymentMethodData: equipPaymentMethodData,
-        amount: new anchor.BN(traitData.equipPaymentDetails.amount, "hex"),
+        amount: amount,
+        uiAmount: uiAmount,
       };
     }
     let removePaymentDetailsExpanded: PaymentDetailsExpanded | null = null;
@@ -2166,10 +2204,13 @@ export class AvatarClient {
       const removePaymentMethodData = await this.getPaymentMethod(
         removePaymentMethodAddr
       );
+      const amount = new anchor.BN(traitData.removePaymentDetails.amount);
+      const uiAmount = await this.getUIPaymentAmount(traitData.removePaymentDetails.paymentMethod, amount);
       removePaymentDetailsExpanded = {
         paymentMethodAddress: removePaymentMethodAddr,
         paymentMethodData: removePaymentMethodData,
-        amount: new anchor.BN(traitData.removePaymentDetails.amount, "hex"),
+        amount: amount,
+        uiAmount: uiAmount,
       };
     }
 
@@ -2460,6 +2501,25 @@ export class AvatarClient {
     const bh = (await this.provider.connection.getLatestBlockhash()).blockhash;
     tx.recentBlockhash = bh;
     tx.feePayer = payer;
+  }
+
+  private async getUIPaymentAmount(paymentMethod: anchor.web3.PublicKey, amount: anchor.BN): Promise<number> {
+
+    const paymentMethodData = await this.getPaymentMethod(paymentMethod);
+
+    // if its an NFT payment method probably dont need to convert anything
+    if (paymentMethodData.assetClass instanceof NonFungiblePaymentAssetClass) {
+      return amount.toNumber()
+    } else if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
+      // strip away the decimal precision, return float
+      const mintData = await splToken.getMint(this.provider.connection, paymentMethodData.assetClass.mint);
+      const divisor = new anchor.BN(10).pow(new anchor.BN(mintData.decimals));
+      const { div, mod } = amount.divmod(divisor);
+      const uiAmount = div.toNumber() + mod.toNumber() / Math.pow(10, mintData.decimals);
+      return uiAmount;
+    }
+    
+    throw new Error(`Unknown Payment AssetClass: ${JSON.stringify(paymentMethodData)}`);
   }
 }
 

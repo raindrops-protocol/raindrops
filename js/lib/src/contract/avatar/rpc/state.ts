@@ -379,12 +379,14 @@ export interface VariantOption {
 export interface PaymentDetails {
   paymentMethod: anchor.web3.PublicKey;
   amount: anchor.BN;
+  uiAmount?: number;
 }
 
 export interface PaymentDetailsExpanded {
   paymentMethodAddress: anchor.web3.PublicKey;
   paymentMethodData: PaymentMethod;
   amount: anchor.BN;
+  uiAmount: number;
 }
 
 export class PaymentState {
@@ -403,6 +405,7 @@ export class PaymentState {
   }
 
   isPaid(): boolean {
+    console.log('checking if paid, currentAmount: %s, requiredAmount: %s', this.currentAmount.toString(), this.requiredAmount.toString());
     return this.currentAmount.gte(this.requiredAmount);
   }
 }

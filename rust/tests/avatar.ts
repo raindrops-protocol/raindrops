@@ -5294,12 +5294,13 @@ describe.only("avatar", () => {
     );
     console.log("swapTraitTxSig: %s", swapTraitTxSig);
   });
-  it.skip("pay for an avatar update with native sol", async () => {
+  it("pay for an avatar update with native sol", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
       avatarClassAuthority,
     ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
 
     const avatarClassMint = await createSftAvatarClass(
       connection,
@@ -5418,6 +5419,10 @@ describe.only("avatar", () => {
       traitMints.push(traitMint);
     };
 
+    // wrap some sol for the equip payment payment
+    const wSolAta = await splToken.createWrappedNativeAccount(nftHolderClient.provider.connection, nftHolder, nftHolder.publicKey, anchor.web3.LAMPORTS_PER_SOL * 3);
+    console.log("wSOL ATA: %s", wSolAta.toString());
+
     // begin equip update
     const beginUpdateAccounts: AvatarRpc.BeginUpdateAccounts = {
       avatar: avatar,
@@ -5463,6 +5468,9 @@ describe.only("avatar", () => {
       { commitment: "confirmed", skipPreflight: true }
     );
     console.log("payForUpdateTxSig: %s", payForUpdateTxSig);
+
+    const wSolAtaData = await splToken.getAccount(nftHolderClient.provider.connection, wSolAta, "processed");
+    console.log("remaining wSol: %s", wSolAtaData.amount.toString(10));
   })
 });
 
