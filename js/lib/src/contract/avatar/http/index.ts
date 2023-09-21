@@ -600,7 +600,7 @@ export class VariantUpdate {
 
 export interface PaymentData {
   mint: anchor.web3.PublicKey;
-  amount: string;
+  uiAmount: number;
 }
 
 export type TraitUpdateAction = "Equip" | "Remove";
