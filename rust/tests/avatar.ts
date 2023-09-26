@@ -5465,7 +5465,7 @@ describe("avatar", () => {
       nftHolderClient.provider.sendAndConfirm(removeRequiredTraitTx)
     );
   });
-  it.only("pay for an avatar update with native sol", async () => {
+  it("pay for an avatar update with native sol", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
