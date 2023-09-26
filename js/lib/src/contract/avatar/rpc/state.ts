@@ -27,7 +27,12 @@ export class VariantMetadata {
   status: VariantStatus;
   options: VariantOption[];
 
-  constructor(name: string, id: string, status: VariantStatus, options: VariantOption[]) {
+  constructor(
+    name: string,
+    id: string,
+    status: VariantStatus,
+    options: VariantOption[]
+  ) {
     this.name = name;
     this.id = id;
     this.status = status;
@@ -37,7 +42,7 @@ export class VariantMetadata {
   formatForIx(): any {
     const opts: any[] = [];
     for (const opt of this.options) {
-      const ixOpt = opt.formatForIx(); 
+      const ixOpt = opt.formatForIx();
       opts.push(ixOpt);
     }
 
@@ -46,7 +51,7 @@ export class VariantMetadata {
       id: this.id,
       status: this.status,
       options: opts,
-    }
+    };
   }
 }
 
@@ -396,7 +401,13 @@ export class VariantOption {
   paymentDetails: PaymentDetails | null;
   traitGate: TraitGate | null;
 
-  constructor(variantId: string, optionId: string, paymentDetails?: PaymentDetails, traitGate?: TraitGate, name?: string) {
+  constructor(
+    variantId: string,
+    optionId: string,
+    paymentDetails?: PaymentDetails,
+    traitGate?: TraitGate,
+    name?: string
+  ) {
     this.name = name;
     this.variantId = variantId;
     this.optionId = optionId;
@@ -423,7 +434,7 @@ export class VariantOption {
       optionId: this.optionId,
       paymentDetails: this.paymentDetails,
       traitGate: tg,
-    }
+    };
   }
 }
 
@@ -456,7 +467,11 @@ export class PaymentState {
   }
 
   isPaid(): boolean {
-    console.log('checking if paid, currentAmount: %s, requiredAmount: %s', this.currentAmount.toString(), this.requiredAmount.toString());
+    console.log(
+      "checking if paid, currentAmount: %s, requiredAmount: %s",
+      this.currentAmount.toString(),
+      this.requiredAmount.toString()
+    );
     return this.currentAmount.gte(this.requiredAmount);
   }
 }
@@ -476,17 +491,17 @@ export class TraitGate {
         this.operator = operator;
       }
 
-      return
+      return;
     }
 
     if ("And" in operator || "and" in operator) {
-      this.operator = "AND"
-      return
+      this.operator = "AND";
+      return;
     }
 
     if ("Or" in operator || "or" in operator) {
       this.operator = "OR";
-      return
+      return;
     }
 
     if (this.operator === undefined) {
@@ -497,10 +512,10 @@ export class TraitGate {
   formatForIx(): any {
     switch (this.operator) {
       case "AND": {
-        return { operator: { and: {} }, traits: this.traits }
+        return { operator: { and: {} }, traits: this.traits };
       }
       case "OR": {
-        return { operator: { or: {} }, traits: this.traits }
+        return { operator: { or: {} }, traits: this.traits };
       }
       default:
         throw new Error(`unable to format trait gate: ${JSON.stringify(this)}`);
@@ -688,7 +703,7 @@ export class Trait {
     variantMetadata: VariantMetadata[],
     equipPaymentDetails: PaymentDetailsExpanded | null,
     removePaymentDetails: PaymentDetailsExpanded | null,
-    traitGate: TraitGate,
+    traitGate: TraitGate
   ) {
     this.id = id;
     this.traitAddress = traitAddress;

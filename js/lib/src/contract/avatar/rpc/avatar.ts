@@ -265,10 +265,14 @@ export class AvatarClient {
       attributeIds: args.attributeIds,
       variantMetadata: args.variantMetadata.map((vm) => vm.formatForIx()),
       traitStatus: args.traitStatus,
-      equipPaymentDetails: args.equipPaymentDetails ? args.equipPaymentDetails : null,
-      removePaymentDetails: args.removePaymentDetails ? args.removePaymentDetails : null,
+      equipPaymentDetails: args.equipPaymentDetails
+        ? args.equipPaymentDetails
+        : null,
+      removePaymentDetails: args.removePaymentDetails
+        ? args.removePaymentDetails
+        : null,
       traitGate: args.traitGate ? args.traitGate.formatForIx() : null,
-    }
+    };
 
     const tx = await this.program.methods
       .createTrait(ixArgs)
@@ -823,10 +827,7 @@ export class AvatarClient {
     return tx;
   }
 
-  async updateTrait(
-    accounts: UpdateTraitAccounts,
-    args: UpdateTraitArgs
-  ) {
+  async updateTrait(accounts: UpdateTraitAccounts, args: UpdateTraitArgs) {
     const avatarClassData = await this.getAvatarClass(accounts.avatarClass);
 
     const avatarClassMintAta = splToken.getAssociatedTokenAddressSync(
@@ -836,9 +837,15 @@ export class AvatarClient {
 
     const ixArgs = {
       variantMetadata: args.variantMetadata ? args.variantMetadata : null,
-      variantOption: args.variantOption ? args.variantOption.formatForIx() : null, 
-      equipPaymentDetails: args.equipPaymentDetails ? args.equipPaymentDetails : null,
-      removePaymentDetails: args.removePaymentDetails ? args.removePaymentDetails : null,
+      variantOption: args.variantOption
+        ? args.variantOption.formatForIx()
+        : null,
+      equipPaymentDetails: args.equipPaymentDetails
+        ? args.equipPaymentDetails
+        : null,
+      removePaymentDetails: args.removePaymentDetails
+        ? args.removePaymentDetails
+        : null,
     };
 
     const tx = await this.program.methods
@@ -1208,7 +1215,7 @@ export class AvatarClient {
     }
 
     // get payment method data
-    let paymentMethods: [PaymentMethod, anchor.web3.PublicKey][] = [];
+    const paymentMethods: [PaymentMethod, anchor.web3.PublicKey][] = [];
     switch (updateStateData.target.constructor) {
       case UpdateTargetClassVariant: {
         const updateTargetClassVariant =
@@ -1231,9 +1238,10 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethods.push([await this.getPaymentMethod(
-          classPaymentDetails.paymentMethod
-        ), classPaymentDetails.paymentMethod]);
+        paymentMethods.push([
+          await this.getPaymentMethod(classPaymentDetails.paymentMethod),
+          classPaymentDetails.paymentMethod,
+        ]);
         break;
       }
       case UpdateTargetTraitVariant: {
@@ -1261,9 +1269,10 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethods.push([await this.getPaymentMethod(
-          traitPaymentDetails.paymentMethod
-        ), traitPaymentDetails.paymentMethod]);
+        paymentMethods.push([
+          await this.getPaymentMethod(traitPaymentDetails.paymentMethod),
+          traitPaymentDetails.paymentMethod,
+        ]);
         break;
       }
       case UpdateTargetEquipTrait: {
@@ -1278,8 +1287,10 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethods.push([traitDataEquipTrait.equipPaymentDetails.paymentMethodData
-        , traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress]);
+        paymentMethods.push([
+          traitDataEquipTrait.equipPaymentDetails.paymentMethodData,
+          traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress,
+        ]);
         break;
       }
       case UpdateTargetRemoveTrait: {
@@ -1295,8 +1306,10 @@ export class AvatarClient {
           return txns;
         }
 
-        paymentMethods.push([traitDataRemoveTrait.removePaymentDetails.paymentMethodData
-          , traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress]);
+        paymentMethods.push([
+          traitDataRemoveTrait.removePaymentDetails.paymentMethodData,
+          traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress,
+        ]);
         break;
       }
       case UpdateTargetSwapTrait: {
@@ -1309,30 +1322,41 @@ export class AvatarClient {
           updateTargetSwapTrait.equipTraitAccount
         );
 
-
-        if (removeTraitData.removePaymentDetails === null && equipTraitData.equipPaymentDetails === null) {
+        if (
+          removeTraitData.removePaymentDetails === null &&
+          equipTraitData.equipPaymentDetails === null
+        ) {
           console.log(
-            `both payment details are null for swap: ${JSON.stringify(updateTargetSwapTrait)}`
+            `both payment details are null for swap: ${JSON.stringify(
+              updateTargetSwapTrait
+            )}`
           );
           return txns;
         }
 
         // grab remove trait data payment details
         if (removeTraitData.removePaymentDetails !== null) {
-          paymentMethods.push([removeTraitData.removePaymentDetails.paymentMethodData
-            , removeTraitData.removePaymentDetails.paymentMethodAddress]);
-            paymentMethods.push([removeTraitData.removePaymentDetails.paymentMethodData
-              , removeTraitData.removePaymentDetails.paymentMethodAddress]);
-        };
+          paymentMethods.push([
+            removeTraitData.removePaymentDetails.paymentMethodData,
+            removeTraitData.removePaymentDetails.paymentMethodAddress,
+          ]);
+          paymentMethods.push([
+            removeTraitData.removePaymentDetails.paymentMethodData,
+            removeTraitData.removePaymentDetails.paymentMethodAddress,
+          ]);
+        }
 
         // grab equip trait data payment details
         if (equipTraitData.removePaymentDetails !== null) {
-          paymentMethods.push([equipTraitData.equipPaymentDetails.paymentMethodData
-            , equipTraitData.equipPaymentDetails.paymentMethodAddress]);
-            paymentMethods.push([equipTraitData.equipPaymentDetails.paymentMethodData
-              , equipTraitData.equipPaymentDetails.paymentMethodAddress]);
-        };
-        
+          paymentMethods.push([
+            equipTraitData.equipPaymentDetails.paymentMethodData,
+            equipTraitData.equipPaymentDetails.paymentMethodAddress,
+          ]);
+          paymentMethods.push([
+            equipTraitData.equipPaymentDetails.paymentMethodData,
+            equipTraitData.equipPaymentDetails.paymentMethodAddress,
+          ]);
+        }
 
         break;
       }
@@ -1340,7 +1364,7 @@ export class AvatarClient {
         throw new Error(`update target unsupported: ${updateStateData.target}`);
     }
 
-    for (let paymentMethod of paymentMethods) {
+    for (const paymentMethod of paymentMethods) {
       const [paymentMethodData, paymentMethodAddress] = paymentMethod;
 
       // if fungible
@@ -1937,7 +1961,7 @@ export class AvatarClient {
   }
 
   async migrateAvatarClassAccount(
-    accounts: MigrateAvatarClassAccountAccounts,
+    accounts: MigrateAvatarClassAccountAccounts
   ): Promise<anchor.web3.Transaction> {
     const authority = new anchor.web3.PublicKey(
       "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
@@ -1972,7 +1996,7 @@ export class AvatarClient {
   }
 
   async migrateAvatarAccount(
-    accounts: MigrateAvatarAccountAccounts,
+    accounts: MigrateAvatarAccountAccounts
   ): Promise<anchor.web3.Transaction> {
     const authority = new anchor.web3.PublicKey(
       "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
@@ -1992,17 +2016,10 @@ export class AvatarClient {
     return tx;
   }
 
-  async getAvatarPreMigration(
-    avatar: anchor.web3.PublicKey
-  ): Promise<any> {
-    const accountInfo = await this.provider.connection.getAccountInfo(
-      avatar
-    );
+  async getAvatarPreMigration(avatar: anchor.web3.PublicKey): Promise<any> {
+    const accountInfo = await this.provider.connection.getAccountInfo(avatar);
     const coder = new anchor.BorshAccountsCoder(Idls.AvatarIDL);
-    const oldAvatarData = coder.decodeUnchecked(
-      "oldAvatar",
-      accountInfo.data
-    );
+    const oldAvatarData = coder.decodeUnchecked("oldAvatar", accountInfo.data);
     return oldAvatarData;
   }
 
@@ -2024,20 +2041,20 @@ export class AvatarClient {
         let paymentDetails: PaymentDetails | null = null;
         if (vsRaw.paymentDetails) {
           const amount = new anchor.BN(vsRaw.paymentDetails.amount);
-          const uiAmount = await this.getUIPaymentAmount(vsRaw.paymentDetails.paymentMethod, amount);
+          const uiAmount = await this.getUIPaymentAmount(
+            vsRaw.paymentDetails.paymentMethod,
+            amount
+          );
           paymentDetails = {
             paymentMethod: vsRaw.paymentDetails.paymentMethod,
             amount: amount,
             uiAmount: uiAmount,
-          }
+          };
         }
 
-        vs.push(new VariantOption(
-          vsRaw.variantId,
-          vsRaw.optionId,
-          paymentDetails, 
-          tg,
-        ));
+        vs.push(
+          new VariantOption(vsRaw.variantId, vsRaw.optionId, paymentDetails, tg)
+        );
       }
       let tg = null;
       if (td.traitGate) {
@@ -2056,26 +2073,34 @@ export class AvatarClient {
     for (const variant of avatarDataRaw.variants) {
       let tg = null;
       if (variant.traitGate) {
-        tg = new TraitGate(variant.traitGate.operator, variant.traitGate.traits);
+        tg = new TraitGate(
+          variant.traitGate.operator,
+          variant.traitGate.traits
+        );
       }
 
       let paymentDetails: PaymentDetails | null = null;
       if (variant.paymentDetails) {
         const amount = new anchor.BN(variant.paymentDetails.amount);
-        const uiAmount = await this.getUIPaymentAmount(variant.paymentDetails.paymentMethod, amount);
+        const uiAmount = await this.getUIPaymentAmount(
+          variant.paymentDetails.paymentMethod,
+          amount
+        );
         paymentDetails = {
           paymentMethod: variant.paymentDetails.paymentMethod,
           amount: amount,
           uiAmount: uiAmount,
-        }
+        };
       }
 
-      variants.push(new VariantOption(
-        variant.variantId,
-        variant.optionId,
-        paymentDetails,
-        tg,
-      ));
+      variants.push(
+        new VariantOption(
+          variant.variantId,
+          variant.optionId,
+          paymentDetails,
+          tg
+        )
+      );
     }
 
     const avatarData = new Avatar(
@@ -2107,33 +2132,41 @@ export class AvatarClient {
       for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
-          tg = new TraitGate(optRaw.traitGate.operator, optRaw.traitGate.traits);
-        } 
+          tg = new TraitGate(
+            optRaw.traitGate.operator,
+            optRaw.traitGate.traits
+          );
+        }
 
         let paymentDetails: PaymentDetails | null = null;
         if (optRaw.paymentDetails) {
           const amount = new anchor.BN(optRaw.paymentDetails.amount);
-          const uiAmount = await this.getUIPaymentAmount(optRaw.paymentDetails.paymentMethod, amount);
+          const uiAmount = await this.getUIPaymentAmount(
+            optRaw.paymentDetails.paymentMethod,
+            amount
+          );
           paymentDetails = {
             paymentMethod: optRaw.paymentDetails.paymentMethod,
             amount: amount,
             uiAmount: uiAmount,
-          }
+          };
         }
 
-        options.push(new VariantOption(
-          optRaw.variantId,
-          optRaw.optionId,
-          paymentDetails,
-          tg,
-        ));
-      };
+        options.push(
+          new VariantOption(
+            optRaw.variantId,
+            optRaw.optionId,
+            paymentDetails,
+            tg
+          )
+        );
+      }
 
       const vm = new VariantMetadata(
         vmRaw.name,
         vmRaw.id,
         vmRaw.status,
-        options,
+        options
       );
       variantMetadata.push(vm);
     }
@@ -2171,32 +2204,42 @@ export class AvatarClient {
       for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
-          tg = new TraitGate(optRaw.traitGate.operator, optRaw.traitGate.traits);
-        } 
+          tg = new TraitGate(
+            optRaw.traitGate.operator,
+            optRaw.traitGate.traits
+          );
+        }
 
         let paymentDetails: PaymentDetails | null = null;
         if (optRaw.paymentDetails) {
           const amount = new anchor.BN(optRaw.paymentDetails.amount);
-          const uiAmount = await this.getUIPaymentAmount(optRaw.paymentDetails.paymentMethod, amount);
+          const uiAmount = await this.getUIPaymentAmount(
+            optRaw.paymentDetails.paymentMethod,
+            amount
+          );
           paymentDetails = {
-            paymentMethod: new anchor.web3.PublicKey(optRaw.paymentDetails.paymentMethod),
+            paymentMethod: new anchor.web3.PublicKey(
+              optRaw.paymentDetails.paymentMethod
+            ),
             amount: amount,
             uiAmount: uiAmount,
-          }
+          };
         }
 
-        options.push(new VariantOption(
-          optRaw.variantId,
-          optRaw.optionId,
-          paymentDetails,
-          tg,
-        ));
+        options.push(
+          new VariantOption(
+            optRaw.variantId,
+            optRaw.optionId,
+            paymentDetails,
+            tg
+          )
+        );
       }
       const vm = new VariantMetadata(
         vmRaw.name,
         vmRaw.id,
         vmRaw.status,
-        options,
+        options
       );
       variantMetadata.push(vm);
     }
@@ -2211,7 +2254,10 @@ export class AvatarClient {
         equipPaymentMethodAddr
       );
       const amount = new anchor.BN(traitData.equipPaymentDetails.amount);
-      const uiAmount = await this.getUIPaymentAmount(traitData.equipPaymentDetails.paymentMethod, amount);
+      const uiAmount = await this.getUIPaymentAmount(
+        traitData.equipPaymentDetails.paymentMethod,
+        amount
+      );
       equipPaymentDetailsExpanded = {
         paymentMethodAddress: equipPaymentMethodAddr,
         paymentMethodData: equipPaymentMethodData,
@@ -2228,7 +2274,10 @@ export class AvatarClient {
         removePaymentMethodAddr
       );
       const amount = new anchor.BN(traitData.removePaymentDetails.amount);
-      const uiAmount = await this.getUIPaymentAmount(traitData.removePaymentDetails.paymentMethod, amount);
+      const uiAmount = await this.getUIPaymentAmount(
+        traitData.removePaymentDetails.paymentMethod,
+        amount
+      );
       removePaymentDetailsExpanded = {
         paymentMethodAddress: removePaymentMethodAddr,
         paymentMethodData: removePaymentMethodData,
@@ -2239,8 +2288,11 @@ export class AvatarClient {
 
     let tg = null;
     if (traitData.traitGate) {
-      tg = new TraitGate(traitData.traitGate.operator, traitData.traitGate.traits);
-    } 
+      tg = new TraitGate(
+        traitData.traitGate.operator,
+        traitData.traitGate.traits
+      );
+    }
 
     return new Trait(
       traitData.id,
@@ -2253,7 +2305,7 @@ export class AvatarClient {
       variantMetadata,
       equipPaymentDetailsExpanded,
       removePaymentDetailsExpanded,
-      tg,
+      tg
     );
   }
 
@@ -2532,23 +2584,33 @@ export class AvatarClient {
     tx.feePayer = payer;
   }
 
-  private async getUIPaymentAmount(paymentMethod: anchor.web3.PublicKey, amount: anchor.BN): Promise<number> {
-
+  private async getUIPaymentAmount(
+    paymentMethod: anchor.web3.PublicKey,
+    amount: anchor.BN
+  ): Promise<number> {
     const paymentMethodData = await this.getPaymentMethod(paymentMethod);
 
     // if its an NFT payment method probably dont need to convert anything
     if (paymentMethodData.assetClass instanceof NonFungiblePaymentAssetClass) {
-      return amount.toNumber()
-    } else if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
+      return amount.toNumber();
+    } else if (
+      paymentMethodData.assetClass instanceof FungiblePaymentAssetClass
+    ) {
       // strip away the decimal precision, return float
-      const mintData = await splToken.getMint(this.provider.connection, paymentMethodData.assetClass.mint);
+      const mintData = await splToken.getMint(
+        this.provider.connection,
+        paymentMethodData.assetClass.mint
+      );
       const divisor = new anchor.BN(10).pow(new anchor.BN(mintData.decimals));
       const { div, mod } = amount.divmod(divisor);
-      const uiAmount = div.toNumber() + mod.toNumber() / Math.pow(10, mintData.decimals);
+      const uiAmount =
+        div.toNumber() + mod.toNumber() / Math.pow(10, mintData.decimals);
       return uiAmount;
     }
-    
-    throw new Error(`Unknown Payment AssetClass: ${JSON.stringify(paymentMethodData)}`);
+
+    throw new Error(
+      `Unknown Payment AssetClass: ${JSON.stringify(paymentMethodData)}`
+    );
   }
 }
 

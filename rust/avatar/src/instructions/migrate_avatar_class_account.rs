@@ -18,9 +18,7 @@ pub struct MigrateAvatarClassAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(
-    ctx: Context<MigrateAvatarClassAccount>,
-) -> Result<()> {
+pub fn handler(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
     msg!(
         "migrating avatar_class account: {}",
         &ctx.accounts.avatar_class.key()
