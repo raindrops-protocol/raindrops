@@ -4,6 +4,7 @@ use anchor_spl::token;
 use crate::{
     state::{
         accounts::{Avatar, AvatarClass, Trait, TraitConflicts, UpdateState},
+        data::UpdateTarget,
         errors::ErrorCode,
     },
     utils::validate_attribute_availability,
@@ -64,6 +65,12 @@ pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
         ErrorCode::TokenDelegateNotAllowed
     );
 
+    // check that update target is equip trait
+    match ctx.accounts.update_state.target {
+        UpdateTarget::EquipTrait { .. } => (),
+        _ => return Err(ErrorCode::InvalidUpdateTarget.into()),
+    }
+
     // verify trait is enabled
     let trait_enabled = ctx.accounts.trait_account.is_enabled();
     require!(trait_enabled, ErrorCode::TraitDisabled);
@@ -90,10 +97,15 @@ pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
         ctx.accounts.trait_account.id,
         ctx.accounts.trait_account.attribute_ids.clone(),
         &ctx.accounts.trait_account.variant_metadata,
+        ctx.accounts.trait_account.trait_gate.clone(),
         &avatar_account_info,
         ctx.accounts.payer.clone(),
         ctx.accounts.system_program.clone(),
     );
+
+    // check trait gates still pass after changes
+    let valid = ctx.accounts.avatar.validate_trait_gates();
+    require!(valid, ErrorCode::TraitGateFailure);
 
     // transfer trait token to avatar
     let transfer_accounts = token::Transfer {

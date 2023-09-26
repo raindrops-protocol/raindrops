@@ -21,11 +21,33 @@ export interface CreateAvatarClassArgs {
   globalRenderingConfigUri: string;
 }
 
-export interface VariantMetadata {
+export class VariantMetadata {
   name: string;
   id: string;
   status: VariantStatus;
   options: VariantOption[];
+
+  constructor(name: string, id: string, status: VariantStatus, options: VariantOption[]) {
+    this.name = name;
+    this.id = id;
+    this.status = status;
+    this.options = options;
+  }
+
+  formatForIx(): any {
+    const opts: any[] = [];
+    for (const opt of this.options) {
+      const ixOpt = opt.formatForIx(); 
+      opts.push(ixOpt);
+    }
+
+    return {
+      name: this.name,
+      id: this.id,
+      status: this.status,
+      options: opts,
+    }
+  }
 }
 
 export interface VariantStatus {
@@ -86,8 +108,9 @@ export interface CreateTraitArgs {
   attributeIds: number[];
   variantMetadata: VariantMetadata[];
   traitStatus: TraitStatus;
-  equipPaymentDetails: PaymentDetails | null;
-  removePaymentDetails: PaymentDetails | null;
+  equipPaymentDetails?: PaymentDetails;
+  removePaymentDetails?: PaymentDetails;
+  traitGate?: TraitGate;
 }
 
 export interface BootTraitsAccounts {
@@ -316,10 +339,8 @@ export interface MigrateAvatarClassAccountAccounts {
   avatarClass: anchor.web3.PublicKey;
 }
 
-export interface MigrateAvatarClassAccountArgs {
-  attributeMetadata: AttributeMetadata[];
-  variantMetadata: VariantMetadata[];
-  globalRenderingConfigUri: string;
+export interface MigrateAvatarAccountAccounts {
+  avatar: anchor.web3.PublicKey;
 }
 
 export interface Attribute {
@@ -368,12 +389,42 @@ export interface Variant {
   optionId: string;
 }
 
-export interface VariantOption {
+export class VariantOption {
   name?: string; // not written to chain
   variantId: string;
   optionId: string;
   paymentDetails: PaymentDetails | null;
   traitGate: TraitGate | null;
+
+  constructor(variantId: string, optionId: string, paymentDetails?: PaymentDetails, traitGate?: TraitGate, name?: string) {
+    this.name = name;
+    this.variantId = variantId;
+    this.optionId = optionId;
+    this.paymentDetails = null;
+    this.traitGate = null;
+
+    if (paymentDetails) {
+      this.paymentDetails = paymentDetails;
+    }
+
+    if (traitGate) {
+      this.traitGate = traitGate;
+    }
+  }
+
+  formatForIx(): any {
+    let tg: any | null = null;
+    if (this.traitGate !== null) {
+      tg = this.traitGate.formatForIx();
+    }
+
+    return {
+      variantId: this.variantId,
+      optionId: this.optionId,
+      paymentDetails: this.paymentDetails,
+      traitGate: tg,
+    }
+  }
 }
 
 export interface PaymentDetails {
@@ -410,19 +461,60 @@ export class PaymentState {
   }
 }
 
-export interface TraitGate {
-  operator: { and: {} }; // hardcoded for now until we support other operators
-  traits: anchor.web3.PublicKey[];
+export class TraitGate {
+  readonly operator: Operator;
+  readonly traits: anchor.web3.PublicKey[];
+
+  constructor(operator: any | string, traits: anchor.web3.PublicKey[]) {
+    this.traits = traits;
+    if (typeof operator === "string") {
+      if (operator === "AND") {
+        this.operator = operator;
+      }
+
+      if (operator === "OR") {
+        this.operator = operator;
+      }
+
+      return
+    }
+
+    if ("And" in operator || "and" in operator) {
+      this.operator = "AND"
+      return
+    }
+
+    if ("Or" in operator || "or" in operator) {
+      this.operator = "OR";
+      return
+    }
+
+    if (this.operator === undefined) {
+      throw new Error(`unable to parse operator: ${operator}`);
+    }
+  }
+
+  formatForIx(): any {
+    switch (this.operator) {
+      case "AND": {
+        return { operator: { and: {} }, traits: this.traits }
+      }
+      case "OR": {
+        return { operator: { or: {} }, traits: this.traits }
+      }
+      default:
+        throw new Error(`unable to format trait gate: ${JSON.stringify(this)}`);
+    }
+  }
 }
 
-export enum Operator {
-  And,
-}
+export type Operator = "AND" | "OR";
 
 export interface TraitData {
   attributeIds: number[];
   traitAddress: anchor.web3.PublicKey;
   variantSelection: VariantOption[];
+  traitGate: TraitGate | null;
 }
 
 export interface TraitStatus {
@@ -583,6 +675,7 @@ export class Trait {
   readonly variantMetadata: VariantMetadata[];
   readonly equipPaymentDetails: PaymentDetailsExpanded | null;
   readonly removePaymentDetails: PaymentDetailsExpanded | null;
+  readonly traitGate: TraitGate | null;
 
   constructor(
     id: number,
@@ -594,7 +687,8 @@ export class Trait {
     status: TraitStatus,
     variantMetadata: VariantMetadata[],
     equipPaymentDetails: PaymentDetailsExpanded | null,
-    removePaymentDetails: PaymentDetailsExpanded | null
+    removePaymentDetails: PaymentDetailsExpanded | null,
+    traitGate: TraitGate,
   ) {
     this.id = id;
     this.traitAddress = traitAddress;
@@ -606,6 +700,7 @@ export class Trait {
     this.variantMetadata = variantMetadata;
     this.equipPaymentDetails = equipPaymentDetails;
     this.removePaymentDetails = removePaymentDetails;
+    this.traitGate = traitGate;
   }
 
   isValidVariant(variantId: string, optionId: string): boolean {

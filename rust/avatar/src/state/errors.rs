@@ -58,4 +58,7 @@ pub enum ErrorCode {
 
     #[msg("Migration Error")]
     MigrationError,
+
+    #[msg("Failed to Validate Trait Gate")]
+    TraitGateFailure,
 }

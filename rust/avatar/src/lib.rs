@@ -73,10 +73,7 @@ pub mod raindrops_avatar {
         instructions::update_class_variant_authority::handler(ctx, args)
     }
 
-    pub fn update_trait(
-        ctx: Context<UpdateTrait>,
-        args: UpdateTraitArgs,
-    ) -> Result<()> {
+    pub fn update_trait(ctx: Context<UpdateTrait>, args: UpdateTraitArgs) -> Result<()> {
         instructions::update_trait::handler(ctx, args)
     }
 
@@ -175,10 +172,11 @@ pub mod raindrops_avatar {
         instructions::verify_payment_mint_test::handler(ctx, args)
     }
 
-    pub fn migrate_avatar_class_account(
-        ctx: Context<MigrateAvatarClassAccount>,
-        args: MigrateAvatarClassAccountArgs,
-    ) -> Result<()> {
-        migrate_avatar_class_account::handler(ctx, args)
+    pub fn migrate_avatar_class_account(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
+        migrate_avatar_class_account::handler(ctx)
+    }
+
+    pub fn migrate_avatar_account(ctx: Context<MigrateAvatarAccount>) -> Result<()> {
+        migrate_avatar_account::handler(ctx)
     }
 }

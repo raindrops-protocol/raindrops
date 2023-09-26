@@ -139,87 +139,42 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata: AvatarRpc.VariantMetadata[] = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
-      {
-        id: "haircolo",
-        name: "hair color",
-        status: {
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
+      new AvatarRpc.VariantMetadata(
+        "hair color",
+        "haircolo",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "haircolo",
-            optionId: "haircol1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "haircolo",
-            optionId: "haircol2",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "haircolo",
-            optionId: "haircol3",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
-      {
-        id: "skintone",
-        name: "skin tone",
-        status: {
+        [
+          new AvatarRpc.VariantOption("haircolo", "haircol1"),
+          new AvatarRpc.VariantOption("haircolo", "haircol2"),
+          new AvatarRpc.VariantOption("haircolo", "haircol3"),
+        ]
+      ),
+      new AvatarRpc.VariantMetadata(
+        "skin tone",
+        "skintone",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "skintone",
-            optionId: "skinton1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "skintone",
-            optionId: "skinton2",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "skintone",
-            optionId: "skinton3",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "skintone",
-            optionId: "skinton4",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("skintone", "skinton1"),
+          new AvatarRpc.VariantOption("skintone", "skinton2"),
+          new AvatarRpc.VariantOption("skintone", "skinton3"),
+          new AvatarRpc.VariantOption("skintone", "skinton4"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -460,27 +415,17 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -551,27 +496,17 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "vfoo1234",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "vfoo1234",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "vfoo1234",
-              optionId: "gfjlk123",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "vfoo1234",
-              optionId: "lol123gf",
-              paymentDetails: null,
-              traitGate: null,
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("vfoo1234", "gfjlk123"),
+            new AvatarRpc.VariantOption("vfoo1234", "lol123gf"),
+          ]
+        ),
       ]
     );
 
@@ -703,7 +638,6 @@ describe.only("avatar", () => {
     assert(avatarDataPost.variants[0].variantId === "gender12");
     assert(avatarDataPost.variants[0].optionId === "gendero1");
   });
-
   it("update trait variant with invalid option", async () => {
     const [
       avatarClassAuthorityClient,
@@ -726,27 +660,17 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -817,27 +741,17 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "ertylol9",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "ertylol9",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "ertylol9",
-              optionId: "1234lol1",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "ertylol9",
-              optionId: "gqwolr78",
-              paymentDetails: null,
-              traitGate: null,
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("ertylol9", "1234lol1"),
+            new AvatarRpc.VariantOption("ertylol9", "gqwolr78"),
+          ]
+        ),
       ]
     );
 
@@ -873,7 +787,6 @@ describe.only("avatar", () => {
       nftHolderClient.beginUpdate(beginUpdateAccounts, beginUpdateArgs)
     );
   });
-
   it("update trait variant with spl payment transfer", async () => {
     const [
       avatarClassAuthorityClient,
@@ -896,27 +809,17 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -1025,30 +928,20 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "acc34jko",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "acc34jko",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "acc34jko",
-              optionId: "blahblah",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "acc34jko",
-              optionId: "89hgjklo",
-              paymentDetails: {
-                paymentMethod: paymentMethodAddr,
-                amount: new anchor.BN(100000),
-              },
-              traitGate: null,
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("acc34jko", "blahblah"),
+            new AvatarRpc.VariantOption("acc34jko", "89hgjklo", {
+              paymentMethod: paymentMethodAddr,
+              amount: new anchor.BN(100000),
+            }),
+          ]
+        ),
       ]
     );
 
@@ -1169,27 +1062,17 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -1279,30 +1162,20 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "acc34jko",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "acc34jko",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "acc34jko",
-              optionId: "blahblah",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "acc34jko",
-              optionId: "89hgjklo",
-              paymentDetails: {
-                paymentMethod: paymentMethod,
-                amount: new anchor.BN(1),
-              },
-              traitGate: null,
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("acc34jko", "blahblah"),
+            new AvatarRpc.VariantOption("acc34jko", "89hgjklo", {
+              paymentMethod: paymentMethod,
+              amount: new anchor.BN(1),
+            }),
+          ]
+        ),
       ]
     );
 
@@ -1429,27 +1302,17 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -1529,30 +1392,20 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "acc34jko",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "acc34jko",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "acc34jko",
-              optionId: "blahblah",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "acc34jko",
-              optionId: "89hgjklo",
-              paymentDetails: {
-                paymentMethod: paymentMethod,
-                amount: new anchor.BN(1),
-              },
-              traitGate: null,
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("acc34jko", "blahblah"),
+            new AvatarRpc.VariantOption("acc34jko", "89hgjklo", {
+              paymentMethod: paymentMethod,
+              amount: new anchor.BN(1),
+            }),
+          ]
+        ),
       ]
     );
 
@@ -1672,27 +1525,17 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender12",
+        "gender",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -1787,30 +1630,20 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "acc34jko",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "acc34jko",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "acc34jko",
-              optionId: "blahblah",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "acc34jko",
-              optionId: "89hgjklo",
-              paymentDetails: {
-                paymentMethod: paymentMethodAddr,
-                amount: new anchor.BN(100000),
-              },
-              traitGate: null,
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("acc34jko", "blahblah"),
+            new AvatarRpc.VariantOption("acc34jko", "89hgjklo", {
+              paymentMethod: paymentMethodAddr,
+              amount: new anchor.BN(100000),
+            }),
+          ]
+        ),
       ]
     );
 
@@ -2001,30 +1834,22 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "foo1234g",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "foo1234g",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "foo1234g",
-              optionId: "kjloiu23",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "foo1234g",
-              optionId: "kjlo23qw",
-              paymentDetails: null,
-              traitGate: {
-                operator: { and: {} },
-                traits: [hatTrait],
-              },
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("foo1234g", "kjloiu23"),
+            new AvatarRpc.VariantOption(
+              "foo1234g",
+              "kjlo23qw",
+              undefined,
+              new AvatarRpc.TraitGate("AND", [hatTrait])
+            ),
+          ]
+        ),
       ]
     );
 
@@ -2114,27 +1939,17 @@ describe.only("avatar", () => {
     ];
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -2264,27 +2079,17 @@ describe.only("avatar", () => {
     const treasury = anchor.web3.Keypair.generate().publicKey;
 
     const variantMetadata = [
-      {
-        id: "gender12",
-        name: "gender",
-        status: {
+      new AvatarRpc.VariantMetadata(
+        "gender",
+        "gender12",
+        {
           enabled: true,
         },
-        options: [
-          {
-            variantId: "gender12",
-            optionId: "gendero0",
-            paymentDetails: null,
-            traitGate: null,
-          },
-          {
-            variantId: "gender12",
-            optionId: "gendero1",
-            paymentDetails: null,
-            traitGate: null,
-          },
-        ],
-      },
+        [
+          new AvatarRpc.VariantOption("gender12", "gendero0"),
+          new AvatarRpc.VariantOption("gender12", "gendero1"),
+        ]
+      ),
     ];
 
     const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
@@ -2340,30 +2145,20 @@ describe.only("avatar", () => {
       };
     const updateClassVariantMetadataArgs: AvatarRpc.UpdateClassVariantMetadataArgs =
       {
-        variantMetadata: {
-          id: "gender12",
-          name: "gender",
-          status: {
+        variantMetadata: new AvatarRpc.VariantMetadata(
+          "gender",
+          "gender12",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "gender12",
-              optionId: "gendero0",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "gender12",
-              optionId: "gendero1",
-              paymentDetails: {
-                paymentMethod: paymentMethod,
-                amount: new anchor.BN(100000),
-              },
-              traitGate: null,
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("gender12", "gendero0"),
+            new AvatarRpc.VariantOption("gender12", "gendero1", {
+              paymentMethod: paymentMethod,
+              amount: new anchor.BN(100000),
+            }),
+          ]
+        ),
       };
 
     const updateClassVariantMetadataTx =
@@ -3407,30 +3202,22 @@ describe.only("avatar", () => {
       avatarClass,
       avatarClassAuthorityClient,
       [
-        {
-          name: "testVariant",
-          id: "ikolyhgt",
-          status: {
+        new AvatarRpc.VariantMetadata(
+          "testVariant",
+          "ikolyhgt",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "ikolyhgt",
-              optionId: "rfedtghy",
-              paymentDetails: null,
-              traitGate: null,
-            },
-            {
-              variantId: "ikolyhgt",
-              optionId: "rfedtg12",
-              paymentDetails: null,
-              traitGate: {
-                operator: { and: {} },
-                traits: [hatTrait],
-              },
-            },
-          ],
-        },
+          [
+            new AvatarRpc.VariantOption("ikolyhgt", "rfedtghy"),
+            new AvatarRpc.VariantOption(
+              "ikolyhgt",
+              "rfedtg12",
+              undefined,
+              new AvatarRpc.TraitGate("AND", [hatTrait])
+            ),
+          ]
+        ),
       ]
     );
 
@@ -3969,44 +3756,29 @@ describe.only("avatar", () => {
       avatarClassAuthorityClient
     );
 
-    const updateTraitAccounts: AvatarRpc.UpdateTraitAccounts =
-      {
-        avatarClass: avatarClass,
-        authority: avatarClassAuthority.publicKey,
-        traitMint: hatTraitMint,
-      };
-    const updateTraitArgs: AvatarRpc.UpdateTraitArgs =
-      {
-        variantMetadata: {
-          name: "bluesomething",
-          id: "newVariantId",
-          status: {
-            enabled: true,
-          },
-          options: [
-            {
-              variantId: "newVariantId",
-              optionId: "option1",
-              paymentDetails: null,
-              traitGate: null,
-            },
-          ],
+    const updateTraitAccounts: AvatarRpc.UpdateTraitAccounts = {
+      avatarClass: avatarClass,
+      authority: avatarClassAuthority.publicKey,
+      traitMint: hatTraitMint,
+    };
+    const updateTraitArgs: AvatarRpc.UpdateTraitArgs = {
+      variantMetadata: new AvatarRpc.VariantMetadata(
+        "bluesomething",
+        "newVariantId",
+        {
+          enabled: true,
         },
-      };
+        [new AvatarRpc.VariantOption("newVariantId", "option1")]
+      ),
+    };
 
-    const updateTraitTx =
-      await avatarClassAuthorityClient.updateTrait(
-        updateTraitAccounts,
-        updateTraitArgs
-      );
-    const updateTraitTxSig =
-      await avatarClassAuthorityClient.provider.sendAndConfirm(
-        updateTraitTx
-      );
-    console.log(
-      "updateTraitTxSig: %s",
-      updateTraitTxSig
+    const updateTraitTx = await avatarClassAuthorityClient.updateTrait(
+      updateTraitAccounts,
+      updateTraitArgs
     );
+    const updateTraitTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(updateTraitTx);
+    console.log("updateTraitTxSig: %s", updateTraitTxSig);
   });
   it("update class variant metadata", async () => {
     const [
@@ -4154,21 +3926,14 @@ describe.only("avatar", () => {
       };
     const updateClassVariantMetadataArgs: AvatarRpc.UpdateClassVariantMetadataArgs =
       {
-        variantMetadata: {
-          name: "bluesomething",
-          id: "newVariantId",
-          status: {
+        variantMetadata: new AvatarRpc.VariantMetadata(
+          "bluesomething",
+          "newVariantId",
+          {
             enabled: true,
           },
-          options: [
-            {
-              variantId: "newVariantId",
-              optionId: "option1",
-              paymentDetails: null,
-              traitGate: null,
-            },
-          ],
-        },
+          [new AvatarRpc.VariantOption("newVariantId", "option1")]
+        ),
       };
 
     const updateClassVariantMetadataTx =
@@ -5294,13 +5059,418 @@ describe.only("avatar", () => {
     );
     console.log("swapTraitTxSig: %s", swapTraitTxSig);
   });
-  it("pay for an avatar update with native sol", async () => {
+  it("trait gate on trait account with OR operator", async () => {
     const [
       avatarClassAuthorityClient,
       _avatarClassAuthorityHttpClient,
       avatarClassAuthority,
     ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
 
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      {
+        id: 0,
+        name: "head",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "body",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+    ];
+
+    const variantMetadata = [];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: variantMetadata,
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    // create 2 traits, these will be used in the OR gate
+    const traitArgs: any[] = [
+      { name: "redHat", attributes: [0] },
+      { name: "blueHat", attributes: [0] },
+    ];
+
+    const traitMints: anchor.web3.PublicKey[] = [];
+    const traitPdas: anchor.web3.PublicKey[] = [];
+    for (let i = 0; i < traitArgs.length; i++) {
+      const traitMint = await createTraitSft(
+        connection,
+        traitArgs[i].name,
+        avatarClassAuthority,
+        [nftHolder.publicKey]
+      );
+
+      const traitPda = await createTrait(
+        traitArgs[i].name,
+        traitMint,
+        traitArgs[i].attributes,
+        { enabled: true },
+        avatarClass,
+        avatarClassAuthorityClient,
+        []
+      );
+
+      traitMints.push(traitMint);
+      traitPdas.push(traitPda);
+    }
+
+    // 3rd head trait which isnt required by any gates
+    const notRequiredTraitMint = await createTraitSft(
+      connection,
+      "yellowHat",
+      avatarClassAuthority,
+      [nftHolder.publicKey]
+    );
+
+    await createTrait(
+      "yellowHat",
+      notRequiredTraitMint,
+      [0],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      []
+    );
+
+    // create the trait that requires the 2 previous to either be equipped
+
+    const gatedTraitMint = await createTraitSft(
+      connection,
+      "greenShirt",
+      avatarClassAuthority,
+      [nftHolder.publicKey]
+    );
+
+    await createTrait(
+      "greenShirt",
+      gatedTraitMint,
+      [1],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      undefined,
+      undefined,
+      new AvatarRpc.TraitGate("OR", traitPdas)
+    );
+
+    // equip one of the hat traits which is required to equip the green shirt
+
+    const equipRequiredTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const equipRequiredTraitTx = await nftHolderClient.equipTrait(
+      equipRequiredTraitAccounts
+    );
+    const equipRequiredTraitTxSig =
+      await nftHolderClient.provider.sendAndConfirm(equipRequiredTraitTx);
+    console.log("equipRequiredTraitTxSig: %s", equipRequiredTraitTxSig);
+
+    // equip green shirt that has trait gate
+
+    const equipGatedTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: gatedTraitMint,
+    };
+
+    const equipGatedTraitTx = await nftHolderClient.equipTrait(
+      equipGatedTraitAccounts
+    );
+    const equipGatedTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipGatedTraitTx,
+      []
+    );
+    console.log("equipGatedTraitTxSig: %s", equipGatedTraitTxSig);
+
+    // cannot remove the trait because its in use by the trait gated trait
+
+    const removeRequiredTraitAccounts: AvatarRpc.RemoveTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const removeRequiredTraitTx = await nftHolderClient.removeTrait(
+      removeRequiredTraitAccounts
+    );
+    assertRejects(
+      nftHolderClient.provider.sendAndConfirm(removeRequiredTraitTx)
+    );
+
+    // swap equipped required traits, this will work because it still fulfills the trait gating for the green shirt
+    const swapRequiredTraitAccounts: AvatarRpc.SwapTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      equipTraitMint: traitMints[1],
+      removeTraitMint: traitMints[0],
+    };
+
+    const swapRequiredTraitTx = await nftHolderClient.swapTrait(
+      swapRequiredTraitAccounts
+    );
+    const swapRequiredTraitTxSig =
+      await nftHolderClient.provider.sendAndConfirm(
+        swapRequiredTraitTx,
+        undefined,
+        { skipPreflight: true }
+      );
+    console.log("swapRequiredTraitTxSig: %s", swapRequiredTraitTxSig);
+
+    // swap equipped required trait for a trait that does not fulfill the gate, this will fail
+    const swapNotRequiredFailTraitAccounts: AvatarRpc.SwapTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      equipTraitMint: notRequiredTraitMint,
+      removeTraitMint: traitMints[1],
+    };
+
+    const swapNotRequiredFailTraitTx = await nftHolderClient.swapTrait(
+      swapNotRequiredFailTraitAccounts
+    );
+    assertRejects(
+      nftHolderClient.provider.sendAndConfirm(swapNotRequiredFailTraitTx)
+    );
+  });
+  it("trait gate on trait account with AND operator", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
+
+    const avatarClassMint = await createSftAvatarClass(
+      connection,
+      avatarClassAuthority,
+      [avatarClassAuthority.publicKey]
+    );
+
+    const attributeMetadata: AvatarRpc.AttributeMetadata[] = [
+      {
+        id: 0,
+        name: "head",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 1,
+        name: "body",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+      {
+        id: 2,
+        name: "legs",
+        status: { mutable: true, attributeType: "Optional" },
+      },
+    ];
+
+    const variantMetadata = [];
+
+    const createAvatarClassArgs: AvatarRpc.CreateAvatarClassArgs = {
+      attributeMetadata: attributeMetadata,
+      variantMetadata: variantMetadata,
+      globalRenderingConfigUri:
+        "http://localhost:3000/global-rendering-config.json",
+    };
+
+    const createAvatarClassAccounts: AvatarRpc.CreateAvatarClassAccounts = {
+      avatarClassMint: avatarClassMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const [createAvatarClassTx, avatarClass] =
+      await avatarClassAuthorityClient.createAvatarClass(
+        createAvatarClassAccounts,
+        createAvatarClassArgs
+      );
+    const createAvatarClassTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(
+        createAvatarClassTx
+      );
+    console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
+
+    const [nftHolderClient, _nftHolderHttpClient, nftHolder] = await newPayer(
+      connection
+    );
+
+    const nftMint = await mintNft(connection, nftHolder, avatarClassAuthority);
+
+    const createAvatarAccounts: AvatarRpc.CreateAvatarAccounts = {
+      avatarClass: avatarClass,
+      avatarMint: nftMint,
+      authority: avatarClassAuthority.publicKey,
+    };
+
+    const createAvatarArgs: AvatarRpc.CreateAvatarArgs = {
+      variants: [],
+    };
+
+    const [createAvatarTx, avatar] =
+      await avatarClassAuthorityClient.createAvatar(
+        createAvatarAccounts,
+        createAvatarArgs
+      );
+    const createAvatarTxSig =
+      await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
+    console.log("createAvatarTxSig: %s", createAvatarTxSig);
+
+    const traitArgs: any[] = [
+      { name: "redHat", attributes: [0] },
+      { name: "blueShirt", attributes: [1] },
+    ];
+
+    const traitMints: anchor.web3.PublicKey[] = [];
+    const traitPdas: anchor.web3.PublicKey[] = [];
+    for (let arg of traitArgs) {
+      const traitMint = await createTraitSft(
+        connection,
+        arg.name,
+        avatarClassAuthority,
+        [nftHolder.publicKey]
+      );
+
+      const traitPda = await createTrait(
+        arg.name,
+        traitMint,
+        arg.attributes,
+        { enabled: true },
+        avatarClass,
+        avatarClassAuthorityClient
+      );
+
+      traitMints.push(traitMint);
+      traitPdas.push(traitPda);
+    }
+
+    // create the trait that requires the 2 previous to be equipped
+
+    const gatedTraitMint = await createTraitSft(
+      connection,
+      "greenPants",
+      avatarClassAuthority,
+      [nftHolder.publicKey]
+    );
+
+    await createTrait(
+      "greenPants",
+      gatedTraitMint,
+      [2],
+      { enabled: true },
+      avatarClass,
+      avatarClassAuthorityClient,
+      [],
+      undefined,
+      undefined,
+      new AvatarRpc.TraitGate("AND", traitPdas)
+    );
+
+    // equip both required traits
+    for (const traitMint of traitMints) {
+      const equipRequiredTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+        avatar: avatar,
+        payer: nftHolderClient.provider.publicKey,
+        traitMint: traitMint,
+      };
+
+      const equipRequiredTraitTx = await nftHolderClient.equipTrait(
+        equipRequiredTraitAccounts
+      );
+      const equipRequiredTraitTxSig =
+        await nftHolderClient.provider.sendAndConfirm(equipRequiredTraitTx);
+      console.log("equipRequiredTraitTxSig: %s", equipRequiredTraitTxSig);
+    }
+
+    // equip green pants that has trait gate
+
+    const equipGatedTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: gatedTraitMint,
+    };
+
+    const equipGatedTraitTx = await nftHolderClient.equipTrait(
+      equipGatedTraitAccounts
+    );
+    const equipGatedTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipGatedTraitTx,
+      []
+    );
+    console.log("equipGatedTraitTxSig: %s", equipGatedTraitTxSig);
+
+    // cannot remove the trait because its in use by the trait gated trait
+
+    const removeRequiredTraitAccounts: AvatarRpc.RemoveTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const removeRequiredTraitTx = await nftHolderClient.removeTrait(
+      removeRequiredTraitAccounts
+    );
+    assertRejects(
+      nftHolderClient.provider.sendAndConfirm(removeRequiredTraitTx)
+    );
+  });
+  it.only("pay for an avatar update with native sol", async () => {
+    const [
+      avatarClassAuthorityClient,
+      _avatarClassAuthorityHttpClient,
+      avatarClassAuthority,
+    ] = await newPayer(connection, rainTokenMint, rainTokenMintAuthority);
 
     const avatarClassMint = await createSftAvatarClass(
       connection,
@@ -5342,7 +5512,9 @@ describe.only("avatar", () => {
     console.log("createAvatarClassTxSig: %s", createAvatarClassTxSig);
 
     // create payment method of native sol
-    const wSolMint = new anchor.web3.PublicKey("So11111111111111111111111111111111111111112");
+    const wSolMint = new anchor.web3.PublicKey(
+      "So11111111111111111111111111111111111111112"
+    );
 
     const treasury = anchor.web3.Keypair.generate();
 
@@ -5352,7 +5524,7 @@ describe.only("avatar", () => {
     };
     const createPaymentMethodArgs: AvatarRpc.CreatePaymentMethodArgs = {
       assetClass: new AvatarRpc.FungiblePaymentAssetClass(wSolMint),
-      action: new AvatarRpc.TransferPaymentAction(treasury.publicKey)
+      action: new AvatarRpc.TransferPaymentAction(treasury.publicKey),
     };
 
     const [createPaymentMethodTx, paymentMethodAddr] =
@@ -5391,9 +5563,7 @@ describe.only("avatar", () => {
       await avatarClassAuthorityClient.provider.sendAndConfirm(createAvatarTx);
     console.log("createAvatarTxSig: %s", createAvatarTxSig);
 
-    const traitArgs: any[] = [
-      { name: "redHat", attributes: [0] },
-    ];
+    const traitArgs: any[] = [{ name: "redHat", attributes: [0] }];
 
     const traitMints: anchor.web3.PublicKey[] = [];
     for (let arg of traitArgs) {
@@ -5412,16 +5582,29 @@ describe.only("avatar", () => {
         avatarClass,
         avatarClassAuthorityClient,
         [],
-        {amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL), paymentMethod: paymentMethodAddr},
-        {amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL), paymentMethod: paymentMethodAddr}
+        {
+          amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+          paymentMethod: paymentMethodAddr,
+        },
+        {
+          amount: new anchor.BN(anchor.web3.LAMPORTS_PER_SOL),
+          paymentMethod: paymentMethodAddr,
+        }
       );
 
       traitMints.push(traitMint);
-    };
+    }
 
-    // wrap some sol for the equip payment payment
-    const wSolAta = await splToken.createWrappedNativeAccount(nftHolderClient.provider.connection, nftHolder, nftHolder.publicKey, anchor.web3.LAMPORTS_PER_SOL * 3);
-    console.log("wSOL ATA: %s", wSolAta.toString());
+    // create wSOL ATA, wrap SOL required
+    const createWSolIxns = await createWSolAtaIxns(
+      avatarClassAuthorityClient.provider.connection,
+      nftHolder.publicKey,
+      new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
+    );
+
+    const wSolTx = new anchor.web3.Transaction().add(...createWSolIxns);
+    const wSolTxSig = await nftHolderClient.provider.sendAndConfirm(wSolTx);
+    console.log("wSolTxSig: %s", wSolTxSig);
 
     // begin equip update
     const beginUpdateAccounts: AvatarRpc.BeginUpdateAccounts = {
@@ -5429,7 +5612,7 @@ describe.only("avatar", () => {
     };
 
     const updateTarget = new AvatarRpc.UpdateTargetSelectionEquipTrait(
-      AvatarRpc.traitPDA(avatarClass, traitMints[0]),
+      AvatarRpc.traitPDA(avatarClass, traitMints[0])
     );
 
     const beginUpdateArgs: AvatarRpc.BeginUpdateArgs = {
@@ -5469,9 +5652,25 @@ describe.only("avatar", () => {
     );
     console.log("payForUpdateTxSig: %s", payForUpdateTxSig);
 
-    const wSolAtaData = await splToken.getAccount(nftHolderClient.provider.connection, wSolAta, "processed");
-    console.log("remaining wSol: %s", wSolAtaData.amount.toString(10));
-  })
+    const equipTraitAccounts: AvatarRpc.EquipTraitAccounts = {
+      avatar: avatar,
+      payer: nftHolderClient.provider.publicKey,
+      traitMint: traitMints[0],
+    };
+
+    const equipTraitTx = await nftHolderClient.equipTrait(equipTraitAccounts);
+    const equipTraitTxSig = await nftHolderClient.provider.sendAndConfirm(
+      equipTraitTx
+    );
+    console.log("equipTraitTxSig: %s", equipTraitTxSig);
+
+    // check that our wrapped sol balance was spent
+    const wSolBalanceResponse =
+      await nftHolderClient.provider.connection.getTokenAccountBalance(
+        splToken.getAssociatedTokenAddressSync(WSOL_MINT, nftHolder.publicKey)
+      );
+    assert.isTrue(wSolBalanceResponse.value.uiAmount === 0);
+  });
 });
 
 async function createSftAvatarClass(
@@ -5848,8 +6047,9 @@ async function createTrait(
   avatarClass: anchor.web3.PublicKey,
   avatarClassAuthorityClient: AvatarRpc.AvatarClient,
   variantMetadata: AvatarRpc.VariantMetadata[] = [],
-  equipPaymentDetails: AvatarRpc.PaymentDetails | null = null,
-  removePaymentDetails: AvatarRpc.PaymentDetails | null = null
+  equipPaymentDetails?: AvatarRpc.PaymentDetails,
+  removePaymentDetails?: AvatarRpc.PaymentDetails,
+  traitGate?: AvatarRpc.TraitGate
 ): Promise<anchor.web3.PublicKey> {
   const createTraitArgs: AvatarRpc.CreateTraitArgs = {
     componentUri: `http://localhost:3000/${name}.json`,
@@ -5858,6 +6058,7 @@ async function createTrait(
     traitStatus: traitStatus,
     equipPaymentDetails: equipPaymentDetails,
     removePaymentDetails: removePaymentDetails,
+    traitGate: traitGate,
   };
 
   const createTraitAccounts: AvatarRpc.CreateTraitAccounts = {
@@ -6227,4 +6428,44 @@ async function assertRejects(fn: Promise<any | void>) {
       assert.fail("should have failed");
     }
   }
+}
+
+const WSOL_MINT = new anchor.web3.PublicKey(
+  "So11111111111111111111111111111111111111112"
+);
+
+async function createWSolAtaIxns(
+  connection: anchor.web3.Connection,
+  owner: anchor.web3.PublicKey,
+  lamports: anchor.BN
+): Promise<anchor.web3.TransactionInstruction[]> {
+  const ata = splToken.getAssociatedTokenAddressSync(WSOL_MINT, owner);
+
+  // check to see if there's already a balance of wrapped SOL in the account
+  let currentBalance: anchor.BN = new anchor.BN(0);
+  try {
+    const response = await connection.getTokenAccountBalance(ata, "processed");
+    currentBalance = new anchor.BN(response.value.amount);
+  } catch (_e) {}
+
+  // get the required amount of SOL we need to wrap
+  const requiredAmount = lamports.sub(currentBalance);
+
+  const createAtaIx =
+    splToken.createAssociatedTokenAccountIdempotentInstruction(
+      owner,
+      ata,
+      owner,
+      WSOL_MINT
+    );
+
+  const transferSolIx = anchor.web3.SystemProgram.transfer({
+    fromPubkey: owner,
+    toPubkey: ata,
+    lamports: requiredAmount.toNumber(),
+  });
+
+  const syncNativeIx = splToken.createSyncNativeInstruction(ata);
+
+  return [createAtaIx, transferSolIx, syncNativeIx];
 }

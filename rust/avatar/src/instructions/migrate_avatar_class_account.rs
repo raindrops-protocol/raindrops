@@ -18,15 +18,8 @@ pub struct MigrateAvatarClassAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct MigrateAvatarClassAccountArgs {
-    pub new_attribute_metadata: Vec<AttributeMetadata>,
-    pub global_rendering_config_uri: String,
-}
-
 pub fn handler(
     ctx: Context<MigrateAvatarClassAccount>,
-    args: MigrateAvatarClassAccountArgs,
 ) -> Result<()> {
     msg!(
         "migrating avatar_class account: {}",
@@ -43,34 +36,45 @@ pub fn handler(
         old_mint,
         old_trait_index,
         old_payment_index,
-        //old_attribute_metadata,
-        //old_variant_metadata,
-        //old_global_rendering_config_uri,
+        old_attribute_metadata,
+        old_variant_metadata,
+        old_global_rendering_config_uri,
     ) = {
         let b = &avatar_class_account_info.try_borrow_mut_data().unwrap();
-        msg!("borrowed data");
+        let avatar_class_account: OldAvatarClass =
+            AnchorDeserialize::deserialize(&mut &b[8..]).unwrap();
 
         (
-            Pubkey::new(&b[8..40]),
-            u16::from_le_bytes(b[40..42].try_into().unwrap()),
-            u64::from_le_bytes(b[42..50].try_into().unwrap()),
+            avatar_class_account.mint,
+            avatar_class_account.trait_index,
+            avatar_class_account.payment_index,
+            avatar_class_account.attribute_metadata,
+            avatar_class_account.variant_metadata,
+            avatar_class_account.global_rendering_config_uri,
         )
     };
-    msg!(
-        "old data extracted: {} {} {}",
-        old_mint,
-        old_trait_index,
-        old_payment_index
-    );
+
+    // update attribute metadata with the new attribute_type field
+    let mut new_attribute_metadata: Vec<AttributeMetadata> = Vec::new();
+    for old_am in old_attribute_metadata {
+        new_attribute_metadata.push(AttributeMetadata {
+            id: old_am.id,
+            name: old_am.name,
+            status: AttributeStatus {
+                attribute_type: AttributeType::Optional,
+                mutable: old_am.status.mutable,
+            },
+        })
+    }
 
     // Create new avatar_class data using fetched old data
     let new_avatar_class_data: AvatarClass = AvatarClass {
         mint: old_mint,
         trait_index: old_trait_index,
         payment_index: old_payment_index,
-        attribute_metadata: args.new_attribute_metadata,
-        variant_metadata: vec![],
-        global_rendering_config_uri: args.global_rendering_config_uri.clone(),
+        attribute_metadata: new_attribute_metadata,
+        variant_metadata: old_variant_metadata,
+        global_rendering_config_uri: old_global_rendering_config_uri.clone(),
     };
     msg!("new avatar class data created: {:?}", new_avatar_class_data);
 
@@ -113,7 +117,7 @@ pub fn handler(
 
     // simple check to make sure the new account data is correct
     require!(
-        new_account_data.global_rendering_config_uri == args.global_rendering_config_uri,
+        new_account_data.global_rendering_config_uri == old_global_rendering_config_uri,
         ErrorCode::MigrationError
     );
 

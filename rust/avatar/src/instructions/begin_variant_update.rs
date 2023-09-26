@@ -66,15 +66,7 @@ pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -
         } => {
             // get variant metadata from avatar class
             let variant_metadata = ctx.accounts.avatar_class.find_variant(variant_id);
-
-            // check variant is enabled
-            let enabled = variant_metadata.is_enabled();
-            require!(enabled, ErrorCode::VariantDisabled);
-
-            // check avatar meets requirements to select the variant
             let new_variant_option = variant_metadata.find_option(option_id);
-            let eligible = new_variant_option.is_eligible(&ctx.accounts.avatar.get_traits());
-            require!(eligible, ErrorCode::InvalidVariant);
 
             let payment_state: Option<PaymentState> =
                 new_variant_option.payment_details.map(Into::into);
@@ -100,15 +92,7 @@ pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -
 
             // get the variant metadata for the variant_id we want to change
             let variant_metadata = trait_account.find_variant(variant_id);
-
-            // check variant is enabled
-            let enabled = variant_metadata.is_enabled();
-            require!(enabled, ErrorCode::VariantDisabled);
-
-            // check avatar meets requirements to select the variant option
             let new_variant_option = variant_metadata.find_option(option_id);
-            let eligible = new_variant_option.is_eligible(&ctx.accounts.avatar.get_traits());
-            require!(eligible, ErrorCode::InvalidVariant);
 
             let payment_state: Option<PaymentState> =
                 new_variant_option.payment_details.map(Into::into);

@@ -163,6 +163,7 @@ mod tests {
             trait_id: 0,
             trait_address: Pubkey::new_unique(),
             variant_selection: vec![],
+            trait_gate: None,
         }];
         let attribute_metadata: Vec<AttributeMetadata> = vec![
             AttributeMetadata {
@@ -200,12 +201,14 @@ mod tests {
                 trait_id: 1,
                 trait_address: Pubkey::new_unique(),
                 variant_selection: vec![],
+                trait_gate: None,
             },
             TraitData {
                 attribute_ids: vec![9],
                 trait_id: 0,
                 trait_address: Pubkey::new_unique(),
                 variant_selection: vec![],
+                trait_gate: None,
             },
         ];
         let attribute_metadata: Vec<AttributeMetadata> = vec![
@@ -265,6 +268,7 @@ mod tests {
             trait_id: 0,
             trait_address: Pubkey::new_unique(),
             variant_selection: vec![],
+            trait_gate: None,
         }];
         let attribute_metadata: Vec<AttributeMetadata> = vec![
             AttributeMetadata {

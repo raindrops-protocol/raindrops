@@ -4,6 +4,7 @@ use anchor_spl::token;
 use crate::{
     state::{
         accounts::{Avatar, AvatarClass, Trait, UpdateState},
+        data::UpdateTarget,
         errors::ErrorCode,
     },
     utils::get_essential_attribute_ids,
@@ -59,19 +60,18 @@ pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
         ErrorCode::TokenDelegateNotAllowed
     );
 
+    // check that update target is remove trait
+    match ctx.accounts.update_state.target {
+        UpdateTarget::RemoveTrait { .. } => (),
+        _ => return Err(ErrorCode::InvalidUpdateTarget.into()),
+    }
+
     // check trait attributes are mutable
     let mutable = ctx
         .accounts
         .avatar_class
         .is_trait_mutable(ctx.accounts.trait_account.attribute_ids.clone());
     require!(mutable, ErrorCode::AttributeImmutable);
-
-    // check that trait is not used in a trait gate
-    let required = ctx
-        .accounts
-        .avatar
-        .is_required_by_trait_gate(&ctx.accounts.trait_account.key());
-    require!(!required, ErrorCode::TraitInUse);
 
     // check that trait is not being removed from an essential slot
     let essential_ids = get_essential_attribute_ids(
@@ -132,6 +132,10 @@ pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
         ctx.accounts.payer.clone(),
         ctx.accounts.system_program.clone(),
     );
+
+    // check trait gates still pass after changes
+    let valid = ctx.accounts.avatar.validate_trait_gates();
+    require!(valid, ErrorCode::TraitGateFailure);
 
     require!(
         ctx.accounts.update_state.target.is_paid(),

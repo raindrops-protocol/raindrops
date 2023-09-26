@@ -1525,17 +1525,67 @@ export type RaindropsAvatar = {
           "isSigner": false
         }
       ],
-      "args": [
+      "args": []
+    },
+    {
+      "name": "migrateAvatarAccount",
+      "accounts": [
         {
-          "name": "args",
-          "type": {
-            "defined": "MigrateAvatarClassAccountArgs"
-          }
+          "name": "avatar",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
-      ]
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "oldAvatar",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "avatarClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "imageUri",
+            "type": "string"
+          },
+          {
+            "name": "traits",
+            "type": {
+              "vec": {
+                "defined": "OldTraitData"
+              }
+            }
+          },
+          {
+            "name": "variants",
+            "type": {
+              "vec": {
+                "defined": "VariantOption"
+              }
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "oldAvatarClass",
       "type": {
@@ -2044,26 +2094,44 @@ export type RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
+              }
+            }
           }
         ]
       }
     },
     {
-      "name": "MigrateAvatarClassAccountArgs",
+      "name": "OldTraitData",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "newAttributeMetadata",
+            "name": "attributeIds",
             "type": {
-              "vec": {
-                "defined": "AttributeMetadata"
-              }
+              "vec": "u16"
             }
           },
           {
-            "name": "globalRenderingConfigUri",
-            "type": "string"
+            "name": "traitId",
+            "type": "u16"
+          },
+          {
+            "name": "traitAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "variantSelection",
+            "type": {
+              "vec": {
+                "defined": "VariantOption"
+              }
+            }
           }
         ]
       }
@@ -2414,6 +2482,14 @@ export type RaindropsAvatar = {
                 "defined": "VariantOption"
               }
             }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
+              }
+            }
           }
         ]
       }
@@ -2487,6 +2563,9 @@ export type RaindropsAvatar = {
         "variants": [
           {
             "name": "And"
+          },
+          {
+            "name": "Or"
           }
         ]
       }
@@ -2833,6 +2912,11 @@ export type RaindropsAvatar = {
       "code": 6018,
       "name": "MigrationError",
       "msg": "Migration Error"
+    },
+    {
+      "code": 6019,
+      "name": "TraitGateFailure",
+      "msg": "Failed to Validate Trait Gate"
     }
   ]
 };
@@ -4364,17 +4448,67 @@ export const IDL: RaindropsAvatar = {
           "isSigner": false
         }
       ],
-      "args": [
+      "args": []
+    },
+    {
+      "name": "migrateAvatarAccount",
+      "accounts": [
         {
-          "name": "args",
-          "type": {
-            "defined": "MigrateAvatarClassAccountArgs"
-          }
+          "name": "avatar",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
-      ]
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "oldAvatar",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "avatarClass",
+            "type": "publicKey"
+          },
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "imageUri",
+            "type": "string"
+          },
+          {
+            "name": "traits",
+            "type": {
+              "vec": {
+                "defined": "OldTraitData"
+              }
+            }
+          },
+          {
+            "name": "variants",
+            "type": {
+              "vec": {
+                "defined": "VariantOption"
+              }
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "oldAvatarClass",
       "type": {
@@ -4883,26 +5017,44 @@ export const IDL: RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
+              }
+            }
           }
         ]
       }
     },
     {
-      "name": "MigrateAvatarClassAccountArgs",
+      "name": "OldTraitData",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "newAttributeMetadata",
+            "name": "attributeIds",
             "type": {
-              "vec": {
-                "defined": "AttributeMetadata"
-              }
+              "vec": "u16"
             }
           },
           {
-            "name": "globalRenderingConfigUri",
-            "type": "string"
+            "name": "traitId",
+            "type": "u16"
+          },
+          {
+            "name": "traitAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "variantSelection",
+            "type": {
+              "vec": {
+                "defined": "VariantOption"
+              }
+            }
           }
         ]
       }
@@ -5253,6 +5405,14 @@ export const IDL: RaindropsAvatar = {
                 "defined": "VariantOption"
               }
             }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
+              }
+            }
           }
         ]
       }
@@ -5326,6 +5486,9 @@ export const IDL: RaindropsAvatar = {
         "variants": [
           {
             "name": "And"
+          },
+          {
+            "name": "Or"
           }
         ]
       }
@@ -5672,6 +5835,11 @@ export const IDL: RaindropsAvatar = {
       "code": 6018,
       "name": "MigrationError",
       "msg": "Migration Error"
+    },
+    {
+      "code": 6019,
+      "name": "TraitGateFailure",
+      "msg": "Failed to Validate Trait Gate"
     }
   ]
 };

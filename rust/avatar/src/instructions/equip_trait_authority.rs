@@ -49,6 +49,7 @@ pub fn handler(ctx: Context<EquipTraitAuthority>) -> Result<()> {
         ctx.accounts.trait_account.id,
         ctx.accounts.trait_account.attribute_ids.clone(),
         &ctx.accounts.trait_account.variant_metadata,
+        ctx.accounts.trait_account.trait_gate.clone(),
         &avatar_account_info,
         ctx.accounts.authority.clone(),
         ctx.accounts.system_program.clone(),

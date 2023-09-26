@@ -4,6 +4,7 @@ use anchor_spl::token;
 use crate::{
     state::{
         accounts::{Avatar, AvatarClass, Trait, TraitConflicts, UpdateState},
+        data::UpdateTarget,
         errors::ErrorCode,
     },
     utils::{validate_attribute_availability, validate_essential_attribute_updates},
@@ -74,6 +75,12 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
         ctx.accounts.avatar_mint_ata.delegate.is_none(),
         ErrorCode::TokenDelegateNotAllowed
     );
+
+    // check that update target is swap
+    match ctx.accounts.update_state.target {
+        UpdateTarget::SwapTrait { .. } => (),
+        _ => return Err(ErrorCode::InvalidUpdateTarget.into()),
+    }
 
     // verify equip trait is enabled
     let equip_trait_enabled = ctx.accounts.equip_trait_account.is_enabled();
@@ -167,6 +174,7 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
         ctx.accounts.equip_trait_account.id,
         ctx.accounts.equip_trait_account.attribute_ids.clone(),
         &ctx.accounts.equip_trait_account.variant_metadata,
+        ctx.accounts.equip_trait_account.trait_gate.clone(),
     );
 
     // transfer trait token to avatar
@@ -192,6 +200,10 @@ pub fn handler(ctx: Context<SwapTrait>) -> Result<()> {
         ctx.accounts.payer.clone(),
         ctx.accounts.system_program.clone(),
     );
+
+    // check trait gates still pass after changes
+    let valid = ctx.accounts.avatar.validate_trait_gates();
+    require!(valid, ErrorCode::TraitGateFailure);
 
     require!(
         ctx.accounts.update_state.target.is_paid(),

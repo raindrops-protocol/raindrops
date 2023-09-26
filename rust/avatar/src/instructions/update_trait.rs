@@ -3,7 +3,7 @@ use anchor_spl::token;
 
 use crate::state::{
     accounts::{AvatarClass, Trait},
-    data::{VariantMetadata, VariantOption, PaymentDetails},
+    data::{PaymentDetails, VariantMetadata, VariantOption},
 };
 
 #[derive(Accounts)]
@@ -36,10 +36,7 @@ pub struct UpdateTraitArgs {
     pub remove_payment_details: Option<PaymentDetails>,
 }
 
-pub fn handler(
-    ctx: Context<UpdateTrait>,
-    args: UpdateTraitArgs,
-) -> Result<()> {
+pub fn handler(ctx: Context<UpdateTrait>, args: UpdateTraitArgs) -> Result<()> {
     let trait_account = &ctx.accounts.trait_account.to_account_info();
 
     if let Some(variant_metadata) = args.variant_metadata {

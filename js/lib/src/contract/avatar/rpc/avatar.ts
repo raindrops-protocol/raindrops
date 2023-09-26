@@ -92,10 +92,11 @@ import {
   UpdateTargetSelectionSwapTrait,
   UpdateTargetSwapTrait,
   MigrateAvatarClassAccountAccounts,
-  MigrateAvatarClassAccountArgs,
   UpdateAttributeMetadataAccounts,
   UpdateAttributeMetadataArgs,
   PaymentDetails,
+  TraitGate,
+  MigrateAvatarAccountAccounts,
 } from "./state";
 import {
   AVATAR_RAIN_VAULT_DEVNET,
@@ -259,8 +260,18 @@ export class AvatarClient {
       accounts.authority
     );
 
+    const ixArgs = {
+      componentUri: args.componentUri,
+      attributeIds: args.attributeIds,
+      variantMetadata: args.variantMetadata.map((vm) => vm.formatForIx()),
+      traitStatus: args.traitStatus,
+      equipPaymentDetails: args.equipPaymentDetails ? args.equipPaymentDetails : null,
+      removePaymentDetails: args.removePaymentDetails ? args.removePaymentDetails : null,
+      traitGate: args.traitGate ? args.traitGate.formatForIx() : null,
+    }
+
     const tx = await this.program.methods
-      .createTrait(args)
+      .createTrait(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,
@@ -825,7 +836,7 @@ export class AvatarClient {
 
     const ixArgs = {
       variantMetadata: args.variantMetadata ? args.variantMetadata : null,
-      variantOption: args.variantOption ? args.variantOption : null, 
+      variantOption: args.variantOption ? args.variantOption.formatForIx() : null, 
       equipPaymentDetails: args.equipPaymentDetails ? args.equipPaymentDetails : null,
       removePaymentDetails: args.removePaymentDetails ? args.removePaymentDetails : null,
     };
@@ -1927,31 +1938,13 @@ export class AvatarClient {
 
   async migrateAvatarClassAccount(
     accounts: MigrateAvatarClassAccountAccounts,
-    args: MigrateAvatarClassAccountArgs
   ): Promise<anchor.web3.Transaction> {
     const authority = new anchor.web3.PublicKey(
       "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
     );
 
-    const formattedAttributeMetadata: any[] = [];
-    for (const am of args.attributeMetadata) {
-      formattedAttributeMetadata.push({
-        name: am.name,
-        id: am.id,
-        status: {
-          attributeType: formatAttributeType(am.status.attributeType),
-          mutable: am.status.mutable,
-        },
-      });
-    }
-
-    const ixArgs = {
-      newAttributeMetadata: formattedAttributeMetadata,
-      globalRenderingConfigUri: args.globalRenderingConfigUri,
-    };
-
     const tx = await this.program.methods
-      .migrateAvatarClassAccount(ixArgs)
+      .migrateAvatarClassAccount()
       .accounts({
         avatarClass: accounts.avatarClass,
         authority: authority,
@@ -1978,11 +1971,46 @@ export class AvatarClient {
     return oldAvatarClassData;
   }
 
+  async migrateAvatarAccount(
+    accounts: MigrateAvatarAccountAccounts,
+  ): Promise<anchor.web3.Transaction> {
+    const authority = new anchor.web3.PublicKey(
+      "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
+    );
+
+    const tx = await this.program.methods
+      .migrateAvatarAccount()
+      .accounts({
+        avatar: accounts.avatar,
+        authority: authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .transaction();
+
+    await this.setPayer(tx, authority);
+
+    return tx;
+  }
+
+  async getAvatarPreMigration(
+    avatar: anchor.web3.PublicKey
+  ): Promise<any> {
+    const accountInfo = await this.provider.connection.getAccountInfo(
+      avatar
+    );
+    const coder = new anchor.BorshAccountsCoder(Idls.AvatarIDL);
+    const oldAvatarData = coder.decodeUnchecked(
+      "oldAvatar",
+      accountInfo.data
+    );
+    return oldAvatarData;
+  }
+
   async getAvatar(
     avatar: anchor.web3.PublicKey,
     getInProgressUpdates?: boolean
   ): Promise<Avatar> {
-    const avatarDataRaw = await this.program.account.avatar.fetch(avatar);
+    const avatarDataRaw: any = await this.program.account.avatar.fetch(avatar);
 
     const traits: TraitData[] = [];
     for (const td of avatarDataRaw.traits) {
@@ -1990,10 +2018,7 @@ export class AvatarClient {
       for (const vsRaw of td.variantSelection) {
         let tg = null;
         if (vsRaw.traitGate) {
-          tg = {
-            operator: { and: {} },
-            traits: vsRaw.traitGate.traits,
-          };
+          tg = new TraitGate(vsRaw.traitGate.operator, vsRaw.traitGate.traits);
         }
 
         let paymentDetails: PaymentDetails | null = null;
@@ -2007,17 +2032,23 @@ export class AvatarClient {
           }
         }
 
-        vs.push({
-          variantId: vsRaw.variantId,
-          optionId: vsRaw.optionId,
-          paymentDetails: paymentDetails, 
-          traitGate: tg,
-        });
+        vs.push(new VariantOption(
+          vsRaw.variantId,
+          vsRaw.optionId,
+          paymentDetails, 
+          tg,
+        ));
       }
+      let tg = null;
+      if (td.traitGate) {
+        tg = new TraitGate(td.traitGate.operator, td.traitGate.traits);
+      }
+
       traits.push({
         attributeIds: td.attributeIds,
         traitAddress: td.traitAddress,
         variantSelection: vs,
+        traitGate: tg,
       });
     }
 
@@ -2025,10 +2056,7 @@ export class AvatarClient {
     for (const variant of avatarDataRaw.variants) {
       let tg = null;
       if (variant.traitGate) {
-        tg = {
-          operator: { and: {} },
-          traits: variant.traitGate.traits,
-        };
+        tg = new TraitGate(variant.traitGate.operator, variant.traitGate.traits);
       }
 
       let paymentDetails: PaymentDetails | null = null;
@@ -2042,12 +2070,12 @@ export class AvatarClient {
         }
       }
 
-      variants.push({
-        variantId: variant.variantId,
-        optionId: variant.optionId,
-        paymentDetails: paymentDetails,
-        traitGate: tg,
-      });
+      variants.push(new VariantOption(
+        variant.variantId,
+        variant.optionId,
+        paymentDetails,
+        tg,
+      ));
     }
 
     const avatarData = new Avatar(
@@ -2079,11 +2107,8 @@ export class AvatarClient {
       for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
-          tg = {
-            operator: { and: {} },
-            traits: optRaw.traitGate.traits,
-          };
-        }
+          tg = new TraitGate(optRaw.traitGate.operator, optRaw.traitGate.traits);
+        } 
 
         let paymentDetails: PaymentDetails | null = null;
         if (optRaw.paymentDetails) {
@@ -2096,19 +2121,20 @@ export class AvatarClient {
           }
         }
 
-        options.push({
-          variantId: optRaw.variantId,
-          optionId: optRaw.optionId,
-          paymentDetails: paymentDetails,
-          traitGate: tg,
-        });
-      }
-      const vm: VariantMetadata = {
-        name: vmRaw.name,
-        id: vmRaw.id,
-        status: vmRaw.status,
-        options: options,
+        options.push(new VariantOption(
+          optRaw.variantId,
+          optRaw.optionId,
+          paymentDetails,
+          tg,
+        ));
       };
+
+      const vm = new VariantMetadata(
+        vmRaw.name,
+        vmRaw.id,
+        vmRaw.status,
+        options,
+      );
       variantMetadata.push(vm);
     }
 
@@ -2145,11 +2171,8 @@ export class AvatarClient {
       for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
-          tg = {
-            operator: { and: {} },
-            traits: optRaw.traitGate.traits,
-          };
-        }
+          tg = new TraitGate(optRaw.traitGate.operator, optRaw.traitGate.traits);
+        } 
 
         let paymentDetails: PaymentDetails | null = null;
         if (optRaw.paymentDetails) {
@@ -2162,19 +2185,19 @@ export class AvatarClient {
           }
         }
 
-        options.push({
-          variantId: optRaw.variantId,
-          optionId: optRaw.optionId,
-          paymentDetails: paymentDetails,
-          traitGate: tg,
-        });
+        options.push(new VariantOption(
+          optRaw.variantId,
+          optRaw.optionId,
+          paymentDetails,
+          tg,
+        ));
       }
-      const vm: VariantMetadata = {
-        name: vmRaw.name,
-        id: vmRaw.id,
-        status: vmRaw.status,
-        options: options,
-      };
+      const vm = new VariantMetadata(
+        vmRaw.name,
+        vmRaw.id,
+        vmRaw.status,
+        options,
+      );
       variantMetadata.push(vm);
     }
 
@@ -2214,6 +2237,11 @@ export class AvatarClient {
       };
     }
 
+    let tg = null;
+    if (traitData.traitGate) {
+      tg = new TraitGate(traitData.traitGate.operator, traitData.traitGate.traits);
+    } 
+
     return new Trait(
       traitData.id,
       new anchor.web3.PublicKey(trait),
@@ -2224,7 +2252,8 @@ export class AvatarClient {
       traitData.status,
       variantMetadata,
       equipPaymentDetailsExpanded,
-      removePaymentDetailsExpanded
+      removePaymentDetailsExpanded,
+      tg,
     );
   }
 

@@ -1,13 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
-use crate::{
-    state::{
-        accounts::{Avatar, AvatarClass, Trait, UpdateState},
-        data::{PaymentState, UpdateTarget, UpdateTargetSelection},
-        errors::ErrorCode,
-    },
-    utils::validate_attribute_availability,
+use crate::state::{
+    accounts::{Avatar, AvatarClass, Trait, UpdateState},
+    data::{PaymentState, UpdateTarget, UpdateTargetSelection},
+    errors::ErrorCode,
 };
 
 #[derive(Accounts)]
@@ -91,18 +88,6 @@ pub fn handler(ctx: Context<BeginTraitUpdate>, args: BeginTraitUpdateArgs) -> Re
                 ErrorCode::InvalidTrait
             );
 
-            // verify trait is enabled
-            let trait_enabled = trait_account.is_enabled();
-            require!(trait_enabled, ErrorCode::TraitDisabled);
-
-            // verify all attributes the trait_account requires are available
-            let valid = validate_attribute_availability(
-                &trait_account.attribute_ids,
-                &ctx.accounts.avatar.traits,
-                &ctx.accounts.avatar_class.attribute_metadata,
-            );
-            require!(valid, ErrorCode::InvalidAttributeId);
-
             let payment_state: Option<PaymentState> =
                 trait_account.equip_payment_details.clone().map(Into::into);
 
@@ -121,20 +106,6 @@ pub fn handler(ctx: Context<BeginTraitUpdate>, args: BeginTraitUpdateArgs) -> Re
                 trait_account_address.eq(&trait_account.key()),
                 ErrorCode::InvalidTrait
             );
-
-            // check trait attributes are mutable
-            let mutable = ctx
-                .accounts
-                .avatar_class
-                .is_trait_mutable(trait_account.attribute_ids.clone());
-            require!(mutable, ErrorCode::AttributeImmutable);
-
-            // check that trait is not used in a trait gate
-            let required = ctx
-                .accounts
-                .avatar
-                .is_required_by_trait_gate(&trait_account.key());
-            require!(!required, ErrorCode::TraitInUse);
 
             let payment_state: Option<PaymentState> =
                 trait_account.equip_payment_details.clone().map(Into::into);

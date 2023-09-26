@@ -97,25 +97,6 @@ impl VariantOption {
     }
 }
 
-pub fn exists_in_trait_gate(
-    variant_selection: &Vec<VariantOption>,
-    trait_address: &Pubkey,
-) -> bool {
-    for variant in variant_selection {
-        let trait_gate = match &variant.trait_gate {
-            Some(trait_gate) => trait_gate,
-            None => continue,
-        };
-
-        let in_use = trait_gate.traits.contains(trait_address);
-        if in_use {
-            return true;
-        }
-    }
-
-    false
-}
-
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Clone, Debug)]
 pub struct PaymentDetails {
     pub payment_method: Pubkey,
@@ -161,6 +142,15 @@ impl TraitGate {
                 }
                 true
             }
+            Operator::Or => self.traits.iter().any(|t| traits.contains(t)),
+        }
+    }
+
+    // return true if trait_account is present in the trait gate
+    // TODO: OR or AND, NOT would behave differently but its not implemented yet
+    pub fn in_use(&self, trait_account: &Pubkey) -> bool {
+        match &self.operator {
+            Operator::And | Operator::Or => self.traits.iter().any(|t| t.eq(trait_account)),
         }
     }
 }
@@ -168,8 +158,7 @@ impl TraitGate {
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Eq, Clone, Debug)]
 pub enum Operator {
     And,
-    //Or,
-    //Not,
+    Or,
 }
 
 impl Operator {
@@ -182,6 +171,7 @@ pub struct TraitData {
     pub trait_id: u16,
     pub trait_address: Pubkey,
     pub variant_selection: Vec<VariantOption>,
+    pub trait_gate: Option<TraitGate>,
 }
 
 impl TraitData {
@@ -190,6 +180,7 @@ impl TraitData {
         trait_id: u16,
         trait_address: Pubkey,
         variant_metadata: &[VariantMetadata],
+        trait_gate: Option<TraitGate>,
     ) -> Self {
         let variant_selection: Vec<VariantOption> = variant_metadata
             .iter()
@@ -200,6 +191,7 @@ impl TraitData {
             trait_id,
             trait_address,
             variant_selection,
+            trait_gate,
         }
     }
 
@@ -207,11 +199,16 @@ impl TraitData {
         let mut total_bytes = (4 + (self.attribute_ids.len() * 2)) + // attribute ids
         2 + // trait_id
         32 + // trait address
-        4; // variant selection vector bytes
+        4 + // variant selection vector bytes
+        1; // Option trait gate byte
 
         for variant in &self.variant_selection {
             total_bytes += variant.space();
         }
+
+        if let Some(trait_gate) = &self.trait_gate {
+            total_bytes += trait_gate.space();
+        };
 
         total_bytes
     }
@@ -356,7 +353,7 @@ impl UpdateTargetSelection {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub enum UpdateTarget {
     ClassVariant {
         variant_id: String,
@@ -495,7 +492,7 @@ impl UpdateTarget {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct PaymentState {
     pub payment_method: Pubkey,
     pub current_amount: u64,
@@ -546,6 +543,8 @@ impl AttributeType {
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use super::*;
 
     #[test]
@@ -618,28 +617,7 @@ mod tests {
     }
 
     #[test]
-    fn test_exists_in_trait_gate() {
-        let trait_gate_requirements = create_pubkeys(2);
-        let mut opts: Vec<VariantOption> = vec![];
-        opts.push(VariantOption {
-            variant_id: "vbclko09".to_string(),
-            option_id: "lskdyso1".to_string(),
-            payment_details: None,
-            trait_gate: Some(TraitGate {
-                operator: Operator::And,
-                traits: trait_gate_requirements.clone(),
-            }),
-        });
-
-        let exists = exists_in_trait_gate(&opts, &trait_gate_requirements[0]);
-        assert!(exists);
-
-        let does_not_exist = exists_in_trait_gate(&opts, &create_pubkeys(1)[0]);
-        assert!(!does_not_exist);
-    }
-
-    #[test]
-    fn test_trait_gate_validate() {
+    fn test_trait_gate_and_operator_valid() {
         let trait_gate_requirements = create_pubkeys(10);
         let trait_gate = TraitGate {
             operator: Operator::And,
@@ -650,6 +628,55 @@ mod tests {
 
         let invalid = trait_gate.validate(&create_pubkeys(5));
         assert!(!invalid)
+    }
+
+    #[test]
+    fn test_trait_gate_and_operator_invalid() {
+        let trait_gate_requirements = create_pubkeys(10);
+        let trait_gate = TraitGate {
+            operator: Operator::And,
+            traits: trait_gate_requirements.clone(),
+        };
+        let equipped_trait = trait_gate_requirements.clone().pop().unwrap();
+        let valid = trait_gate.validate(&[equipped_trait]);
+        assert!(!valid);
+    }
+
+    #[test]
+    fn test_trait_gate_or_operator_valid() {
+        let trait_gate_requirements = create_pubkeys(10);
+        let trait_gate = TraitGate {
+            operator: Operator::Or,
+            traits: trait_gate_requirements.clone(),
+        };
+        let equipped_trait = trait_gate_requirements.clone().pop().unwrap();
+        let valid = trait_gate.validate(&[equipped_trait]);
+        assert!(valid);
+    }
+
+    #[test]
+    fn test_trait_gate_or_operator_invalid() {
+        let trait_gate_requirements = create_pubkeys(10);
+        let trait_gate = TraitGate {
+            operator: Operator::Or,
+            traits: trait_gate_requirements.clone(),
+        };
+        let valid = trait_gate.validate(&create_pubkeys(5));
+        assert!(!valid);
+    }
+
+    #[test]
+    fn test_trait_gate_in_use() {
+        let trait_gate_requirements = create_pubkeys(10);
+        let trait_gate = TraitGate {
+            operator: Operator::Or,
+            traits: trait_gate_requirements.clone(),
+        };
+        let in_use = trait_gate.in_use(&trait_gate_requirements[0]);
+        assert!(in_use);
+
+        let not_in_use = trait_gate.in_use(&Pubkey::new_unique());
+        assert!(!not_in_use);
     }
 
     #[test]
@@ -664,6 +691,7 @@ mod tests {
                 payment_details: None,
                 trait_gate: None,
             }],
+            trait_gate: None,
         };
         assert_eq!(
             trait_data.variant_selection.first().unwrap().option_id,
@@ -712,6 +740,7 @@ mod tests {
                 payment_details: None,
                 trait_gate: None,
             }],
+            trait_gate: None,
         };
         assert_eq!(
             trait_data.variant_selection.first().unwrap().option_id,

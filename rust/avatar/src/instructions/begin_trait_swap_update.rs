@@ -6,7 +6,6 @@ use crate::state::{
     data::{PaymentState, UpdateTarget, UpdateTargetSelection},
     errors::ErrorCode,
 };
-use crate::utils::validate_essential_attribute_updates;
 
 #[derive(Accounts)]
 #[instruction(args: BeginTraitSwapUpdateArgs)]
@@ -108,34 +107,6 @@ pub fn handler(ctx: Context<BeginTraitSwapUpdate>, args: BeginTraitSwapUpdateArg
                 remove_trait_account.key().eq(remove_trait_account_address),
                 ErrorCode::InvalidTrait
             );
-
-            // check trait attributes are mutable
-            let mutable = ctx
-                .accounts
-                .avatar_class
-                .is_trait_mutable(equip_trait_account.attribute_ids.clone());
-            require!(mutable, ErrorCode::AttributeImmutable);
-
-            let mutable = ctx
-                .accounts
-                .avatar_class
-                .is_trait_mutable(remove_trait_account.attribute_ids.clone());
-            require!(mutable, ErrorCode::AttributeImmutable);
-
-            // check that the removed trait is not used in a trait gate
-            let required = ctx
-                .accounts
-                .avatar
-                .is_required_by_trait_gate(remove_trait_account_address);
-            require!(!required, ErrorCode::TraitInUse);
-
-            // if the trait being removed occupies an essential slot check that the trait being equipped will occupy those slots
-            // this is because essential slots must always be occupied
-            validate_essential_attribute_updates(
-                &ctx.accounts.avatar_class.attribute_metadata,
-                &equip_trait_account.attribute_ids,
-                &remove_trait_account.attribute_ids,
-            )?;
 
             // set both payment states
             let equip_payment_state: Option<PaymentState> = equip_trait_account
