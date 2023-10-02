@@ -2290,6 +2290,14 @@ export type RaindropsAvatar = {
                 "defined": "PaymentDetails"
               }
             }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
+              }
+            }
           }
         ]
       }
@@ -5211,6 +5219,14 @@ export const IDL: RaindropsAvatar = {
             "type": {
               "option": {
                 "defined": "PaymentDetails"
+              }
+            }
+          },
+          {
+            "name": "traitGate",
+            "type": {
+              "option": {
+                "defined": "TraitGate"
               }
             }
           }

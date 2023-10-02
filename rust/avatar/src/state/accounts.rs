@@ -157,13 +157,16 @@ impl Avatar {
         32 + // avatar mint
         4 + // empty image uri
         4 + // empty traits vector
-        variants_space(variants)
+        variants_space(&variants)
     }
 
     pub fn current_space(&self) -> usize {
         let mut total_bytes = 8; // anchor distriminator
         total_bytes += 32; // avatar class
         total_bytes += 32; // mint
+        total_bytes += 4; // image uri
+        total_bytes += 4; // traits vector
+        total_bytes += 4; // variants vector
 
         // current space of the traits
         for td in &self.traits {
@@ -171,9 +174,7 @@ impl Avatar {
         }
 
         // current space of the variants
-        for v in &self.variants {
-            total_bytes += v.space();
-        }
+        total_bytes += variants_space(&self.variants);
 
         total_bytes
     }
@@ -371,7 +372,7 @@ impl Avatar {
     }
 }
 
-fn variants_space(variants: Vec<VariantOption>) -> usize {
+fn variants_space(variants: &Vec<VariantOption>) -> usize {
     let mut total_bytes = 4;
     for v in variants {
         total_bytes += v.space();
@@ -409,7 +410,10 @@ impl Trait {
         Self::variant_metadata_space(&self.variant_metadata) + // variant metadata
         (1 + PaymentDetails::SPACE) + // optional equip payment details
         (1 + PaymentDetails::SPACE) + // optional remove payment method
-        (1 + TraitGate::INIT_SPACE) // optional trait gate space
+        match &self.trait_gate {
+            Some(trait_gate) => trait_gate.space(),
+            None => 1,
+        }
     }
 
     pub fn space(

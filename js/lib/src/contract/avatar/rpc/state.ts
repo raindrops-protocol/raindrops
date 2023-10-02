@@ -176,6 +176,7 @@ export interface UpdateTraitArgs {
   variantOption?: VariantOption;
   equipPaymentDetails?: PaymentDetails;
   removePaymentDetails?: PaymentDetails;
+  traitGate?: TraitGate;
 }
 
 export interface UpdateClassVariantMetadataAccounts {
@@ -526,6 +527,7 @@ export class TraitGate {
 export type Operator = "AND" | "OR";
 
 export interface TraitData {
+  traitId: number;
   attributeIds: number[];
   traitAddress: anchor.web3.PublicKey;
   variantSelection: VariantOption[];
@@ -591,7 +593,7 @@ export class Avatar {
   readonly avatarClass: anchor.web3.PublicKey;
   readonly mint: anchor.web3.PublicKey;
   readonly imageUri: string;
-  readonly traits: TraitData[];
+  public traits: TraitData[];
   readonly variants: VariantOption[];
   public updateStates: UpdateState[] = [];
 

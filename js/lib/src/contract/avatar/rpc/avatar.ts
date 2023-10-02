@@ -108,7 +108,7 @@ import * as cmp from "@solana/spl-account-compression";
 import { Constants, Idls } from "../../../main";
 
 export class AvatarClient {
-  private program: anchor.Program<RaindropsAvatar>;
+  readonly program: anchor.Program<RaindropsAvatar>;
   readonly provider: anchor.AnchorProvider;
   readonly programId: anchor.web3.PublicKey;
 
@@ -753,7 +753,15 @@ export class AvatarClient {
       avatarAuthority
     );
 
-    const tx = new anchor.web3.Transaction();
+    const increaseCUIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 800000,
+    });
+
+    const addPriorityFeeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 5000,
+    });
+
+    const tx = new anchor.web3.Transaction().add(increaseCUIx, addPriorityFeeIx);
 
     const swapTraitIx = await this.program.methods
       .swapTrait()
@@ -846,14 +854,17 @@ export class AvatarClient {
       removePaymentDetails: args.removePaymentDetails
         ? args.removePaymentDetails
         : null,
+      traitGate: args.traitGate ? args.traitGate.formatForIx() : null,
     };
+
+    const trait = traitPDA(accounts.avatarClass, accounts.traitMint);
 
     const tx = await this.program.methods
       .updateTrait(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,
-        traitAccount: traitPDA(accounts.avatarClass, accounts.traitMint),
+        traitAccount: trait,
         authority: accounts.authority,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -1347,7 +1358,7 @@ export class AvatarClient {
         }
 
         // grab equip trait data payment details
-        if (equipTraitData.removePaymentDetails !== null) {
+        if (equipTraitData.equipPaymentDetails !== null) {
           paymentMethods.push([
             equipTraitData.equipPaymentDetails.paymentMethodData,
             equipTraitData.equipPaymentDetails.paymentMethodAddress,
@@ -1960,6 +1971,11 @@ export class AvatarClient {
     return tx;
   }
 
+  async validateTraitRules(avatar: anchor.web3.PublicKey): Promise<boolean> {
+    const avatarData = await this.getAvatar(avatar);
+    return true
+  }
+
   async migrateAvatarClassAccount(
     accounts: MigrateAvatarClassAccountAccounts
   ): Promise<anchor.web3.Transaction> {
@@ -2062,6 +2078,7 @@ export class AvatarClient {
       }
 
       traits.push({
+        traitId: td.traitId,
         attributeIds: td.attributeIds,
         traitAddress: td.traitAddress,
         variantSelection: vs,
