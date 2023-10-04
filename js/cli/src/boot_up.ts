@@ -123,12 +123,14 @@ async function getConfig(
       ? new PublicKey(config.masterMintHolder)
       : null,
     itemImageFile: await loadItemImageFileFromDir(config.itemImageFile),
+    itemCollectionFile: fs.readFileSync(config.itemCollectionFile),
     writeOutState: async (f: any) => {
       await fs.writeFileSync(
         configPath,
         JSON.stringify({
           ...f,
           itemImageFile: config.itemImageFile,
+          itemCollectionFile: config.itemCollectionFile,
         })
       );
     },
