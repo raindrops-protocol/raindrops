@@ -757,11 +757,15 @@ export class AvatarClient {
       units: 800000,
     });
 
-    const addPriorityFeeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 5000,
-    });
+    const addPriorityFeeIx =
+      anchor.web3.ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 5000,
+      });
 
-    const tx = new anchor.web3.Transaction().add(increaseCUIx, addPriorityFeeIx);
+    const tx = new anchor.web3.Transaction().add(
+      increaseCUIx,
+      addPriorityFeeIx
+    );
 
     const swapTraitIx = await this.program.methods
       .swapTrait()
@@ -1973,7 +1977,7 @@ export class AvatarClient {
 
   async validateTraitRules(avatar: anchor.web3.PublicKey): Promise<boolean> {
     const avatarData = await this.getAvatar(avatar);
-    return true
+    return true;
   }
 
   async migrateAvatarClassAccount(

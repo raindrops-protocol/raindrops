@@ -79,17 +79,6 @@ pub fn handler(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
     // Serialize the new_avatar_class_data
     let new_avatar_class_data_vec = new_avatar_class_data.try_to_vec().unwrap();
 
-    // Ensure the size fits
-    assert!(8 + new_avatar_class_data_vec.len() <= ctx.accounts.avatar_class.data_len());
-
-    // Borrow the avatar_class account mutably and overwrite its data (excluding the first 8 bytes)
-    {
-        let mut avatar_class_account_data = ctx.accounts.avatar_class.try_borrow_mut_data()?;
-        avatar_class_account_data[8..8 + new_avatar_class_data_vec.len()]
-            .copy_from_slice(&new_avatar_class_data_vec);
-    }
-    msg!("new avatar class data written to account");
-
     // get the new space of the account
     let new_space = new_avatar_class_data.current_space();
     msg!("new_avatar_class_account_space: {}", new_space);
@@ -106,6 +95,17 @@ pub fn handler(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
         ctx.accounts.system_program.clone(),
     )?;
     msg!("account size reallocated");
+
+    // Ensure the size fits
+    assert!(8 + new_avatar_class_data_vec.len() <= ctx.accounts.avatar_class.data_len());
+
+    // Borrow the avatar_class account mutably and overwrite its data (excluding the first 8 bytes)
+    {
+        let mut avatar_class_account_data = ctx.accounts.avatar_class.try_borrow_mut_data()?;
+        avatar_class_account_data[8..8 + new_avatar_class_data_vec.len()]
+            .copy_from_slice(&new_avatar_class_data_vec);
+    }
+    msg!("new avatar class data written to account");
 
     // deserialize new account
     let new_account_data: Account<'_, AvatarClass> =
