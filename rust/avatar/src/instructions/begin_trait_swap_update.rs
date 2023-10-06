@@ -8,22 +8,26 @@ use crate::state::{
 };
 
 #[derive(Accounts)]
-#[instruction(args: BeginTraitUpdateArgs)]
-pub struct BeginTraitUpdate<'info> {
+#[instruction(args: BeginTraitSwapUpdateArgs)]
+pub struct BeginTraitSwapUpdate<'info> {
     #[account(init_if_needed,
         payer = authority,
         space = UpdateState::space(&args.update_target),
         seeds = [UpdateState::PREFIX.as_bytes(), avatar.key().as_ref(), args.update_target.hash().as_ref()], bump)]
-    pub update_state: Account<'info, UpdateState>,
+    pub update_state: Box<Account<'info, UpdateState>>,
 
     #[account(seeds = [AvatarClass::PREFIX.as_bytes(), avatar_class.mint.key().as_ref()], bump)]
     pub avatar_class: Box<Account<'info, AvatarClass>>,
 
     #[account(
         has_one = avatar_class,
-        has_one = trait_mint,
-        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_mint.key().as_ref()], bump)]
-    pub trait_account: Account<'info, Trait>,
+        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), equip_trait_mint.key().as_ref()], bump)]
+    pub equip_trait_account: Account<'info, Trait>,
+
+    #[account(
+        has_one = avatar_class,
+        seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), remove_trait_mint.key().as_ref()], bump)]
+    pub remove_trait_account: Account<'info, Trait>,
 
     #[account(
         has_one = avatar_class,
@@ -35,14 +39,23 @@ pub struct BeginTraitUpdate<'info> {
         associated_token::mint = avatar.mint, associated_token::authority = authority)]
     pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
 
-    pub trait_mint: Box<Account<'info, token::Mint>>,
+    pub equip_trait_mint: Box<Account<'info, token::Mint>>,
+
+    pub remove_trait_mint: Box<Account<'info, token::Mint>>,
 
     // we create this here so the updater pays the rent
     #[account(init_if_needed,
         payer = authority,
-        associated_token::mint = trait_mint,
+        associated_token::mint = equip_trait_mint,
         associated_token::authority = avatar)]
-    pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
+    pub avatar_equip_trait_ata: Box<Account<'info, token::TokenAccount>>,
+
+    // we create this here so the updater pays the rent
+    #[account(init_if_needed,
+        payer = authority,
+        associated_token::mint = remove_trait_mint,
+        associated_token::authority = authority)]
+    pub avatar_authority_remove_trait_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -57,11 +70,11 @@ pub struct BeginTraitUpdate<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct BeginTraitUpdateArgs {
+pub struct BeginTraitSwapUpdateArgs {
     pub update_target: UpdateTargetSelection,
 }
 
-pub fn handler(ctx: Context<BeginTraitUpdate>, args: BeginTraitUpdateArgs) -> Result<()> {
+pub fn handler(ctx: Context<BeginTraitSwapUpdate>, args: BeginTraitSwapUpdateArgs) -> Result<()> {
     require!(
         ctx.accounts.avatar_mint_ata.delegate.is_none(),
         ErrorCode::TokenDelegateNotAllowed
@@ -77,42 +90,39 @@ pub fn handler(ctx: Context<BeginTraitUpdate>, args: BeginTraitUpdateArgs) -> Re
 
     // get the payment details required for this update
     let update_target: UpdateTarget = match &args.update_target {
-        UpdateTargetSelection::EquipTrait {
-            trait_account: trait_account_address,
+        UpdateTargetSelection::SwapTrait {
+            equip_trait_account: equip_trait_account_address,
+            remove_trait_account: remove_trait_account_address,
         } => {
-            let trait_account = ctx.accounts.trait_account.clone();
+            let equip_trait_account = ctx.accounts.equip_trait_account.clone();
+            let remove_trait_account = ctx.accounts.remove_trait_account.clone();
 
-            // verify trait account passed into accounts array matches the UpdateTarget
+            // assert trait account matches the trait specified in the update target
             require!(
-                trait_account_address.eq(&trait_account.key()),
+                equip_trait_account.key().eq(equip_trait_account_address),
                 ErrorCode::InvalidTrait
             );
 
-            let payment_state: Option<PaymentState> =
-                trait_account.equip_payment_details.clone().map(Into::into);
-
-            UpdateTarget::EquipTrait {
-                trait_account: trait_account.key(),
-                payment_state: payment_state,
-            }
-        }
-        UpdateTargetSelection::RemoveTrait {
-            trait_account: trait_account_address,
-        } => {
-            let trait_account = ctx.accounts.trait_account.clone();
-
-            // verify trait account passed into accounts array matches the UpdateTarget
             require!(
-                trait_account_address.eq(&trait_account.key()),
+                remove_trait_account.key().eq(remove_trait_account_address),
                 ErrorCode::InvalidTrait
             );
 
-            let payment_state: Option<PaymentState> =
-                trait_account.equip_payment_details.clone().map(Into::into);
+            // set both payment states
+            let equip_payment_state: Option<PaymentState> = equip_trait_account
+                .equip_payment_details
+                .clone()
+                .map(Into::into);
+            let remove_payment_state: Option<PaymentState> = remove_trait_account
+                .remove_payment_details
+                .clone()
+                .map(Into::into);
 
-            UpdateTarget::RemoveTrait {
-                trait_account: trait_account.key(),
-                payment_state: payment_state,
+            UpdateTarget::SwapTrait {
+                equip_trait_account: equip_trait_account.key(),
+                remove_trait_account: remove_trait_account.key(),
+                equip_payment_state,
+                remove_payment_state,
             }
         }
         _ => return Err(ErrorCode::InvalidUpdateTarget.into()),

@@ -23,8 +23,8 @@ import {
   VariantMetadata,
   VariantOption,
   TraitData,
-  UpdateTraitVariantMetadataAccounts,
-  UpdateTraitVariantMetadataArgs,
+  UpdateTraitAccounts,
+  UpdateTraitArgs,
   UpdateClassVariantMetadataAccounts,
   UpdateClassVariantMetadataArgs,
   BootTraitsAccounts,
@@ -57,8 +57,8 @@ import {
   UpdateTargetClassVariant,
   UpdateVariantAccounts,
   UpdateTargetTraitVariant,
+  UpdateTargetSelectionTraitVariant,
   UPDATE_STATE_PREFIX,
-  PaymentDetails,
   PayForUpdateAccounts,
   FungiblePaymentAssetClass,
   BurnPaymentAction,
@@ -82,6 +82,21 @@ import {
   AddTraitConflictsAccounts,
   AddTraitConflictsArgs,
   TraitConflicts,
+  formatAttributeType,
+  AttributeMetadata,
+  parseAttributeType,
+  UpdateTargetSelection,
+  UpdateTargetSelectionEquipTrait,
+  UpdateTargetSelectionRemoveTrait,
+  SwapTraitAccounts,
+  UpdateTargetSelectionSwapTrait,
+  UpdateTargetSwapTrait,
+  MigrateAvatarClassAccountAccounts,
+  UpdateAttributeMetadataAccounts,
+  UpdateAttributeMetadataArgs,
+  PaymentDetails,
+  TraitGate,
+  MigrateAvatarAccountAccounts,
 } from "./state";
 import {
   AVATAR_RAIN_VAULT_DEVNET,
@@ -93,7 +108,7 @@ import * as cmp from "@solana/spl-account-compression";
 import { Constants, Idls } from "../../../main";
 
 export class AvatarClient {
-  private program: anchor.Program<RaindropsAvatar>;
+  readonly program: anchor.Program<RaindropsAvatar>;
   readonly provider: anchor.AnchorProvider;
   readonly programId: anchor.web3.PublicKey;
 
@@ -118,8 +133,26 @@ export class AvatarClient {
       accounts.authority
     );
 
+    const formattedAttributeMetadata: any[] = [];
+    for (const am of args.attributeMetadata) {
+      formattedAttributeMetadata.push({
+        name: am.name,
+        id: am.id,
+        status: {
+          attributeType: formatAttributeType(am.status.attributeType),
+          mutable: am.status.mutable,
+        },
+      });
+    }
+
+    const ixArgs = {
+      attributeMetadata: formattedAttributeMetadata,
+      variantMetadata: args.variantMetadata,
+      globalRenderingConfigUri: args.globalRenderingConfigUri,
+    };
+
     const tx = await this.program.methods
-      .createAvatarClass(args)
+      .createAvatarClass(ixArgs)
       .accounts({
         avatarClass: avatarClass,
         avatarClassMint: accounts.avatarClassMint,
@@ -227,8 +260,22 @@ export class AvatarClient {
       accounts.authority
     );
 
+    const ixArgs = {
+      componentUri: args.componentUri,
+      attributeIds: args.attributeIds,
+      variantMetadata: args.variantMetadata.map((vm) => vm.formatForIx()),
+      traitStatus: args.traitStatus,
+      equipPaymentDetails: args.equipPaymentDetails
+        ? args.equipPaymentDetails
+        : null,
+      removePaymentDetails: args.removePaymentDetails
+        ? args.removePaymentDetails
+        : null,
+      traitGate: args.traitGate ? args.traitGate.formatForIx() : null,
+    };
+
     const tx = await this.program.methods
-      .createTrait(args)
+      .createTrait(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,
@@ -262,7 +309,7 @@ export class AvatarClient {
     const traitData = await this.getTrait(trait);
 
     // check if update state pda already exists
-    const target = new UpdateTargetEquipTrait(trait);
+    const target = new UpdateTargetSelectionEquipTrait(trait);
     const updateState = updateStatePDA(accounts.avatar, target);
     const updateStateData = await this.getUpdateState(updateState);
 
@@ -292,6 +339,10 @@ export class AvatarClient {
       this.provider.connection,
       avatarData.mint
     );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
 
     const traitSource = splToken.getAssociatedTokenAddressSync(
       accounts.traitMint,
@@ -310,6 +361,8 @@ export class AvatarClient {
         avatarTraitAta: avatarTraitAta,
         traitConflicts: traitConflicts,
         payer: accounts.payer,
+        avatarMintAta: avatarAuthorityAta,
+        avatarAuthority: avatarAuthority,
         updateState: updateState,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -487,6 +540,10 @@ export class AvatarClient {
       this.provider.connection,
       avatarData.mint
     );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
 
     const trait = traitPDA(avatarData.avatarClass, accounts.traitMint);
     // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
@@ -494,7 +551,7 @@ export class AvatarClient {
     const traitData = await this.getTrait(trait);
 
     // check if update state pda already exists
-    const target = new UpdateTargetRemoveTrait(trait, avatarAuthority);
+    const target = new UpdateTargetSelectionRemoveTrait(trait);
     const updateState = updateStatePDA(accounts.avatar, target);
     const updateStateData = await this.getUpdateState(updateState);
 
@@ -545,6 +602,8 @@ export class AvatarClient {
         updateState: updateState,
         traitAccount: trait,
         traitDestination: traitDestination,
+        avatarMintAta: avatarAuthorityAta,
+        avatarAuthority: avatarAuthority,
         payer: accounts.payer,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -614,6 +673,129 @@ export class AvatarClient {
     return tx;
   }
 
+  async swapTrait(
+    accounts: SwapTraitAccounts
+  ): Promise<anchor.web3.Transaction> {
+    const avatarData = await this.getAvatar(accounts.avatar);
+
+    const equipTrait = traitPDA(
+      avatarData.avatarClass,
+      accounts.equipTraitMint
+    );
+    const removeTrait = traitPDA(
+      avatarData.avatarClass,
+      accounts.removeTraitMint
+    );
+
+    const equipTraitConflicts = traitConflictsPDA(
+      avatarData.avatarClass,
+      equipTrait
+    );
+
+    // if payment details are null, add the beginUpdate instructions here and collapse into 1 txn
+    const beginUpdateIxns: anchor.web3.TransactionInstruction[] = [];
+    const equipTraitData = await this.getTrait(equipTrait);
+    const removeTraitData = await this.getTrait(removeTrait);
+
+    // check if update state pda already exists
+    const target = new UpdateTargetSelectionSwapTrait(equipTrait, removeTrait);
+    const updateState = updateStatePDA(accounts.avatar, target);
+    const updateStateData = await this.getUpdateState(updateState);
+
+    if (
+      equipTraitData.equipPaymentDetails === null &&
+      removeTraitData.removePaymentDetails === null &&
+      updateStateData === null
+    ) {
+      const beginTraitUpdateAccounts: BeginUpdateAccounts = {
+        avatar: accounts.avatar,
+      };
+
+      const beginTraitUpdateArgs: BeginUpdateArgs = {
+        updateTarget: target,
+      };
+
+      const beginTraitUpdateTx = await this.beginUpdate(
+        beginTraitUpdateAccounts,
+        beginTraitUpdateArgs
+      );
+      beginUpdateIxns.push(...beginTraitUpdateTx.instructions);
+    }
+
+    const avatarEquipTraitAta = splToken.getAssociatedTokenAddressSync(
+      accounts.equipTraitMint,
+      accounts.avatar,
+      true
+    );
+
+    const avatarRemoveTraitAta = splToken.getAssociatedTokenAddressSync(
+      accounts.removeTraitMint,
+      accounts.avatar,
+      true
+    );
+
+    const avatarAuthority = await this.getNftHolder(
+      this.provider.connection,
+      avatarData.mint
+    );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
+
+    const equipTraitSource = splToken.getAssociatedTokenAddressSync(
+      accounts.equipTraitMint,
+      avatarAuthority
+    );
+
+    const removeTraitDestination = splToken.getAssociatedTokenAddressSync(
+      accounts.removeTraitMint,
+      avatarAuthority
+    );
+
+    const increaseCUIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
+      units: 800000,
+    });
+
+    const addPriorityFeeIx =
+      anchor.web3.ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 5000,
+      });
+
+    const tx = new anchor.web3.Transaction().add(
+      increaseCUIx,
+      addPriorityFeeIx
+    );
+
+    const swapTraitIx = await this.program.methods
+      .swapTrait()
+      .accounts({
+        avatarClass: avatarData.avatarClass,
+        avatar: accounts.avatar,
+        avatarMintAta: avatarAuthorityAta,
+        updateState: updateState,
+        equipTraitAccount: equipTrait,
+        removeTraitAccount: removeTrait,
+        equipTraitConflicts: equipTraitConflicts,
+        equipTraitSource: equipTraitSource,
+        removeTraitDestination: removeTraitDestination,
+        avatarEquipTraitAta: avatarEquipTraitAta,
+        avatarRemoveTraitAta: avatarRemoveTraitAta,
+        payer: accounts.payer,
+        avatarAuthority: avatarAuthority,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .instruction();
+    if (beginUpdateIxns.length > 0) {
+      tx.add(...beginUpdateIxns);
+    }
+    tx.add(swapTraitIx);
+    await this.setPayer(tx, accounts.payer);
+
+    return tx;
+  }
+
   async updateVariant(
     accounts: UpdateVariantAccounts,
     args: UpdateVariantArgs
@@ -629,6 +811,15 @@ export class AvatarClient {
       traitAccount = updateStateData.target.trait;
     }
 
+    const avatarAuthority = await this.getNftHolder(
+      this.provider.connection,
+      avatarData.mint
+    );
+    const avatarAuthorityAta = splToken.getAssociatedTokenAddressSync(
+      avatarData.mint,
+      avatarAuthority
+    );
+
     const tx = await this.program.methods
       .updateVariant()
       .accounts({
@@ -637,6 +828,8 @@ export class AvatarClient {
         updateState: updateState,
         traitAccount: traitAccount,
         payer: accounts.payer,
+        avatarMintAta: avatarAuthorityAta,
+        avatarAuthority: avatarAuthority,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .transaction();
@@ -646,10 +839,7 @@ export class AvatarClient {
     return tx;
   }
 
-  async updateTraitVariantMetadata(
-    accounts: UpdateTraitVariantMetadataAccounts,
-    args: UpdateTraitVariantMetadataArgs
-  ) {
+  async updateTrait(accounts: UpdateTraitAccounts, args: UpdateTraitArgs) {
     const avatarClassData = await this.getAvatarClass(accounts.avatarClass);
 
     const avatarClassMintAta = splToken.getAssociatedTokenAddressSync(
@@ -657,12 +847,28 @@ export class AvatarClient {
       accounts.authority
     );
 
+    const ixArgs = {
+      variantMetadata: args.variantMetadata ? args.variantMetadata : null,
+      variantOption: args.variantOption
+        ? args.variantOption.formatForIx()
+        : null,
+      equipPaymentDetails: args.equipPaymentDetails
+        ? args.equipPaymentDetails
+        : null,
+      removePaymentDetails: args.removePaymentDetails
+        ? args.removePaymentDetails
+        : null,
+      traitGate: args.traitGate ? args.traitGate.formatForIx() : null,
+    };
+
+    const trait = traitPDA(accounts.avatarClass, accounts.traitMint);
+
     const tx = await this.program.methods
-      .updateTraitVariantMetadata(args)
+      .updateTrait(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,
-        traitAccount: traitPDA(accounts.avatarClass, accounts.traitMint),
+        traitAccount: trait,
         authority: accounts.authority,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -686,6 +892,47 @@ export class AvatarClient {
 
     const tx = await this.program.methods
       .updateClassVariantMetadata(args)
+      .accounts({
+        avatarClass: accounts.avatarClass,
+        avatarClassMintAta: avatarClassMintAta,
+        authority: accounts.authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .transaction();
+
+    await this.setPayer(tx, accounts.authority);
+
+    return tx;
+  }
+
+  async updateAttributeMetadata(
+    accounts: UpdateAttributeMetadataAccounts,
+    args: UpdateAttributeMetadataArgs
+  ) {
+    const avatarClassData = await this.getAvatarClass(accounts.avatarClass);
+
+    const avatarClassMintAta = splToken.getAssociatedTokenAddressSync(
+      avatarClassData.mint,
+      accounts.authority
+    );
+
+    const formattedAttributeMetadata: any = {
+      name: args.attributeMetadata.name,
+      id: args.attributeMetadata.id,
+      status: {
+        attributeType: formatAttributeType(
+          args.attributeMetadata.status.attributeType
+        ),
+        mutable: args.attributeMetadata.status.mutable,
+      },
+    };
+
+    const ixArgs = {
+      attributeMetadata: formattedAttributeMetadata,
+    };
+
+    const tx = await this.program.methods
+      .updateAttributeMetadata(ixArgs)
       .accounts({
         avatarClass: accounts.avatarClass,
         avatarClassMintAta: avatarClassMintAta,
@@ -804,8 +1051,10 @@ export class AvatarClient {
 
     let traitData: Trait | null = null;
     let isTraitUpdate = false;
-    if (args.updateTarget instanceof UpdateTargetTraitVariant) {
-      const updateTarget = args.updateTarget as UpdateTargetTraitVariant;
+    let isSwapUdate = false;
+    if (args.updateTarget instanceof UpdateTargetSelectionTraitVariant) {
+      const updateTarget =
+        args.updateTarget as UpdateTargetSelectionTraitVariant;
       traitData = await this.getTrait(updateTarget.trait);
       if (
         !traitData.isValidVariant(updateTarget.variantId, updateTarget.optionId)
@@ -816,18 +1065,29 @@ export class AvatarClient {
       }
     }
 
-    if (args.updateTarget instanceof UpdateTargetEquipTrait) {
+    if (args.updateTarget instanceof UpdateTargetSelectionEquipTrait) {
       isTraitUpdate = true;
       const updateTargetEquipTrait =
         args.updateTarget as UpdateTargetEquipTrait;
       traitData = await this.getTrait(updateTargetEquipTrait.traitAccount);
     }
 
-    if (args.updateTarget instanceof UpdateTargetRemoveTrait) {
+    if (args.updateTarget instanceof UpdateTargetSelectionRemoveTrait) {
       isTraitUpdate = true;
       const updateTargetRemoveTrait =
         args.updateTarget as UpdateTargetRemoveTrait;
       traitData = await this.getTrait(updateTargetRemoveTrait.traitAccount);
+    }
+
+    let equipTrait: Trait | null = null;
+    let removeTrait: Trait | null = null;
+    if (args.updateTarget instanceof UpdateTargetSelectionSwapTrait) {
+      isSwapUdate = true;
+      const updateTargetSwapTrait = args.updateTarget as UpdateTargetSwapTrait;
+      equipTrait = await this.getTrait(updateTargetSwapTrait.equipTraitAccount);
+      removeTrait = await this.getTrait(
+        updateTargetSwapTrait.removeTraitAccount
+      );
     }
 
     const ixArgs = {
@@ -857,6 +1117,34 @@ export class AvatarClient {
           authority: avatarAuthority,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .transaction();
+    } else if (isSwapUdate) {
+      tx = await this.program.methods
+        .beginTraitSwapUpdate(ixArgs)
+        .accounts({
+          updateState: updateState,
+          avatarClass: avatarData.avatarClass,
+          equipTraitAccount: equipTrait.traitAddress,
+          removeTraitAccount: removeTrait.traitAddress,
+          avatar: accounts.avatar,
+          avatarMintAta: avatarAuthorityAta,
+          equipTraitMint: equipTrait.traitMint,
+          removeTraitMint: removeTrait.traitMint,
+          avatarEquipTraitAta: splToken.getAssociatedTokenAddressSync(
+            equipTrait.traitMint,
+            avatarData.address,
+            true
+          ),
+          avatarAuthorityRemoveTraitAta: splToken.getAssociatedTokenAddressSync(
+            removeTrait.traitMint,
+            avatarAuthority
+          ),
+          authority: avatarAuthority,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
         })
         .transaction();
     } else {
@@ -942,8 +1230,7 @@ export class AvatarClient {
     }
 
     // get payment method data
-    let paymentMethodData: PaymentMethod;
-    let paymentMethodAddress: anchor.web3.PublicKey;
+    const paymentMethods: [PaymentMethod, anchor.web3.PublicKey][] = [];
     switch (updateStateData.target.constructor) {
       case UpdateTargetClassVariant: {
         const updateTargetClassVariant =
@@ -966,10 +1253,10 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethodData = await this.getPaymentMethod(
-          classPaymentDetails.paymentMethod
-        );
-        paymentMethodAddress = classPaymentDetails.paymentMethod;
+        paymentMethods.push([
+          await this.getPaymentMethod(classPaymentDetails.paymentMethod),
+          classPaymentDetails.paymentMethod,
+        ]);
         break;
       }
       case UpdateTargetTraitVariant: {
@@ -997,10 +1284,10 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethodData = await this.getPaymentMethod(
-          traitPaymentDetails.paymentMethod
-        );
-        paymentMethodAddress = traitPaymentDetails.paymentMethod;
+        paymentMethods.push([
+          await this.getPaymentMethod(traitPaymentDetails.paymentMethod),
+          traitPaymentDetails.paymentMethod,
+        ]);
         break;
       }
       case UpdateTargetEquipTrait: {
@@ -1015,10 +1302,10 @@ export class AvatarClient {
           );
           return txns;
         }
-        paymentMethodData =
-          traitDataEquipTrait.equipPaymentDetails.paymentMethodData;
-        paymentMethodAddress =
-          traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress;
+        paymentMethods.push([
+          traitDataEquipTrait.equipPaymentDetails.paymentMethodData,
+          traitDataEquipTrait.equipPaymentDetails.paymentMethodAddress,
+        ]);
         break;
       }
       case UpdateTargetRemoveTrait: {
@@ -1034,116 +1321,170 @@ export class AvatarClient {
           return txns;
         }
 
-        paymentMethodData =
-          traitDataRemoveTrait.removePaymentDetails.paymentMethodData;
-        paymentMethodAddress =
-          traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress;
+        paymentMethods.push([
+          traitDataRemoveTrait.removePaymentDetails.paymentMethodData,
+          traitDataRemoveTrait.removePaymentDetails.paymentMethodAddress,
+        ]);
+        break;
+      }
+      case UpdateTargetSwapTrait: {
+        const updateTargetSwapTrait =
+          updateStateData.target as UpdateTargetSwapTrait;
+        const removeTraitData = await this.getTrait(
+          updateTargetSwapTrait.removeTraitAccount
+        );
+        const equipTraitData = await this.getTrait(
+          updateTargetSwapTrait.equipTraitAccount
+        );
+
+        if (
+          removeTraitData.removePaymentDetails === null &&
+          equipTraitData.equipPaymentDetails === null
+        ) {
+          console.log(
+            `both payment details are null for swap: ${JSON.stringify(
+              updateTargetSwapTrait
+            )}`
+          );
+          return txns;
+        }
+
+        // grab remove trait data payment details
+        if (removeTraitData.removePaymentDetails !== null) {
+          paymentMethods.push([
+            removeTraitData.removePaymentDetails.paymentMethodData,
+            removeTraitData.removePaymentDetails.paymentMethodAddress,
+          ]);
+          paymentMethods.push([
+            removeTraitData.removePaymentDetails.paymentMethodData,
+            removeTraitData.removePaymentDetails.paymentMethodAddress,
+          ]);
+        }
+
+        // grab equip trait data payment details
+        if (equipTraitData.equipPaymentDetails !== null) {
+          paymentMethods.push([
+            equipTraitData.equipPaymentDetails.paymentMethodData,
+            equipTraitData.equipPaymentDetails.paymentMethodAddress,
+          ]);
+          paymentMethods.push([
+            equipTraitData.equipPaymentDetails.paymentMethodData,
+            equipTraitData.equipPaymentDetails.paymentMethodAddress,
+          ]);
+        }
+
         break;
       }
       default:
         throw new Error(`update target unsupported: ${updateStateData.target}`);
     }
 
-    console.log("paymentMethodData: %s", JSON.stringify(paymentMethodData));
-    console.log("paymentMethodAddr: %s", paymentMethodAddress.toString());
+    for (const paymentMethod of paymentMethods) {
+      const [paymentMethodData, paymentMethodAddress] = paymentMethod;
 
-    // if fungible
-    if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
-      if (paymentMethodData.action instanceof BurnPaymentAction) {
-        const burnAccounts: BurnPaymentAccounts = {
-          avatar: updateStateData.avatar,
-          authority: accounts.authority,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: paymentMethodData.assetClass.mint,
-        };
-        const tx = await this.burnPayment(burnAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
-      }
-      if (paymentMethodData.action instanceof TransferPaymentAction) {
-        const transferAccounts: TransferPaymentAccounts = {
-          avatar: updateStateData.avatar,
-          authority: accounts.authority,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: paymentMethodData.assetClass.mint,
-        };
+      // if fungible
+      if (paymentMethodData.assetClass instanceof FungiblePaymentAssetClass) {
+        if (paymentMethodData.action instanceof BurnPaymentAction) {
+          const burnAccounts: BurnPaymentAccounts = {
+            avatar: updateStateData.avatar,
+            authority: accounts.authority,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: paymentMethodData.assetClass.mint,
+          };
+          const tx = await this.burnPayment(burnAccounts, {
+            amount: args.amount,
+            updateTarget: args.updateTarget,
+          });
+          txns.push(tx);
+        }
+        if (paymentMethodData.action instanceof TransferPaymentAction) {
+          const transferAccounts: TransferPaymentAccounts = {
+            avatar: updateStateData.avatar,
+            authority: accounts.authority,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: paymentMethodData.assetClass.mint,
+          };
 
-        const tx = await this.transferPayment(transferAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
-      }
-    }
-
-    // if non fungible
-    if (paymentMethodData.assetClass instanceof NonFungiblePaymentAssetClass) {
-      if (!accounts.paymentMint) {
-        throw new Error(
-          `paymentMint argument required if payForUpdate on a Non Fungible Asset Class`
-        );
+          const tx = await this.transferPayment(transferAccounts, {
+            amount: args.amount,
+            updateTarget: args.updateTarget,
+          });
+          txns.push(tx);
+        }
       }
 
-      // skip creating this tx if its already verified
-      const verified = await this.getVerifiedPaymentMint(
-        verifiedPaymentMintPDA(paymentMethodAddress, accounts.paymentMint!)
-      );
-      if (!verified) {
-        if (!args.verifyPaymentMintArgs) {
+      // if non fungible
+      if (
+        paymentMethodData.assetClass instanceof NonFungiblePaymentAssetClass
+      ) {
+        if (!accounts.paymentMint) {
           throw new Error(
-            `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
+            `paymentMint argument required if payForUpdate on a Non Fungible Asset Class`
           );
         }
 
-        // create the verify mint transaction, must be ran before actionTree transactions
-        const verifyPaymentMintAccounts: VerifyPaymentMintAccounts = {
-          payer: accounts.authority,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: accounts.paymentMint!,
-        };
-
-        const verifyPaymentMintArgs: VerifyPaymentMintArgs = {
-          root: args.verifyPaymentMintArgs.root,
-          leafIndex: args.verifyPaymentMintArgs.leafIndex,
-          proof: args.verifyPaymentMintArgs.proof,
-        };
-
-        const verifyTx = await this.verifyPaymentMint(
-          verifyPaymentMintAccounts,
-          verifyPaymentMintArgs
+        // skip creating this tx if its already verified
+        const verified = await this.getVerifiedPaymentMint(
+          verifiedPaymentMintPDA(paymentMethodAddress, accounts.paymentMint!)
         );
-        txns.push(verifyTx);
-      }
+        if (!verified) {
+          if (!args.verifyPaymentMintArgs) {
+            throw new Error(
+              `verifyPaymentArgs required if payForUpdate on a Non Fungible Asset Class`
+            );
+          }
 
-      if (paymentMethodData.action instanceof BurnPaymentAction) {
-        const burnPaymentTreeAccounts: BurnPaymentTreeAccounts = {
-          avatar: updateStateData.avatar,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: accounts.paymentMint!,
-          authority: accounts.authority,
-        };
-        const tx = await this.burnPaymentTree(burnPaymentTreeAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
-      }
+          // create the verify mint transaction, must be ran before actionTree transactions
+          const verifyPaymentMintAccounts: VerifyPaymentMintAccounts = {
+            payer: accounts.authority,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: accounts.paymentMint!,
+          };
 
-      if (paymentMethodData.action instanceof TransferPaymentAction) {
-        const transferPaymentTreeAccounts: TransferPaymentTreeAccounts = {
-          avatar: updateStateData.avatar,
-          paymentMethod: paymentMethodAddress,
-          paymentMint: accounts.paymentMint!,
-          authority: accounts.authority,
-        };
+          const verifyPaymentMintArgs: VerifyPaymentMintArgs = {
+            root: args.verifyPaymentMintArgs.root,
+            leafIndex: args.verifyPaymentMintArgs.leafIndex,
+            proof: args.verifyPaymentMintArgs.proof,
+          };
 
-        const tx = await this.transferPaymentTree(transferPaymentTreeAccounts, {
-          amount: args.amount,
-          updateTarget: args.updateTarget,
-        });
-        txns.push(tx);
+          const verifyTx = await this.verifyPaymentMint(
+            verifyPaymentMintAccounts,
+            verifyPaymentMintArgs
+          );
+          txns.push(verifyTx);
+        }
+
+        if (paymentMethodData.action instanceof BurnPaymentAction) {
+          const burnPaymentTreeAccounts: BurnPaymentTreeAccounts = {
+            avatar: updateStateData.avatar,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: accounts.paymentMint!,
+            authority: accounts.authority,
+          };
+          const tx = await this.burnPaymentTree(burnPaymentTreeAccounts, {
+            amount: args.amount,
+            updateTarget: args.updateTarget,
+          });
+          txns.push(tx);
+        }
+
+        if (paymentMethodData.action instanceof TransferPaymentAction) {
+          const transferPaymentTreeAccounts: TransferPaymentTreeAccounts = {
+            avatar: updateStateData.avatar,
+            paymentMethod: paymentMethodAddress,
+            paymentMint: accounts.paymentMint!,
+            authority: accounts.authority,
+          };
+
+          const tx = await this.transferPaymentTree(
+            transferPaymentTreeAccounts,
+            {
+              amount: args.amount,
+              updateTarget: args.updateTarget,
+            }
+          );
+          txns.push(tx);
+        }
       }
     }
 
@@ -1176,6 +1517,7 @@ export class AvatarClient {
       accounts.paymentMint,
       avatarAuthority
     );
+
     const paymentDestination = splToken.getAssociatedTokenAddressSync(
       accounts.paymentMint,
       (paymentMethodData.action as TransferPaymentAction).treasury
@@ -1633,11 +1975,79 @@ export class AvatarClient {
     return tx;
   }
 
+  async validateTraitRules(avatar: anchor.web3.PublicKey): Promise<boolean> {
+    const avatarData = await this.getAvatar(avatar);
+    return true;
+  }
+
+  async migrateAvatarClassAccount(
+    accounts: MigrateAvatarClassAccountAccounts
+  ): Promise<anchor.web3.Transaction> {
+    const authority = new anchor.web3.PublicKey(
+      "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
+    );
+
+    const tx = await this.program.methods
+      .migrateAvatarClassAccount()
+      .accounts({
+        avatarClass: accounts.avatarClass,
+        authority: authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .transaction();
+
+    await this.setPayer(tx, authority);
+
+    return tx;
+  }
+
+  async getAvatarClassPreMigration(
+    avatarClass: anchor.web3.PublicKey
+  ): Promise<any> {
+    const accountInfo = await this.provider.connection.getAccountInfo(
+      avatarClass
+    );
+    const coder = new anchor.BorshAccountsCoder(Idls.AvatarIDL);
+    const oldAvatarClassData = coder.decodeUnchecked(
+      "oldAvatarClass",
+      accountInfo.data
+    );
+    return oldAvatarClassData;
+  }
+
+  async migrateAvatarAccount(
+    accounts: MigrateAvatarAccountAccounts
+  ): Promise<anchor.web3.Transaction> {
+    const authority = new anchor.web3.PublicKey(
+      "3kkFMBB6Hg3HTR4e6c9CKaPrUUcrjA694aGTJrbVG675"
+    );
+
+    const tx = await this.program.methods
+      .migrateAvatarAccount()
+      .accounts({
+        avatar: accounts.avatar,
+        authority: authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .transaction();
+
+    await this.setPayer(tx, authority);
+
+    return tx;
+  }
+
+  async getAvatarPreMigration(avatar: anchor.web3.PublicKey): Promise<any> {
+    const accountInfo = await this.provider.connection.getAccountInfo(avatar);
+    const coder = new anchor.BorshAccountsCoder(Idls.AvatarIDL);
+    const oldAvatarData = coder.decodeUnchecked("oldAvatar", accountInfo.data);
+    return oldAvatarData;
+  }
+
   async getAvatar(
     avatar: anchor.web3.PublicKey,
     getInProgressUpdates?: boolean
   ): Promise<Avatar> {
-    const avatarDataRaw = await this.program.account.avatar.fetch(avatar);
+    const avatarDataRaw: any = await this.program.account.avatar.fetch(avatar);
 
     const traits: TraitData[] = [];
     for (const td of avatarDataRaw.traits) {
@@ -1645,23 +2055,38 @@ export class AvatarClient {
       for (const vsRaw of td.variantSelection) {
         let tg = null;
         if (vsRaw.traitGate) {
-          tg = {
-            operator: { and: {} },
-            traits: vsRaw.traitGate.traits,
+          tg = new TraitGate(vsRaw.traitGate.operator, vsRaw.traitGate.traits);
+        }
+
+        let paymentDetails: PaymentDetails | null = null;
+        if (vsRaw.paymentDetails) {
+          const amount = new anchor.BN(vsRaw.paymentDetails.amount);
+          const uiAmount = await this.getUIPaymentAmount(
+            vsRaw.paymentDetails.paymentMethod,
+            amount
+          );
+          paymentDetails = {
+            paymentMethod: vsRaw.paymentDetails.paymentMethod,
+            amount: amount,
+            uiAmount: uiAmount,
           };
         }
 
-        vs.push({
-          variantId: vsRaw.variantId,
-          optionId: vsRaw.optionId,
-          paymentDetails: vsRaw.paymentDetails,
-          traitGate: tg,
-        });
+        vs.push(
+          new VariantOption(vsRaw.variantId, vsRaw.optionId, paymentDetails, tg)
+        );
       }
+      let tg = null;
+      if (td.traitGate) {
+        tg = new TraitGate(td.traitGate.operator, td.traitGate.traits);
+      }
+
       traits.push({
+        traitId: td.traitId,
         attributeIds: td.attributeIds,
         traitAddress: td.traitAddress,
         variantSelection: vs,
+        traitGate: tg,
       });
     }
 
@@ -1669,18 +2094,34 @@ export class AvatarClient {
     for (const variant of avatarDataRaw.variants) {
       let tg = null;
       if (variant.traitGate) {
-        tg = {
-          operator: { and: {} },
-          traits: variant.traitGate.traits,
+        tg = new TraitGate(
+          variant.traitGate.operator,
+          variant.traitGate.traits
+        );
+      }
+
+      let paymentDetails: PaymentDetails | null = null;
+      if (variant.paymentDetails) {
+        const amount = new anchor.BN(variant.paymentDetails.amount);
+        const uiAmount = await this.getUIPaymentAmount(
+          variant.paymentDetails.paymentMethod,
+          amount
+        );
+        paymentDetails = {
+          paymentMethod: variant.paymentDetails.paymentMethod,
+          amount: amount,
+          uiAmount: uiAmount,
         };
       }
 
-      variants.push({
-        variantId: variant.variantId,
-        optionId: variant.optionId,
-        paymentDetails: variant.paymentDetails,
-        traitGate: tg,
-      });
+      variants.push(
+        new VariantOption(
+          variant.variantId,
+          variant.optionId,
+          paymentDetails,
+          tg
+        )
+      );
     }
 
     const avatarData = new Avatar(
@@ -1702,7 +2143,7 @@ export class AvatarClient {
   async getAvatarClass(
     avatarClassAddress: anchor.web3.PublicKey
   ): Promise<AvatarClass> {
-    const avatarClassData = await this.program.account.avatarClass.fetch(
+    const avatarClassData: any = await this.program.account.avatarClass.fetch(
       avatarClassAddress
     );
 
@@ -1712,33 +2153,62 @@ export class AvatarClient {
       for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
-          tg = {
-            operator: { and: {} },
-            traits: optRaw.traitGate.traits,
+          tg = new TraitGate(
+            optRaw.traitGate.operator,
+            optRaw.traitGate.traits
+          );
+        }
+
+        let paymentDetails: PaymentDetails | null = null;
+        if (optRaw.paymentDetails) {
+          const amount = new anchor.BN(optRaw.paymentDetails.amount);
+          const uiAmount = await this.getUIPaymentAmount(
+            optRaw.paymentDetails.paymentMethod,
+            amount
+          );
+          paymentDetails = {
+            paymentMethod: optRaw.paymentDetails.paymentMethod,
+            amount: amount,
+            uiAmount: uiAmount,
           };
         }
 
-        options.push({
-          variantId: optRaw.variantId,
-          optionId: optRaw.optionId,
-          paymentDetails: optRaw.paymentDetails,
-          traitGate: tg,
-        });
+        options.push(
+          new VariantOption(
+            optRaw.variantId,
+            optRaw.optionId,
+            paymentDetails,
+            tg
+          )
+        );
       }
-      const vm: VariantMetadata = {
-        name: vmRaw.name,
-        id: vmRaw.id,
-        status: vmRaw.status,
-        options: options,
-      };
+
+      const vm = new VariantMetadata(
+        vmRaw.name,
+        vmRaw.id,
+        vmRaw.status,
+        options
+      );
       variantMetadata.push(vm);
+    }
+
+    const attributeMetadata: AttributeMetadata[] = [];
+    for (const amRaw of avatarClassData.attributeMetadata) {
+      attributeMetadata.push({
+        name: amRaw.name,
+        id: amRaw.id,
+        status: {
+          mutable: amRaw.status.mutable,
+          attributeType: parseAttributeType(amRaw.status.attributeType),
+        },
+      });
     }
 
     const avatarClass = new AvatarClass(
       avatarClassData.mint,
       avatarClassData.traitIndex,
       new anchor.BN(avatarClassData.paymentIndex),
-      avatarClassData.attributeMetadata,
+      attributeMetadata,
       variantMetadata,
       avatarClassData.globalRenderingConfigUri
     );
@@ -1755,41 +2225,65 @@ export class AvatarClient {
       for (const optRaw of vmRaw.options) {
         let tg = null;
         if (optRaw.traitGate) {
-          tg = {
-            operator: { and: {} },
-            traits: optRaw.traitGate.traits,
+          tg = new TraitGate(
+            optRaw.traitGate.operator,
+            optRaw.traitGate.traits
+          );
+        }
+
+        let paymentDetails: PaymentDetails | null = null;
+        if (optRaw.paymentDetails) {
+          const amount = new anchor.BN(optRaw.paymentDetails.amount);
+          const uiAmount = await this.getUIPaymentAmount(
+            optRaw.paymentDetails.paymentMethod,
+            amount
+          );
+          paymentDetails = {
+            paymentMethod: new anchor.web3.PublicKey(
+              optRaw.paymentDetails.paymentMethod
+            ),
+            amount: amount,
+            uiAmount: uiAmount,
           };
         }
 
-        options.push({
-          variantId: optRaw.variantId,
-          optionId: optRaw.optionId,
-          paymentDetails: optRaw.paymentDetails,
-          traitGate: tg,
-        });
+        options.push(
+          new VariantOption(
+            optRaw.variantId,
+            optRaw.optionId,
+            paymentDetails,
+            tg
+          )
+        );
       }
-      const vm: VariantMetadata = {
-        name: vmRaw.name,
-        id: vmRaw.id,
-        status: vmRaw.status,
-        options: options,
-      };
+      const vm = new VariantMetadata(
+        vmRaw.name,
+        vmRaw.id,
+        vmRaw.status,
+        options
+      );
       variantMetadata.push(vm);
     }
 
     // get expanded payment details
     let equipPaymentDetailsExpanded: PaymentDetailsExpanded | null = null;
-    if (traitData.equipPaymentDetails !== null) {
+    if (traitData.equipPaymentDetails) {
       const equipPaymentMethodAddr = new anchor.web3.PublicKey(
         traitData.equipPaymentDetails.paymentMethod
       );
       const equipPaymentMethodData = await this.getPaymentMethod(
         equipPaymentMethodAddr
       );
+      const amount = new anchor.BN(traitData.equipPaymentDetails.amount);
+      const uiAmount = await this.getUIPaymentAmount(
+        traitData.equipPaymentDetails.paymentMethod,
+        amount
+      );
       equipPaymentDetailsExpanded = {
         paymentMethodAddress: equipPaymentMethodAddr,
         paymentMethodData: equipPaymentMethodData,
-        amount: traitData.equipPaymentDetails.amount,
+        amount: amount,
+        uiAmount: uiAmount,
       };
     }
     let removePaymentDetailsExpanded: PaymentDetailsExpanded | null = null;
@@ -1800,11 +2294,25 @@ export class AvatarClient {
       const removePaymentMethodData = await this.getPaymentMethod(
         removePaymentMethodAddr
       );
+      const amount = new anchor.BN(traitData.removePaymentDetails.amount);
+      const uiAmount = await this.getUIPaymentAmount(
+        traitData.removePaymentDetails.paymentMethod,
+        amount
+      );
       removePaymentDetailsExpanded = {
         paymentMethodAddress: removePaymentMethodAddr,
         paymentMethodData: removePaymentMethodData,
-        amount: traitData.removePaymentDetails.amount,
+        amount: amount,
+        uiAmount: uiAmount,
       };
+    }
+
+    let tg = null;
+    if (traitData.traitGate) {
+      tg = new TraitGate(
+        traitData.traitGate.operator,
+        traitData.traitGate.traits
+      );
     }
 
     return new Trait(
@@ -1817,7 +2325,8 @@ export class AvatarClient {
       traitData.status,
       variantMetadata,
       equipPaymentDetailsExpanded,
-      removePaymentDetailsExpanded
+      removePaymentDetailsExpanded,
+      tg
     );
   }
 
@@ -1833,27 +2342,9 @@ export class AvatarClient {
       return null;
     }
 
-    let currentPaymentDetails: PaymentDetails | null = null;
-    if (updateStateRaw.currentPaymentDetails !== null) {
-      currentPaymentDetails = {
-        paymentMethod: updateStateRaw.currentPaymentDetails.paymentMethod,
-        amount: new anchor.BN(updateStateRaw.currentPaymentDetails.amount),
-      };
-    }
-
-    let requiredPaymentDetails: PaymentDetails | null = null;
-    if (updateStateRaw.requiredPaymentDetails !== null) {
-      requiredPaymentDetails = {
-        paymentMethod: updateStateRaw.requiredPaymentDetails.paymentMethod,
-        amount: new anchor.BN(updateStateRaw.requiredPaymentDetails.amount),
-      };
-    }
-
     return new UpdateState(
       updateStateRaw.initialized,
       updateStateRaw.avatar,
-      currentPaymentDetails,
-      requiredPaymentDetails,
       parseUpdateTarget(updateStateRaw.target)
     );
   }
@@ -2113,6 +2604,35 @@ export class AvatarClient {
     tx.recentBlockhash = bh;
     tx.feePayer = payer;
   }
+
+  private async getUIPaymentAmount(
+    paymentMethod: anchor.web3.PublicKey,
+    amount: anchor.BN
+  ): Promise<number> {
+    const paymentMethodData = await this.getPaymentMethod(paymentMethod);
+
+    // if its an NFT payment method probably dont need to convert anything
+    if (paymentMethodData.assetClass instanceof NonFungiblePaymentAssetClass) {
+      return amount.toNumber();
+    } else if (
+      paymentMethodData.assetClass instanceof FungiblePaymentAssetClass
+    ) {
+      // strip away the decimal precision, return float
+      const mintData = await splToken.getMint(
+        this.provider.connection,
+        paymentMethodData.assetClass.mint
+      );
+      const divisor = new anchor.BN(10).pow(new anchor.BN(mintData.decimals));
+      const { div, mod } = amount.divmod(divisor);
+      const uiAmount =
+        div.toNumber() + mod.toNumber() / Math.pow(10, mintData.decimals);
+      return uiAmount;
+    }
+
+    throw new Error(
+      `Unknown Payment AssetClass: ${JSON.stringify(paymentMethodData)}`
+    );
+  }
 }
 
 export function avatarClassPDA(
@@ -2160,7 +2680,7 @@ export function paymentMethodPDA(
 
 export function updateStatePDA(
   avatar: anchor.web3.PublicKey,
-  updateTarget: UpdateTarget
+  updateTarget: UpdateTarget | UpdateTargetSelection
 ): anchor.web3.PublicKey {
   const hash = hashUpdateTarget(updateTarget);
   return anchor.web3.PublicKey.findProgramAddressSync(

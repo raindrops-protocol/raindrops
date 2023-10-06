@@ -5,12 +5,13 @@ use anchor_lang::prelude::*;
 use crate::utils::reallocate;
 
 use super::data::{
-    exists_in_trait_gate, AttributeMetadata, PaymentAction, PaymentAssetClass, PaymentDetails,
-    TraitData, TraitGate, TraitStatus, UpdateTarget, VariantMetadata, VariantOption,
+    AttributeMetadata, PaymentAction, PaymentAssetClass, PaymentDetails, TraitData, TraitGate,
+    TraitStatus, UpdateTarget, UpdateTargetSelection, VariantMetadata, VariantOption,
 };
 
 // seeds = [b'avatar_class', mint.key().as_ref()]
 #[account]
+#[derive(Debug)]
 pub struct AvatarClass {
     pub mint: Pubkey,
     pub trait_index: u16,
@@ -40,6 +41,7 @@ impl AvatarClass {
         8 + // anchor
         32 + // avatar_class mint
         2 + // trait index
+        8 + // payment index
         AvatarClass::attribute_metadata_space(&self.attribute_metadata) + // attribute metadata
         AvatarClass::variant_metadata_space(&self.variant_metadata) + // variant metadata
         (4 + self.global_rendering_config_uri.len()) // global rendering config uri
@@ -86,6 +88,24 @@ impl AvatarClass {
             .clone()
     }
 
+    pub fn update_attribute_metadata<'info>(
+        &mut self,
+        new_attribute_metadata: AttributeMetadata,
+        avatar_class: &AccountInfo<'info>,
+        payer: Signer<'info>,
+        system_program: Program<'info, System>,
+    ) {
+        let old_space = self.current_space();
+
+        self.replace_attribute_metadata(new_attribute_metadata);
+
+        let new_space = self.current_space();
+
+        let diff: i64 = new_space as i64 - old_space as i64;
+
+        reallocate(diff, avatar_class, payer, system_program).unwrap();
+    }
+
     pub fn update_variant_metadata<'info>(
         &mut self,
         new_variant_metadata: VariantMetadata,
@@ -110,6 +130,13 @@ impl AvatarClass {
 
         self.variant_metadata.push(new_variant_metadata);
     }
+
+    fn replace_attribute_metadata(&mut self, new_attribute_metadata: AttributeMetadata) {
+        self.attribute_metadata
+            .retain(|am| am.id != new_attribute_metadata.id);
+
+        self.attribute_metadata.push(new_attribute_metadata);
+    }
 }
 
 // seeds = [b'avatar', avatar_class.key().as_ref(), mint.key().as_ref()]
@@ -130,13 +157,16 @@ impl Avatar {
         32 + // avatar mint
         4 + // empty image uri
         4 + // empty traits vector
-        variants_space(variants)
+        variants_space(&variants)
     }
 
     pub fn current_space(&self) -> usize {
         let mut total_bytes = 8; // anchor distriminator
         total_bytes += 32; // avatar class
         total_bytes += 32; // mint
+        total_bytes += 4; // image uri
+        total_bytes += 4; // traits vector
+        total_bytes += 4; // variants vector
 
         // current space of the traits
         for td in &self.traits {
@@ -144,9 +174,7 @@ impl Avatar {
         }
 
         // current space of the variants
-        for v in &self.variants {
-            total_bytes += v.space();
-        }
+        total_bytes += variants_space(&self.variants);
 
         total_bytes
     }
@@ -166,13 +194,20 @@ impl Avatar {
         trait_id: u16,
         attribute_ids: Vec<u16>,
         variant_metadata: &[VariantMetadata],
+        trait_gate: Option<TraitGate>,
         avatar: &AccountInfo<'info>,
         payer: Signer<'info>,
         system_program: Program<'info, System>,
     ) {
         let old_space = self.current_space();
 
-        self.add_trait_data(trait_address, trait_id, attribute_ids, variant_metadata);
+        self.add_trait_data(
+            trait_address,
+            trait_id,
+            attribute_ids,
+            variant_metadata,
+            trait_gate,
+        );
 
         let new_space = self.current_space();
 
@@ -192,6 +227,42 @@ impl Avatar {
 
         self.remove_trait_data(trait_address);
 
+        let new_space = self.current_space();
+
+        let diff: i64 = new_space as i64 - old_space as i64;
+
+        reallocate(diff, avatar, payer, system_program).unwrap();
+    }
+
+    pub fn remove_trait_data(&mut self, trait_address: Pubkey) {
+        self.traits
+            .retain(|trait_data| trait_data.trait_address.ne(&trait_address))
+    }
+
+    pub fn add_trait_data(
+        &mut self,
+        trait_address: Pubkey,
+        trait_id: u16,
+        attribute_ids: Vec<u16>,
+        variant_metadata: &[VariantMetadata],
+        trait_gate: Option<TraitGate>,
+    ) {
+        self.traits.push(TraitData::new(
+            attribute_ids,
+            trait_id,
+            trait_address,
+            variant_metadata,
+            trait_gate,
+        ))
+    }
+
+    pub fn reallocate<'info>(
+        &mut self,
+        old_space: i64,
+        avatar: &AccountInfo<'info>,
+        payer: Signer<'info>,
+        system_program: Program<'info, System>,
+    ) {
         let new_space = self.current_space();
 
         let diff: i64 = new_space as i64 - old_space as i64;
@@ -224,24 +295,53 @@ impl Avatar {
             .collect()
     }
 
-    // returns true if the trait_address is used in any trait gates
-    pub fn is_required_by_trait_gate(&self, trait_address: Pubkey) -> bool {
-        // check if trait is used by any other trait variants
-        let required_by_trait_variant = self
-            .traits
-            .iter()
-            .any(|trait_data| exists_in_trait_gate(&trait_data.variant_selection, &trait_address));
-        if required_by_trait_variant {
-            return true;
-        };
+    pub fn validate_trait_gates(&self) -> bool {
+        // check equipped trait gates
+        for t in &self.traits {
+            if let Some(trait_gate) = &t.trait_gate {
+                let valid = trait_gate.validate(&self.get_traits());
+                if !valid {
+                    msg!(
+                        "trait {:?} failed it's trait_gate, equipped traits: {:?}",
+                        t,
+                        &self.traits
+                    );
+                    return false;
+                }
+            }
 
-        // check if trait is used by avatar class variants
-        let required_by_class_variant = exists_in_trait_gate(&self.variants, &trait_address);
-        if required_by_class_variant {
-            return true;
+            // check if trait is in use by a variant trait gate
+            for v in &t.variant_selection {
+                if let Some(trait_gate) = &v.trait_gate {
+                    let valid = trait_gate.validate(&self.get_traits());
+                    if !valid {
+                        msg!(
+                            "trait variant {:?} failed it's trait_gate, equipped traits: {:?}",
+                            v,
+                            &self.traits
+                        );
+                        return false;
+                    }
+                }
+            }
+
+            // check if trait is in use by a global variant trait gate
+            for v in &self.variants {
+                if let Some(trait_gate) = &v.trait_gate {
+                    let valid = trait_gate.validate(&self.get_traits());
+                    if !valid {
+                        msg!(
+                            "class variant {:?} failed it's trait_gate, equipped traits: {:?}",
+                            v,
+                            &self.traits
+                        );
+                        return false;
+                    }
+                }
+            }
         }
 
-        false
+        true
     }
 
     pub fn update_variant_selection<'info>(
@@ -270,29 +370,9 @@ impl Avatar {
         // add new variant selection
         self.variants.push(variant_selection);
     }
-
-    fn remove_trait_data(&mut self, trait_address: Pubkey) {
-        self.traits
-            .retain(|trait_data| trait_data.trait_address.ne(&trait_address))
-    }
-
-    fn add_trait_data(
-        &mut self,
-        trait_address: Pubkey,
-        trait_id: u16,
-        attribute_ids: Vec<u16>,
-        variant_metadata: &[VariantMetadata],
-    ) {
-        self.traits.push(TraitData::new(
-            attribute_ids,
-            trait_id,
-            trait_address,
-            variant_metadata,
-        ))
-    }
 }
 
-fn variants_space(variants: Vec<VariantOption>) -> usize {
+fn variants_space(variants: &Vec<VariantOption>) -> usize {
     let mut total_bytes = 4;
     for v in variants {
         total_bytes += v.space();
@@ -330,7 +410,10 @@ impl Trait {
         Self::variant_metadata_space(&self.variant_metadata) + // variant metadata
         (1 + PaymentDetails::SPACE) + // optional equip payment details
         (1 + PaymentDetails::SPACE) + // optional remove payment method
-        (1 + TraitGate::INIT_SPACE) // optional trait gate space
+        match &self.trait_gate {
+            Some(trait_gate) => trait_gate.space(),
+            None => 1,
+        }
     }
 
     pub fn space(
@@ -376,6 +459,40 @@ impl Trait {
         let diff: i64 = new_space as i64 - old_space as i64;
 
         reallocate(diff, trait_account, payer, system_program).unwrap();
+    }
+
+    pub fn update_variant_option<'info>(
+        &mut self,
+        new_variant_option: VariantOption,
+        trait_account: &AccountInfo<'info>,
+        payer: Signer<'info>,
+        system_program: Program<'info, System>,
+    ) {
+        let old_space = self.current_space();
+
+        self.replace_or_add_variant_option(new_variant_option);
+
+        let new_space = self.current_space();
+
+        let diff: i64 = new_space as i64 - old_space as i64;
+
+        reallocate(diff, trait_account, payer, system_program).unwrap();
+    }
+
+    fn replace_or_add_variant_option(&mut self, new_variant_option: VariantOption) {
+        let variant_metadata = self
+            .variant_metadata
+            .iter_mut()
+            .find(|vm| vm.id == new_variant_option.variant_id)
+            .unwrap();
+        match variant_metadata
+            .options
+            .iter_mut()
+            .find(|o| o.option_id == new_variant_option.option_id)
+        {
+            Some(option) => *option = new_variant_option,
+            None => variant_metadata.options.push(new_variant_option),
+        }
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -424,19 +541,15 @@ impl PaymentMethod {
 pub struct UpdateState {
     pub initialized: bool,
     pub avatar: Pubkey,
-    pub current_payment_details: Option<PaymentDetails>,
-    pub required_payment_details: Option<PaymentDetails>,
     pub target: UpdateTarget,
 }
 
 impl UpdateState {
     pub const PREFIX: &'static str = "update_state";
-    pub fn space(update_target: &UpdateTarget) -> usize {
+    pub fn space(update_target: &UpdateTargetSelection) -> usize {
         8 + // anchor
         1 + // initialized
         32 + // avatar
-        (1 + PaymentDetails::SPACE) + // current payment details, optional
-        (1 + PaymentDetails::SPACE) + // required payment details, optional
         update_target.space() // update target
     }
 }
@@ -583,7 +696,7 @@ impl anchor_lang::Id for NoopProgram {
 mod tests {
     use std::{assert_eq, vec};
 
-    use crate::state::data::{AttributeStatus, Operator::And, TraitGate, VariantStatus};
+    use crate::state::data::{AttributeStatus, AttributeType, VariantStatus};
 
     use super::*;
 
@@ -593,22 +706,34 @@ mod tests {
         attribute_metadata.push(AttributeMetadata {
             id: 1,
             name: "head".to_string(),
-            status: AttributeStatus { mutable: true },
+            status: AttributeStatus {
+                mutable: true,
+                attribute_type: AttributeType::Optional,
+            },
         });
         attribute_metadata.push(AttributeMetadata {
             id: 2,
             name: "body".to_string(),
-            status: AttributeStatus { mutable: true },
+            status: AttributeStatus {
+                mutable: true,
+                attribute_type: AttributeType::Optional,
+            },
         });
         attribute_metadata.push(AttributeMetadata {
             id: 3,
             name: "hand".to_string(),
-            status: AttributeStatus { mutable: false },
+            status: AttributeStatus {
+                mutable: false,
+                attribute_type: AttributeType::Optional,
+            },
         });
         attribute_metadata.push(AttributeMetadata {
             id: 4,
             name: "background".to_string(),
-            status: AttributeStatus { mutable: false },
+            status: AttributeStatus {
+                mutable: false,
+                attribute_type: AttributeType::Optional,
+            },
         });
         let avatar_class: AvatarClass = AvatarClass {
             mint: Pubkey::new_unique(),
@@ -661,6 +786,7 @@ mod tests {
             trait_id: 0,
             trait_address: trait1,
             variant_selection: vec![],
+            trait_gate: None,
         });
 
         let trait2 = Pubkey::new_unique();
@@ -669,6 +795,7 @@ mod tests {
             trait_id: 0,
             trait_address: trait2,
             variant_selection: vec![],
+            trait_gate: None,
         });
 
         let mut avatar = Avatar {
@@ -756,74 +883,5 @@ mod tests {
         };
         let has_conflicts = trait_conflicts.has_conflicts(&[], &[]);
         assert!(!has_conflicts);
-    }
-
-    #[test]
-    fn test_is_required_by_trait_gate() {
-        let mut traits: Vec<TraitData> = vec![];
-
-        let trait1 = Pubkey::new_unique();
-
-        let trait2 = Pubkey::new_unique();
-        traits.push(TraitData {
-            attribute_ids: vec![],
-            trait_id: 0,
-            trait_address: trait1,
-            variant_selection: vec![VariantOption {
-                variant_id: "lqowgh78".to_string(),
-                option_id: "lqwoejt7".to_string(),
-                payment_details: None,
-                trait_gate: Some(TraitGate {
-                    operator: And,
-                    traits: vec![trait2],
-                }),
-            }],
-        });
-
-        let trait3 = Pubkey::new_unique();
-        traits.push(TraitData {
-            attribute_ids: vec![],
-            trait_id: 0,
-            trait_address: trait3,
-            variant_selection: vec![],
-        });
-
-        let trait4 = Pubkey::new_unique();
-
-        let mut variants: Vec<VariantOption> = vec![];
-        variants.push(VariantOption {
-            variant_id: "qwloty78".to_string(),
-            option_id: "hglqow34".to_string(),
-            payment_details: None,
-            trait_gate: Some(TraitGate {
-                operator: And,
-                traits: vec![trait4],
-            }),
-        });
-        variants.push(VariantOption {
-            variant_id: "qlotgh1q".to_string(),
-            option_id: "kklqwou8".to_string(),
-            payment_details: None,
-            trait_gate: None,
-        });
-
-        let avatar = Avatar {
-            avatar_class: Pubkey::new_unique(),
-            mint: Pubkey::new_unique(),
-            image_uri: "".to_string(),
-            traits,
-            variants,
-        };
-        let trait_1_not_required = avatar.is_required_by_trait_gate(trait1);
-        assert!(!trait_1_not_required);
-
-        let trait_2_required = avatar.is_required_by_trait_gate(trait2);
-        assert!(trait_2_required);
-
-        let trait_3_not_required = avatar.is_required_by_trait_gate(trait3);
-        assert!(!trait_3_not_required);
-
-        let trait_4_required = avatar.is_required_by_trait_gate(trait4);
-        assert!(trait_4_required);
     }
 }

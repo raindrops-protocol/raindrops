@@ -4,7 +4,7 @@ use anchor_spl::token;
 use crate::{
     state::{
         accounts::{AvatarClass, Trait, TraitConflicts},
-        data::{AttributeMetadata, PaymentDetails, TraitStatus, VariantMetadata},
+        data::{AttributeMetadata, PaymentDetails, TraitGate, TraitStatus, VariantMetadata},
         errors::ErrorCode,
     },
     utils::{is_rain_vault, pay_rain_fee},
@@ -59,6 +59,7 @@ pub struct CreateTraitArgs {
     pub trait_status: TraitStatus,
     pub equip_payment_details: Option<PaymentDetails>,
     pub remove_payment_details: Option<PaymentDetails>,
+    pub trait_gate: Option<TraitGate>,
 }
 
 pub fn handler(ctx: Context<CreateTrait>, args: CreateTraitArgs) -> Result<()> {
@@ -86,7 +87,7 @@ pub fn handler(ctx: Context<CreateTrait>, args: CreateTraitArgs) -> Result<()> {
         status: args.trait_status,
         equip_payment_details: args.equip_payment_details,
         remove_payment_details: args.remove_payment_details,
-        trait_gate: None,
+        trait_gate: args.trait_gate,
     });
 
     // increment trait index on the avatar class

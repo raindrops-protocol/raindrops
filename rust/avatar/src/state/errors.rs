@@ -52,4 +52,13 @@ pub enum ErrorCode {
 
     #[msg("Token Account Delegate Not Allowed")]
     TokenDelegateNotAllowed,
+
+    #[msg("Missing Essential Attribute Relacement")]
+    MissingEssentialAttribute,
+
+    #[msg("Migration Error")]
+    MigrationError,
+
+    #[msg("Failed to Validate Trait Gate")]
+    TraitGateFailure,
 }

@@ -6,7 +6,10 @@ use anchor_lang::{
 };
 use anchor_spl::token;
 
-use crate::state::data::{AttributeMetadata, TraitData};
+use crate::state::{
+    data::{AttributeMetadata, AttributeType, TraitData},
+    errors::ErrorCode,
+};
 
 // owner: BuwHRcmPwbVhnY6HBm5tTSdj9z8b59atBaaihRbntWR9
 static MAINNET_RAIN_VAULT: &str = "DLHSKqRuAferYFTKqLAMRKM2hgze5vtYQPot97LXUnVB";
@@ -109,9 +112,46 @@ pub fn validate_attribute_availability(
     true
 }
 
+pub fn get_essential_attribute_ids(
+    attribute_metadata: &[AttributeMetadata],
+    attribute_ids: &[u16],
+) -> Vec<u16> {
+    attribute_metadata
+        .into_iter()
+        .filter_map(|attr| {
+            if attribute_ids.contains(&attr.id)
+                && attr.status.attribute_type.eq(&AttributeType::Essential)
+            {
+                Some(attr.id)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+pub fn validate_essential_attribute_updates(
+    attribute_metadata: &[AttributeMetadata],
+    equip_trait_attribute_ids: &[u16],
+    remove_trait_attribute_ids: &[u16],
+) -> Result<()> {
+    // gather all attributes which must be occupied, you cannot remove these without a corresponding equip action
+    let remove_trait_attribute_metadata_essential: Vec<u16> =
+        get_essential_attribute_ids(attribute_metadata, remove_trait_attribute_ids);
+
+    // check that for every essential attribute we have a corresponding equip trait attribute
+    for essential_attr_id in remove_trait_attribute_metadata_essential.iter() {
+        if !equip_trait_attribute_ids.contains(essential_attr_id) {
+            return Err(ErrorCode::MissingEssentialAttribute.into());
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::state::data::AttributeStatus;
+    use crate::state::data::{AttributeStatus, AttributeType};
 
     use super::*;
 
@@ -123,17 +163,24 @@ mod tests {
             trait_id: 0,
             trait_address: Pubkey::new_unique(),
             variant_selection: vec![],
+            trait_gate: None,
         }];
         let attribute_metadata: Vec<AttributeMetadata> = vec![
             AttributeMetadata {
                 id: 0,
                 name: "test1".to_string(),
-                status: AttributeStatus { mutable: true },
+                status: AttributeStatus {
+                    mutable: true,
+                    attribute_type: AttributeType::Optional,
+                },
             },
             AttributeMetadata {
                 id: 1,
                 name: "test2".to_string(),
-                status: AttributeStatus { mutable: true },
+                status: AttributeStatus {
+                    mutable: true,
+                    attribute_type: AttributeType::Optional,
+                },
             },
         ];
 
@@ -154,24 +201,32 @@ mod tests {
                 trait_id: 1,
                 trait_address: Pubkey::new_unique(),
                 variant_selection: vec![],
+                trait_gate: None,
             },
             TraitData {
                 attribute_ids: vec![9],
                 trait_id: 0,
                 trait_address: Pubkey::new_unique(),
                 variant_selection: vec![],
+                trait_gate: None,
             },
         ];
         let attribute_metadata: Vec<AttributeMetadata> = vec![
             AttributeMetadata {
                 id: 0,
                 name: "test1".to_string(),
-                status: AttributeStatus { mutable: true },
+                status: AttributeStatus {
+                    mutable: true,
+                    attribute_type: AttributeType::Optional,
+                },
             },
             AttributeMetadata {
                 id: 1,
                 name: "test2".to_string(),
-                status: AttributeStatus { mutable: true },
+                status: AttributeStatus {
+                    mutable: true,
+                    attribute_type: AttributeType::Optional,
+                },
             },
         ];
 
@@ -191,7 +246,10 @@ mod tests {
         let attribute_metadata: Vec<AttributeMetadata> = vec![AttributeMetadata {
             id: 0,
             name: "test1".to_string(),
-            status: AttributeStatus { mutable: true },
+            status: AttributeStatus {
+                mutable: true,
+                attribute_type: AttributeType::Optional,
+            },
         }];
 
         let valid = validate_attribute_availability(
@@ -210,17 +268,24 @@ mod tests {
             trait_id: 0,
             trait_address: Pubkey::new_unique(),
             variant_selection: vec![],
+            trait_gate: None,
         }];
         let attribute_metadata: Vec<AttributeMetadata> = vec![
             AttributeMetadata {
                 id: 0,
                 name: "test1".to_string(),
-                status: AttributeStatus { mutable: false },
+                status: AttributeStatus {
+                    mutable: false,
+                    attribute_type: AttributeType::Optional,
+                },
             },
             AttributeMetadata {
                 id: 1,
                 name: "test2".to_string(),
-                status: AttributeStatus { mutable: false },
+                status: AttributeStatus {
+                    mutable: false,
+                    attribute_type: AttributeType::Optional,
+                },
             },
         ];
 
@@ -230,5 +295,171 @@ mod tests {
             &attribute_metadata,
         );
         assert!(!valid);
+    }
+    #[test]
+    fn test_validate_essential_attribute_updates_single_is_valid() {
+        let attribute_metadata: Vec<AttributeMetadata> = vec![AttributeMetadata {
+            id: 0,
+            name: "essential".to_string(),
+            status: AttributeStatus {
+                attribute_type: AttributeType::Essential,
+                mutable: true,
+            },
+        }];
+
+        assert!(
+            validate_essential_attribute_updates(&attribute_metadata, &vec![0], &vec![0]).is_ok()
+        );
+    }
+
+    #[test]
+    fn test_validate_essential_attribute_updates_single_invalid() {
+        let attribute_metadata: Vec<AttributeMetadata> = vec![AttributeMetadata {
+            id: 0,
+            name: "essential".to_string(),
+            status: AttributeStatus {
+                attribute_type: AttributeType::Essential,
+                mutable: true,
+            },
+        }];
+
+        assert!(
+            validate_essential_attribute_updates(&attribute_metadata, &vec![], &vec![0]).is_err()
+        );
+    }
+
+    #[test]
+    fn test_validate_essential_attribute_updates_multiple_is_valid() {
+        let attribute_metadata: Vec<AttributeMetadata> = vec![
+            AttributeMetadata {
+                id: 0,
+                name: "essential".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Essential,
+                    mutable: true,
+                },
+            },
+            AttributeMetadata {
+                id: 1,
+                name: "optional".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Optional,
+                    mutable: true,
+                },
+            },
+        ];
+
+        assert!(
+            validate_essential_attribute_updates(&attribute_metadata, &vec![0], &vec![0]).is_ok()
+        );
+    }
+
+    #[test]
+    fn test_validate_essential_attribute_updates_multiple_invalid() {
+        let attribute_metadata: Vec<AttributeMetadata> = vec![
+            AttributeMetadata {
+                id: 0,
+                name: "essential".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Essential,
+                    mutable: true,
+                },
+            },
+            AttributeMetadata {
+                id: 1,
+                name: "optional".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Optional,
+                    mutable: true,
+                },
+            },
+        ];
+
+        assert!(
+            validate_essential_attribute_updates(&attribute_metadata, &vec![1], &vec![0]).is_err()
+        );
+    }
+
+    #[test]
+    fn test_validate_essential_attribute_updates_multiple_essential_is_valid() {
+        let attribute_metadata: Vec<AttributeMetadata> = vec![
+            AttributeMetadata {
+                id: 0,
+                name: "essential".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Essential,
+                    mutable: true,
+                },
+            },
+            AttributeMetadata {
+                id: 1,
+                name: "essential".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Essential,
+                    mutable: true,
+                },
+            },
+            AttributeMetadata {
+                id: 2,
+                name: "optional".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Optional,
+                    mutable: true,
+                },
+            },
+        ];
+
+        assert!(validate_essential_attribute_updates(
+            &attribute_metadata,
+            &vec![0, 1],
+            &vec![0, 1]
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn test_validate_essential_attribute_updates_multiple_essential_invalid() {
+        let attribute_metadata: Vec<AttributeMetadata> = vec![
+            AttributeMetadata {
+                id: 0,
+                name: "essential".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Essential,
+                    mutable: true,
+                },
+            },
+            AttributeMetadata {
+                id: 1,
+                name: "essential".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Essential,
+                    mutable: true,
+                },
+            },
+            AttributeMetadata {
+                id: 2,
+                name: "optional".to_string(),
+                status: AttributeStatus {
+                    attribute_type: AttributeType::Optional,
+                    mutable: true,
+                },
+            },
+        ];
+
+        assert!(validate_essential_attribute_updates(&attribute_metadata, &[0], &[0, 1]).is_err());
+    }
+
+    #[test]
+    fn test_validate_essential_attribute_updates_optional_only() {
+        let attribute_metadata: Vec<AttributeMetadata> = vec![AttributeMetadata {
+            id: 0,
+            name: "optional".to_string(),
+            status: AttributeStatus {
+                attribute_type: AttributeType::Optional,
+                mutable: true,
+            },
+        }];
+
+        assert!(validate_essential_attribute_updates(&attribute_metadata, &vec![], &[0]).is_ok());
     }
 }

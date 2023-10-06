@@ -3,7 +3,7 @@ use anchor_spl::token;
 
 use crate::state::{
     accounts::{Avatar, AvatarClass, Trait, UpdateState},
-    data::{PaymentDetails, UpdateTarget},
+    data::{PaymentState, UpdateTarget, UpdateTargetSelection},
     errors::ErrorCode,
 };
 
@@ -41,7 +41,7 @@ pub struct BeginVariantUpdate<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct BeginVariantUpdateArgs {
-    pub update_target: UpdateTarget,
+    pub update_target: UpdateTargetSelection,
 }
 
 pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -> Result<()> {
@@ -59,27 +59,25 @@ pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -
     }
 
     // get the payment details required for this update
-    let required_payment_details = match &args.update_target {
-        UpdateTarget::ClassVariant {
+    let update_target: UpdateTarget = match &args.update_target {
+        UpdateTargetSelection::ClassVariant {
             variant_id,
             option_id,
         } => {
             // get variant metadata from avatar class
             let variant_metadata = ctx.accounts.avatar_class.find_variant(variant_id);
-
-            // check variant is enabled
-            let enabled = variant_metadata.is_enabled();
-            require!(enabled, ErrorCode::VariantDisabled);
-
-            // check avatar meets requirements to select the variant
             let new_variant_option = variant_metadata.find_option(option_id);
-            let eligible = new_variant_option.is_eligible(&ctx.accounts.avatar.get_traits());
-            require!(eligible, ErrorCode::InvalidVariant);
 
-            // return payment details required for this update
-            new_variant_option.payment_details
+            let payment_state: Option<PaymentState> =
+                new_variant_option.payment_details.map(Into::into);
+
+            UpdateTarget::ClassVariant {
+                variant_id: variant_id.to_string(),
+                option_id: option_id.to_string(),
+                payment_state,
+            }
         }
-        UpdateTarget::TraitVariant {
+        UpdateTargetSelection::TraitVariant {
             variant_id,
             option_id,
             trait_account: trait_account_target,
@@ -94,38 +92,26 @@ pub fn handler(ctx: Context<BeginVariantUpdate>, args: BeginVariantUpdateArgs) -
 
             // get the variant metadata for the variant_id we want to change
             let variant_metadata = trait_account.find_variant(variant_id);
-
-            // check variant is enabled
-            let enabled = variant_metadata.is_enabled();
-            require!(enabled, ErrorCode::VariantDisabled);
-
-            // check avatar meets requirements to select the variant option
             let new_variant_option = variant_metadata.find_option(option_id);
-            let eligible = new_variant_option.is_eligible(&ctx.accounts.avatar.get_traits());
-            require!(eligible, ErrorCode::InvalidVariant);
 
-            // return payment details required for this update
-            new_variant_option.payment_details
+            let payment_state: Option<PaymentState> =
+                new_variant_option.payment_details.map(Into::into);
+
+            UpdateTarget::TraitVariant {
+                variant_id: variant_id.to_string(),
+                option_id: option_id.to_string(),
+                payment_state,
+                trait_account: *trait_account_target,
+            }
         }
         _ => return Err(ErrorCode::InvalidUpdateTarget.into()),
     };
-
-    // create the starting state for the update_state account
-    let current_payment_details =
-        required_payment_details
-            .as_ref()
-            .map(|required_payment_details| PaymentDetails {
-                payment_method: required_payment_details.payment_method,
-                amount: 0,
-            });
 
     // set the update state fields
     ctx.accounts.update_state.set_inner(UpdateState {
         initialized: true,
         avatar: ctx.accounts.avatar.key(),
-        current_payment_details,
-        required_payment_details,
-        target: args.update_target,
+        target: update_target,
     });
 
     Ok(())

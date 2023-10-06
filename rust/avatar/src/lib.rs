@@ -51,6 +51,10 @@ pub mod raindrops_avatar {
         instructions::remove_trait_authority::handler(ctx)
     }
 
+    pub fn swap_trait(ctx: Context<SwapTrait>) -> Result<()> {
+        instructions::swap_trait::handler(ctx)
+    }
+
     pub fn update_trait_variant(ctx: Context<UpdateVariant>) -> Result<()> {
         instructions::update_variant::handler(ctx)
     }
@@ -69,11 +73,8 @@ pub mod raindrops_avatar {
         instructions::update_class_variant_authority::handler(ctx, args)
     }
 
-    pub fn update_trait_variant_metadata(
-        ctx: Context<UpdateTraitVariantMetadata>,
-        args: UpdateTraitVariantMetadataArgs,
-    ) -> Result<()> {
-        instructions::update_trait_variant_metadata::handler(ctx, args)
+    pub fn update_trait(ctx: Context<UpdateTrait>, args: UpdateTraitArgs) -> Result<()> {
+        instructions::update_trait::handler(ctx, args)
     }
 
     pub fn update_class_variant_metadata(
@@ -81,6 +82,13 @@ pub mod raindrops_avatar {
         args: UpdateClassVariantMetadataArgs,
     ) -> Result<()> {
         instructions::update_class_variant_metadata::handler(ctx, args)
+    }
+
+    pub fn update_attribute_metadata(
+        ctx: Context<UpdateAttributeMetadata>,
+        args: UpdateAttributeMetadataArgs,
+    ) -> Result<()> {
+        instructions::update_attribute_metadata::handler(ctx, args)
     }
 
     pub fn begin_variant_update(
@@ -95,6 +103,13 @@ pub mod raindrops_avatar {
         args: BeginTraitUpdateArgs,
     ) -> Result<()> {
         instructions::begin_trait_update::handler(ctx, args)
+    }
+
+    pub fn begin_trait_swap_update(
+        ctx: Context<BeginTraitSwapUpdate>,
+        args: BeginTraitSwapUpdateArgs,
+    ) -> Result<()> {
+        instructions::begin_trait_swap_update::handler(ctx, args)
     }
 
     pub fn cancel_update(ctx: Context<CancelUpdate>, args: CancelUpdateArgs) -> Result<()> {
@@ -155,5 +170,13 @@ pub mod raindrops_avatar {
         args: VerifyPaymentMintTestArgs,
     ) -> Result<()> {
         instructions::verify_payment_mint_test::handler(ctx, args)
+    }
+
+    pub fn migrate_avatar_class_account(ctx: Context<MigrateAvatarClassAccount>) -> Result<()> {
+        migrate_avatar_class_account::handler(ctx)
+    }
+
+    pub fn migrate_avatar_account(ctx: Context<MigrateAvatarAccount>) -> Result<()> {
+        migrate_avatar_account::handler(ctx)
     }
 }

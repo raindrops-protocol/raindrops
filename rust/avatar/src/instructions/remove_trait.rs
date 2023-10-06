@@ -1,9 +1,13 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
 
-use crate::state::{
-    accounts::{Avatar, AvatarClass, Trait, UpdateState},
-    errors::ErrorCode,
+use crate::{
+    state::{
+        accounts::{Avatar, AvatarClass, Trait, UpdateState},
+        data::UpdateTarget,
+        errors::ErrorCode,
+    },
+    utils::get_essential_attribute_ids,
 };
 
 #[derive(Accounts)]
@@ -16,6 +20,11 @@ pub struct RemoveTrait<'info> {
         seeds = [Avatar::PREFIX.as_bytes(), avatar_class.key().as_ref(), avatar.mint.key().as_ref()], bump)]
     pub avatar: Box<Account<'info, Avatar>>,
 
+    #[account(
+        constraint = avatar_mint_ata.amount == 1,
+        associated_token::mint = avatar.mint, associated_token::authority = avatar_authority)]
+    pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
+
     #[account(mut,
         has_one = avatar,
         seeds = [UpdateState::PREFIX.as_bytes(), avatar.key().as_ref(), update_state.target.hash().as_ref()], bump)]
@@ -26,13 +35,16 @@ pub struct RemoveTrait<'info> {
         seeds = [Trait::PREFIX.as_bytes(), avatar_class.key().as_ref(), trait_account.trait_mint.key().as_ref()], bump)]
     pub trait_account: Account<'info, Trait>,
 
-    #[account(mut, address = update_state.target.get_remove_trait_destination(&trait_account.trait_mint.key()).unwrap())]
+    #[account(mut)]
     pub trait_destination: Account<'info, token::TokenAccount>,
 
     #[account(mut,
         associated_token::mint = trait_account.trait_mint,
         associated_token::authority = avatar)]
     pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
+
+    #[account(mut)]
+    pub avatar_authority: SystemAccount<'info>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -43,6 +55,17 @@ pub struct RemoveTrait<'info> {
 }
 
 pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
+
+    // check that update target is remove trait
+    match ctx.accounts.update_state.target {
+        UpdateTarget::RemoveTrait { .. } => (),
+        _ => return Err(ErrorCode::InvalidUpdateTarget.into()),
+    }
+
     // check trait attributes are mutable
     let mutable = ctx
         .accounts
@@ -50,12 +73,12 @@ pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
         .is_trait_mutable(ctx.accounts.trait_account.attribute_ids.clone());
     require!(mutable, ErrorCode::AttributeImmutable);
 
-    // check that trait is not used in a trait gate
-    let required = ctx
-        .accounts
-        .avatar
-        .is_required_by_trait_gate(ctx.accounts.trait_account.key());
-    require!(!required, ErrorCode::TraitInUse);
+    // check that trait is not being removed from an essential slot
+    let essential_ids = get_essential_attribute_ids(
+        &ctx.accounts.avatar_class.attribute_metadata,
+        &ctx.accounts.trait_account.attribute_ids,
+    );
+    require!(essential_ids.len() == 0, ErrorCode::InvalidAttributeId);
 
     // transfer trait to authority
     let transfer_accounts = token::Transfer {
@@ -85,7 +108,7 @@ pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
     if ctx.accounts.avatar_trait_ata.amount == 0 {
         let close_ata_accounts = token::CloseAccount {
             account: ctx.accounts.avatar_trait_ata.to_account_info(),
-            destination: ctx.accounts.payer.to_account_info(),
+            destination: ctx.accounts.avatar_authority.to_account_info(),
             authority: ctx.accounts.avatar.to_account_info(),
         };
 
@@ -110,20 +133,16 @@ pub fn handler(ctx: Context<RemoveTrait>) -> Result<()> {
         ctx.accounts.system_program.clone(),
     );
 
-    // verify update state
-    match &ctx.accounts.trait_account.equip_payment_details {
-        Some(payment_details) => {
-            let update_state = &ctx.accounts.update_state;
+    // check trait gates still pass after changes
+    let valid = ctx.accounts.avatar.validate_trait_gates();
+    require!(valid, ErrorCode::TraitGateFailure);
 
-            // check the payment has been paid
-            payment_details.is_paid(&ctx.accounts.update_state).unwrap();
+    require!(
+        ctx.accounts.update_state.target.is_paid(),
+        ErrorCode::PaymentNotPaid
+    );
 
-            // close state account
-            update_state.close(ctx.accounts.payer.to_account_info())
-        }
-        None => ctx
-            .accounts
-            .update_state
-            .close(ctx.accounts.payer.to_account_info()),
-    }
+    ctx.accounts
+        .update_state
+        .close(ctx.accounts.avatar_authority.to_account_info())
 }

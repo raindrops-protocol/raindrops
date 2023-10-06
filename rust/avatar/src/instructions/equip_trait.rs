@@ -4,6 +4,7 @@ use anchor_spl::token;
 use crate::{
     state::{
         accounts::{Avatar, AvatarClass, Trait, TraitConflicts, UpdateState},
+        data::UpdateTarget,
         errors::ErrorCode,
     },
     utils::validate_attribute_availability,
@@ -18,6 +19,11 @@ pub struct EquipTrait<'info> {
         has_one = avatar_class,
         seeds = [Avatar::PREFIX.as_bytes(), avatar_class.key().as_ref(), avatar.mint.key().as_ref()], bump)]
     pub avatar: Box<Account<'info, Avatar>>,
+
+    #[account(
+        constraint = avatar_mint_ata.amount == 1,
+        associated_token::mint = avatar.mint, associated_token::authority = avatar_authority)]
+    pub avatar_mint_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut,
         has_one = avatar,
@@ -43,6 +49,9 @@ pub struct EquipTrait<'info> {
     pub avatar_trait_ata: Box<Account<'info, token::TokenAccount>>,
 
     #[account(mut)]
+    pub avatar_authority: SystemAccount<'info>,
+
+    #[account(mut)]
     pub payer: Signer<'info>,
 
     pub token_program: Program<'info, token::Token>,
@@ -51,6 +60,17 @@ pub struct EquipTrait<'info> {
 }
 
 pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
+    require!(
+        ctx.accounts.avatar_mint_ata.delegate.is_none(),
+        ErrorCode::TokenDelegateNotAllowed
+    );
+
+    // check that update target is equip trait
+    match ctx.accounts.update_state.target {
+        UpdateTarget::EquipTrait { .. } => (),
+        _ => return Err(ErrorCode::InvalidUpdateTarget.into()),
+    }
+
     // verify trait is enabled
     let trait_enabled = ctx.accounts.trait_account.is_enabled();
     require!(trait_enabled, ErrorCode::TraitDisabled);
@@ -77,10 +97,15 @@ pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
         ctx.accounts.trait_account.id,
         ctx.accounts.trait_account.attribute_ids.clone(),
         &ctx.accounts.trait_account.variant_metadata,
+        ctx.accounts.trait_account.trait_gate.clone(),
         &avatar_account_info,
         ctx.accounts.payer.clone(),
         ctx.accounts.system_program.clone(),
     );
+
+    // check trait gates still pass after changes
+    let valid = ctx.accounts.avatar.validate_trait_gates();
+    require!(valid, ErrorCode::TraitGateFailure);
 
     // transfer trait token to avatar
     let transfer_accounts = token::Transfer {
@@ -97,20 +122,12 @@ pub fn handler(ctx: Context<EquipTrait>) -> Result<()> {
         1,
     )?;
 
-    // verify update state
-    match &ctx.accounts.trait_account.equip_payment_details {
-        Some(payment_details) => {
-            let update_state = &ctx.accounts.update_state;
+    require!(
+        ctx.accounts.update_state.target.is_paid(),
+        ErrorCode::PaymentNotPaid
+    );
 
-            // check the payment has been paid
-            payment_details.is_paid(&ctx.accounts.update_state).unwrap();
-
-            // close state account
-            update_state.close(ctx.accounts.payer.to_account_info())
-        }
-        None => ctx
-            .accounts
-            .update_state
-            .close(ctx.accounts.payer.to_account_info()),
-    }
+    ctx.accounts
+        .update_state
+        .close(ctx.accounts.avatar_authority.to_account_info())
 }
