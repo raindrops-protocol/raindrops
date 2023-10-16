@@ -848,7 +848,9 @@ export class AvatarClient {
     );
 
     const ixArgs = {
-      variantMetadata: args.variantMetadata ? args.variantMetadata.formatForIx() : null,
+      variantMetadata: args.variantMetadata
+        ? args.variantMetadata.formatForIx()
+        : null,
       variantOption: args.variantOption
         ? args.variantOption.formatForIx()
         : null,
