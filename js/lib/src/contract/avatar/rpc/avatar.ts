@@ -848,7 +848,7 @@ export class AvatarClient {
     );
 
     const ixArgs = {
-      variantMetadata: args.variantMetadata ? args.variantMetadata : null,
+      variantMetadata: args.variantMetadata ? args.variantMetadata.formatForIx() : null,
       variantOption: args.variantOption
         ? args.variantOption.formatForIx()
         : null,
@@ -862,6 +862,8 @@ export class AvatarClient {
     };
 
     const trait = traitPDA(accounts.avatarClass, accounts.traitMint);
+
+    console.log(ixArgs);
 
     const tx = await this.program.methods
       .updateTrait(ixArgs)
