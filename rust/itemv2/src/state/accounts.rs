@@ -256,6 +256,12 @@ impl Build {
                 .any(|mint_data| mint_data.mint.eq(&ingredient_mint))
             {
                 build_ingredient_data.current_amount += amount;
+
+                // dont allow builders to put in more than the required amount
+                if build_ingredient_data.current_amount > build_ingredient_data.required_amount {
+                    return Err(ErrorCode::IncorrectIngredient.into())
+                };
+
                 found = true;
                 break;
             }
