@@ -3172,7 +3172,7 @@ describe("itemv2", () => {
     assertRejects(addIngredientCollection(
       itemProgram,
       outputItemClass.itemClass,
-      nftItemClass.mints[0],
+      nftItemClass.mints[1],
       nftItemClass.itemClass,
       new anchor.BN(1)
     ));
