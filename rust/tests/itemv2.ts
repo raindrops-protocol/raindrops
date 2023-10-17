@@ -13,7 +13,6 @@ import * as splToken from "@solana/spl-token";
 import * as cmp from "@solana/spl-account-compression";
 import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 import { assert } from "chai";
-import { encode } from "@msgpack/msgpack";
 import fs from "fs";
 import path from "path";
 
@@ -3093,6 +3092,91 @@ describe("itemv2", () => {
       console.log("releaseFromEscrowTxSig: %s", result.txid);
     }
   });
+
+  it("do not allow builder to add more than required amount for an ingredient", async () => {
+    const payer = await newPayer(connection);
+
+    const itemProgram = await ItemProgramV2.getProgramWithConfig(
+      ItemProgramV2,
+      {
+        asyncSigning: false,
+        provider: new anchor.AnchorProvider(
+          connection,
+          new anchor.Wallet(payer),
+          { commitment: "confirmed" }
+        ),
+        idl: Idls.ItemV2IDL,
+      }
+    );
+
+    // ingredient 1, nft
+    const nftItemClass = await createItemClassCollectionMode(
+      payer,
+      connection,
+      2,
+      false
+    );
+
+    // output nft
+    const outputItemClass = await createItemClassCollectionMode(
+      payer,
+      connection,
+      1,
+      false,
+      {
+        buildEnabled: true,
+        payment: null,
+        ingredientArgs: [
+          {
+            itemClass: nftItemClass.itemClass,
+            requiredAmount: new BN(1),
+            buildEffect: {
+              degradation: null,
+              cooldown: null,
+            },
+            isDeterministic: false,
+          },
+        ],
+        buildPermitRequired: false,
+        selectableOutputs: [],
+      }
+    );
+
+    // start the build process
+    const startBuildAccounts: Instructions.ItemV2.StartBuildAccounts = {
+      itemClass: outputItemClass.itemClass,
+      builder: itemProgram.client.provider.publicKey,
+    };
+
+    const startBuildArgs: Instructions.ItemV2.StartBuildArgs = {
+      recipeIndex: new anchor.BN(0),
+      recipeOutputSelection: [],
+    };
+
+    const startBuildResult = await itemProgram.startBuild(
+      startBuildAccounts,
+      startBuildArgs
+    );
+    console.log("startBuildTxSig: %s", startBuildResult.txid);
+
+    // add ingredient to build using collection verification
+    await addIngredientCollection(
+      itemProgram,
+      outputItemClass.itemClass,
+      nftItemClass.mints[0],
+      nftItemClass.itemClass,
+      new anchor.BN(1)
+    );
+
+    // try to add second ingredient and this should fail because the recipe only requires 1
+    assertRejects(addIngredientCollection(
+      itemProgram,
+      outputItemClass.itemClass,
+      nftItemClass.mints[0],
+      nftItemClass.itemClass,
+      new anchor.BN(1)
+    ));
+  })
 });
 
 async function newPayer(

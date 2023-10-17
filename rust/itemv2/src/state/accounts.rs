@@ -258,19 +258,19 @@ impl Build {
                 build_ingredient_data.current_amount += amount;
 
                 // dont allow builders to put in more than the required amount
-                if build_ingredient_data.current_amount > build_ingredient_data.required_amount {
-                    return Err(ErrorCode::IncorrectIngredient.into())
-                };
+                require!(
+                    build_ingredient_data.current_amount <= build_ingredient_data.required_amount,
+                    ErrorCode::IncorrectIngredient
+                );
 
                 found = true;
                 break;
             }
         }
-        if found {
-            Ok(())
-        } else {
-            Err(ErrorCode::IncorrectIngredient.into())
-        }
+
+        require!(found, ErrorCode::IncorrectIngredient);
+
+        Ok(())
     }
 
     pub fn decrement_build_amount(&mut self, ingredient_mint: Pubkey, amount: u64) -> Result<()> {
