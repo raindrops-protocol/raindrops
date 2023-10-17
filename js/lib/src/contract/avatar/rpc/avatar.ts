@@ -865,8 +865,6 @@ export class AvatarClient {
 
     const trait = traitPDA(accounts.avatarClass, accounts.traitMint);
 
-    console.log(ixArgs);
-
     const tx = await this.program.methods
       .updateTrait(ixArgs)
       .accounts({
